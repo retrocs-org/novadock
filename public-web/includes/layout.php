@@ -4,6 +4,13 @@ const NOVADOCK_VERSION = '0.1';
 function site_escape(string $text): string {
     return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'ISO-8859-1');
 }
+function site_release_tag(): string {
+    $entries = json_decode((string) @file_get_contents(__DIR__.'/../releases.json'), true);
+    foreach (is_array($entries) ? $entries : [] as $entry) {
+        if (($entry['version'] ?? '') === NOVADOCK_VERSION && ($entry['status'] ?? '') === 'published' && is_string($entry['tag'] ?? null)) return $entry['tag'];
+    }
+    return 'v'.NOVADOCK_VERSION;
+}
 function site_header(string $title, string $current, string $description): void {
     header('Content-Type: text/html; charset=ISO-8859-1');
 ?>

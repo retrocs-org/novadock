@@ -46,7 +46,7 @@ def commit(clean=False):
             raise ValueError('Publishing requires a committed Git checkout.')
         return None
     if clean and run('git', 'status', '--porcelain', '--untracked-files=all', capture=True).strip():
-        raise ValueError('Commit or remove working-tree changes before publishing.')
+        raise ValueError('Commit or remove working-tree changes before building or publishing.')
     if clean:
         release_source.validate_tracked(ROOT)
     return value
@@ -220,6 +220,9 @@ def seal_assets(out):
 
 def build(args):
     cfg = config(args.config)
+    # Refuse dirty source before generators or output records can change anything.
+    if commit():
+        commit(clean=True)
     out = args.output.resolve()
     if out == ROOT or ROOT in out.parents and not out.is_relative_to(ROOT/'outputs'):
         raise ValueError('Use outputs/release or a build directory outside the source tree.')
@@ -360,7 +363,11 @@ def check_packages(directory):
 
 
 def check_build(directory):
+    if not (directory/'build-state.json').is_file():
+        raise ValueError('No completed build at '+str(directory)+'. Run build before check or prepare.')
     state = load_json(directory/'build-state.json')
+    if state.get('phase') == 'building' or not isinstance(state.get('assets'), dict):
+        raise ValueError('Build did not complete at '+str(directory)+'. Preserve or move that directory, then build into an empty output directory.')
     inventory(directory, state['assets'])
     info = load_json(directory/'BUILD-INFO.json')
     inputs = provenance.source_inputs(ROOT)
@@ -388,8 +395,28 @@ def check(args):
     print('Native runtime validation is a separate release checklist.')
 
 
+def release_tag(value=None):
+    tag = 'v'+version() if value is None else value
+    if not isinstance(tag, str) or not tag or tag.startswith('-'):
+        raise ValueError('Invalid release tag.')
+    result = subprocess.run(['git', 'check-ref-format', 'refs/tags/'+tag],
+                            cwd=ROOT, capture_output=True)
+    if result.returncode:
+        raise ValueError('Invalid release tag.')
+    return tag
+
+
+def requested_release(args, manifest):
+    if getattr(args, 'tag', None) is not None and release_tag(args.tag) != manifest['tag']:
+        raise ValueError('Requested tag differs from prepared manifest; prepare a new release directory.')
+    if getattr(args, 'tag_message', None) is not None and args.tag_message != manifest.get('tag_message'):
+        raise ValueError('Requested tag annotation differs from prepared manifest.')
+
+
 def prepare(args):
     out = args.output.resolve()
+    previous = load_json(out/'manifest.json') if (out/'manifest.json').exists() else {}
+    tag = release_tag(getattr(args, 'tag', None) if getattr(args, 'tag', None) is not None else previous.get('tag'))
     # Compatibility: the previous prepare command also built an empty directory.
     if not (out/'build-state.json').exists():
         build(args)
@@ -402,11 +429,11 @@ def prepare(args):
         (out/'RELEASE-NOTES.md').write_text(args.notes.read_text())
         state['assets'] = seal_assets(out)
         write_json(out/'build-state.json', state)
-    manifest = {'schema': 2, 'version': version(), 'tag': 'v'+version(),
+    manifest = {'schema': 2, 'version': version(), 'tag': tag,
                 'commit': info['commit'], 'source_sha256': info['source_sha256'],
                 'prebuilt': False, 'destinations': targets,
                 'notes': (out/'RELEASE-NOTES.md').read_text(), 'assets': state['assets'],
-                'tag_message': getattr(args, 'tag_message', None) or 'NovaDock '+version()}
+                'tag_message': getattr(args, 'tag_message', None) or previous.get('tag_message') or 'NovaDock '+version()}
     if not manifest['tag_message'].strip() or '\0' in manifest['tag_message']:
         raise ValueError('Tag annotation must not be empty or contain NUL.')
     for secret in credentials.known(cfg):
@@ -427,8 +454,10 @@ def prepare(args):
 
 
 def bundle(directory):
+    if not (directory/'manifest.json').is_file():
+        raise ValueError('No prepared release manifest at '+str(directory)+'. Run prepare successfully before publish; a failed build must be rebuilt in an empty output directory.')
     manifest = load_json(directory/'manifest.json')
-    if manifest.get('schema') != 2 or manifest['version'] != version() or manifest['tag'] != 'v'+version():
+    if manifest.get('schema') != 2 or manifest['version'] != version() or release_tag(manifest['tag']) != manifest['tag']:
         raise ValueError('Bundle version/tag or schema does not match VERSION.')
     state, info = check_build(directory)
     if state['assets'] != manifest['assets'] or any(info.get(k) != manifest.get(k) for k in ('commit', 'version', 'source_sha256', 'prebuilt')):
@@ -571,6 +600,7 @@ def publish(args):
         raise ValueError('Publication requires --confirm-publish. Use check to validate locally.')
     directory = args.output.resolve()
     m = bundle(directory)
+    requested_release(args, m)
     cfg = config(args.config)
     configured = destinations(cfg)
     if configured != m['destinations']:
@@ -688,9 +718,11 @@ def main():
         p.add_argument('--config', type=Path, default=default_config())
         if name in ('build', 'prepare', 'release'):
             p.add_argument('--uploader')
+        if name in ('prepare', 'publish', 'release'):
+            p.add_argument('--tag', help='Exact Git tag; default v<VERSION> when preparing a new release')
+            p.add_argument('--tag-message', help='Annotation recorded during prepare; publishing only verifies it')
         if name in ('prepare', 'release'):
             p.add_argument('--notes', type=Path)
-            p.add_argument('--tag-message')
         if name in ('publish', 'release'):
             p.add_argument('--to', help='Comma-separated gitlab,github,aminet (default: gitlab,github)')
             p.add_argument('--target', choices=('github', 'gitlab'), action='append', help=argparse.SUPPRESS)

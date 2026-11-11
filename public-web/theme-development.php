@@ -56,7 +56,7 @@ slots, and the catalogue grows dynamically with the installed themes.</p>
 and hyphen, with a maximum of 31 characters. The <b>NAME</b> entry is the
 friendly label displayed in Preferences.</p></font></td></tr></table></td></tr></table>
 <p>BG is the dock background; TILE and HOVER distinguish items; TEXT and SUBTLE control labels. ACCENT and ACCENT2 colour meters and graphs, while BAR is the unfilled meter colour. Check that both normal and hovered text remain readable.</p>
-<p>Find starting points in the <a href="https://github.com/retrocs-org/novadock/tree/v0.1/Themes">bundled theme source</a> when the tagged release is available. Keep your own unique drawer ID so an update does not replace another author's theme.</p>
+<p>Find starting points in the <a href="<?= site_escape('https://github.com/retrocs-org/novadock/tree/'.rawurlencode(site_release_tag()).'/Themes') ?>">bundled theme source</a> when the tagged release is available. Keep your own unique drawer ID so an update does not replace another author's theme.</p>
 <h2 id="package">Package a theme</h2>
 <p>A portable ZIP or LHA package should contain no executable and can use:</p>
 <table width="100%" border="0" cellpadding="4" cellspacing="0" bgcolor="#11111B"><tr><td><pre><font size="-1" color="#F9E2AF">BlueCopper-1.0/

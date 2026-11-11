@@ -18,3 +18,24 @@ assert m.with_upcoming([release], '0.2')[0]['tag']=='v0.2'
 record['assets'][0]['browser_download_url']='https://other.example/file.lha'
 assert m.normalize(record)['binary_url'] is None
 print('Planned releases, published assets and release-list synchronization passed.')
+
+# Exact tags need not use a v prefix. Asset versions still determine filenames.
+for tag in ('0.1', 'preview/0.1'):
+    planned = m.upcoming('0.1', tag)
+    entry = m.normalize({'tag_name': tag, 'assets': [{'name': 'NovaDock-0.1.lha', 'browser_download_url': planned['binary_url']}]})
+    assert entry['tag'] == tag and entry['version'] == '0.1'
+    assert entry['binary_url'] == planned['binary_url'] and entry['release_url'] == planned['release_url']
+# Verify rendered developer links against a published bare version tag.
+import json, shutil, subprocess, tempfile
+php = shutil.which('php')
+assert php
+with tempfile.TemporaryDirectory() as tmp:
+    site = Path(tmp)/'site'
+    shutil.copytree(m.ROOT/'public-web', site, ignore=shutil.ignore_patterns('downloads'))
+    (site/'releases.json').write_text(json.dumps([{'version': '0.1', 'tag': '0.1', 'status': 'published'}]))
+    for name in ('source.php', 'plugin-sdk.php', 'theme-development.php'):
+        result = subprocess.run([php, str(site/name)], capture_output=True, check=True)
+        assert not result.stderr, result.stderr
+        html = result.stdout.decode('ascii')
+        assert '/tree/0.1' in html and '/tree/v0.1' not in html, name
+print('Custom release tags and matching website source/SDK links passed.')

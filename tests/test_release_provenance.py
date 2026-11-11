@@ -96,6 +96,62 @@ class IntegrityTests(unittest.TestCase):
                 r.check_build(self.out)
             path.write_bytes(original)
 
+    def test_exact_tag_and_annotation_are_preserved(self):
+        self.args.tag = '0.1'
+        self.args.tag_message = 'NovaDock 0.1 release'
+        r.prepare(self.args)
+        manifest = r.bundle(self.out)
+        self.assertEqual(manifest['tag'], '0.1')
+        self.assertEqual(manifest['tag_message'], 'NovaDock 0.1 release')
+        self.assertEqual(manifest['version'], '0.1')
+        self.args.tag = None; self.args.tag_message = None
+        r.prepare(self.args)
+        self.assertEqual(r.bundle(self.out), manifest)
+
+    def test_mismatching_tag_or_annotation_stops_before_credentials(self):
+        self.args.tag = '0.1'; self.args.tag_message = 'Reviewed annotation'
+        r.prepare(self.args)
+        self.args.to = 'github'; self.args.confirm_publish = True
+        with patch.object(r.credentials, 'token', side_effect=AssertionError('secret lookup')):
+            self.args.tag = 'v0.1'
+            with self.assertRaisesRegex(ValueError, 'Requested tag differs'):
+                r.publish(self.args)
+            self.args.tag = '0.1'; self.args.tag_message = 'Changed annotation'
+            with self.assertRaisesRegex(ValueError, 'annotation differs'):
+                r.publish(self.args)
+
+    def test_custom_tag_names_are_validated_by_git(self):
+        for valid in ('0.1', 'v0.1', 'preview/0.1'):
+            self.assertEqual(r.release_tag(valid), valid)
+        for invalid in ('', '-option', 'bad tag', 'a..b', 'bad.lock', 'bad?tag'):
+            with self.assertRaisesRegex(ValueError, 'Invalid release tag'):
+                r.release_tag(invalid)
+
+    def test_invalid_tag_is_rejected_before_building(self):
+        self.args.tag = 'bad tag'
+        with patch.object(r, 'build', side_effect=AssertionError('build')):
+            with self.assertRaisesRegex(ValueError, 'Invalid release tag'):
+                r.prepare(self.args)
+
+    def test_incomplete_build_has_actionable_error(self):
+        r.write_json(self.out/'build-state.json', {'phase': 'building', 'inputs': {}})
+        with self.assertRaisesRegex(ValueError, 'Build did not complete'):
+            r.check_build(self.out)
+
+    def test_missing_manifest_has_actionable_error_before_network(self):
+        self.args.to = 'github'; self.args.confirm_publish = True
+        with patch.object(r.credentials, 'token', side_effect=AssertionError('secret lookup')):
+            with self.assertRaisesRegex(ValueError, 'Run prepare successfully before publish'):
+                r.publish(self.args)
+
+    def test_dirty_build_stops_before_generators_or_output_creation(self):
+        self.args.output = Path(self.tmp.name)/'not-created'
+        with patch.object(r, 'commit', side_effect=['a'*40, ValueError('working-tree changes')]), \
+             patch.object(r, 'run', side_effect=AssertionError('generator ran')):
+            with self.assertRaisesRegex(ValueError, 'working-tree changes'):
+                r.build(self.args)
+        self.assertFalse(self.args.output.exists())
+
     def test_host_debug_bundles_are_not_release_inputs(self):
         path = self.root/'tests/nd_sample_test.dSYM/Contents/Resources/DWARF/nd_sample_test'
         path.parent.mkdir(parents=True)

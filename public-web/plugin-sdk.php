@@ -10,8 +10,8 @@ site_header('Plugin SDK', 'Plugin SDK', 'Build, configure, test and package a No
 <div class="dev-section" id="plugins">
 <h2 id="start">Start with Hello</h2>
 <p>Plugins are separate AmigaOS programs. They send text, values and events through Exec message ports; NovaDock draws the tile.</p>
-<p><a class="button" href="<?= site_escape('https://github.com/retrocs-org/novadock/releases/download/v'.NOVADOCK_VERSION.'/NovaDock-'.NOVADOCK_VERSION.'-plugin-sdk.zip') ?>">Download Plugin SDK</a> <a class="text-link" href="<?= site_escape('https://github.com/retrocs-org/novadock/tree/v'.NOVADOCK_VERSION.'/plugin-sdk') ?>">Browse SDK on GitHub &rarr;</a></p>
-<p>The SDK is also part of the repository under <a href="<?= site_escape('https://github.com/retrocs-org/novadock/blob/v'.NOVADOCK_VERSION.'/plugin-sdk/README.md') ?>">plugin-sdk/README.md</a>. These tagged links become available when v<?= site_escape(NOVADOCK_VERSION) ?> is published.</p>
+<p><a class="button" href="<?= site_escape('https://github.com/retrocs-org/novadock/releases/download/'.rawurlencode(site_release_tag()).'/NovaDock-'.NOVADOCK_VERSION.'-plugin-sdk.zip') ?>">Download Plugin SDK</a> <a class="text-link" href="<?= site_escape('https://github.com/retrocs-org/novadock/tree/'.rawurlencode(site_release_tag()).'/plugin-sdk') ?>">Browse SDK on GitHub &rarr;</a></p>
+<p>The SDK is also part of the repository under <a href="<?= site_escape('https://github.com/retrocs-org/novadock/blob/'.rawurlencode(site_release_tag()).'/plugin-sdk/README.md') ?>">plugin-sdk/README.md</a>. These tagged links become available when the <?= site_escape(NOVADOCK_VERSION) ?> release is published.</p>
 <h3>1. Build the Hello example</h3>
 <p>The SDK includes a complete example, protocol headers, client helpers and a Makefile. Set up vbcc with an AmigaOS m68k target and compatible NDK, unpack the SDK, then run <b>make</b>. Or compile directly:</p>
 <pre class="code">vc -O -Iinclude -o Hello examples/hello.c src/nd_client.c src/nd_option_runtime.c</pre>
@@ -45,7 +45,7 @@ NOVADOCK_OPTION=PROGRAM|Program|FILE||SYS:Utilities/MultiView</pre>
 if (event &amp; ND_EVENT_SETTINGS)
     read_settings(argv[1], greeting, sizeof(greeting), &amp;poll);</pre>
 <p><b>Use</b> applies settings for the session; <b>Save</b> also keeps them permanently. The shared editor writes the configuration and notifies the plugin. ND_EVENT_SETTINGS is a change notification, not an instruction to open your own window.</p>
-<p>After changing a schema, remove its dock tiles and re-import the updated manifest. The SDK includes <b>PLUGIN_SDK_SETTINGS.md</b> with the full reader, testing steps and custom-UI guidance. <a href="<?= site_escape('https://github.com/retrocs-org/novadock/blob/v'.NOVADOCK_VERSION.'/plugin-sdk/PLUGIN_SDK_SETTINGS.md') ?>">Read it on GitHub &rarr;</a></p>
+<p>After changing a schema, remove its dock tiles and re-import the updated manifest. The SDK includes <b>PLUGIN_SDK_SETTINGS.md</b> with the full reader, testing steps and custom-UI guidance. <a href="<?= site_escape('https://github.com/retrocs-org/novadock/blob/'.rawurlencode(site_release_tag()).'/plugin-sdk/PLUGIN_SDK_SETTINGS.md') ?>">Read it on GitHub &rarr;</a></p>
 <p>A custom window can be opened by the plugin's own actions, but the current SDK cannot replace the right-click settings entry with an external preferences app.</p>
 <h3>Keep your plugin responsive</h3>
 <p>Initialise with nd_client_init(), read options, send updates and handle the returned events. Handle quit first, then clicks and changed settings. Use <b>nd_client_wait(&amp;client, nd_client_delay_ticks(&amp;client, poll))</b> between updates so the process sleeps and wakes for events. Call nd_client_close() before exiting.</p>

@@ -6,17 +6,19 @@ from pathlib import Path
 import re
 import sys
 import urllib.request
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[1]
 REPO = 'https://github.com/retrocs-org/novadock'
 OUTPUT = ROOT/'public-web/releases.json'
 
 
-def upcoming(version):
-    tag = 'v'+version
-    base = REPO+'/releases/download/'+tag+'/'
+def upcoming(version, tag=None):
+    tag = 'v'+version if tag is None else tag
+    encoded = quote(tag, safe='')
+    base = REPO+'/releases/download/'+encoded+'/'
     return {'version': version, 'tag': tag, 'status': 'upcoming', 'prerelease': version.startswith('0.'),
-            'date': None, 'release_url': REPO+'/releases/tag/'+tag,
+            'date': None, 'release_url': REPO+'/releases/tag/'+encoded,
             'binary_url': base+'NovaDock-'+version+'.lha',
             'source_url': base+'NovaDock-'+version+'-source.zip',
             'sdk_url': base+'NovaDock-'+version+'-plugin-sdk.zip',
@@ -25,16 +27,23 @@ def upcoming(version):
 
 def normalize(release):
     tag = release.get('tag_name', '')
-    if release.get('draft') or not re.fullmatch(r'v[0-9]+(?:\.[0-9]+)*(?:[-.][A-Za-z0-9]+)*', tag):
+    if release.get('draft') or not isinstance(tag, str) or not tag or any(ord(c) < 32 for c in tag):
         return None
-    version = tag[1:]
-    entry = upcoming(version)
     assets = {item['name']: item.get('browser_download_url', '') for item in release.get('assets', [])}
+    match = re.fullmatch(r'v?([0-9]+(?:\.[0-9]+)*(?:[-.][A-Za-z0-9]+)*)', tag)
+    versions = {m.group(1) for name in assets for m in [re.fullmatch(r'NovaDock-([0-9]+(?:\.[0-9]+)*(?:[-.][A-Za-z0-9]+)*)\.lha', name)] if m}
+    if match:
+        version = match.group(1)
+    elif len(versions) == 1:
+        version = versions.pop()
+    else:
+        return None
+    entry = upcoming(version, tag)
     for key, name in [('binary_url', 'NovaDock-'+version+'.lha'),
                       ('source_url', 'NovaDock-'+version+'-source.zip'),
                       ('sdk_url', 'NovaDock-'+version+'-plugin-sdk.zip'),
                       ('checksums_url', 'SHA256SUMS.txt')]:
-        expected = REPO+'/releases/download/'+tag+'/'+name
+        expected = REPO+'/releases/download/'+quote(tag, safe='')+'/'+name
         entry[key] = expected if assets.get(name) == expected else None
     entry.update(status='published', prerelease=bool(release.get('prerelease')),
                  date=(release.get('published_at') or '')[:10] or None)

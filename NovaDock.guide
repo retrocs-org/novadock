@@ -4056,9 +4056,9 @@ For a complete SDK walkthrough, see @{"Creating your plugin settings window" lin
   @{" Review the manifest " link RELEASING 194}
   @{" Publish selected destinations " link RELEASING 216}
   @{" Combined release command " link RELEASING 254}
-  @{" Upload source separately " link RELEASING 266}
-  @{" Aminet and interrupted uploads " link RELEASING 296}
-  @{" Validation and website updates " link RELEASING 325}
+  @{" Upload source separately " link RELEASING 278}
+  @{" Aminet and interrupted uploads " link RELEASING 308}
+  @{" Validation and website updates " link RELEASING 337}
 
 Run python3 scripts/release.py from the project root with Python 3.9 or
 newer. tools/release.py is the same entry point and remains supported. Build
@@ -4308,8 +4308,20 @@ This prepares an unprepared build and then uses the same publisher. If no
 build exists, preparation first performs the normal fresh build. An existing
 prepared manifest is reused; the command cannot silently replace its notes,
 tag annotation, assets or destinations. prepare --tag-message "NovaDock 0.1"
-records a custom annotation in the manifest. Tags still derive from VERSION
-so the website and asset URLs cannot drift from the application version.
+records a custom annotation in the manifest. Use --tag 0.1 to choose an
+exact tag; without it a new preparation defaults to v<VERSION>. Application
+version and package filenames still derive from VERSION. Git validates the
+tag name. Once prepared, omitting --tag reuses the manifest tag; an explicit
+different tag or annotation is refused before credential lookup. Changing
+tags or annotations requires a fresh preparation directory.
+
+    python3 scripts/release.py prepare --tag 0.1 --tag-message "NovaDock 0.1 release"
+    python3 scripts/release.py publish --tag 0.1 --to gitlab,github --confirm-publish
+
+The combined release command accepts the same --tag and --tag-message
+options. After publication, refresh the website release list as described
+below. Website source and SDK links then follow the actual published tag,
+including bare version numbers, rather than assuming a v prefix.
 
 @{b}Upload source separately@{ub}
 ------------------------

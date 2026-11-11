@@ -224,8 +224,21 @@ This prepares an unprepared build and then uses the same publisher. If no build
 exists, preparation first performs the normal fresh build. An existing prepared
 manifest is reused; the command cannot silently replace its notes, tag annotation,
 assets or destinations. `prepare --tag-message "NovaDock 0.1"` records a custom
-annotation in the manifest. Tags still derive from VERSION so the website and
-asset URLs cannot drift from the application version.
+annotation in the manifest. Use `--tag 0.1` to choose an exact tag; without it a new preparation defaults to
+`v<VERSION>`. Application version and package filenames still derive from VERSION.
+Git validates the tag name. Once prepared, omitting --tag reuses the manifest tag;
+an explicit different tag or annotation is refused before credential lookup.
+Changing tags or annotations requires a fresh preparation directory.
+
+```sh
+python3 scripts/release.py prepare --tag 0.1 --tag-message "NovaDock 0.1 release"
+python3 scripts/release.py publish --tag 0.1 --to gitlab,github --confirm-publish
+```
+
+The combined `release` command accepts the same --tag and --tag-message options.
+After publication, refresh the website release list as described below. Website
+source and SDK links then follow the actual published tag, including bare version
+numbers, rather than assuming a v prefix.
 
 ## Upload source separately
 
