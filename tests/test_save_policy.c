@@ -22,8 +22,8 @@ static void test_quit(void)
 }
 int main(void)
 {
-    test_quit();
     struct NDSaveState s;int i;
+    test_quit();
     memset(&s,0,sizeof(s));assert(!nd_save_tick(&s,5,0));
     for(i=0;i<20;++i)nd_save_changed(&s);
     assert(s.revision==20 && s.coalesced==19 && s.started==0);

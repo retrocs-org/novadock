@@ -7,6 +7,12 @@ trap 'rm -f tests/nd_appscan_test tests/nd_bitskim_test tests/nd_interface_list_
 # CC picks the host compiler; SANITIZE=1 adds AddressSanitizer and
 # UndefinedBehaviorSanitizer to every test program.
 CC=${CC:-cc}
+# The Amiga target intentionally supports C89 formatting APIs. Apple's host SDK
+# deprecates these independently of the caller's bounds checks. Keep other host
+# diagnostics and sanitizer checks enabled; do not change native target flags.
+case "$(uname -s)" in
+  Darwin) CC="$CC -Wno-deprecated-declarations" ;;
+esac
 if [ "${SANITIZE:-0}" = 1 ]; then
   CC="$CC -g -O1 -fsanitize=address,undefined -fno-sanitize-recover=undefined"
   ASAN_OPTIONS=${ASAN_OPTIONS:-detect_leaks=0}; export ASAN_OPTIONS

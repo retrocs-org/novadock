@@ -16,7 +16,7 @@ static int execute_shutdown(void *context,const char *command)
 }
 int main(void)
 {
-    struct NCConfig c;char command[256];FILE *f;int i,net=-1,road=-1,enabled=0;
+    struct NCConfig c;char command[256];FILE *f;int i,net=-1,enabled=0;
     struct NCInterfaces interfaces;
     struct NCDeviceStatus status;
     nc_defaults(&c);
