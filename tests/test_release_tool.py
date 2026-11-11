@@ -58,7 +58,7 @@ class ReleaseTests(unittest.TestCase):
     def github_api(self, draft=True, sha=None):
         calls = []
         assets = [{'name': name, 'digest': 'sha256:'+(sha or digest)}
-                  for name, digest in self.m['assets'].items()]
+                  for name, digest in r.publication_assets(self.m).items()]
         class Mock:
             def call(inner, method, path, payload=None, **kwargs):
                 calls.append((method, path, payload))
@@ -104,7 +104,7 @@ class ReleaseTests(unittest.TestCase):
                 if method == 'PUT':
                     files[path] = kwargs['upload'].read_bytes(); return {}
                 if method == 'POST':
-                    self.assertEqual(len(files), len(self.m['assets']))
+                    self.assertEqual(len(files), len(r.publication_assets(self.m)))
                     return {}
                 return files.get(path)
         api = Mock()
@@ -181,7 +181,7 @@ class ReleaseTests(unittest.TestCase):
                     self.assertTrue(payload['draft'])
                     return {'id': 8, 'draft': True}
                 if method == 'PATCH':
-                    self.assertEqual(len(stored), len(self.m['assets']))
+                    self.assertEqual(len(stored), len(r.publication_assets(self.m)))
                 return {}
         class Uploads:
             def call(inner, method, path, upload):
@@ -191,7 +191,7 @@ class ReleaseTests(unittest.TestCase):
         with patch.object(r, 'API', return_value=Uploads()), patch.dict(r.os.environ, {'GITHUB_TOKEN': 'test'}):
             r.publish_github(Mock(), 'a/b', self.out, self.m, False)
         self.assertEqual(calls[-1][0], 'PATCH')
-        self.assertEqual(len(stored), len(self.m['assets']))
+        self.assertEqual(len(stored), len(r.publication_assets(self.m)))
 
     def test_github_bad_upload_digest_never_publishes_draft(self):
         api, calls, assets = self.github_api()

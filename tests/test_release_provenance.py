@@ -152,6 +152,18 @@ class IntegrityTests(unittest.TestCase):
                 r.build(self.args)
         self.assertFalse(self.args.output.exists())
 
+    def test_publication_only_contains_binary_sdk_and_checksum_sidecars(self):
+        r.prepare(self.args)
+        manifest = r.bundle(self.out)
+        self.assertEqual(set(r.publication_assets(manifest)), {
+            'NovaDock-0.1.lha', 'NovaDock-0.1.lha.sha256',
+            'NovaDock-0.1-plugin-sdk.zip', 'NovaDock-0.1-plugin-sdk.zip.sha256'})
+        sdk = self.out/'NovaDock-0.1-plugin-sdk.zip'
+        self.assertEqual((self.out/(sdk.name+'.sha256')).read_text(), r.digest(sdk)+'  '+sdk.name+'\n')
+        manifest['publication_assets']['BUILD-INFO.json'] = manifest['assets']['BUILD-INFO.json']
+        with self.assertRaisesRegex(ValueError, 'Publication inventory'):
+            r.publication_assets(manifest)
+
     def test_host_debug_bundles_are_not_release_inputs(self):
         path = self.root/'tests/nd_sample_test.dSYM/Contents/Resources/DWARF/nd_sample_test'
         path.parent.mkdir(parents=True)

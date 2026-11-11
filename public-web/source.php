@@ -8,9 +8,9 @@ site_header('Source', 'Source', 'Get the NovaDock source and build the applicati
 <p class="lead">Get the source, set up your tools and compile the application. Looking to create a plugin or theme instead? Start with <a href="developers.php">Developers</a>.</p>
 <div class="dev-section">
 <h2>1. Get the source</h2>
-<p><a class="button" href="<?= site_escape('https://github.com/retrocs-org/novadock/releases/download/'.rawurlencode(site_release_tag()).'/NovaDock-'.NOVADOCK_VERSION.'-source.zip') ?>">Source ZIP</a> <a class="text-link" href="<?= site_escape('https://github.com/retrocs-org/novadock/tree/'.rawurlencode(site_release_tag())) ?>">Browse the tagged source &rarr;</a></p>
-<p>Unpack the ZIP and enter its NovaDock directory. Or clone the same tag:</p>
-<pre class="code">git clone --branch v<?= site_escape(NOVADOCK_VERSION) ?> https://github.com/retrocs-org/novadock.git
+<p><a class="button" href="<?= site_escape('https://github.com/retrocs-org/novadock/archive/refs/tags/'.rawurlencode(site_release_tag()).'.zip') ?>">Source ZIP</a> <a class="text-link" href="<?= site_escape('https://github.com/retrocs-org/novadock/tree/'.rawurlencode(site_release_tag())) ?>">Browse the tagged source &rarr;</a></p>
+<p>Unpack the ZIP and enter its source directory. Or clone the same tag:</p>
+<pre class="code">git clone --branch <?= site_escape(site_release_tag()) ?> https://github.com/retrocs-org/novadock.git
 cd novadock</pre>
 <p><small>The tagged links become available when the <?= site_escape(NOVADOCK_VERSION) ?> release is published. See <a href="download.php">Downloads</a> for release status.</small></p>
 </div>

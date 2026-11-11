@@ -190,8 +190,18 @@ def plan(args):
 def required_assets(v):
     return {'RELEASE-NOTES.md', 'BUILD-INFO.json', 'SHA256SUMS.txt',
             'NovaDock-'+v+'.lha', 'NovaDock-'+v+'.readme', 'NovaDock-'+v+'.lha.sha256',
-            'NovaDock-'+v+'-source.zip', 'NovaDock-'+v+'-plugin-sdk.zip',
+            'NovaDock-'+v+'-source.zip', 'NovaDock-'+v+'-plugin-sdk.zip', 'NovaDock-'+v+'-plugin-sdk.zip.sha256',
             'NovaDock-'+v+'-public-web-updated.zip', 'NovaDock-'+v+'-continued-source-and-site.zip'}
+
+
+def publication_assets(manifest):
+    v = manifest['version']
+    names = {f'NovaDock-{v}.lha', f'NovaDock-{v}.lha.sha256',
+             f'NovaDock-{v}-plugin-sdk.zip', f'NovaDock-{v}-plugin-sdk.zip.sha256'}
+    expected = {name: manifest['assets'][name] for name in sorted(names)}
+    if 'publication_assets' in manifest and manifest['publication_assets'] != expected:
+        raise ValueError('Publication inventory must contain only the LHA, Plugin SDK and their checksums.')
+    return expected
 
 
 def write_json(path, data):
@@ -208,6 +218,8 @@ def write_json(path, data):
 
 
 def seal_assets(out):
+    sdk = out/f'NovaDock-{version()}-plugin-sdk.zip'
+    sdk.with_name(sdk.name+'.sha256').write_text(digest(sdk)+'  '+sdk.name+'\n')
     names = required_assets(version()) - {'SHA256SUMS.txt'}
     for name in names:
         payload = (out/name).read_bytes()
@@ -434,6 +446,7 @@ def prepare(args):
                 'prebuilt': False, 'destinations': targets,
                 'notes': (out/'RELEASE-NOTES.md').read_text(), 'assets': state['assets'],
                 'tag_message': getattr(args, 'tag_message', None) or previous.get('tag_message') or 'NovaDock '+version()}
+    manifest['publication_assets'] = publication_assets(manifest)
     if not manifest['tag_message'].strip() or '\0' in manifest['tag_message']:
         raise ValueError('Tag annotation must not be empty or contain NUL.')
     for secret in credentials.known(cfg):
@@ -460,6 +473,7 @@ def bundle(directory):
     if manifest.get('schema') != 2 or manifest['version'] != version() or release_tag(manifest['tag']) != manifest['tag']:
         raise ValueError('Bundle version/tag or schema does not match VERSION.')
     state, info = check_build(directory)
+    publication_assets(manifest)
     if state['assets'] != manifest['assets'] or any(info.get(k) != manifest.get(k) for k in ('commit', 'version', 'source_sha256', 'prebuilt')):
         raise ValueError('Build provenance differs from the release manifest.')
     if manifest['notes'] != (directory/'RELEASE-NOTES.md').read_text():
@@ -470,6 +484,7 @@ def bundle(directory):
 
 
 def publish_github(api, project, directory, manifest, dry):
+    files = publication_assets(manifest)
     path = '/repos/'+project+'/releases'
     releases = api.call('GET', path+'?per_page=100')
     release = next((r for r in releases if r['tag_name'] == manifest['tag']), None)
@@ -480,12 +495,12 @@ def publish_github(api, project, directory, manifest, dry):
             raise ValueError('Existing GitHub release notes differ.')
         assets = api.call('GET', path+'/'+str(release['id'])+'/assets?per_page=100')
         existing = {a['name']: a for a in assets}
-        if len(existing) != len(assets) or set(existing) - set(manifest['assets']):
+        if len(existing) != len(assets) or set(existing) - set(files):
             raise ValueError('Unexpected or duplicate assets in GitHub release.')
-        for name, sha in manifest['assets'].items():
+        for name, sha in files.items():
             if name in existing and existing[name].get('digest') != 'sha256:'+sha:
                 raise ValueError('GitHub already has different/unverifiable asset: '+name)
-        if not release['draft'] and set(manifest['assets']) - set(existing):
+        if not release['draft'] and set(files) - set(existing):
             raise ValueError('Existing published release is incomplete; refusing to modify it.')
     else:
         existing = {}
@@ -496,10 +511,10 @@ def publish_github(api, project, directory, manifest, dry):
                            'name': 'NovaDock '+manifest['version'], 'body': (directory/'RELEASE-NOTES.md').read_text(),
                            'draft': True, 'prerelease': manifest['version'].startswith('0.')})
     uploads = API('https://uploads.github.com', getattr(api, 'token', None) or os.environ['GITHUB_TOKEN'], github=True)
-    for name in manifest['assets']:
+    for name in files:
         if name not in existing:
             response = uploads.call('POST', path+'/'+str(release['id'])+'/assets?name='+Q(name), upload=directory/name)
-            if response.get('digest') != 'sha256:'+manifest['assets'][name]:
+            if response.get('digest') != 'sha256:'+files[name]:
                 raise ValueError('GitHub upload digest mismatch: '+name)
     if release['draft']:
         api.call('PATCH', path+'/'+str(release['id']), {'draft': False})
@@ -507,12 +522,13 @@ def publish_github(api, project, directory, manifest, dry):
 
 
 def publish_gitlab(api, project, directory, manifest, dry):
+    files = publication_assets(manifest)
     path = '/projects/'+Q(project)
     release_path = path+'/releases/'+Q(manifest['tag'])
     release = api.call('GET', release_path, missing=True)
     links = []
     missing = []
-    for name, sha in manifest['assets'].items():
+    for name, sha in files.items():
         endpoint = path+'/packages/generic/novadock/'+Q(manifest['version'])+'/'+Q(name)
         data = api.file_digest(endpoint, missing=True)
         if data is None:
@@ -528,7 +544,7 @@ def publish_gitlab(api, project, directory, manifest, dry):
     for name, endpoint in missing:
         api.call('PUT', endpoint, upload=directory/name)
         uploaded = api.file_digest(endpoint)
-        if uploaded != manifest['assets'][name]:
+        if uploaded != files[name]:
             raise ValueError('GitLab upload verification failed: '+name)
     if not release:
         api.call('POST', path+'/releases', {'tag_name': manifest['tag'], 'name': 'NovaDock '+manifest['version'],

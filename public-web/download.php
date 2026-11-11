@@ -11,8 +11,8 @@ site_header('Download', 'Download', 'NovaDock tagged releases: Amiga LHA binarie
 <div class="release-entry">
 <h2>NovaDock <?= site_escape($release['version']) ?> <small><?= $release['status'] === 'upcoming' ? 'Upcoming' : ($release['prerelease'] ? 'Preview' : 'Release') ?></small></h2>
 <?php if ($release['date']): ?><p class="release-date"><?= site_escape($release['date']) ?></p><?php endif; ?>
-<p class="actions"><?php if ($release['binary_url']): ?><a class="button" href="<?= site_escape($release['binary_url']) ?>">LHA package</a><?php endif; ?> <?php if ($release['source_url']): ?><a class="text-link" href="<?= site_escape($release['source_url']) ?>">Source ZIP &rarr;</a><?php endif; ?></p>
-<p><a href="<?= site_escape($release['release_url']) ?>">Tagged release <?= site_escape($release['tag']) ?> &rarr;</a><?php if ($release['checksums_url']): ?> &nbsp; <a href="<?= site_escape($release['checksums_url']) ?>">Checksums</a><?php endif; ?></p>
+<p class="actions"><?php if ($release['binary_url']): ?><a class="button" href="<?= site_escape($release['binary_url']) ?>">LHA package</a><?php endif; ?> <?php if ($release['source_url']): ?><a class="text-link" href="<?= site_escape($release['source_url']) ?>">Source ZIP &rarr;</a><?php endif; ?> <?php if (!empty($release['source_tar_url'])): ?><a class="text-link" href="<?= site_escape($release['source_tar_url']) ?>">Source tar.gz &rarr;</a><?php endif; ?></p>
+<p><a href="<?= site_escape($release['release_url']) ?>">Tagged release <?= site_escape($release['tag']) ?> &rarr;</a><?php if ($release['checksums_url']): ?> &nbsp; <a href="<?= site_escape($release['checksums_url']) ?>">LHA checksum</a><?php endif; ?></p>
 <?php if ($release['status'] === 'upcoming'): ?><p class="note">This tag has not been published yet. These links will become available when the release is uploaded.</p><?php endif; ?>
 </div>
 <?php endforeach; ?>

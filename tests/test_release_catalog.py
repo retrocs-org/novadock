@@ -12,7 +12,7 @@ record={'tag_name':'v0.1','published_at':'2026-11-11T10:00:00Z','prerelease':Tru
         'assets':[{'name':'NovaDock-0.1.lha','browser_download_url':plan['binary_url']}]}
 release=m.normalize(record)
 assert release['status']=='published' and release['date']=='2026-11-11'
-assert release['binary_url']==plan['binary_url'] and release['source_url'] is None
+assert release['binary_url']==plan['binary_url'] and release['source_url'].endswith('/archive/refs/tags/v0.1.zip')
 assert m.with_upcoming([release], '0.1')==[release]
 assert m.with_upcoming([release], '0.2')[0]['tag']=='v0.2'
 record['assets'][0]['browser_download_url']='https://other.example/file.lha'
@@ -39,3 +39,6 @@ with tempfile.TemporaryDirectory() as tmp:
         html = result.stdout.decode('ascii')
         assert '/tree/0.1' in html and '/tree/v0.1' not in html, name
 print('Custom release tags and matching website source/SDK links passed.')
+
+assert m.upcoming('0.1', '0.1')['checksums_url'].endswith('/NovaDock-0.1.lha.sha256')
+assert m.upcoming('0.1', '0.1')['source_tar_url'].endswith('/archive/refs/tags/0.1.tar.gz')

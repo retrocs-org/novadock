@@ -167,16 +167,21 @@ source fingerprint, configured repository destinations, notes and every asset ha
 It is immutable: preparing again may confirm identical data, but cannot replace it
 with different notes or destinations. Use a new release directory for changed input.
 
-The exact public asset inventory is:
+Each release uploads exactly four assets:
 
-- NovaDock-VERSION.lha, its readme and LHA checksum file;
-- source ZIP and Plugin SDK ZIP;
-- PHP website ZIP and complete source/site ZIP;
-- RELEASE-NOTES.md, BUILD-INFO.json and SHA256SUMS.txt.
+- NovaDock-VERSION.lha
+- NovaDock-VERSION.lha.sha256
+- NovaDock-VERSION-plugin-sdk.zip
+- NovaDock-VERSION-plugin-sdk.zip.sha256
 
-SHA256SUMS.txt covers every other public asset exactly once. Its own hash is in
-the manifest. Local build-state, manifests, destination configuration and upload
-receipts are not public assets.
+GitHub and GitLab provide source archives from the tag automatically; source ZIP
+and tar.gz files are not uploaded separately. Both checksum sidecars contain the
+SHA-256 and filename of their corresponding download.
+
+Source/site packages, the Aminet readme, release notes, BUILD-INFO.json and the
+complete SHA256SUMS.txt are retained locally for validation and deployment. The
+manifest distinguishes this full build inventory from its four publication assets.
+Manifests, local configuration and receipts are never release downloads.
 
 ## Publish selected destinations
 

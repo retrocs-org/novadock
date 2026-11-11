@@ -20,9 +20,10 @@ def upcoming(version, tag=None):
     return {'version': version, 'tag': tag, 'status': 'upcoming', 'prerelease': version.startswith('0.'),
             'date': None, 'release_url': REPO+'/releases/tag/'+encoded,
             'binary_url': base+'NovaDock-'+version+'.lha',
-            'source_url': base+'NovaDock-'+version+'-source.zip',
+            'source_url': REPO+'/archive/refs/tags/'+encoded+'.zip',
+            'source_tar_url': REPO+'/archive/refs/tags/'+encoded+'.tar.gz',
             'sdk_url': base+'NovaDock-'+version+'-plugin-sdk.zip',
-            'checksums_url': base+'SHA256SUMS.txt'}
+            'checksums_url': base+'NovaDock-'+version+'.lha.sha256'}
 
 
 def normalize(release):
@@ -40,9 +41,8 @@ def normalize(release):
         return None
     entry = upcoming(version, tag)
     for key, name in [('binary_url', 'NovaDock-'+version+'.lha'),
-                      ('source_url', 'NovaDock-'+version+'-source.zip'),
                       ('sdk_url', 'NovaDock-'+version+'-plugin-sdk.zip'),
-                      ('checksums_url', 'SHA256SUMS.txt')]:
+                      ('checksums_url', 'NovaDock-'+version+'.lha.sha256')]:
         expected = REPO+'/releases/download/'+quote(tag, safe='')+'/'+name
         entry[key] = expected if assets.get(name) == expected else None
     entry.update(status='published', prerelease=bool(release.get('prerelease')),

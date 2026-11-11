@@ -59,7 +59,7 @@ for file in pages:
     assert parser.scripts == 0 and parser.styles == 1, f'{file} must use only the shared stylesheet'
     assert '<link rel="stylesheet" href="site.css"' in contents.decode('ascii')
     for link in parser.targets:
-        if link in official_links or link.startswith(('https://github.com/retrocs-org/novadock/releases/', 'https://github.com/retrocs-org/novadock/tree/', 'https://github.com/retrocs-org/novadock/blob/')):
+        if link in official_links or link.startswith(('https://github.com/retrocs-org/novadock/releases/', 'https://github.com/retrocs-org/novadock/tree/', 'https://github.com/retrocs-org/novadock/archive/', 'https://github.com/retrocs-org/novadock/blob/')):
             continue
         assert not link.lower().startswith(('http:', 'https:', 'javascript:', '//')), (file, link)
         rel = unquote(link.split('#', 1)[0].split('?', 1)[0])
@@ -205,7 +205,7 @@ for e in release_entries:
     assert e['status'] in ('upcoming', 'published')
     if e['status'] == 'upcoming':
         assert e['binary_url'].endswith('NovaDock-'+e['version']+'.lha')
-        assert e['source_url'].endswith('NovaDock-'+e['version']+'-source.zip')
+        assert e['source_url'].endswith('/'+e['tag']+'.zip')
 rendered_download = subprocess.check_output([php, str((web/'download.php').resolve())]).decode()
 assert 'Build instructions' not in rendered_download and 'sh scripts/build-amiga.sh' not in rendered_download
 assert 'https://bitskim.retrocs.org' in marketplace
