@@ -1,0 +1,20 @@
+{
+  "github": "https://github.com/retrocs-org/novadock",
+  "github_git": "git@github.com:retrocs-org/novadock.git",
+  "gitlab": "https://gitlab.example.org/group/novadock",
+  "gitlab_git": "git@gitlab.example.org:group/novadock.git",
+  "uploader": "support@retrocs.org",
+  "author": "NovaDock contributors",
+  "env": {},
+  "source_branch": "main",
+  "credentials": {
+    "github": {
+      "provider": "env",
+      "variable": "GITHUB_TOKEN"
+    },
+    "gitlab": {
+      "provider": "env",
+      "variable": "GITLAB_TOKEN"
+    }
+  }
+}

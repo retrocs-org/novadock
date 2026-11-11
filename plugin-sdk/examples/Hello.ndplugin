@@ -1,0 +1,17 @@
+; NovaDock plugin manifest for the SDK example.
+; Import it with NovaDock Preferences > Plugins > Import..., then place a
+; tile with Add to dock....  Every line below except NOVADOCK_OPTION is
+; required for Import; replace the values with your own.  The same
+; NOVADOCK_ lines can instead be tool types in Hello.info.
+NOVADOCK_ID=HELLO
+NOVADOCK_NAME=Hello
+NOVADOCK_VERSION=1.0
+NOVADOCK_AUTHOR=Your Name
+NOVADOCK_DESCRIPTION=Shows a greeting and reacts to clicks.
+NOVADOCK_LICENSE=MIT
+NOVADOCK_FEATURES=meter,click,badge
+NOVADOCK_PROGRAM=Hello
+NOVADOCK_VIEW=METER
+NOVADOCK_ABI=1
+NOVADOCK_OPTION=GREETING|Greeting|TEXT||HELLO AMIGA
+NOVADOCK_OPTION=POLL_TICKS|Refresh ticks|UINT|10,500|50

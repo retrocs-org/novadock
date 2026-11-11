@@ -1,0 +1,11 @@
+/* NovaDock AmIRC alert hook: use PRIVATE or HIGHLIGHT as the argument.
+ * AmIRC supplies its own default ADDRESS. No message text is forwarded. */
+parse upper arg kind .
+if kind ~= 'PRIVATE' & kind ~= 'HIGHLIGHT' then exit 0
+host = address()
+if ~show('P', 'NOVADOCK.AMIRC') then exit 0
+signal on error
+address NOVADOCK.AMIRC 'NOTIFY' kind host
+exit 0
+error:
+exit 0

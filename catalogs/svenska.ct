@@ -1,0 +1,403 @@
+## version $VER: novadock.catalog 1.4 (24.10.2026)
+## language svenska
+## codeset 0
+; Swedish translation of NovaDock dock messages
+MSG_0001
+Kan inte läsa lådans innehåll
+; Cannot read drawer contents
+MSG_0002
+Lådan är tom
+; Drawer is empty
+MSG_0003
+Snabbtangentens startåtgärd misslyckades
+; Hot-key Launcher Action failed
+MSG_0006
+ARexx-startåtgärden returnerade ett fel
+; ARexx Launcher Action returned an error
+MSG_0007
+Programmet körs; inget fönster matchade
+; Application is running; no window matched
+MSG_0008
+Startåtgärden kunde inte startas
+; Launcher Action could not be started
+MSG_0009
+Dockan är låst - högerklicka på bakgrunden för att låsa upp
+; Dock locked - right-click the background to unlock
+MSG_0010
+DOpus 4: lägg överst
+; DOpus 4: bring to front
+MSG_0011
+DOpus 4: startar...
+; DOpus 4: starting...
+MSG_0012
+Kunde inte fästa - dockan kan vara full
+; Could not pin - dock may be full
+MSG_0013
+Mellanrum tillagt - dra det på plats
+; Spacer added - drag it into position
+MSG_0014
+Kunde inte lägga till mellanrum - dockan kan vara full
+; Could not add spacer - dock may be full
+MSG_0015
+Rader gäller dockor upptill och nedtill
+; Rows apply to top and bottom docks
+MSG_0016
+Dockan har redan maximalt antal rader
+; Dock already has the maximum rows
+MSG_0017
+Kan inte lägga till rad i denna skärmstorlek
+; Could not add row at this screen size
+MSG_0018
+Dockan upplåst - dra och släpp aktiverat
+; Dock unlocked - drag and drop enabled
+MSG_0019
+Dockan låst
+; Dock locked
+MSG_0020
+Verktygsmenyns startåtgärd misslyckades
+; Tools Launcher Action failed
+MSG_0021
+Arkivet stöds inte eller osäker sökväg
+; Unsupported archive or unsafe path
+MSG_0022
+Öppna med misslyckades
+; Open With failed
+MSG_0023
+Kopiering avvisad - ogiltigt objekt
+; Copy rejected - invalid object
+MSG_0024
+Dockan är låst - högerklicka och välj Lås upp dockan
+; Dock locked - right-click and choose Unlock dock
+MSG_0026
+Släpp avvisat - inte tillräckligt med minne
+; Drop rejected - not enough memory
+MSG_0027
+Redigera: släpp på en ruta för att flytta; utanför tar bort
+; Edit: release on a tile to move; outside dock removes
+MSG_0028
+Sidan bytt - dra objektet till sin plats
+; Page changed - drag the item to its destination
+MSG_0029
+Ingen ändring - släpp på en ruta eller utanför för att ta bort
+; No change - drop on a tile or outside to remove
+MSG_0030
+En annan NovaDock körs men svarade inte.
+; Another NovaDock is running but did not respond.
+MSG_0031
+Inte tillräckligt med minne för startåtgärder.
+; Not enough memory for launcher actions.
+MSG_0032
+Inställningarna har inga aktiva rutor.
+; The configuration has no enabled tiles.
+MSG_0033
+Kunde inte registrera NovaDocks meddelandeportar\n(en annan docka startade samtidigt, eller ingen ledig signal).
+; Could not register NovaDock's message ports\n(another dock started at the same moment, or no free signal).
+MSG_0034
+Den inställda dockan får inte plats på Workbench-skärmen.\nMinska rutstorlek, mellanrum eller antal objekt i Inställningar.
+; The configured dock does not fit on the Workbench screen.\nReduce tile size, gap or items in Preferences.
+MSG_0035
+OK
+; OK
+MSG_0036
+Ingen giltig inställningsfil hittades.\nENV:, ENVARC: och den medföljande novadock.cfg (och deras\n.bak-kopior) innehåller alla fel.\n\nStarta med de inbyggda standardvärdena? Dina filer\nlämnas orörda tills du sparar från Inställningar.
+; No valid settings file was found.\nENV:, ENVARC: and the packaged novadock.cfg (and their\n.bak copies) all contain errors.\n\nStart with the built-in defaults? Your files are\nleft untouched until you save from Preferences.
+MSG_0037
+Använd standard|Avsluta
+; Use defaults|Quit
+MSG_0038
+NovaDock-kalender
+; NovaDock Calendar
+MSG_0039
+Packar upp arkivet i en ny låda
+; Extracting archive into new folder
+MSG_0040
+Disk isatt: %.28s
+; Disk inserted: %.28s
+MSG_0041
+Disk borttagen: %.28s
+; Disk removed: %.28s
+MSG_0042
+Flyttade %s
+; Moved %s
+MSG_0043
+Tog bort %s
+; Removed %s
+MSG_0044
+%.20s tömd - säker att ta ut
+; %.20s flushed - safe to remove
+MSG_0045
+Kunde inte tömma %.20s
+; Could not flush %.20s
+MSG_0046
+Fäste %.28s
+; Pinned %.28s
+MSG_0047
+Dockan har nu %d rader
+; Dock now uses %d rows
+MSG_0048
+Packar upp %d arkiv
+; Extracting %d archives
+MSG_0050
+Öppnade med %.31s
+; Opened with %.31s
+MSG_0051
+Öppnade %d objekt med %.31s
+; Opened %d items with %.31s
+MSG_0054
+Kopierar %d; %d avvisade
+; Copying %d; %d rejected
+MSG_0055
+Lade till %s
+; Added %s
+MSG_0056
+Lade till %d objekt
+; Added %d items
+MSG_0057
+Starta
+; Launch
+MSG_0058
+Redigera inställningar...
+; Edit settings...
+MSG_0059
+Ta bort
+; Remove
+MSG_0061
+Öppna
+; Open
+MSG_0062
+Visa innehåll
+; Popup contents
+MSG_0063
+Töm (säker att ta ut)
+; Flush (safe to remove)
+MSG_0064
+Fäst i dockan
+; Pin to dock
+MSG_0070
+Redigera mellanrum...
+; Edit spacer...
+MSG_0071
+Ta bort mellanrum
+; Remove spacer
+MSG_0072
+Lås upp dockan
+; Unlock dock
+MSG_0075
+Inställningar...
+; Preferences...
+MSG_0076
+Avsluta NovaDock
+; Quit NovaDock
+MSG_0077
+Januari
+; January
+MSG_0078
+Februari
+; February
+MSG_0079
+Mars
+; March
+MSG_0080
+April
+; April
+MSG_0081
+Maj
+; May
+MSG_0082
+Juni
+; June
+MSG_0083
+Juli
+; July
+MSG_0084
+Augusti
+; August
+MSG_0085
+September
+; September
+MSG_0086
+Oktober
+; October
+MSG_0087
+November
+; November
+MSG_0088
+December
+; December
+MSG_0089
+Sö
+; Su
+MSG_0090
+Må
+; Mo
+MSG_0091
+Ti
+; Tu
+MSG_0092
+On
+; We
+MSG_0093
+To
+; Th
+MSG_0094
+Fr
+; Fr
+MSG_0095
+Lö
+; Sa
+MSG_0096
+Lås dockan
+; Lock dock
+MSG_0100
+Tillfälliga rutor ligger sist - fäst för att behålla
+; Temporary tiles stay at the end - pin to keep one
+MSG_0101
+Tillfälliga rutor följer sin disk eller sitt program
+; Temporary tiles follow their disk or application
+MSG_0102
+Programmet har inget öppet fönster
+; Application has no open window
+MSG_0103
+Skickade Ctrl-C till %.28s
+; Sent Ctrl-C to %.28s
+MSG_0104
+%.28s körs inte längre
+; %.28s is no longer running
+MSG_0108
+(tom)
+; (empty)
+MSG_0109
+Namn
+; Name
+MSG_0110
+Datum
+; Date
+MSG_0111
+Storlek
+; Size
+MSG_0112
+Lägg överst
+; Bring to front
+MSG_0113
+Nästa fönster
+; Next window
+MSG_0114
+Skicka Ctrl-C
+; Send Ctrl-C
+MSG_0115
+Dockan har redan minsta antalet rader
+; Dock already has the minimum rows
+MSG_0116
+Kunde inte ta bort dockrad
+; Could not remove dock row
+MSG_0119
+Nytt objekt...
+; Add item...
+MSG_0120
+Could not start the default music application
+; Could not start the default music application
+MSG_0121
+Starting the default music application
+; Starting the default music application
+MSG_0122
+About NovaDock
+; About NovaDock
+MSG_0123
+About NovaDock...
+; About NovaDock...
+MSG_0124
+Drop rejected - invalid object or dock is full
+; Drop rejected - invalid object or dock is full
+MSG_0125
+Vissa objekt kunde inte flyttas till papperskorgen
+; Some items could not be moved to the trash
+MSG_0126
+Papperskorgen är tom
+; The trash is empty
+MSG_0127
+Kunde inte starta papperskorgen
+; Could not start the Trash plugin
+MSG_0128
+Flyttar till papperskorgen
+; Moving to the trash
+MSG_0129
+Flyttar %d objekt till papperskorgen
+; Moving %d items to the trash
+MSG_0130
+Öppna papperskorgen
+; Open trash
+MSG_0131
+Töm papperskorgen...
+; Empty trash...
+MSG_0133
+Settings save failed - see Diagnostics
+; Settings save failed - see Diagnostics
+MSG_0134
+Settings not saved - will retry
+; Settings not saved - will retry
+MSG_0136
+Clipboard history
+; Clipboard history
+MSG_0137
+Manage history...
+; Manage history...
+MSG_0138
+Could not change network state - check Network settings
+; Could not change network state - check Network settings
+MSG_0139
+Online
+; Online
+MSG_0140
+Offline
+; Offline
+MSG_0141
+Could not open Network details
+; Could not open Network details
+MSG_0142
+Details...
+; Details...
+MSG_0143
+Open BitSkim
+; Open BitSkim
+MSG_0145
+Toggle receiving
+; Toggle receiving
+MSG_0147
+Cancel transfer
+; Cancel transfer
+MSG_0148
+BitSkim accepts one regular file at a time
+; BitSkim accepts one regular file at a time
+MSG_0149
+Could not open BitSkim helper
+; Could not open BitSkim helper
+MSG_0150
+Send file...
+; Send file...
+MSG_0151
+Could not open Running Apps
+; Could not open Running Apps
+MSG_0152
+Inställningarna sparades inte - avsluta igen för att slänga ändringarna
+; Settings not saved - quit again to discard changes
+MSG_0153
+Sparar inställningar...
+; Saving settings...
+MSG_0154
+Startade 1 arkiv; %d avvisade
+; Started 1 archive; %d rejected
+MSG_0155
+Startade %d arkiv; %d avvisade
+; Started %d archives; %d rejected
+MSG_0156
+Öppnade 1 objekt; %d misslyckades
+; Opened 1 item; %d failed
+MSG_0157
+Öppnade %d objekt; %d misslyckades
+; Opened %d items; %d failed
+MSG_0158
+Kopierar 1 objekt till %.28s
+; Copying 1 item to %.28s
+MSG_0159
+Kopierar %d objekt till %.28s
+; Copying %d items to %.28s

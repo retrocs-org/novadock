@@ -1,0 +1,403 @@
+## version $VER: novadock.catalog 1.0 (26.10.2026)
+## language deutsch
+## codeset 0
+; German translation of NovaDock dock messages (ISO-8859-1)
+MSG_0001
+Inhalt der Schublade kann nicht gelesen werden
+; Cannot read drawer contents
+MSG_0002
+Schublade ist leer
+; Drawer is empty
+MSG_0003
+Startaktion per Tastenkürzel fehlgeschlagen
+; Hot-key Launcher Action failed
+MSG_0006
+ARexx-Startaktion meldete einen Fehler
+; ARexx Launcher Action returned an error
+MSG_0007
+Programm läuft; kein passendes Fenster gefunden
+; Application is running; no window matched
+MSG_0008
+Startaktion konnte nicht ausgeführt werden
+; Launcher Action could not be started
+MSG_0009
+Dock gesperrt - zum Entsperren rechts auf den Hintergrund klicken
+; Dock locked - right-click the background to unlock
+MSG_0010
+DOpus 4: nach vorne holen
+; DOpus 4: bring to front
+MSG_0011
+DOpus 4: wird gestartet...
+; DOpus 4: starting...
+MSG_0012
+Anheften nicht möglich - Dock ist vielleicht voll
+; Could not pin - dock may be full
+MSG_0013
+Abstand eingefügt - an die gewünschte Stelle ziehen
+; Spacer added - drag it into position
+MSG_0014
+Abstand nicht eingefügt - Dock ist vielleicht voll
+; Could not add spacer - dock may be full
+MSG_0015
+Reihen gibt es nur bei Docks oben und unten
+; Rows apply to top and bottom docks
+MSG_0016
+Das Dock hat bereits die maximale Reihenzahl
+; Dock already has the maximum rows
+MSG_0017
+Bei dieser Bildschirmgröße keine weitere Reihe möglich
+; Could not add row at this screen size
+MSG_0018
+Dock entsperrt - Ziehen und Ablegen möglich
+; Dock unlocked - drag and drop enabled
+MSG_0019
+Dock gesperrt
+; Dock locked
+MSG_0020
+Startaktion aus dem Hilfsmittel-Menü fehlgeschlagen
+; Tools Launcher Action failed
+MSG_0021
+Archiv nicht unterstützt oder unsicherer Pfad
+; Unsupported archive or unsafe path
+MSG_0022
+Öffnen mit fehlgeschlagen
+; Open With failed
+MSG_0023
+Kopieren abgelehnt - ungültiges Objekt
+; Copy rejected - invalid object
+MSG_0024
+Dock gesperrt - rechts klicken und Dock entsperren wählen
+; Dock locked - right-click and choose Unlock dock
+MSG_0026
+Ablegen abgelehnt - nicht genug Speicher
+; Drop rejected - not enough memory
+MSG_0027
+Bearbeiten: auf Kachel loslassen verschiebt, außerhalb entfernt
+; Edit: release on a tile to move; outside dock removes
+MSG_0028
+Seite gewechselt - Objekt an sein Ziel ziehen
+; Page changed - drag the item to its destination
+MSG_0029
+Keine Änderung - auf Kachel ablegen oder außerhalb entfernen
+; No change - drop on a tile or outside to remove
+MSG_0030
+Ein anderes NovaDock läuft, antwortet aber nicht.
+; Another NovaDock is running but did not respond.
+MSG_0031
+Nicht genug Speicher für Startaktionen.
+; Not enough memory for launcher actions.
+MSG_0032
+Die Einstellungen enthalten keine aktiven Kacheln.
+; The configuration has no enabled tiles.
+MSG_0033
+NovaDocks Message-Ports konnten nicht angemeldet werden\n(ein anderes Dock startete gleichzeitig, oder kein Signal frei).
+; Could not register NovaDock's message ports\n(another dock started at the same moment, or no free signal).
+MSG_0034
+Das eingestellte Dock passt nicht auf den Workbench-Bildschirm.\nKachelgröße, Abstand oder Objekte in den Voreinstellungen verringern.
+; The configured dock does not fit on the Workbench screen.\nReduce tile size, gap or items in Preferences.
+MSG_0035
+OK
+; OK
+MSG_0036
+Keine gültige Einstellungsdatei gefunden.\nENV:, ENVARC: und die mitgelieferte novadock.cfg (samt\n.bak-Kopien) enthalten alle Fehler.\n\nMit den eingebauten Standardwerten starten? Ihre Dateien\nbleiben unverändert, bis Sie in den Voreinstellungen speichern.
+; No valid settings file was found.\nENV:, ENVARC: and the packaged novadock.cfg (and their\n.bak copies) all contain errors.\n\nStart with the built-in defaults? Your files are\nleft untouched until you save from Preferences.
+MSG_0037
+Standardwerte|Beenden
+; Use defaults|Quit
+MSG_0038
+NovaDock-Kalender
+; NovaDock Calendar
+MSG_0039
+Archiv wird in neue Schublade entpackt
+; Extracting archive into new folder
+MSG_0040
+Diskette eingelegt: %.28s
+; Disk inserted: %.28s
+MSG_0041
+Diskette entnommen: %.28s
+; Disk removed: %.28s
+MSG_0042
+%s verschoben
+; Moved %s
+MSG_0043
+%s entfernt
+; Removed %s
+MSG_0044
+%.20s geschrieben - kann entnommen werden
+; %.20s flushed - safe to remove
+MSG_0045
+%.20s konnte nicht geschrieben werden
+; Could not flush %.20s
+MSG_0046
+%.28s angeheftet
+; Pinned %.28s
+MSG_0047
+Das Dock hat jetzt %d Reihen
+; Dock now uses %d rows
+MSG_0048
+%d Archive werden entpackt
+; Extracting %d archives
+MSG_0050
+Geöffnet mit %.31s
+; Opened with %.31s
+MSG_0051
+%d Objekte geöffnet mit %.31s
+; Opened %d items with %.31s
+MSG_0054
+%d werden kopiert; %d abgelehnt
+; Copying %d; %d rejected
+MSG_0055
+%s hinzugefügt
+; Added %s
+MSG_0056
+%d Objekte hinzugefügt
+; Added %d items
+MSG_0057
+Starten
+; Launch
+MSG_0058
+Einstellungen bearbeiten...
+; Edit settings...
+MSG_0059
+Entfernen
+; Remove
+MSG_0061
+Öffnen
+; Open
+MSG_0062
+Inhalt anzeigen
+; Popup contents
+MSG_0063
+Schreiben (sicher entnehmen)
+; Flush (safe to remove)
+MSG_0064
+Im Dock anheften
+; Pin to dock
+MSG_0070
+Abstand bearbeiten...
+; Edit spacer...
+MSG_0071
+Abstand entfernen
+; Remove spacer
+MSG_0072
+Dock entsperren
+; Unlock dock
+MSG_0075
+Voreinstellungen...
+; Preferences...
+MSG_0076
+NovaDock beenden
+; Quit NovaDock
+MSG_0077
+Januar
+; January
+MSG_0078
+Februar
+; February
+MSG_0079
+März
+; March
+MSG_0080
+April
+; April
+MSG_0081
+Mai
+; May
+MSG_0082
+Juni
+; June
+MSG_0083
+Juli
+; July
+MSG_0084
+August
+; August
+MSG_0085
+September
+; September
+MSG_0086
+Oktober
+; October
+MSG_0087
+November
+; November
+MSG_0088
+Dezember
+; December
+MSG_0089
+So
+; Su
+MSG_0090
+Mo
+; Mo
+MSG_0091
+Di
+; Tu
+MSG_0092
+Mi
+; We
+MSG_0093
+Do
+; Th
+MSG_0094
+Fr
+; Fr
+MSG_0095
+Sa
+; Sa
+MSG_0096
+Dock sperren
+; Lock dock
+MSG_0100
+Temporäre Kacheln bleiben am Ende - anheften, um eine zu behalten
+; Temporary tiles stay at the end - pin to keep one
+MSG_0101
+Temporäre Kacheln folgen ihrer Diskette oder ihrem Programm
+; Temporary tiles follow their disk or application
+MSG_0102
+Programm hat kein offenes Fenster
+; Application has no open window
+MSG_0103
+Ctrl-C an %.28s gesendet
+; Sent Ctrl-C to %.28s
+MSG_0104
+%.28s läuft nicht mehr
+; %.28s is no longer running
+MSG_0108
+(leer)
+; (empty)
+MSG_0109
+Name
+; Name
+MSG_0110
+Datum
+; Date
+MSG_0111
+Größe
+; Size
+MSG_0112
+Nach vorne holen
+; Bring to front
+MSG_0113
+Nächstes Fenster
+; Next window
+MSG_0114
+Ctrl-C senden
+; Send Ctrl-C
+MSG_0115
+Das Dock hat bereits die minimale Reihenzahl
+; Dock already has the minimum rows
+MSG_0116
+Dockreihe konnte nicht entfernt werden
+; Could not remove dock row
+MSG_0119
+Objekt hinzufügen...
+; Add item...
+MSG_0120
+Das Standard-Musikprogramm konnte nicht gestartet werden
+; Could not start the default music application
+MSG_0121
+Das Standard-Musikprogramm wird gestartet
+; Starting the default music application
+MSG_0122
+Über NovaDock
+; About NovaDock
+MSG_0123
+Über NovaDock...
+; About NovaDock...
+MSG_0124
+Ablegen abgelehnt - ungültiges Objekt oder Dock voll
+; Drop rejected - invalid object or dock is full
+MSG_0125
+Einige Objekte konnten nicht in den Mülleimer verschoben werden
+; Some items could not be moved to the trash
+MSG_0126
+Der Mülleimer ist leer
+; The trash is empty
+MSG_0127
+Der Mülleimer konnte nicht gestartet werden
+; Could not start the Trash plugin
+MSG_0128
+Wird in den Mülleimer verschoben
+; Moving to the trash
+MSG_0129
+%d Objekte werden in den Mülleimer verschoben
+; Moving %d items to the trash
+MSG_0130
+Mülleimer öffnen
+; Open trash
+MSG_0131
+Mülleimer leeren...
+; Empty trash...
+MSG_0133
+Settings save failed - see Diagnostics
+; Settings save failed - see Diagnostics
+MSG_0134
+Settings not saved - will retry
+; Settings not saved - will retry
+MSG_0136
+Clipboard history
+; Clipboard history
+MSG_0137
+Manage history...
+; Manage history...
+MSG_0138
+Could not change network state - check Network settings
+; Could not change network state - check Network settings
+MSG_0139
+Online
+; Online
+MSG_0140
+Offline
+; Offline
+MSG_0141
+Could not open Network details
+; Could not open Network details
+MSG_0142
+Details...
+; Details...
+MSG_0143
+Open BitSkim
+; Open BitSkim
+MSG_0145
+Toggle receiving
+; Toggle receiving
+MSG_0147
+Cancel transfer
+; Cancel transfer
+MSG_0148
+BitSkim accepts one regular file at a time
+; BitSkim accepts one regular file at a time
+MSG_0149
+Could not open BitSkim helper
+; Could not open BitSkim helper
+MSG_0150
+Send file...
+; Send file...
+MSG_0151
+Could not open Running Apps
+; Could not open Running Apps
+MSG_0152
+Einstellungen nicht gespeichert - erneut beenden verwirft Änderungen
+; Settings not saved - quit again to discard changes
+MSG_0153
+Einstellungen werden gespeichert...
+; Saving settings...
+MSG_0154
+1 Archiv gestartet; %d abgelehnt
+; Started 1 archive; %d rejected
+MSG_0155
+%d Archive gestartet; %d abgelehnt
+; Started %d archives; %d rejected
+MSG_0156
+1 Objekt geöffnet; %d fehlgeschlagen
+; Opened 1 item; %d failed
+MSG_0157
+%d Objekte geöffnet; %d fehlgeschlagen
+; Opened %d items; %d failed
+MSG_0158
+1 Objekt wird kopiert nach %.28s
+; Copying 1 item to %.28s
+MSG_0159
+%d Objekte werden kopiert nach %.28s
+; Copying %d items to %.28s

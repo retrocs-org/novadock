@@ -1,0 +1,6 @@
+# NovaDock release version: the one place it is set.
+# After changing it, run:  python3 tools/update_version.py
+# (Shell scripts read this file directly; the host tests check that every
+# other mention of the version agrees with it.)
+VERSION=0.1
+DATE=26.10.2026

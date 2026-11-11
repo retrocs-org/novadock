@@ -1,0 +1,5 @@
+SoftwarePackage.info and Install.info use the artwork supplied by the project
+owner in Generic-Amiga-Installer-Icons.zip on 2026-11-02. The normal and selected
+planar images are retained. tools/generate_info_icons.py adapts only metadata:
+DrawerData for the drawer, and StartInstaller plus NovaDock tool types for the
+Install-NovaDock project icon.

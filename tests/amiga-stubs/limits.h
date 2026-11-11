@@ -1,0 +1,9 @@
+#ifndef _LIMITS_H
+#define _LIMITS_H
+#define INT_MAX 2147483647
+#define UINT_MAX 4294967295U
+#define LONG_MAX 2147483647L
+#define ULONG_MAX 4294967295UL
+#define SHRT_MAX 32767
+#define CHAR_BIT 8
+#endif

@@ -1,0 +1,254 @@
+; Optional post-build installer. Run from extracted project directory.
+; Installs binaries once and preserves user preferences + network config.
+FailAt 21
+; Upgrade the earlier all-in-one Utilities drawer without deleting user files.
+IF EXISTS SYS:Utilities/NovaDock/Plugins
+  IF EXISTS SYS:Utilities/NovaDock.previous
+    Echo "Move SYS:Utilities/NovaDock.previous before upgrading."
+    Quit 20
+  ENDIF
+  Rename SYS:Utilities/NovaDock SYS:Utilities/NovaDock.previous
+  IF EXISTS SYS:Utilities/NovaDock.info
+    Rename SYS:Utilities/NovaDock.info SYS:Utilities/NovaDock.previous.info
+  ENDIF
+ENDIF
+IF NOT EXISTS SYS:NovaDock
+  MakeDir SYS:NovaDock
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Plugins
+  MakeDir SYS:NovaDock/Plugins
+ENDIF
+; Preserve imported components before bundled files replace their own versions.
+IF EXISTS SYS:Resources/NovaDock/Plugins
+  IF NOT EXISTS SYS:NovaDock/Plugins
+    MakeDir SYS:NovaDock/Plugins
+  ENDIF
+  Copy SYS:Resources/NovaDock/Plugins TO SYS:NovaDock/Plugins ALL
+ENDIF
+IF EXISTS SYS:Resources/NovaDock/Themes
+  IF NOT EXISTS SYS:NovaDock/Themes
+    MakeDir SYS:NovaDock/Themes
+  ENDIF
+  Copy SYS:Resources/NovaDock/Themes TO SYS:NovaDock/Themes ALL
+ENDIF
+IF EXISTS SYS:Resources/NovaDock/Icons
+  IF NOT EXISTS SYS:NovaDock/Icons
+    MakeDir SYS:NovaDock/Icons
+  ENDIF
+  Copy SYS:Resources/NovaDock/Icons TO SYS:NovaDock/Icons ALL
+ENDIF
+IF EXISTS SYS:Resources/NovaDock/Rexx
+  IF NOT EXISTS SYS:NovaDock/Rexx
+    MakeDir SYS:NovaDock/Rexx
+  ENDIF
+  Copy SYS:Resources/NovaDock/Rexx TO SYS:NovaDock/Rexx ALL
+ENDIF
+IF EXISTS SYS:Resources/NovaDock/Tools
+  IF NOT EXISTS SYS:NovaDock/Tools
+    MakeDir SYS:NovaDock/Tools
+  ENDIF
+  Copy SYS:Resources/NovaDock/Tools TO SYS:NovaDock/Tools ALL
+ENDIF
+IF EXISTS SYS:Utilities/NovaDock.previous/Plugins
+  IF NOT EXISTS SYS:NovaDock/Plugins
+    MakeDir SYS:NovaDock/Plugins
+  ENDIF
+  Copy SYS:Utilities/NovaDock.previous/Plugins TO SYS:NovaDock/Plugins ALL
+ENDIF
+IF EXISTS SYS:Utilities/NovaDock.previous/Themes
+  IF NOT EXISTS SYS:NovaDock/Themes
+    MakeDir SYS:NovaDock/Themes
+  ENDIF
+  Copy SYS:Utilities/NovaDock.previous/Themes TO SYS:NovaDock/Themes ALL
+ENDIF
+IF EXISTS SYS:Utilities/NovaDock.previous/Icons
+  IF NOT EXISTS SYS:NovaDock/Icons
+    MakeDir SYS:NovaDock/Icons
+  ENDIF
+  Copy SYS:Utilities/NovaDock.previous/Icons TO SYS:NovaDock/Icons ALL
+ENDIF
+IF EXISTS SYS:Utilities/NovaDock.previous/Rexx
+  IF NOT EXISTS SYS:NovaDock/Rexx
+    MakeDir SYS:NovaDock/Rexx
+  ENDIF
+  Copy SYS:Utilities/NovaDock.previous/Rexx TO SYS:NovaDock/Rexx ALL
+ENDIF
+IF EXISTS SYS:Utilities/NovaDock.previous/Tools
+  IF NOT EXISTS SYS:NovaDock/Tools
+    MakeDir SYS:NovaDock/Tools
+  ENDIF
+  Copy SYS:Utilities/NovaDock.previous/Tools TO SYS:NovaDock/Tools ALL
+ENDIF
+Copy NovaDock TO SYS:Utilities/NovaDock
+IF NOT EXISTS SYS:NovaDock/Tools
+  MakeDir SYS:NovaDock/Tools
+ENDIF
+Copy SaveConfig TO SYS:NovaDock/Tools/SaveConfig
+IF EXISTS SYS:NovaDock/SaveConfig
+  Delete SYS:NovaDock/SaveConfig QUIET
+ENDIF
+; These are WBTOOL DiskObjects, installed beside their matching executables.
+Copy NovaDock.info TO SYS:Utilities/NovaDock.info
+IF EXISTS SYS:NovaDock.info
+  Delete SYS:NovaDock.info QUIET
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Icons
+  MakeDir SYS:NovaDock/Icons
+ENDIF
+Copy Icons/#?.iff TO SYS:NovaDock/Icons ALL
+IF NOT EXISTS SYS:NovaDock/Themes
+  MakeDir SYS:NovaDock/Themes
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Themes/Mocha
+  MakeDir SYS:NovaDock/Themes/Mocha
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Themes/Light
+  MakeDir SYS:NovaDock/Themes/Light
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Themes/Workbench
+  MakeDir SYS:NovaDock/Themes/Workbench
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Themes/Graphite
+  MakeDir SYS:NovaDock/Themes/Graphite
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Themes/HighContrast
+  MakeDir SYS:NovaDock/Themes/HighContrast
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Themes/Copper
+  MakeDir SYS:NovaDock/Themes/Copper
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Themes/Ocean
+  MakeDir SYS:NovaDock/Themes/Ocean
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Themes/Emerald
+  MakeDir SYS:NovaDock/Themes/Emerald
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Themes/NeXTSTEP
+  MakeDir SYS:NovaDock/Themes/NeXTSTEP
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Themes/BeOS
+  MakeDir SYS:NovaDock/Themes/BeOS
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Themes/Nord
+  MakeDir SYS:NovaDock/Themes/Nord
+ENDIF
+IF NOT EXISTS SYS:NovaDock/Themes/Vapor
+  MakeDir SYS:NovaDock/Themes/Vapor
+ENDIF
+Copy Themes/Mocha/theme.cfg TO SYS:NovaDock/Themes/Mocha/theme.cfg
+Copy Themes/Light/theme.cfg TO SYS:NovaDock/Themes/Light/theme.cfg
+Copy Themes/Workbench/theme.cfg TO SYS:NovaDock/Themes/Workbench/theme.cfg
+Copy Themes/Graphite/theme.cfg TO SYS:NovaDock/Themes/Graphite/theme.cfg
+Copy Themes/HighContrast/theme.cfg TO SYS:NovaDock/Themes/HighContrast/theme.cfg
+Copy Themes/Copper/theme.cfg TO SYS:NovaDock/Themes/Copper/theme.cfg
+Copy Themes/Ocean/theme.cfg TO SYS:NovaDock/Themes/Ocean/theme.cfg
+Copy Themes/Emerald/theme.cfg TO SYS:NovaDock/Themes/Emerald/theme.cfg
+Copy Themes/NeXTSTEP/theme.cfg TO SYS:NovaDock/Themes/NeXTSTEP/theme.cfg
+Copy Themes/BeOS/theme.cfg TO SYS:NovaDock/Themes/BeOS/theme.cfg
+Copy Themes/Nord/theme.cfg TO SYS:NovaDock/Themes/Nord/theme.cfg
+Copy Themes/Vapor/theme.cfg TO SYS:NovaDock/Themes/Vapor/theme.cfg
+Copy Plugins/Clock TO SYS:NovaDock/Plugins/Clock
+Copy Plugins/Eyes TO SYS:NovaDock/Plugins/Eyes
+Copy Plugins/Activity TO SYS:NovaDock/Plugins/Activity
+Copy Plugins/Memory TO SYS:NovaDock/Plugins/Memory
+Copy Plugins/Network TO SYS:NovaDock/Plugins/Network
+Copy Plugins/Network.ndplugin TO SYS:NovaDock/Plugins/Network.ndplugin
+; Network replaces the retired standalone Roadshow program.
+IF EXISTS SYS:NovaDock/Plugins/Roadshow
+  Delete SYS:NovaDock/Plugins/Roadshow QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Plugins/Roadshow.info
+  Delete SYS:NovaDock/Plugins/Roadshow.info QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Plugins/Roadshow.ndplugin
+  Delete SYS:NovaDock/Plugins/Roadshow.ndplugin QUIET
+ENDIF
+
+Copy Plugins/MusicPlayer TO SYS:NovaDock/Plugins/MusicPlayer
+Copy Plugins/MusicPlayer.info TO SYS:NovaDock/Plugins/MusicPlayer.info
+Copy Plugins/Clipboard TO SYS:NovaDock/Plugins/Clipboard
+Copy Plugins/Clipboard.ndplugin TO SYS:NovaDock/Plugins/Clipboard.ndplugin
+Copy Plugins/Mixer TO SYS:NovaDock/Plugins/Mixer
+Copy Plugins/Mixer.ndplugin TO SYS:NovaDock/Plugins/Mixer.ndplugin
+Copy Plugins/Screenshot TO SYS:NovaDock/Plugins/Screenshot
+Copy Plugins/Screenshot.ndplugin TO SYS:NovaDock/Plugins/Screenshot.ndplugin
+Copy Plugins/ScreenMode TO SYS:NovaDock/Plugins/ScreenMode
+Copy Plugins/ScreenMode.ndplugin TO SYS:NovaDock/Plugins/ScreenMode.ndplugin
+Copy Plugins/Script TO SYS:NovaDock/Plugins/Script
+IF NOT EXISTS SYS:NovaDock/Rexx
+  MakeDir SYS:NovaDock/Rexx
+ENDIF
+Copy Rexx/#?.amirx TO SYS:NovaDock/Rexx
+Copy Rexx/#?.rexx TO SYS:NovaDock/Rexx
+Copy BitSkim-icon-LICENSE.txt TO SYS:NovaDock/BitSkim-icon-LICENSE.txt
+Copy Plugins/BitSkim TO SYS:NovaDock/Plugins/BitSkim
+Copy Plugins/BitSkim.ndplugin TO SYS:NovaDock/Plugins/BitSkim.ndplugin
+Copy Plugins/BitSkim.info TO SYS:NovaDock/Plugins/BitSkim.info
+Copy Plugins/AmIRC TO SYS:NovaDock/Plugins/AmIRC
+Copy Plugins/AmIRC.ndplugin TO SYS:NovaDock/Plugins/AmIRC.ndplugin
+Copy Plugins/DOpus4 TO SYS:NovaDock/Plugins/DOpus4
+Copy Plugins/ArchiveExtractor TO SYS:NovaDock/Plugins/ArchiveExtractor
+Copy Plugins/Command TO SYS:NovaDock/Plugins/Command
+Copy Plugins/RunningApps TO SYS:NovaDock/Plugins/RunningApps
+Copy Plugins/RunningApps.info TO SYS:NovaDock/Plugins/RunningApps.info
+Copy Plugins/RunningApps.ndplugin TO SYS:NovaDock/Plugins/RunningApps.ndplugin
+Copy Plugins/Trash TO SYS:NovaDock/Plugins/Trash
+Copy Plugins/Trash.ndplugin TO SYS:NovaDock/Plugins/Trash.ndplugin
+Copy Plugins/Games TO SYS:NovaDock/Plugins/Games
+Copy Plugins/Games.ndplugin TO SYS:NovaDock/Plugins/Games.ndplugin
+Copy NovaDockPrefs TO SYS:Prefs/NovaDockPrefs
+Copy NovaDockPrefs.info TO SYS:Prefs/NovaDockPrefs.info
+; 0.1 now uses one Preferences application. Remove obsolete installed helpers.
+IF EXISTS SYS:Prefs/NovaDockLauncherPrefs
+  Delete SYS:Prefs/NovaDockLauncherPrefs QUIET
+ENDIF
+IF EXISTS SYS:Prefs/NovaDockLauncherPrefs.info
+  Delete SYS:Prefs/NovaDockLauncherPrefs.info QUIET
+ENDIF
+IF EXISTS SYS:Prefs/NovaDockPluginPrefs
+  Delete SYS:Prefs/NovaDockPluginPrefs QUIET
+ENDIF
+IF EXISTS SYS:Prefs/NovaDockPluginPrefs.info
+  Delete SYS:Prefs/NovaDockPluginPrefs.info QUIET
+ENDIF
+Copy Plugins/#?.info TO SYS:NovaDock/Plugins
+IF NOT EXISTS ENVARC:NovaDock
+  MakeDir ENVARC:NovaDock
+ENDIF
+IF NOT EXISTS ENV:NovaDock
+  MakeDir ENV:NovaDock
+ENDIF
+IF NOT EXISTS ENVARC:NovaDock/novadock.cfg
+  Copy novadock.cfg TO ENVARC:NovaDock/novadock.cfg
+ENDIF
+IF NOT EXISTS ENV:NovaDock/novadock.cfg
+  Copy ENVARC:NovaDock/novadock.cfg TO ENV:NovaDock/novadock.cfg
+ENDIF
+Echo "NovaDock installed. Double-click SYS:Prefs/NovaDockPrefs to configure."
+Echo "Optional classic autostart: run SetupStartup once (see README)."
+
+Copy novadock.cfg TO SYS:NovaDock/novadock.cfg.default
+Copy NovaDock.guide TO HELP:NovaDock.guide
+Copy NovaDock.guide.info TO HELP:NovaDock.guide.info
+IF EXISTS HELP:NovaDock/NovaDock.guide
+  Delete HELP:NovaDock/NovaDock.guide QUIET
+  IF EXISTS HELP:NovaDock/NovaDock.guide.info
+    Delete HELP:NovaDock/NovaDock.guide.info QUIET
+  ENDIF
+  Delete HELP:NovaDock QUIET
+  IF EXISTS HELP:NovaDock.info
+    Delete HELP:NovaDock.info QUIET
+  ENDIF
+ENDIF
+Copy Icons/SoftwarePackage.info TO ENVARC:NovaDock.info
+Copy Icons/SoftwarePackage.info TO ENV:NovaDock.info
+Assign NovaDock: SYS:NovaDock
+; Fallback startup assignments only apply when no custom installation is assigned.
+; A later GUI install can select other locations without being overridden.
+Echo >>S:User-Startup "; NovaDock standard-location fallback"
+Echo >>S:User-Startup "IF EXISTS SYS:NovaDock/Plugins"
+Echo >>S:User-Startup "  Assign >NIL: NovaDock: EXISTS"
+Echo >>S:User-Startup "  IF WARN"
+Echo >>S:User-Startup "    Assign >NIL: NovaDock: SYS:NovaDock"
+Echo >>S:User-Startup "  ENDIF"
+Echo >>S:User-Startup "ENDIF"

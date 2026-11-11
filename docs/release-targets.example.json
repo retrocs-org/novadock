@@ -1,0 +1,10 @@
+{
+  "github": {
+    "url": "https://github.com/retrocs-org/novadock",
+    "push_url": "git@github.com:retrocs-org/novadock.git"
+  },
+  "gitlab": {
+    "url": "https://gitlab.example.org/group/novadock",
+    "push_url": "git@gitlab.example.org:group/novadock.git"
+  }
+}

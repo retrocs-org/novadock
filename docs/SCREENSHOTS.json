@@ -1,0 +1,147 @@
+{
+  "captured": "2026-11-11",
+  "environment": "AmigaOS 3.2.1 Workbench; standard Nord layout",
+  "processing": "Application-only crops, reduced to native dimensions; GIF previews.",
+  "images": [
+    {
+      "file": "default-dock.gif",
+      "capture": "01-default-dock.png",
+      "crop": [
+        378,
+        1234,
+        1670,
+        1414
+      ],
+      "width": 646,
+      "height": 90,
+      "thumb_width": 268,
+      "thumb_height": 37
+    },
+    {
+      "file": "preferences.gif",
+      "capture": "02-preferences-general.png",
+      "crop": [
+        404,
+        244,
+        1644,
+        664
+      ],
+      "width": 620,
+      "height": 210,
+      "thumb_width": 268,
+      "thumb_height": 91
+    },
+    {
+      "file": "appearance.gif",
+      "capture": "03-appearance.png",
+      "crop": [
+        404,
+        244,
+        1644,
+        780
+      ],
+      "width": 620,
+      "height": 268,
+      "thumb_width": 268,
+      "thumb_height": 116
+    },
+    {
+      "file": "diagnostics.gif",
+      "capture": "04-diagnostics.png",
+      "crop": [
+        404,
+        244,
+        1644,
+        660
+      ],
+      "width": 620,
+      "height": 208,
+      "thumb_width": 268,
+      "thumb_height": 90
+    },
+    {
+      "file": "low-resource.gif",
+      "capture": "05-low-resource.png",
+      "crop": [
+        0,
+        224,
+        920,
+        426
+      ],
+      "width": 460,
+      "height": 101,
+      "thumb_width": 268,
+      "thumb_height": 59
+    },
+    {
+      "file": "recovery.gif",
+      "capture": "06-recovery.png",
+      "crop": [
+        0,
+        224,
+        1064,
+        408
+      ],
+      "width": 532,
+      "height": 92,
+      "thumb_width": 268,
+      "thumb_height": 46
+    },
+    {
+      "file": "organize.gif",
+      "capture": "07-organize.png",
+      "crop": [
+        404,
+        244,
+        1644,
+        684
+      ],
+      "width": 620,
+      "height": 220,
+      "thumb_width": 268,
+      "thumb_height": 95
+    },
+    {
+      "file": "clippy-picker.gif",
+      "capture": "08-clippy-picker.png",
+      "crop": [
+        744,
+        706,
+        1304,
+        960
+      ],
+      "width": 280,
+      "height": 127,
+      "thumb_width": 268,
+      "thumb_height": 122
+    },
+    {
+      "file": "calendar.gif",
+      "capture": "09-calendar.png",
+      "crop": [
+        1392,
+        970,
+        1864,
+        1356
+      ],
+      "width": 236,
+      "height": 193,
+      "thumb_width": 236,
+      "thumb_height": 193
+    },
+    {
+      "file": "clipboard-manager.gif",
+      "capture": "10-clipboard-manager.png",
+      "crop": [
+        464,
+        92,
+        1584,
+        696
+      ],
+      "width": 560,
+      "height": 302,
+      "thumb_width": 268,
+      "thumb_height": 145
+    }
+  ]
+}
