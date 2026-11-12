@@ -35,10 +35,11 @@ class Links(HTMLParser):
                 self.targets.append(attr[key])
 
 pages = ['index.php', 'features.php', 'marketplace.php', 'plugin-sdk.php', 'theme-development.php', 'support.php',
-         'download.php', 'developers.php', 'source.php', 'screenshots.php']
+         'get.php', 'developers.php']
 official_links = {
     'https://novadock.retrocs.org',
     'https://github.com/retrocs-org/novadock',
+    'https://github.com/retrocs-org/novadock/releases',
     'https://bitskim.retrocs.org',
     'mailto:support@retrocs.org',
 }
@@ -51,7 +52,7 @@ for file in pages:
     assert not render.stderr, render.stderr.decode()
     contents = render.stdout
     contents.decode('ascii')
-    assert len(contents) < (16000 if file == 'marketplace.php' else 11000), f'{file} is too large'
+    assert len(contents) < (22000 if file == 'features.php' else (16000 if file == 'marketplace.php' else 13000)), f'{file} is too large'
     parser = Links()
     parser.feed(contents.decode('ascii'))
     assert parser.doctype, f'{file} lacks an HTML DOCTYPE'
@@ -206,18 +207,23 @@ for e in release_entries:
     if e['status'] == 'upcoming':
         assert e['binary_url'].endswith('NovaDock-'+e['version']+'.lha')
         assert e['source_url'].endswith('/'+e['tag']+'.zip')
-rendered_download = subprocess.check_output([php, str((web/'download.php').resolve())]).decode()
+rendered_download = subprocess.check_output([php, str((web/'get.php').resolve())]).decode()
 assert 'Build instructions' not in rendered_download and 'sh scripts/build-amiga.sh' not in rendered_download
 assert 'https://bitskim.retrocs.org' in marketplace
 assert 'data-executable="Roadshow"' not in marketplace
 print('GitHub release links, browsable SDK tree and retired plugin checks passed.')
 
-source_page = subprocess.check_output([php, str((web/'source.php').resolve())]).decode('ascii')
+source_page = subprocess.check_output([php, str((web/'developers.php').resolve())]).decode('ascii')
 developer_page = subprocess.check_output([php, str((web/'developers.php').resolve())]).decode('ascii')
 assert 'sh scripts/build-amiga.sh -B' in source_page and 'Execute build.amiga' in source_page
-assert 'Build NovaDock from source' not in developer_page
+assert 'Execute install.amiga' in source_page
+assert 'Package a release' not in source_page and 'release.py' not in source_page
+assert "header('Location: get.php', true, 301)" in (web/'download.php').read_text()
+assert 'Build NovaDock from source' in developer_page
+assert "header('Location: developers.php#source', true, 301)" in (web/'source.php').read_text()
+assert "header('Location: features.php#screenshots', true, 301)" in (web/'screenshots.php').read_text()
 assert 'Plugin SDK' in developer_page and 'Theme development' in developer_page
-print('SDK documentation and application build instructions are separated.')
+print('Developer guides and source compilation share one hub; Features includes the gallery.')
 
 # FAQ lives on Support, with native collapsible questions and a legacy redirect.
 home = subprocess.check_output([php, str((web/'support.php').resolve())]).decode('ascii')
@@ -246,3 +252,9 @@ assert 'id="settings"' in plugin_page and 'ND_EVENT_SETTINGS' in plugin_page
 assert 'FOCUSED=1' in plugin_page and 'Before sharing' in plugin_page
 assert 'mailto:support@retrocs.org' in home
 print('Dedicated development guides and Support navigation passed.')
+
+subprocess.run([php, str(root/"tests/test_web_releases.php")], check=True)
+
+assert 'VERSION 0.1' not in rendered_download
+assert 'class="nav-cta"' in rendered_download and 'Main navigation' in rendered_download
+assert '<table class="gallery"' in (web/'features.php').read_text()

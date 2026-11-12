@@ -23,6 +23,7 @@ def upcoming(version, tag=None):
             'source_url': REPO+'/archive/refs/tags/'+encoded+'.zip',
             'source_tar_url': REPO+'/archive/refs/tags/'+encoded+'.tar.gz',
             'sdk_url': base+'NovaDock-'+version+'-plugin-sdk.zip',
+            'sdk_checksums_url': base+'NovaDock-'+version+'-plugin-sdk.zip.sha256',
             'checksums_url': base+'NovaDock-'+version+'.lha.sha256'}
 
 
@@ -42,6 +43,7 @@ def normalize(release):
     entry = upcoming(version, tag)
     for key, name in [('binary_url', 'NovaDock-'+version+'.lha'),
                       ('sdk_url', 'NovaDock-'+version+'-plugin-sdk.zip'),
+                      ('sdk_checksums_url', 'NovaDock-'+version+'-plugin-sdk.zip.sha256'),
                       ('checksums_url', 'NovaDock-'+version+'.lha.sha256')]:
         expected = REPO+'/releases/download/'+quote(tag, safe='')+'/'+name
         entry[key] = expected if assets.get(name) == expected else None

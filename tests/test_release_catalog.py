@@ -33,11 +33,19 @@ with tempfile.TemporaryDirectory() as tmp:
     site = Path(tmp)/'site'
     shutil.copytree(m.ROOT/'public-web', site, ignore=shutil.ignore_patterns('downloads'))
     (site/'releases.json').write_text(json.dumps([{'version': '0.1', 'tag': '0.1', 'status': 'published'}]))
-    for name in ('source.php', 'plugin-sdk.php', 'theme-development.php'):
+    for name in ('developers.php', 'plugin-sdk.php', 'theme-development.php'):
         result = subprocess.run([php, str(site/name)], capture_output=True, check=True)
         assert not result.stderr, result.stderr
         html = result.stdout.decode('ascii')
         assert '/tree/0.1' in html and '/tree/v0.1' not in html, name
+    future = m.upcoming('0.2', '0.2')
+    future.update(status='published', date='2026-12-01', prerelease=False)
+    (site/'releases.json').write_text(json.dumps([future]))
+    result = subprocess.run([php, str(site/'get.php')], capture_output=True, check=True)
+    assert not result.stderr, result.stderr
+    html = result.stdout.decode('ascii')
+    assert 'NovaDock 0.2' in html and '/0.2/NovaDock-0.2.lha' in html
+    assert '/0.2/NovaDock-0.2-plugin-sdk.zip.sha256' in html
 print('Custom release tags and matching website source/SDK links passed.')
 
 assert m.upcoming('0.1', '0.1')['checksums_url'].endswith('/NovaDock-0.1.lha.sha256')

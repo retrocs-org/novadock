@@ -26,14 +26,12 @@ PAGES = (
     ('index.php', 'Home', 'Home',
      f'NovaDock {VERSION} - a Classic AmigaOS Workbench dock with plugin support.'),
     ('features.php', 'Features', 'Features', None),
-    ('screenshots.php', 'Screenshots', 'Screenshots', 'NovaDock 0.1 application windows on AmigaOS Workbench.'),
     ('marketplace.php', 'Marketplace', 'Marketplace', None),
     ('plugin-sdk.php', 'Plugin SDK', 'Plugin SDK', None),
     ('theme-development.php', 'Theme development', 'Theme development', None),
     ('support.php', 'Support', 'Support', None),
-    ('download.php', 'Download', 'Download', None),
+    ('get.php', 'Get NovaDock', 'Get NovaDock', None),
     ('developers.php', 'Developers', 'Developers', None),
-    ('source.php', 'Source', 'Source', None),
 )
 CARD_OLD = re.compile(
     r'<table width="100%" border="0" cellpadding="10" cellspacing="0" '
@@ -82,21 +80,18 @@ def content_of(text):
 
 
 def menu(current):
-    cells = []
-    order = ('Home', 'Features', 'Screenshots', 'Marketplace', 'Developers', 'Source', 'Download', 'Support')
-    for file, label, _, _ in sorted(PAGES, key=lambda item: order.index(item[1]) if item[1] in order else 99):
-        if label not in ('Home', 'Features', 'Screenshots', 'Marketplace', 'Developers', 'Source', 'Download', 'Support'):
-            continue
+    order = ('Home', 'Features', 'Marketplace', 'Developers', 'Support')
+    items = {label: file for file, label, _, _ in PAGES}
+    links = []
+    for label in order:
         condition = "in_array($current, ['Developers', 'Plugin SDK', 'Theme development'], true)" if label == 'Developers' else f"$current === '{label}'"
-        cells.append(f"<?php if ({condition}): ?>"
-                     f'<td align="center" bgcolor="#89B4FA"><font face="{FACE}" '
-                     f'size="-1" color="#1E1E2E"><b>{label}</b></font></td>'
-                     '<?php else: ?>'
-                     f'<td align="center" bgcolor="#313244"><font face="{FACE}" '
-                     f'size="-1"><a href="{file}">{label}</a></font></td>'
-                     '<?php endif; ?>')
-    return ('<table class="site-nav" width="100%" border="0" cellpadding="6" cellspacing="2"><tr>\n'
-            + '\n'.join(cells) + '\n</tr></table>')
+        links.append(f'<a href="{items[label]}"<?php if ({condition}): ?> class="active" aria-current="page"<?php endif; ?>>{label}</a>')
+    main_links = ' '.join(links)
+    return ('<nav class="site-nav" aria-label="Main navigation">'
+            '<div class="nav-links">'+main_links+'</div>'
+            '<details class="mobile-menu"><summary>Menu</summary><div class="mobile-links">'+main_links+'</div></details>'
+            '<a class="nav-cta" href="get.php"<?php if ($current === \'Get NovaDock\'): ?> aria-current="page"<?php endif; ?>>Get NovaDock <span aria-hidden="true">&#8599;</span></a>'
+            '</nav>')
 
 
 def page(label, title, description, content):
@@ -115,7 +110,6 @@ def page(label, title, description, content):
 <table class="site-header" width="100%" border="0" cellpadding="0" cellspacing="0"><tr>
 <td width="120"><a href="index.php"><img src="images/logo.gif" width="108" height="44" border="0" alt="NovaDock"></a></td>
 <td><font face="{FACE}"><font size="+3"><b>NovaDock</b></font><br><font color="#A6ADC8">A dock for Classic AmigaOS Workbench</font></font></td>
-<td align="right"><table border="0" cellpadding="4" cellspacing="0"><tr><td bgcolor="#A6E3A1"><font face="{FACE}" size="-1" color="#1E1E2E"><b>VERSION {VERSION}</b></font></td></tr></table></td>
 </tr></table>
 <br>
 {menu(label)}
@@ -126,7 +120,7 @@ def page(label, title, description, content):
 <!-- /content -->
 </font>
 <br>
-<table class="site-footer" width="100%" border="0" cellpadding="10" cellspacing="0" bgcolor="#181825"><tr><td align="center"><font face="{FACE}" size="-1" color="#A6ADC8">NovaDock {VERSION} &middot; Classic AmigaOS 3.x &middot; <a href="https://github.com/retrocs-org/novadock">Source on GitHub</a> &middot; <a href="marketplace.php">Marketplace</a> &middot; <a href="screenshots.php">Screenshots</a> &middot; <a href="theme-development.php">Theme guide</a> &middot; <a href="developers.php">Developers</a> &middot; <a href="source.php">Source</a> &middot; <a href="support.php#faq">Support &amp; FAQ</a></font></td></tr></table>
+<table class="site-footer" width="100%" border="0" cellpadding="10" cellspacing="0" bgcolor="#181825"><tr><td align="center"><font face="{FACE}" size="-1" color="#A6ADC8">NovaDock {VERSION} &middot; Classic AmigaOS 3.x &middot; <a href="https://github.com/retrocs-org/novadock">Source on GitHub</a> &middot; <a href="marketplace.php">Marketplace</a> &middot; <a href="features.php#screenshots">Screenshots</a> &middot; <a href="theme-development.php">Theme guide</a> &middot; <a href="developers.php">Developers</a> &middot; <a href="developers.php#source">Build from source</a> &middot; <a href="support.php#faq">Support &amp; FAQ</a></font></td></tr></table>
 </td></tr></table>
 </center>
 </body>

@@ -17,20 +17,22 @@ PUBLIC LOCATIONS
 
 CONTENTS
   index.php        Home page
-  features.php     Dock features
+  features.php     Dock features and ten screenshots
   marketplace.php  Plugin and theme catalogs; future community additions
   plugins.php      Redirect for older links
   theme-development.php  Theme creation, packaging and import
   themes.php       Redirect for older theme guide links
-  download.php     Source download and installation
-  developers.php   Development guide overview
+  get.php          Automatic GitHub downloads and installation
+  download.php     Redirect for older download links
+  developers.php   SDK/theme guides and source compilation/install instructions
   plugin-sdk.php   Plugin SDK, settings windows and packaging
   support.php      Help, contact information and FAQ
-  source.php       Application source, toolchain setup and build instructions
+  source.php       Redirect to Developers source section
   includes/faq.php  Collapsible questions on the Support page
   faq.php          Redirect for older FAQ links
-  screenshots.php  Ten application-only screenshots
+  screenshots.php  Redirect to Features screenshot gallery
   includes/layout.php  Shared PHP rendering functions
+  includes/releases.php  Automatic public GitHub catalogue and cache
   includes/*_catalog.php  Bundled plugin and theme listings
   site.css          Responsive presentation and classic fallback
   images/*.gif      32x32 indexed icons (legacy browser friendly)
@@ -78,3 +80,14 @@ RELEASE LIST
   Refresh published entries: python3 tools/sync_github_releases.py
   Prepare the VERSION tag offline: python3 tools/sync_github_releases.py --upcoming
   The SDK source is included in the repository under plugin-sdk/.
+
+AUTOMATIC RELEASE DATA
+  Get NovaDock reads the public retrocs-org/novadock GitHub releases API.
+  Published releases, including previews, are ordered by publication time.
+  A private cache below the system temporary directory refreshes every 15 minutes.
+  A non-blocking lock avoids duplicate refreshes. API failures retain the last
+  valid release list and retry after one minute; releases.json is the fallback.
+  No token, cron job, database or JavaScript is required. HTTPS needs PHP cURL or
+  allow_url_fopen with working certificate trust. The site directory may remain
+  read-only; the PHP user only needs access to its system temporary directory.
+  The Source page only explains obtaining, compiling and installing the code.

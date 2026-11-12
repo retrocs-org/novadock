@@ -12,7 +12,7 @@ $themes = require __DIR__ . '/includes/theme_catalog.php';
 <p class="lead">Useful plugins. A fresh look. Explore the bundled collection, with selected community additions planned for both.</p>
 <p class="market-sections"><a href="#plugins">Plugins <small><?= count($catalog) ?></small></a> <a href="#themes">Themes <small><?= count($themes) ?></small></a></p>
 <h2 id="plugins">Plugins</h2>
-<p class="catalog-note">All <?= count($catalog) ?> built-in plugins are included in the <a href="download.php">NovaDock download</a>. Add them from Preferences &gt; Organize &gt; Add Item &gt; Plugins.</p>
+<p class="catalog-note">All <?= count($catalog) ?> built-in plugins are included in the <a href="get.php">NovaDock download</a>. Add them from Preferences &gt; Organize &gt; Add Item &gt; Plugins.</p>
 <p class="category-links"><a href="#everyday">Everyday</a> &middot; <a href="#system">System</a> &middot; <a href="#media-apps">Media &amp; apps</a> &middot; <a href="#tools-fun">Tools &amp; fun</a></p>
 <?php foreach (['Everyday' => 'everyday', 'System' => 'system', 'Media & apps' => 'media-apps', 'Tools & fun' => 'tools-fun'] as $group => $anchor): ?>
 <h2 id="<?= site_escape($anchor) ?>"><?= site_escape($group) ?></h2>
