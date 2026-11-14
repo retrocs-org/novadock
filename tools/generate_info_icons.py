@@ -390,7 +390,96 @@ def generic_icon(name,kind,default_tool=None,tool_types=(),show_icons=False):
     return bytes(data)
 
 
+def timer_notes_art():
+    c = Canvas(32, 24)
+    c.rect(9, 1, 22, 3, 1)
+    c.rect(7, 5, 24, 22, 1)
+    c.rect(9, 7, 22, 20, 2)
+    c.line(16, 9, 16, 14, 3)
+    c.line(16, 14, 20, 14, 3)
+    (ROOT / 'Plugins/Timer.info').write_bytes(disk_object(c))
+    c = Canvas(32, 24)
+    c.rect(6, 1, 25, 22, 1)
+    c.rect(8, 3, 23, 20, 2)
+    for y in (6, 10, 14, 18):
+        c.line(10, y, 21, y, 3)
+    (ROOT / 'Plugins/Notes.info').write_bytes(disk_object(c))
+
+
+def screen_switcher_art():
+    c = Canvas(48, 38)
+    for x, y in ((18, 2), (3, 14)):
+        c.rect(x, y, x+26, y+18, 1)
+        c.rect(x+2, y+2, x+24, y+14, 2)
+        c.line(x+3, y+3, x+23, y+3, 3)
+        c.rect(x+11, y+19, x+15, y+21, 1)
+        c.line(x+7, y+22, x+19, y+22, 1)
+    (ROOT / 'Plugins/ScreenSwitcher.info').write_bytes(disk_object(c))
+
+
+def screen_plugin_icons():
+    """Use the same camera and display artwork as the dock's live tiles."""
+    import subprocess
+    import tempfile
+    harness = r'''#include <stdio.h>
+#include "nd_screen_art.h"
+static unsigned char pixels[32][32];
+static void box(void *ctx,int role,int x,int y,int w,int h){
+    int a,b;static const int pens[]={0,3,2,3,3};(void)ctx;
+    for(b=y;b<y+h && b<32;++b)for(a=x;a<x+w && a<32;++a)
+        if(a>=0 && b>=0)pixels[b][a]=(unsigned char)pens[role];
+}
+int main(void){int mode,x,y;(void)nd_shot_art_state("READY",1);
+for(mode=0;mode<2;++mode){memset(pixels,0,sizeof(pixels));
+if(mode)nd_modes_art(NULL,box);else nd_camera_art(NULL,box,ND_SHOT_IDLE);
+for(y=0;y<32;++y)for(x=0;x<32;++x)putchar(pixels[y][x]);}return 0;}
+'''
+    with tempfile.TemporaryDirectory() as temp:
+        source = Path(temp) / 'screen-icons.c'
+        source.write_text(harness)
+        exe = Path(temp) / 'screen-icons'
+        subprocess.run(['cc', '-I' + str(ROOT / 'include'), str(source), '-o', str(exe)], check=True)
+        pixels = subprocess.check_output([str(exe)])
+    for index, name in enumerate(('Screenshot', 'ScreenMode')):
+        canvas = Canvas(32, 32)
+        for y in range(32):
+            for x in range(32):
+                canvas.pixel(x, y, pixels[index * 1024 + y * 32 + x])
+        (ROOT / 'Plugins' / (name + '.info')).write_bytes(disk_object(canvas))
+
+
+def weather_art():
+    """Generate the drawer icon from the dock's partly-cloudy artwork."""
+    import subprocess
+    import tempfile
+    harness = r'''#include <stdio.h>
+#include "nd_weather_art.h"
+static unsigned char pixels[32][32];
+static void box(void *ctx,int role,int x,int y,int w,int h){
+    int a,b;static const int pens[]={0,3,2,3,3};(void)ctx;
+    for(b=y;b<y+h;++b)for(a=x;a<x+w;++a)pixels[b][a]=(unsigned char)pens[role];
+}
+int main(void){int x,y;nd_weather_art(NULL,box,nd_weather_art_state(2));
+for(y=0;y<32;++y)for(x=0;x<32;++x)putchar(pixels[y][x]);return 0;}
+'''
+    with tempfile.TemporaryDirectory() as temp:
+        source = Path(temp) / 'weather-icon.c'
+        source.write_text(harness)
+        exe = Path(temp) / 'weather-icon'
+        subprocess.run(['cc', '-I' + str(ROOT / 'include'), str(source), '-o', str(exe)], check=True)
+        pixels = subprocess.check_output([str(exe)])
+    canvas = Canvas(32, 32)
+    for y in range(32):
+        for x in range(32):
+            canvas.pixel(x, y, pixels[y * 32 + x])
+    (ROOT / 'Plugins/Weather.info').write_bytes(disk_object(canvas))
+
+
 def main():
+    weather_art()
+    screen_plugin_icons()
+    screen_switcher_art()
+    timer_notes_art()
     # Supply the same complete drawer metadata to both release archives and
     # installations, while keeping the user's two planar images unchanged.
     (ROOT / 'Icons' / 'SoftwarePackage.info').write_bytes(

@@ -18,12 +18,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 #include "nd_script.h"
 
-const char nd_version[]=ND_VER_STRING("Script");
+const char nd_version[]=ND_PLUGIN_VER_STRING(SCRIPT,"Script");
 long __stack=8192;
 struct RxsLib *RexxSysBase=NULL;
 

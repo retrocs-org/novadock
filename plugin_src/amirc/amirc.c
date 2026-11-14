@@ -14,11 +14,11 @@
 #include <rexx/storage.h>
 #include <stdio.h>
 #include <string.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 #include "nd_amirc.h"
-const char nd_version[]=ND_VER_STRING("AmIRC");
+const char nd_version[]=ND_PLUGIN_VER_STRING(AMIRC,"AmIRC");
 long __stack=16384;
 struct RxsLib *RexxSysBase=NULL;
 struct Library *WorkbenchBase=NULL;

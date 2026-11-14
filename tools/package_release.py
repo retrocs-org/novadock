@@ -117,6 +117,17 @@ def sdk_entries():
             for member, source in SDK_FILES]
 
 
+def prune_downloads(directory, version):
+    """Remove prior generated artifacts without touching unrelated files."""
+    current = {f'NovaDock-{version}-source.zip',
+               f'NovaDock-{version}-plugin-sdk.zip',
+               f'NovaDock-{version}.lha', f'NovaDock-{version}.readme'}
+    generated = re.compile(r'NovaDock-\d+\.\d+(?:\.\d+)?(?:-(?:source|plugin-sdk|continued-source-and-site|public-web-updated)\.zip(?:\.sha256)?|\.lha(?:\.sha256)?|\.readme(?:\.sha256)?)$')
+    for path in directory.iterdir():
+        if path.is_file() and generated.fullmatch(path.name) and path.name not in current:
+            path.unlink()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, default=ROOT.parent / 'dist',
@@ -137,10 +148,8 @@ def main():
     source = zip_bytes(archive_entries(source_files(), 'NovaDock/')+[drawer_entry])
     download = WEB / 'downloads' / f'NovaDock-{VERSION}-source.zip'
     download.parent.mkdir(parents=True, exist_ok=True)
-    # After a version change the previous release's archives go away.
-    for stale in download.parent.glob('NovaDock-*.zip'):
-        if stale.name not in (download.name, f'NovaDock-{VERSION}-plugin-sdk.zip'):
-            stale.unlink()
+    # Keep the generated website package free of prior-version downloads.
+    prune_downloads(download.parent, VERSION)
     download.write_bytes(source)
     checksum = hashlib.sha256(source).hexdigest()
     sdk = zip_bytes(sdk_entries())

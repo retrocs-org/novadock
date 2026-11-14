@@ -1,4 +1,4 @@
-/* NovaDock 0.1 MusicPlayer: EaglePlayer, AmigaAMP and HippoPlayer controller.
+/* MusicPlayer: EaglePlayer, AmigaAMP, HippoPlayer and LumiAMP controller.
  * Separate Exec process; no player binaries, engines or libraries included.
  * Port presence is NOT proof of playback. Metadata queries are configurable.
  */
@@ -15,14 +15,14 @@
 #include <dos/dos.h>
 #include <stdio.h>
 #include <string.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 #include "nd_musicplayer.h"
 
 /* Version string for the AmigaDOS Version command (kept global so the
  * linker never discards it). */
-const char nd_version[]=ND_VER_STRING("MusicPlayer");
+const char nd_version[]=ND_PLUGIN_VER_STRING(MUSIC,"MusicPlayer");
 /* Honoured by the vbcc and libnix startup code; harmless elsewhere. */
 long __stack=16384;
 
@@ -52,7 +52,7 @@ struct MPPanel {
     char status[155];
 };
 struct MPMetadata {
-    int player;
+    int player,paused;
     char port[ND_MUSIC_PORT_LEN + 1];
     char title[ND_MUSIC_TITLE_LEN + 1];
     char time[ND_MUSIC_TIME_LEN + 1];
@@ -187,7 +187,7 @@ static int read_metadata(const struct NDMusicProfile *profile,
     if (playing && profile->extras[ND_MUSIC_QUERY_PLAYING][0]) {
         rc = send_command(port,profile->extras[ND_MUSIC_QUERY_PLAYING],
                           value,sizeof(value));
-        if (rc==0 && nd_music_parse_playing(value,playing)) ++succeeded;
+        if (rc==0 && nd_music_parse_playing(value,playing)){meta->paused=!strcmp(value,"PAUSED");++succeeded;}
     }
     return succeeded;
 }
@@ -206,7 +206,7 @@ static unsigned int media_capabilities(const struct NDMusicProfile *profile)
 }
 static int media_action(unsigned int event, unsigned int requested_volume,
                         const struct NDMusicProfile *profile,
-                        const char *port, int player, int *playing)
+                        const char *port, int player, int *playing, int *paused)
 {
     const char *command = NULL;
     const char *followup;
@@ -219,7 +219,7 @@ static int media_action(unsigned int event, unsigned int requested_volume,
         command = profile->commands[ND_MUSIC_PREVIOUS];
     } else if (event & ND_EVENT_MEDIA_PLAY_PAUSE) {
         action=*playing ? ND_MUSIC_PAUSE : ND_MUSIC_PLAY;
-        command = profile->commands[action];
+        command = action==ND_MUSIC_PLAY ? nd_music_play_command(profile,*paused):profile->commands[action];
     } else if (event & ND_EVENT_MEDIA_NEXT) {
         action=ND_MUSIC_NEXT;
         command = profile->commands[ND_MUSIC_NEXT];
@@ -233,7 +233,7 @@ static int media_action(unsigned int event, unsigned int requested_volume,
     rc = send_command(port, command, NULL, 0);
     followup=nd_music_followup(player,action);
     if (rc==0 && followup) rc=send_command(port,followup,NULL,0);
-    if (rc == 0 && (event & ND_EVENT_MEDIA_PLAY_PAUSE)) *playing = !*playing;
+    if (rc == 0 && (event & ND_EVENT_MEDIA_PLAY_PAUSE)){*paused=*playing;*playing=!*playing;}
     return rc == 0;
 }
 static struct Gadget *button(struct MPPanel *p, WORD x, WORD y,
@@ -272,6 +272,7 @@ static const char *mode_name(int mode)
     if (mode == ND_MUSIC_EAGLE) return "EaglePlayer only";
     if (mode == ND_MUSIC_AMP) return "AmigaAMP only";
     if (mode == ND_MUSIC_HIPPO) return "HippoPlayer only";
+    if (mode == ND_MUSIC_LUMI) return "LumiAMP only";
     return "Automatic";
 }
 static int panel_open(struct MPPanel *p)
@@ -329,15 +330,17 @@ static int current_player(const struct NDMusicConfig *cfg, int mode,
     const char *ep = detected_port(&cfg->eagle);
     const char *amp = detected_port(&cfg->amp);
     const char *hippo = detected_port(&cfg->hippo);
+    const char *lumi = detected_port(&cfg->lumi);
     int selected;
     /* Upgrade old 0.1 configs transparently.  Early builds used the main
      * application-port label instead of EaglePlayer 2.x's ARexx host name. */
     if (!ep && has_port("rexx_EP")) ep = "rexx_EP";
     selected = nd_music_select(mode,cfg->prefer,ep != NULL,amp != NULL,
-                               hippo != NULL);
+                               hippo != NULL,lumi != NULL);
     *port_out = selected == ND_MUSIC_EAGLE ? ep :
                 selected == ND_MUSIC_AMP ? amp :
-                selected == ND_MUSIC_HIPPO ? hippo : NULL;
+                selected == ND_MUSIC_HIPPO ? hippo :
+                selected == ND_MUSIC_LUMI ? lumi : NULL;
     return selected;
 }
 /* String is shown as a window title to avoid font or refresh assumptions.
@@ -393,7 +396,8 @@ static void panel_events(struct MPPanel *p, const struct NDMusicConfig *cfg,
         if (id == MP_G_MODE) {
             mode = mode == ND_MUSIC_AUTO ? ND_MUSIC_EAGLE :
                    mode == ND_MUSIC_EAGLE ? ND_MUSIC_AMP :
-                   mode == ND_MUSIC_AMP ? ND_MUSIC_HIPPO : ND_MUSIC_AUTO;
+                   mode == ND_MUSIC_AMP ? ND_MUSIC_HIPPO :
+                   mode == ND_MUSIC_HIPPO ? ND_MUSIC_LUMI : ND_MUSIC_AUTO;
             *override_mode = mode;
             clear_metadata(meta);
             sprintf(title, "Selection: %s (temporary)", mode_name(mode));
@@ -430,7 +434,7 @@ static void panel_events(struct MPPanel *p, const struct NDMusicConfig *cfg,
                      id == MP_G_PAUSE ? ND_MUSIC_PAUSE :
                      id == MP_G_STOP ? ND_MUSIC_STOP :
                      id == MP_G_PREV ? ND_MUSIC_PREVIOUS : ND_MUSIC_NEXT;
-            command = profile->commands[action];
+            command = action==ND_MUSIC_PLAY ? nd_music_play_command(profile,meta->paused):profile->commands[action];
         }
         rc = send_command(port, command, NULL, 0);
         if (rc==0 && (id==MP_G_PREV || id==MP_G_NEXT)) {
@@ -522,7 +526,7 @@ int main(int argc, char **argv)
                           ND_EVENT_MEDIA_NEXT |
                           ND_EVENT_MEDIA_VOLUME))) {
                 if (media_action(event,requested_volume,profile,port,player,
-                                 &playing)) {
+                                 &playing,&meta.paused)) {
                     if ((event & ND_EVENT_MEDIA_VOLUME) &&
                         requested_volume <= 100U)
                         volume = requested_volume;

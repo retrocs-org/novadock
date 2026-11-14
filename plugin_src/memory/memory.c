@@ -4,7 +4,7 @@
 #include <proto/exec.h>
 #include <proto/dos.h>
 #include <stdio.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 #include "nd_metrics.h"
@@ -13,7 +13,7 @@
 
 /* Version string for the AmigaDOS Version command (kept global so the
  * linker never discards it). */
-const char nd_version[]=ND_VER_STRING("Memory");
+const char nd_version[]=ND_PLUGIN_VER_STRING(RAM,"Memory");
 /* Honoured by the vbcc and libnix startup code; harmless elsewhere. */
 long __stack=16384;
 

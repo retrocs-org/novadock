@@ -21,7 +21,7 @@ static void verify_at(int condition,int line)
 int main(void)
 {
     struct NDConfig *old, *cfg, *readback;
-    struct NDOptionDef options[64];
+    struct NDOptionDef options[112];
     struct NDNetConfig net;
     struct RDRoadshowConfig road;
     struct NDMusicConfig music;
@@ -64,6 +64,12 @@ int main(void)
     verify(nd_option_set(cfg,"DEMO","SPEED","6"));
     verify(nd_option_set(cfg,"DEMO","STYLE","BIG"));
     verify(!nd_option_set(cfg,"DEMO","SPEED","99"));
+    n=nd_option_collect(cfg,"MUSIC",options,112);
+    verify(n>64 && n<=112);
+    {int found=0;for(i=0;i<n;++i)if(!strcmp(options[i].key,"LUMI_VOLUME_MAX"))found=1;verify(found);}
+    verify(nd_option_set(cfg,"MUSIC","MODE","LUMIAMP"));
+    verify(nd_option_set(cfg,"MUSIC","LUMI_PLAY","PLAY"));
+    verify(nd_option_set(cfg,"MUSIC","MODE","AMIGAAMP"));
     n=nd_option_collect(cfg,"DEMO",options,64);
     verify(n==2);
     for (i=0;i<cfg->count;i++) if (cfg->items[i].kind==ND_ITEM_PLUGIN &&

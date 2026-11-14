@@ -63,6 +63,10 @@ Plugins/Mixer
 Plugins/Screenshot
 Plugins/ScreenMode
 Plugins/Script
+Plugins/Timer
+Plugins/Notes
+Plugins/Weather
+Plugins/ScreenSwitcher
 "
 
 for relative_path in $required_binaries; do

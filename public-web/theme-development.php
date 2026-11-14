@@ -9,7 +9,7 @@ site_header('Theme development', 'Theme development', 'Create, preview, package 
 <p class="market-sections"><a href="#format">Theme format</a> <a href="#package">Packaging</a> <a href="#import">Import and test</a></p>
 <p>A NovaDock theme is one plain text file named <b>theme.cfg</b>. It controls
 colours, tile shape, placement, font, labels and spacer defaults. Graphic dock
-backdrops are not used in NovaDock 0.1.</p>
+backdrops are not used.</p>
 <ol>
 <li>Copy one bundled theme directory to a working drawer.</li>
 <li>Edit <b>theme.cfg</b> with a plain text editor.</li>

@@ -18,11 +18,11 @@
 #include <string.h>
 #include "nd_client.h"
 #include "nd_option_runtime.h"
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_clipboard.h"
 #include "nd_search.h"
 #include "nd_clipboard_popup.h"
-const char nd_version[]=ND_VER_STRING("Clipboard");
+const char nd_version[]=ND_PLUGIN_VER_STRING(CLIPBOARD,"Clipboard");
 long __stack=16384;
 struct IntuitionBase *IntuitionBase=NULL;
 struct GfxBase *GfxBase=NULL;
@@ -228,7 +228,7 @@ static int open_panel(struct ClipPanel *p,const struct NDClipHistory *h,int paus
     p->win=OpenWindowTags(NULL,WA_PubScreen,(ULONG)p->screen,WA_Title,(ULONG)"NovaDock Clipboard History",
         WA_Left,(p->screen->Width-w)/2,WA_Top,p->screen->BarHeight+4,WA_Width,w,WA_Height,height,
         WA_Flags,WFLG_CLOSEGADGET|WFLG_DRAGBAR|WFLG_DEPTHGADGET|WFLG_ACTIVATE|WFLG_SIMPLE_REFRESH,
-        WA_IDCMP,IDCMP_CLOSEWINDOW|IDCMP_GADGETUP|IDCMP_REFRESHWINDOW|IDCMP_RAWKEY,
+        WA_IDCMP,LISTVIEWIDCMP|IDCMP_CLOSEWINDOW|IDCMP_REFRESHWINDOW|IDCMP_RAWKEY,
         WA_Gadgets,(ULONG)p->gadgets,TAG_DONE);
     if(!p->win)goto fail;p->selected=h->count ? 0 : -1;GT_RefreshWindow(p->win,NULL);refresh_panel(p,h);return 1;
 fail:close_panel(p);return 0;

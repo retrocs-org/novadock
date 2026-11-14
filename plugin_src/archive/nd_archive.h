@@ -1,6 +1,10 @@
 #ifndef ND_ARCHIVE_H
 #define ND_ARCHIVE_H
 
+#define ND_ARCHIVE_MAX_SOURCES 128
+struct NDArchiveSource {char path[260];int drawer,include_info;};
+/* Remove redundant selections; return 0 on unsafe paths or name collisions. */
+unsigned int nd_archive_plan_sources(struct NDArchiveSource *sources,unsigned int count);
 #define ND_ARCHIVE_NONE 0
 #define ND_ARCHIVE_ZIP 1
 #define ND_ARCHIVE_LHA 2
@@ -17,6 +21,13 @@
 #define ND_ARCHIVE_STATUS_PATTERN "T:NovaDockArchive-#?.status"
 
 int nd_archive_kind(const char *path);
+int nd_archive_detect(const char *path,const unsigned char *header,unsigned int length);
+int nd_archive_output_name(const char *name,int kind,char *output,unsigned int size);
+int nd_archive_compress_command(int kind,const char *tool,const char *source,
+                                const char *output,int include_info,char *command,unsigned int size);
+int nd_archive_output_allowed(const char *source,int drawer,const char *output);
+int nd_archive_extract_destination(const char *parent,int create_drawer,const char *name,
+                                   char *output,unsigned int size);
 int nd_archive_safe_path(const char *path);
 /* Destination drawer beside the archive; both extensions of .tar.gz are
  * removed. */
@@ -36,4 +47,7 @@ int nd_archive_status_name(unsigned long owner,char *name,unsigned int size);
 /* Human-readable list of the commands searched for KIND (for messages). */
 const char *nd_archive_tool_names(int kind);
 
+/* Incremental console raw-event parser; zero-initialise before reading. */
+struct NDArchiveCloseInput {unsigned int state,field,part[3];};
+int nd_archive_close_input(struct NDArchiveCloseInput *input,unsigned char byte);
 #endif

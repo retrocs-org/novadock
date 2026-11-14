@@ -10,6 +10,9 @@ struct NDScreenModePreset {
 /* Returns 1 when BUFFER is a ScreenMode preferences file. */
 int nd_scrmode_parse(const unsigned char *buffer,unsigned long length,
                      struct NDScreenModePreset *preset);
+/* Encode a complete IFF PREF file; 62 bytes, or 0 for invalid values/bounds. */
+unsigned long nd_scrmode_encode(const struct NDScreenModePreset *preset,
+                                unsigned char *buffer,unsigned long size);
 /* "800x600x8"; a default dimension is shown as "auto".  Returns 0 if
  * SIZE is too small. */
 int nd_scrmode_text(unsigned int width,unsigned int height,unsigned int depth,

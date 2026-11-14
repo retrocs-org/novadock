@@ -1,4 +1,4 @@
-# App and directory launchers — NovaDock 0.1
+# App and directory launchers — NovaDock 0.2
 
 NovaDock supports separate **application/command** launchers and **Workbench
 folder/drawer** launchers. Both use the optional third field for a custom icon.
@@ -165,7 +165,7 @@ is preserved, including older two-field and three-field `LAUNCH=` entries.
 Add new launcher entries via Preferences or edit the configuration file.
 On a fresh install, two stock launcher tiles show bundled example icons.
 
-## Dock context menu and direct manipulation (NovaDock 0.1)
+## Dock context menu and direct manipulation (NovaDock 0.2)
 
 The runtime dock includes a small native Intuition popup for each item type.
 Apps offer **Launch**, **Edit settings...**, and **Remove**. Drawers
@@ -221,14 +221,15 @@ default to off, while roots ending in `:` default to on. A disabled meter is
 not polled, drawn, or added to the tooltip. Older configuration lines without
 an explicit choice use those same root-on/subdirectory-off defaults; the final
 extended field stores the per-drawer choice.
-Multiple dropped objects are handled in drop-message order. The centre three
-fifths of an application tile is its **Open With** target. NovaDock launches
-one application instance per dropped object, placing the action's configured
-arguments before the quoted object path and respecting its working directory.
-ARexx actions, drawers, plugins and spacers are not Open With targets. In Edit
-mode, the outer fifths of a tile remain insertion zones; dropping there inserts
-before that tile, while dropping on the surrounding dock background appends
-the objects.
+Multiple dropped objects keep their supplied order. Unlock the dock to add
+objects anywhere on it: drop on the first half of a tile to insert before it,
+or the second half to insert after it. Background drops append. Previously removed
+application entries are reused rather than duplicated.
+
+Lock the dock to use drop actions. The centre three fifths of an application
+tile opens dropped objects with that application, using its stored arguments
+and working directory. Drawer tiles copy objects; plugin tiles use their own
+drop actions. These actions are disabled during Edit mode.
 
 NovaDock may be started from `User-Startup` before `LoadWB` has fully brought
 the Workbench process online. If Workbench initially rejects the AppWindow,
@@ -262,7 +263,7 @@ A drawer opener (`C:WBRUN`) is still needed on some earlier OS3 configurations.
 disabled plugin preservation, and serialization. Native 68k compilation and
 the locked dock menu have also been exercised on Workbench.
 
-## Later 0.1: tooltips, Workbench drops, ARexx
+## Tooltips, Workbench drops and ARexx
 
 See `ARexx_AND_DROPS.md` for drag-to-add/remove behavior, tooltips and control commands.
 

@@ -6,13 +6,13 @@
 #include <exec/types.h>
 #include <proto/dos.h>
 #include <stdlib.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 
 /* Version string for the AmigaDOS Version command (kept global so the
  * linker never discards it). */
-const char nd_version[]=ND_VER_STRING("Eyes");
+const char nd_version[]=ND_PLUGIN_VER_STRING(EYES,"Eyes");
 /* Honoured by the vbcc and libnix startup code; harmless elsewhere. */
 long __stack=16384;
 

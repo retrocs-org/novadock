@@ -168,7 +168,9 @@ static int catalog_walk(int maximum,NDCatalogSink sink,void *ctx)
         for (j=0;j<seen_count;++j)
             if (!strcmp(w->seen[j],w->seen[seen_count])) break;
         if (j<seen_count) continue;
-        catalog_drawer(w,drawers[i]);
+        /* Saved commands must survive execution in another process: PROGDIR
+         * is local to Preferences and cannot be handed to a fresh Shell. */
+        if (w->seen[seen_count][0]) catalog_drawer(w,w->seen[seen_count]);
         if (seen_count<5) ++seen_count;
     }
     self->pr_WindowPtr=requesters;

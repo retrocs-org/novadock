@@ -85,6 +85,7 @@ __pycache__/
 /plugin_src/amirc/nd_amirc.asm
 /plugin_src/archive/archive.asm
 /plugin_src/archive/nd_archive.asm
+/plugin_src/archive/nd_archive_dialog.asm
 /plugin_src/bitskim/bitskim.asm
 /plugin_src/bitskim/nd_bitskim.asm
 /plugin_src/clipboard/clipboard.asm
@@ -130,3 +131,21 @@ __pycache__/
 
 /public-web/downloads/
 /compat/
+
+/Plugins/Timer
+/Plugins/Notes
+/plugin_src/common/nd_panel.asm
+/plugin_src/timer/timer.asm
+/plugin_src/timer/nd_timer.asm
+/plugin_src/notes/notes.asm
+/plugin_src/notes/nd_notes.asm
+
+/plugin_src/notes/nd_note_editor.asm
+
+/plugin_src/notes/nd_markdown.asm
+
+/Plugins/ScreenSwitcher
+/plugin_src/screenswitcher/*.asm
+
+/Plugins/Weather
+/plugin_src/weather/*.asm

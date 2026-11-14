@@ -307,6 +307,12 @@ int nd_drop_after_item(int position,int extent)
     if (position>=extent) position=extent-1;
     return position>=extent/2;
 }
+int nd_drop_insert_position(int target,int after,int persistent_count)
+{
+    if (persistent_count<0) return -1;
+    if (target<0 || target>=persistent_count) return persistent_count;
+    return target+(after ? 1 : 0);
+}
 int nd_drop_destination(int from,int target,int after)
 {
     if (from<0 || target<0) return -1;

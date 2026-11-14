@@ -1,0 +1,12 @@
+latitude,longitude,elevation,utc_offset_seconds,timezone,timezone_abbreviation
+59.3289,18.072357,24.0,3600,Europe/Stockholm,GMT+1
+
+time,temperature_2m (°C),weather_code (wmo code)
+2026-11-14T21:45,5.0,3
+
+time,weather_code (wmo code),temperature_2m_max (°C),temperature_2m_min (°C),precipitation_probability_max (%)
+2026-11-14,3,5.1,0.4,0
+2026-11-15,3,6.7,4.6,12
+2026-11-16,61,8.0,5.7,84
+2026-11-17,51,5.7,1.0,35
+2026-11-18,85,2.0,0.6,29

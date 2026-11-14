@@ -44,6 +44,16 @@ void nd_music_defaults(struct NDMusicConfig *cfg)
     strcpy(cfg->hippo.extras[ND_MUSIC_QUERY_VOLUME], "GET VOLU");
     strcpy(cfg->hippo.extras[ND_MUSIC_SET_VOLUME], "VOLUME");
     strcpy(cfg->hippo.extras[ND_MUSIC_QUERY_PLAYING], "GET PLAY");
+    /* LumiAMP 0.5's included ARexx reference documents one fixed port. */
+    set_profile(&cfg->lumi,"LUMIAMP","LUMIAMP",100U);
+    strcpy(cfg->lumi.extras[ND_MUSIC_QUERY_TITLE],"GETSTATE TITLE");
+    strcpy(cfg->lumi.extras[ND_MUSIC_QUERY_TIME],"GETSTATE TIME");
+    strcpy(cfg->lumi.extras[ND_MUSIC_QUERY_VOLUME],"GETSTATE VOLUME");
+    strcpy(cfg->lumi.extras[ND_MUSIC_SET_VOLUME],"VOLUME");
+    strcpy(cfg->lumi.extras[ND_MUSIC_QUERY_PLAYING],"STATUS");
+    strcpy(cfg->lumi.extras[ND_MUSIC_VOL_UP],"VOLUME +5");
+    strcpy(cfg->lumi.extras[ND_MUSIC_VOL_DOWN],"VOLUME -5");
+    strcpy(cfg->lumi.extras[ND_MUSIC_RESUME],"RESUME");
     cfg->mode = ND_MUSIC_AUTO;
     cfg->prefer = ND_MUSIC_EAGLE;
     cfg->poll_ticks = 100;
@@ -71,7 +81,7 @@ int nd_music_valid_command(const char *s)
     for (i = 0; i < n; ++i) {
         unsigned char c = (unsigned char)s[i];
         if (!isalnum(c) && c != '_' && c != '.' && c != ' ' &&
-            c != '/' && c != '-' && c != ':') return 0;
+            c != '/' && c != '-' && c != '+' && c != ':') return 0;
     }
     return 1;
 }
@@ -91,6 +101,7 @@ static int choice(const char *s, int allow_auto)
     if (!strcmp(s, "EAGLEPLAYER")) return ND_MUSIC_EAGLE;
     if (!strcmp(s, "AMIGAAMP")) return ND_MUSIC_AMP;
     if (!strcmp(s, "HIPPOPLAYER")) return ND_MUSIC_HIPPO;
+    if (!strcmp(s, "LUMIAMP")) return ND_MUSIC_LUMI;
     return -1;
 }
 static int yesno(const char *s)
@@ -120,7 +131,7 @@ static int set_entry(struct NDMusicConfig *tmp, char *key, char *val)
     };
     static const char *extras[ND_MUSIC_EXTRAS] = {
         "QUERY_TITLE", "QUERY_TIME", "VOL_UP", "VOL_DOWN",
-        "QUERY_VOLUME", "SET_VOLUME", "QUERY_PLAYING"
+        "QUERY_VOLUME", "SET_VOLUME", "QUERY_PLAYING", "RESUME"
     };
     if (!strcmp(key, "MODE")) {
         n = choice(val, 1);
@@ -160,6 +171,8 @@ static int set_entry(struct NDMusicConfig *tmp, char *key, char *val)
         p = &tmp->amp; field = key + 9;
     } else if (!strncmp(key, "HIPPO_", 6)) {
         p = &tmp->hippo; field = key + 6;
+    } else if (!strncmp(key,"LUMI_",5)) {
+        p=&tmp->lumi;field=key+5;
     } else return 0;
     if (!strcmp(field, "PORT") || !strcmp(field, "PORT_ALT")) {
         if (!nd_music_valid_port(val)) return 0;
@@ -225,18 +238,21 @@ int nd_music_load(struct NDMusicConfig *cfg, const char *filename)
     return ok;
 }
 int nd_music_select(int mode, int prefer, int eagle_present, int amp_present,
-                    int hippo_present)
+                    int hippo_present, int lumi_present)
 {
     if (mode == ND_MUSIC_EAGLE) return eagle_present ? ND_MUSIC_EAGLE : ND_MUSIC_NONE;
     if (mode == ND_MUSIC_AMP) return amp_present ? ND_MUSIC_AMP : ND_MUSIC_NONE;
     if (mode == ND_MUSIC_HIPPO) return hippo_present ? ND_MUSIC_HIPPO : ND_MUSIC_NONE;
+    if (mode == ND_MUSIC_LUMI) return lumi_present ? ND_MUSIC_LUMI : ND_MUSIC_NONE;
     if (mode != ND_MUSIC_AUTO) return ND_MUSIC_NONE;
     if (prefer == ND_MUSIC_EAGLE && eagle_present) return ND_MUSIC_EAGLE;
     if (prefer == ND_MUSIC_AMP && amp_present) return ND_MUSIC_AMP;
     if (prefer == ND_MUSIC_HIPPO && hippo_present) return ND_MUSIC_HIPPO;
+    if (prefer == ND_MUSIC_LUMI && lumi_present) return ND_MUSIC_LUMI;
     if (eagle_present) return ND_MUSIC_EAGLE;
     if (amp_present) return ND_MUSIC_AMP;
     if (hippo_present) return ND_MUSIC_HIPPO;
+    if (lumi_present) return ND_MUSIC_LUMI;
     return ND_MUSIC_NONE;
 }
 const char *nd_music_name(int player)
@@ -244,6 +260,7 @@ const char *nd_music_name(int player)
     if (player == ND_MUSIC_EAGLE) return "EaglePlayer";
     if (player == ND_MUSIC_AMP) return "AmigaAMP";
     if (player == ND_MUSIC_HIPPO) return "HippoPlayer";
+    if (player == ND_MUSIC_LUMI) return "LumiAMP";
     return "None";
 }
 const struct NDMusicProfile *nd_music_profile(const struct NDMusicConfig *cfg,
@@ -253,6 +270,7 @@ const struct NDMusicProfile *nd_music_profile(const struct NDMusicConfig *cfg,
     if (player == ND_MUSIC_EAGLE) return &cfg->eagle;
     if (player == ND_MUSIC_AMP) return &cfg->amp;
     if (player == ND_MUSIC_HIPPO) return &cfg->hippo;
+    if (player == ND_MUSIC_LUMI) return &cfg->lumi;
     return NULL;
 }
 const char *nd_music_followup(int player, int action)
@@ -333,11 +351,20 @@ int nd_music_volume_command(const struct NDMusicProfile *profile,
     }
     return nd_music_valid_command(out);
 }
+const char *nd_music_play_command(const struct NDMusicProfile *profile,int paused)
+{
+    if(!profile)return NULL;
+    return paused && profile->extras[ND_MUSIC_RESUME][0] ?
+        profile->extras[ND_MUSIC_RESUME]:profile->commands[ND_MUSIC_PLAY];
+}
 int nd_music_parse_playing(const char *text, int *playing)
 {
     int value;
     if (!text || !playing) return 0;
     while (*text==' ' || *text=='\t') ++text;
+    if(!strcmp(text,"PLAYING")){*playing=1;return 1;}
+    if(!strcmp(text,"READY") || !strcmp(text,"PAUSED") || !strcmp(text,"EMPTY") ||
+       !strcmp(text,"ERROR")){*playing=0;return 1;}
     if (*text=='0') value=0;
     else if (*text=='1') value=1;
     else return 0;

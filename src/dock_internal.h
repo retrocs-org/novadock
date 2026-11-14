@@ -32,6 +32,7 @@
 #include <workbench/workbench.h>
 #include <workbench/startup.h>
 #include <utility/tagitem.h>
+#include <utility/hooks.h>
 #include <proto/icon.h>
 #include <proto/wb.h>
 #include <dos/dos.h>
@@ -158,6 +159,8 @@ struct NDDock {
     struct MsgPort *control;
     struct MsgPort *drop_port;
     struct AppWindow *app_window;
+    struct Hook drop_hook;
+    int drop_zones;
     struct AppMenuItem *app_menu_items[ND_MAX_ITEMS];
     struct MsgPort *hotkey_port;
     CxObj *hotkey_broker;
@@ -198,6 +201,7 @@ struct NDDock {
     int popup_item, popup_hot, popup_network_online;
     int activate_popup_pending;
     int press_item, press_x, press_y, drag_to, drag_after, is_drag;
+    int drop_preview, drop_preview_item, drop_preview_after;
     int edit_mode;
     int view_start, visible_count, layout_slots, layout_rows;
     int layout_columns, overflow;
@@ -421,6 +425,7 @@ void release_icons(struct NDDock *dock);
 void detach_appmenus(struct NDDock *dock);
 void detach_appwindow(struct NDDock *dock);
 void attach_appwindow(struct NDDock *dock);
+void refresh_drop_zones(struct NDDock *dock);
 void stop_hotkeys(struct NDDock *dock);
 int start_hotkeys(struct NDDock *dock);
 void rebuild_hotkeys(struct NDDock *dock);
@@ -431,6 +436,7 @@ void open_drawer(const char *path);
 /* dock_plugins.c */
 void sync_plugin_twins(struct NDDock *dock,int source);
 int launch_archive_helper(struct NDDock *dock,int index,const char *archive);
+int launch_archive_drop(struct NDDock *dock,int index,const struct AppMessage *message);
 int launch_plugin_helper(struct NDDock *dock,int index,const char *verb,
                          const char *path);
 int is_trash_tile(const struct NDDock *dock,int index);
@@ -453,6 +459,7 @@ void set_hidden(struct NDDock *dock, int hide);
 void show_dock(struct NDDock *dock);
 void hide_dock(struct NDDock *dock);
 void always_on_top_tick(struct NDDock *dock,int quantum);
+void update_drop_preview(struct NDDock *dock);
 void hover_tick(struct NDDock *dock,int tip_delay);
 void process_timer(struct NDDock *dock);
 void close_tooltip(struct NDDock *dock);

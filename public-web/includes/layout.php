@@ -1,15 +1,17 @@
 <?php
 declare(strict_types=1);
-const NOVADOCK_VERSION = '0.1';
+const NOVADOCK_VERSION = '0.2';
 function site_escape(string $text): string {
     return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'ISO-8859-1');
 }
 function site_release_tag(): string {
     $entries = json_decode((string) @file_get_contents(__DIR__.'/../releases.json'), true);
+    $latest = null;
     foreach (is_array($entries) ? $entries : [] as $entry) {
-        if (($entry['version'] ?? '') === NOVADOCK_VERSION && ($entry['status'] ?? '') === 'published' && is_string($entry['tag'] ?? null)) return $entry['tag'];
+        if (($entry['status'] ?? '') !== 'published' || !is_string($entry['tag'] ?? null) || !is_string($entry['version'] ?? null)) continue;
+        if ($latest === null || version_compare($entry['version'], $latest['version'], '>')) $latest = $entry;
     }
-    return 'v'.NOVADOCK_VERSION;
+    return $latest === null ? 'main' : $latest['tag'];
 }
 function site_header(string $title, string $current, string $description): void {
     header('Content-Type: text/html; charset=ISO-8859-1');
@@ -40,7 +42,7 @@ function site_footer(): void {
 ?>
 </font>
 <br>
-<table class="site-footer" width="100%" border="0" cellpadding="10" cellspacing="0" bgcolor="#181825"><tr><td align="center"><font face="Helvetica,Arial,sans-serif" size="-1" color="#A6ADC8">NovaDock 0.1 &middot; Classic AmigaOS 3.x &middot; <a href="https://github.com/retrocs-org/novadock">Source on GitHub</a> &middot; <a href="marketplace.php">Marketplace</a> &middot; <a href="features.php#screenshots">Screenshots</a> &middot; <a href="theme-development.php">Theme guide</a> &middot; <a href="developers.php">Developers</a> &middot; <a href="developers.php#source">Build from source</a> &middot; <a href="support.php#faq">Support &amp; FAQ</a></font></td></tr></table>
+<table class="site-footer" width="100%" border="0" cellpadding="10" cellspacing="0" bgcolor="#181825"><tr><td align="center"><font face="Helvetica,Arial,sans-serif" size="-1" color="#A6ADC8">NovaDock 0.2 &middot; Classic AmigaOS 3.x &middot; <a href="https://github.com/retrocs-org/novadock">Source on GitHub</a> &middot; <a href="marketplace.php">Marketplace</a> &middot; <a href="features.php#screenshots">Screenshots</a> &middot; <a href="theme-development.php">Theme guide</a> &middot; <a href="developers.php">Developers</a> &middot; <a href="developers.php#source">Build from source</a> &middot; <a href="support.php#faq">Support &amp; FAQ</a></font></td></tr></table>
 </td></tr></table>
 </center>
 </body>

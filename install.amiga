@@ -1,6 +1,12 @@
 ; Optional post-build installer. Run from extracted project directory.
 ; Installs binaries once and preserves user preferences + network config.
 FailAt 21
+; Stop the dock and resident plugins before replacing their executables.
+NovaDock QUIT
+IF WARN
+  Echo "NovaDock could not be stopped. Installation cancelled."
+  Quit 20
+ENDIF
 ; Upgrade the earlier all-in-one Utilities drawer without deleting user files.
 IF EXISTS SYS:Utilities/NovaDock/Plugins
   IF EXISTS SYS:Utilities/NovaDock.previous
@@ -147,12 +153,8 @@ Copy Themes/NeXTSTEP/theme.cfg TO SYS:NovaDock/Themes/NeXTSTEP/theme.cfg
 Copy Themes/BeOS/theme.cfg TO SYS:NovaDock/Themes/BeOS/theme.cfg
 Copy Themes/Nord/theme.cfg TO SYS:NovaDock/Themes/Nord/theme.cfg
 Copy Themes/Vapor/theme.cfg TO SYS:NovaDock/Themes/Vapor/theme.cfg
-Copy Plugins/Clock TO SYS:NovaDock/Plugins/Clock
-Copy Plugins/Eyes TO SYS:NovaDock/Plugins/Eyes
-Copy Plugins/Activity TO SYS:NovaDock/Plugins/Activity
-Copy Plugins/Memory TO SYS:NovaDock/Plugins/Memory
-Copy Plugins/Network TO SYS:NovaDock/Plugins/Network
-Copy Plugins/Network.ndplugin TO SYS:NovaDock/Plugins/Network.ndplugin
+; Copy the complete plugin payload, including new programs and manifests.
+Copy Plugins TO SYS:NovaDock/Plugins ALL
 ; Network replaces the retired standalone Roadshow program.
 IF EXISTS SYS:NovaDock/Plugins/Roadshow
   Delete SYS:NovaDock/Plugins/Roadshow QUIET
@@ -164,38 +166,12 @@ IF EXISTS SYS:NovaDock/Plugins/Roadshow.ndplugin
   Delete SYS:NovaDock/Plugins/Roadshow.ndplugin QUIET
 ENDIF
 
-Copy Plugins/MusicPlayer TO SYS:NovaDock/Plugins/MusicPlayer
-Copy Plugins/MusicPlayer.info TO SYS:NovaDock/Plugins/MusicPlayer.info
-Copy Plugins/Clipboard TO SYS:NovaDock/Plugins/Clipboard
-Copy Plugins/Clipboard.ndplugin TO SYS:NovaDock/Plugins/Clipboard.ndplugin
-Copy Plugins/Mixer TO SYS:NovaDock/Plugins/Mixer
-Copy Plugins/Mixer.ndplugin TO SYS:NovaDock/Plugins/Mixer.ndplugin
-Copy Plugins/Screenshot TO SYS:NovaDock/Plugins/Screenshot
-Copy Plugins/Screenshot.ndplugin TO SYS:NovaDock/Plugins/Screenshot.ndplugin
-Copy Plugins/ScreenMode TO SYS:NovaDock/Plugins/ScreenMode
-Copy Plugins/ScreenMode.ndplugin TO SYS:NovaDock/Plugins/ScreenMode.ndplugin
-Copy Plugins/Script TO SYS:NovaDock/Plugins/Script
 IF NOT EXISTS SYS:NovaDock/Rexx
   MakeDir SYS:NovaDock/Rexx
 ENDIF
 Copy Rexx/#?.amirx TO SYS:NovaDock/Rexx
 Copy Rexx/#?.rexx TO SYS:NovaDock/Rexx
 Copy BitSkim-icon-LICENSE.txt TO SYS:NovaDock/BitSkim-icon-LICENSE.txt
-Copy Plugins/BitSkim TO SYS:NovaDock/Plugins/BitSkim
-Copy Plugins/BitSkim.ndplugin TO SYS:NovaDock/Plugins/BitSkim.ndplugin
-Copy Plugins/BitSkim.info TO SYS:NovaDock/Plugins/BitSkim.info
-Copy Plugins/AmIRC TO SYS:NovaDock/Plugins/AmIRC
-Copy Plugins/AmIRC.ndplugin TO SYS:NovaDock/Plugins/AmIRC.ndplugin
-Copy Plugins/DOpus4 TO SYS:NovaDock/Plugins/DOpus4
-Copy Plugins/ArchiveExtractor TO SYS:NovaDock/Plugins/ArchiveExtractor
-Copy Plugins/Command TO SYS:NovaDock/Plugins/Command
-Copy Plugins/RunningApps TO SYS:NovaDock/Plugins/RunningApps
-Copy Plugins/RunningApps.info TO SYS:NovaDock/Plugins/RunningApps.info
-Copy Plugins/RunningApps.ndplugin TO SYS:NovaDock/Plugins/RunningApps.ndplugin
-Copy Plugins/Trash TO SYS:NovaDock/Plugins/Trash
-Copy Plugins/Trash.ndplugin TO SYS:NovaDock/Plugins/Trash.ndplugin
-Copy Plugins/Games TO SYS:NovaDock/Plugins/Games
-Copy Plugins/Games.ndplugin TO SYS:NovaDock/Plugins/Games.ndplugin
 Copy NovaDockPrefs TO SYS:Prefs/NovaDockPrefs
 Copy NovaDockPrefs.info TO SYS:Prefs/NovaDockPrefs.info
 ; 0.1 now uses one Preferences application. Remove obsolete installed helpers.
@@ -211,7 +187,6 @@ ENDIF
 IF EXISTS SYS:Prefs/NovaDockPluginPrefs.info
   Delete SYS:Prefs/NovaDockPluginPrefs.info QUIET
 ENDIF
-Copy Plugins/#?.info TO SYS:NovaDock/Plugins
 IF NOT EXISTS ENVARC:NovaDock
   MakeDir ENVARC:NovaDock
 ENDIF

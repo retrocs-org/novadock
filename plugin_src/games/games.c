@@ -26,11 +26,11 @@
 #include <proto/icon.h>
 #include <stdio.h>
 #include <string.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 
-const char nd_version[]=ND_VER_STRING("Games");
+const char nd_version[]=ND_PLUGIN_VER_STRING(WHDLOAD,"Games");
 struct IntuitionBase *IntuitionBase=NULL;
 struct Library *GadToolsBase=NULL;
 struct Library *IconBase=NULL;
@@ -528,7 +528,7 @@ int main(int argc,char **argv)
         if (game_count<0) strcpy(value,"GAMES");
         else if (!game_count) strcpy(value,"NO GAMES");
         else sprintf(value,"%d GAMES",game_count);
-        event=nd_client_update_quiet(&client,"GAMES",value,ND_NO_METER,elapsed,500U);
+        event=nd_client_update_quiet(&client,"WHDLoad",value,ND_NO_METER,elapsed,500U);
         if (event&ND_EVENT_QUIT) break;
         if (event&ND_EVENT_SETTINGS) {
             /* Another drawer: read it again the next time the list opens. */

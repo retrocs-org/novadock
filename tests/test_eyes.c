@@ -29,7 +29,7 @@ int main(void)
     cfg=(struct NDConfig *)calloc(1,sizeof(*cfg));
     assert(cfg!=NULL);
     nd_default_config(cfg);
-    assert(cfg->count==11);
+    assert(cfg->count==13);
     for (i=0;i<cfg->count;++i)
         if (cfg->items[i].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[i].id,"EYES")) ++eyes;
     assert(eyes==1);

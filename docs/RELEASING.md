@@ -277,8 +277,16 @@ private compatibility source overrides are not used.
 ## Aminet and interrupted uploads
 
 Aminet submission uses anonymous FTP to `main.aminet.net`, directory `/new`, with
-the uploader email as the contact. The adapter verifies the LHA CRC and the prepared
-pair's hashes against the repository release. It sends novadock.lha first and
+the uploader email as the contact. The adapter verifies the LHA CRC, frozen release hashes and embedded source/build
+provenance. Aminet-only checks and uploads do not require the current checkout to
+match the tagged source; newer website or documentation commits can stay on main.
+Repository publishing still requires the original clean committed build source.
+
+The current uploader setting in the external project JSON is used for Aminet.
+Changing it prepares a separately checksummed submission readme outside the release
+bundle. The LHA and published repository assets remain byte-for-byte unchanged.
+An existing or interrupted submission receipt must be reviewed before changing its
+contact or attempting another transfer. It sends novadock.lha first and
 novadock.readme last. Submission success means awaiting moderation, not publication
 on the public archive. Repository publishing alone never submits to Aminet.
 

@@ -13,6 +13,7 @@
 #define ND_MUSIC_EAGLE 1
 #define ND_MUSIC_AMP 2
 #define ND_MUSIC_HIPPO 3
+#define ND_MUSIC_LUMI 4
 #define ND_MUSIC_NONE 0
 
 #define ND_MUSIC_PLAY 0
@@ -29,7 +30,8 @@
 #define ND_MUSIC_QUERY_VOLUME 4
 #define ND_MUSIC_SET_VOLUME 5
 #define ND_MUSIC_QUERY_PLAYING 6
-#define ND_MUSIC_EXTRAS 7
+#define ND_MUSIC_RESUME 7
+#define ND_MUSIC_EXTRAS 8
 
 struct NDMusicProfile {
     char port[ND_MUSIC_PORT_LEN + 1];
@@ -42,6 +44,7 @@ struct NDMusicConfig {
     struct NDMusicProfile eagle;
     struct NDMusicProfile amp;
     struct NDMusicProfile hippo;
+    struct NDMusicProfile lumi;
     unsigned int poll_ticks;
     unsigned int query_ticks;
     unsigned int scroll_ticks;
@@ -58,7 +61,7 @@ int nd_music_valid_port(const char *port);
 int nd_music_valid_command(const char *cmd);
 int nd_music_load(struct NDMusicConfig *cfg, const char *filename);
 int nd_music_select(int mode, int prefer, int eagle_present, int amp_present,
-                    int hippo_present);
+                    int hippo_present, int lumi_present);
 const char *nd_music_name(int player);
 const struct NDMusicProfile *nd_music_profile(const struct NDMusicConfig *cfg, int player);
 /* HippoPlayer changes playlist selection and starts it as two ARexx actions. */
@@ -75,5 +78,6 @@ int nd_music_parse_volume(const struct NDMusicProfile *profile,
 int nd_music_volume_command(const struct NDMusicProfile *profile,
                             unsigned int percent, char *out,
                             unsigned int capacity);
+const char *nd_music_play_command(const struct NDMusicProfile *profile,int paused);
 int nd_music_parse_playing(const char *text, int *playing);
 #endif

@@ -29,7 +29,7 @@
 
 #define PP_ROWS 12
 #define PP_PAGE_ROWS 5
-#define PP_MAX 64
+#define PP_MAX 112
 #define G_FIRST 100
 #define G_FILE_FIRST 140
 #define G_SCROLL 199
@@ -59,6 +59,7 @@ struct PluginPrefs {
     int active[PP_ROWS];
     APTR visual;
     char title[90];
+    const char *save_error;
     char choices[PP_ROWS][96];
     STRPTR choice_labels[PP_ROWS][18];
 };
@@ -347,12 +348,16 @@ static int save(struct PluginPrefs *p,int permanent)
 {
     BPTR lock;
     /* Stage changes in memory. No per-plugin configuration files are used. */
+    p->save_error="NovaDock - cannot stage plugin options";
     if (!stage_options(p)) return 0;
     lock=CreateDir("ENV:NovaDock");if (lock) UnLock(lock);
     if (permanent) {
         lock=CreateDir("ENVARC:NovaDock");if (lock) UnLock(lock);
+        p->save_error="NovaDock - cannot save permanent settings";
         if (!nd_control_write_config(p->config,"ENVARC:NovaDock/novadock.cfg")) return 0;
     }
+    p->save_error=permanent ? "NovaDock - saved permanently; session update failed" :
+                              "NovaDock - cannot apply session settings";
     if (!nd_control_write_config(p->config,"ENV:NovaDock/novadock.cfg")) return 0;
     ND_PREFS_MARK_CLEAN();ND_PREFS_CLEAR_PREVIEW();
     return 1;
@@ -480,7 +485,7 @@ int nd_plugin_prefs_run(int argc,char **argv)
                         SetWindowTitles(p->win,(STRPTR)"NovaDock - invalid setting",(STRPTR)-1);
                         DisplayBeep(p->screen);
                     } else if (!save(p,id==G_SAVE)) {
-                        SetWindowTitles(p->win,(STRPTR)"NovaDock - cannot write settings",(STRPTR)-1);
+                        SetWindowTitles(p->win,(STRPTR)p->save_error,(STRPTR)-1);
                         DisplayBeep(p->screen);
                     } else {p->done=1;result=0;notify_reload=1;}
                 }

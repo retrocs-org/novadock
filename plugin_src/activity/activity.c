@@ -11,14 +11,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 #include "nd_metrics.h"
 
 /* Version string for the AmigaDOS Version command (kept global so the
  * linker never discards it). */
-const char nd_version[]=ND_VER_STRING("Activity");
+const char nd_version[]=ND_PLUGIN_VER_STRING(CPU,"Activity");
 /* Honoured by the vbcc and libnix startup code; harmless elsewhere. */
 long __stack=16384;
 

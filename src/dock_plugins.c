@@ -39,11 +39,33 @@ static void wake_plugin(struct NDDock *dock,int index)
     Permit();
 }
 
+/* PROGDIR belongs to this process, not the asynchronous Shell. Resolve
+ * every executable before handing it to that Shell; suppress missing-volume
+ * requesters so absent plugins fail quietly and the watchdog can retry. */
+static int resolve_plugin_executable(struct NDDock *dock,const char *configured,
+                                      char *path,unsigned int size)
+{
+    char candidate[520];size_t length;BPTR lock;APTR requesters;int ok;
+    if(!configured || !*configured)return 0;
+    if(strchr(configured,':')){
+        if(strlen(configured)>=sizeof(candidate))return 0;
+        strcpy(candidate,configured);
+    }else{
+        length=strlen(dock->directory);
+        if(!length || length+strlen(configured)+2>=sizeof(candidate))return 0;
+        strcpy(candidate,dock->directory);
+        if(candidate[length-1]!=':' && candidate[length-1]!='/')strcat(candidate,"/");
+        strcat(candidate,configured);
+    }
+    requesters=quiet_requesters();lock=Lock((STRPTR)candidate,ACCESS_READ);
+    ok=lock && NameFromLock(lock,path,(LONG)size);
+    if(lock)UnLock(lock);restore_requesters(requesters);
+    return ok;
+}
+
 static int launch_plugin(struct NDDock *dock,int index,int restarted)
 {
     char cmd[1100], path[520];
-    const char *p;
-    size_t len;
     ULONG now=diagnostic_ticks();
     struct NDItem *it;
     if (!dock || index<0 || index>=dock->conf.count) return 0;
@@ -58,19 +80,9 @@ static int launch_plugin(struct NDDock *dock,int index,int restarted)
     }
     dock->watchdog_retry_after[index]=now+
         (ULONG)nd_watchdog_backoff_ticks(dock->watchdog_failures[index]);
-    p=it->command;
     /* "@..." plugin commands are passive tiles fed by ARexx SETVALUE. */
-    if (p[0]=='@') return 0;
-    if (strchr(p,':')!=NULL) {
-        strncpy(path,p,sizeof(path)-1);
-        path[sizeof(path)-1]='\0';
-    } else {
-        len=strlen(dock->directory);
-        if (len==0 || len+strlen(p)+2>=sizeof(path)) return 0;
-        strcpy(path,dock->directory);
-        if (path[len-1]!=':' && path[len-1]!='/') strcat(path,"/");
-        strcat(path,p);
-    }
+    if (it->command[0]=='@') return 0;
+    if (!resolve_plugin_executable(dock,it->command,path,sizeof(path))) return 0;
     if (!nd_quote_path(cmd,sizeof(cmd)-ND_ID_LEN-2,path)) return 0;
     strcat(cmd," ");strcat(cmd,it->id);
     dock->plugin_task[index]=NULL;
@@ -86,7 +98,6 @@ int launch_plugin_helper(struct NDDock *dock,int index,const char *verb,
                          const char *path)
 {
     const struct NDItem *item;
-    const char *configured;
     char executable[520],command[2400];
     size_t length;
     int launched;
@@ -94,18 +105,7 @@ int launch_plugin_helper(struct NDDock *dock,int index,const char *verb,
     item=&dock->conf.items[index];
     if (item->kind!=ND_ITEM_PLUGIN) return 0;
     if(path && strcmp(item->id,"BITSKIM") && !nd_archive_safe_path(path))return 0;
-    configured=item->command;
-    if (strchr(configured,':')) {
-        if (strlen(configured)>=sizeof(executable)) return 0;
-        strcpy(executable,configured);
-    } else {
-        length=strlen(dock->directory);
-        if (!length || length+strlen(configured)+2>=sizeof(executable)) return 0;
-        strcpy(executable,dock->directory);
-        if (executable[length-1]!=':' && executable[length-1]!='/')
-            strcat(executable,"/");
-        strcat(executable,configured);
-    }
+    if (!resolve_plugin_executable(dock,item->command,executable,sizeof(executable)))return 0;
     if (!nd_quote_path(command,sizeof(command)-80,executable))return 0;
     length=strlen(command);
     if(length+strlen(item->id)+strlen(verb)+4>=sizeof(command))return 0;
@@ -122,9 +122,45 @@ int launch_archive_helper(struct NDDock *dock,int index,const char *archive)
 {
     if (!dock || index<0 || index>=dock->conf.count ||
         !nd_archive_safe_path(archive) ||
-        nd_archive_kind(archive)==ND_ARCHIVE_NONE ||
         strcmp(dock->conf.items[index].id,"ARCHIVE")) return 0;
-    return launch_plugin_helper(dock,index,"EXTRACT",archive);
+    return launch_plugin_helper(dock,index,"HANDLE",archive);
+}
+int launch_archive_drop(struct NDDock *dock,int index,const struct AppMessage *message)
+{
+    static ULONG serial=0;
+    char path[ND_COMMAND_LEN],directory[96],list[110];
+    char (*paths)[260];BPTR created,file;unsigned int i;int kind,ok=1,attempt;
+    if(!dock || index<0 || index>=dock->conf.count ||
+       strcmp(dock->conf.items[index].id,"ARCHIVE") || !message ||
+       message->am_NumArgs<1 || message->am_NumArgs>ND_ARCHIVE_MAX_SOURCES)return 0;
+    if(message->am_NumArgs==1){
+        return build_wb_path(&message->am_ArgList[0],path,sizeof(path),&kind) &&
+               launch_archive_helper(dock,index,path);
+    }
+    paths=AllocVec(message->am_NumArgs*sizeof(*paths),MEMF_PUBLIC|MEMF_CLEAR);
+    if(!paths)return 0;
+    for(i=0;i<message->am_NumArgs;++i){
+        if(!build_wb_path(&message->am_ArgList[i],path,sizeof(path),&kind) ||
+           strlen(path)>=sizeof(paths[0]) || !nd_archive_safe_path(path)){ok=0;break;}
+        strcpy(paths[i],path);
+    }
+    created=0;
+    if(ok)for(attempt=0;attempt<20;++attempt){
+        sprintf(directory,"T:NovaDockArchiveDrop-%08lx-%lu",(unsigned long)FindTask(NULL),(unsigned long)++serial);
+        created=CreateDir(directory);if(created){UnLock(created);break;}
+    }
+    if(!created){FreeVec(paths);return 0;}
+    sprintf(list,"%s/items",directory);file=Open(list,MODE_NEWFILE);
+    if(!file)ok=0;
+    else{
+        for(i=0;i<message->am_NumArgs;++i)
+            if(FPuts(file,paths[i])<0 || FPuts(file,"\n")<0){ok=0;break;}
+        if(!Close(file))ok=0;
+    }
+    FreeVec(paths);
+    if(ok)ok=launch_plugin_helper(dock,index,"HANDLELIST",list);
+    if(!ok){DeleteFile(list);DeleteFile(directory);}
+    return ok;
 }
 void start_plugins(struct NDDock *dock, const struct NDConfig *previous)
 {
@@ -302,8 +338,8 @@ void process_ipc(struct NDDock *dock, int quitting)
                         }
                     }
                     changed = !item->online;
-                    /* A graph tile already online with the same meter only
-                     * needs its new sample scrolled in (draw_graph_step). */
+                    /* Scrolling also redraws the graph heading/value rows. A
+                     * changing meter therefore needs no full tile repaint. */
                     graph_only = item->online;
                     if (m->caption[0]) {
                         if (strcmp(item->caption, m->caption)) changed = 1;
@@ -316,7 +352,7 @@ void process_ipc(struct NDDock *dock, int quitting)
                     item->online = 1;
                     new_meter = m->meter <= 100 ? m->meter : ND_NO_METER;
                     if (item->meter != new_meter) changed = 1;
-                    if (item->meter != new_meter) graph_only = 0;
+
                     item->meter = new_meter;
                     sample_a = item->meter;
                     sample_b = ND_GRAPH_NO_SAMPLE;
@@ -425,6 +461,8 @@ void process_ipc(struct NDDock *dock, int quitting)
                     if(changed && (!strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW")) &&
                        (!strcmp(item->value,"ACTION FAILED") || !strcmp(item->value,"WORKER FAILED")))
                         show_feedback(dock,"Could not change network state - check Network settings",1);
+                    if(changed && !strcmp(item->id,"ARCHIVE") && dock->tip_item==index)
+                        close_tooltip(dock);
                     if (changed) {
                         if (dock->dirty_tiles[index])
                             ++dock->diagnostic_coalesced_updates;
@@ -514,8 +552,28 @@ int register_port(struct NDDock *dock)
     Permit();
     return dock->control_public;
 }
+/* Wake sleeping clients while the old host still answers QUIT. Otherwise
+ * a quick restart lets an old client attach to the new dock and keep its
+ * windows open beside the freshly started plugin. The grace period is
+ * bounded; third-party clients cannot prevent dock shutdown. */
+static void finish_plugin_clients(struct NDDock *dock)
+{
+    int i;char name[ND_ID_LEN+16];struct MsgPort *port;
+    if(!dock->ipc || !dock->is_public)return;
+    for(i=0;i<dock->conf.count && i<ND_MAX_ITEMS;++i){
+        if(dock->conf.items[i].kind!=ND_ITEM_PLUGIN)continue;
+        wake_plugin(dock,i);
+        strcpy(name,ND_WAKE_PORT_PREFIX);strcat(name,dock->conf.items[i].id);
+        Forbid();port=FindPort(name);
+        if(port && port->mp_SigTask)Signal(port->mp_SigTask,ND_WAKE_SIGNAL);
+        Permit();
+    }
+    for(i=0;i<50;++i){process_ipc(dock,1);Delay(1);}
+    process_ipc(dock,1);
+}
 void remove_port(struct NDDock *dock)
 {
+    finish_plugin_clients(dock);
     if (dock->control) {
         if (dock->control_public) {
             Forbid(); RemPort(dock->control); Permit();

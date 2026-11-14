@@ -1,5 +1,7 @@
 /* NovaDock: Drawing: colours, fonts, tile geometry and every tile, badge and graph. */
 #include "dock_internal.h"
+#include "nd_screen_art.h"
+#include "nd_weather_art.h"
 #include "nd_indicator.h"
 
 /* Defined below, private to this file. */
@@ -36,6 +38,8 @@ static void music_button_box(struct NDDock *dock,int x,int y,int w,int h, int en
 static void music_transport_icon(struct NDDock *dock,int kind, int x,int y,int w,int h,int enabled,int playing);
 static void draw_music_tile(struct NDDock *dock,const struct NDItem *item, int x,int y,int tw,int th);
 static unsigned int music_control_hit(struct NDDock *dock,int index, int mx,int my,unsigned int *volume);
+static int draw_plugin_badge(struct NDDock *dock,const struct NDItem *item,
+                             int x,int y,int tw);
 static void draw_tiny_plugin(struct NDDock *dock,const struct NDItem *item, int x,int y,int tw,int th);
 static int dopus_application_running(const struct NDItem *item);
 static void draw_plugin_launcher_artwork(struct NDDock *dock,int index, const char *label, int x,int y,int tw,int th);
@@ -325,7 +329,7 @@ static struct Task *find_cli_command(const char *wanted)
 /* CLI command names of all running processes, taken in one pass with
  * interrupts off, so that checking many launchers does not walk the task
  * lists (and disable interrupts) once per launcher. */
-#define ND_CLI_SNAPSHOT 24
+#define ND_CLI_SNAPSHOT 64
 struct NDCliSnapshot {
     int count;
     int complete;              /* 0: more processes than slots */
@@ -454,6 +458,7 @@ static int launcher_running_using(struct NDDock *dock,const struct NDItem *item,
     struct Task *task=launcher_task_using(item,snap);
     struct Task *port_task;
     int port_present=0;
+    if (task) return 1;
     port_task=launcher_port_task(item,&port_present);
     return task!=NULL || port_present ||
            launcher_window(dock,item,task,port_task)!=NULL;
@@ -470,10 +475,20 @@ static void draw_running_indicator(struct NDDock *dock,int index,
         dock->running_items[index])
         fill(dock,ND_ACCENT2,x+w-9,y+5,4,4);
 }
+/* Only reuse identities within this refresh. A Task pointer must never be
+ * cached across ticks because the process may exit between observations. */
+static int same_running_identity(const struct NDItem *a,const struct NDItem *b)
+{
+    return a->kind==b->kind && a->launch_mode==b->launch_mode &&
+           !strcmp(a->command,b->command) &&
+           !strcmp(ITEM_TEXT(a,ND_TEXT_MATCH_TASK),ITEM_TEXT(b,ND_TEXT_MATCH_TASK)) &&
+           !strcmp(ITEM_TEXT(a,ND_TEXT_MATCH_PORT),ITEM_TEXT(b,ND_TEXT_MATCH_PORT)) &&
+           !strcmp(ITEM_TEXT(a,ND_TEXT_MATCH_WINDOW),ITEM_TEXT(b,ND_TEXT_MATCH_WINDOW));
+}
 void refresh_running_items(struct NDDock *dock)
 {
     struct NDCliSnapshot snap;
-    int i,running,taken=0;
+    int i,j,running,taken=0;
     if (!dock || dock->hidden || dock->covered) return;
     for (i=0;i<dock->conf.count && i<ND_MAX_ITEMS;++i) {
         const struct NDItem *item=&dock->conf.items[i];
@@ -481,11 +496,20 @@ void refresh_running_items(struct NDDock *dock)
         /* Tiles on another page are refreshed when they come into view. */
         if (check && dock->window && !item_visible(dock,i)) continue;
         if (check && !taken) {snapshot_cli_commands(&snap);taken=1;}
-        running=item->transient==ND_TRANSIENT_TASK ||
-                (check && launcher_running_using(dock,item,&snap));
+        running=item->transient==ND_TRANSIENT_TASK;
+        if (check && !running) {
+            for (j=0;j<i;++j) {
+                const struct NDItem *previous=&dock->conf.items[j];
+                if (previous->transient==ND_TRANSIENT_TASK ||
+                    (dock->window && !item_visible(dock,j))) continue;
+                if (same_running_identity(previous,item)) break;
+            }
+            running=j<i ? dock->running_items[j] :
+                          launcher_running_using(dock,item,&snap);
+        }
         if (dock->running_items[i]!=(unsigned char)running) {
             dock->running_items[i]=(unsigned char)running;
-            if (dock->window && item_visible(dock,i)) draw_tile(dock,i);
+            if (dock->window && item_visible(dock,i)) mark_tile_dirty(dock,i);
         }
     }
     for (;i<ND_MAX_ITEMS;++i) dock->running_items[i]=0;
@@ -794,7 +818,7 @@ int eyes_index(const struct NDDock *dock)
     for (i=0;i<dock->conf.count;++i)
         if (dock->conf.items[i].kind==ND_ITEM_PLUGIN &&
             !strcmp(dock->conf.items[i].id,"EYES") &&
-            dock->conf.items[i].online) return i;
+            dock->conf.items[i].online && item_visible(dock,i)) return i;
     return -1;
 }
 int eyes_option_num(struct NDDock *dock,const char *key,int fallback)
@@ -1231,11 +1255,196 @@ static void draw_plugin_launcher_artwork(struct NDDock *dock,int index,
         centered_text_tight(dock,ND_TEXT,label,x,y+th-9,tw);
 }
 
+/* A small native drawing stays sharp on planar screens and follows the
+ * selected theme without loading or remapping another bitmap. */
+static void trash_rect(struct NDDock *dock,int x,int y,int size,int color,
+                       int left,int top,int width,int height)
+{
+    int x1=left*size/32,y1=top*size/32;
+    int x2=(left+width)*size/32,y2=(top+height)*size/32;
+    if (x2>x1 && y2>y1) fill(dock,color,x+x1,y+y1,x2-x1,y2-y1);
+}
+struct ScreenArtContext {struct NDDock *dock;int x,y,size,online;};
+static void screen_art_box(void *data,int role,int left,int top,int width,int height)
+{
+    static const int colors[]={ND_BG,ND_SUBTLE,ND_TEXT,ND_ACCENT,ND_ACCENT2};
+    struct ScreenArtContext *ctx=data;
+    int color=role==2 && !ctx->online ? ND_SUBTLE:colors[role];
+    trash_rect(ctx->dock,ctx->x,ctx->y,ctx->size,color,left,top,width,height);
+}
+static void draw_screen_plugin_tile(struct NDDock *dock,const struct NDItem *item,
+                                    int x,int y,int tw,int th,int screenshot)
+{
+    struct ScreenArtContext ctx;int tiny=dock->conf.item_size==ND_ITEM_SIZE_TINY;
+    ctx.size=tw-(tiny ? 4:16);if(ctx.size>th-(tiny ? 4:24))ctx.size=th-(tiny ? 4:24);
+    if(ctx.size>48)ctx.size=48;if(ctx.size<8)return;
+    ctx.dock=dock;ctx.online=item->online;ctx.x=x+(tw-ctx.size)/2;
+    ctx.y=nd_icon_art_top(y,th,ctx.size,tiny);
+    if(screenshot)nd_camera_art(&ctx,screen_art_box,nd_shot_art_state(item->value,item->online));
+    else nd_modes_art(&ctx,screen_art_box);
+    if(!tiny)centered_text_tight(dock,ND_TEXT,screenshot ? "SHOT":"SMODE",x,y+th-9,tw);
+    if(screenshot)(void)draw_plugin_badge(dock,item,x,y,tw);
+}
+static void draw_archiver_tile(struct NDDock *dock,const struct NDItem *item,
+                               int x,int y,int tw,int th)
+{
+    int tiny=dock->conf.item_size==ND_ITEM_SIZE_TINY;
+    int packing=!strncmp(item->value,"COMPRESSING",11);
+    int unpacking=!strncmp(item->value,"EXTRACTING",10);
+    int both=!strncmp(item->value,"WORKING",7);
+    int size=tw-(tiny ? 4:16),ix,iy,i;
+    int metal=item->online ? ND_TEXT:ND_SUBTLE;
+    if(size>th-(tiny ? 4:24))size=th-(tiny ? 4:24);
+    if(size>48)size=48;if(size<8)return;
+    ix=x+(tw-size)/2;iy=nd_icon_art_top(y,th,size,tiny);
+    /* An archive box with a zipper. Direction arrows replace the zipper
+     * while a job runs, without adding animation or timer work. */
+    trash_rect(dock,ix,iy,size,ND_BG,3,7,26,24);
+    trash_rect(dock,ix,iy,size,ND_SUBTLE,5,9,22,20);
+    trash_rect(dock,ix,iy,size,ND_ACCENT,5,9,2,18);
+    trash_rect(dock,ix,iy,size,metal,4,4,24,6);
+    trash_rect(dock,ix,iy,size,ND_SUBTLE,5,5,22,3);
+    if(packing || unpacking || both){
+        int up=packing || both;
+        trash_rect(dock,ix,iy,size,ND_BG,10,10,13,17);
+        trash_rect(dock,ix,iy,size,ND_ACCENT2,15,12,3,13);
+        for(i=0;i<5;++i)
+            trash_rect(dock,ix,iy,size,ND_ACCENT2,11+i,up ? 15-i:20+i,11-2*i,1);
+        if(both)for(i=0;i<4;++i)
+            trash_rect(dock,ix,iy,size,ND_ACCENT,12+i,21+i,9-2*i,1);
+    } else {
+        trash_rect(dock,ix,iy,size,ND_BG,14,4,5,24);
+        for(i=5;i<26;i+=4){
+            trash_rect(dock,ix,iy,size,metal,14,i,3,2);
+            trash_rect(dock,ix,iy,size,ND_ACCENT,16,i+2,3,2);
+        }
+        trash_rect(dock,ix,iy,size,metal,13,17,7,5);
+        trash_rect(dock,ix,iy,size,ND_BG,15,18,3,2);
+    }
+    if(!tiny)centered_text_tight(dock,ND_TEXT,"ARCHIVE",x,y+th-9,tw);
+    (void)draw_plugin_badge(dock,item,x,y,tw);
+}
+static void draw_weather_tile(struct NDDock *dock,const struct NDItem *item,int x,int y,int tw,int th)
+{
+    int tiny=dock->conf.item_size==ND_ITEM_SIZE_TINY,size=tw-(tiny ? 4:16),ix,iy,code=-1;
+    if(size>th-(tiny ? 15:35))size=th-(tiny ? 15:35);if(size>38)size=38;if(size<8)return;
+    ix=x+(tw-size)/2;iy=y+3;if(!strncmp(item->caption,"WX:",3))code=atoi(item->caption+3);
+    {struct ScreenArtContext ctx;
+     ctx.dock=dock;ctx.x=ix;ctx.y=iy;ctx.size=size;ctx.online=item->online;
+     nd_weather_art(&ctx,screen_art_box,nd_weather_art_state(item->online ? code:-1));}
+    centered_text_tight(dock,ND_TEXT,item->value,x,y+th-(tiny ? 2:22),tw);
+    if(!tiny)centered_text_tight(dock,ND_TEXT,"WEATHER",x,y+th-9,tw);
+    (void)draw_plugin_badge(dock,item,x,y,tw);
+}
+static void draw_notes_tile(struct NDDock *dock,const struct NDItem *item,
+                            int x,int y,int tw,int th)
+{
+    int tiny=dock->conf.item_size==ND_ITEM_SIZE_TINY;
+    int size=tw-(tiny ? 4:16),ix,iy,i;
+    int paper=item->online ? ND_TEXT:ND_SUBTLE;
+    if(size>th-(tiny ? 4:24))size=th-(tiny ? 4:24);
+    if(size>48)size=48;if(size<8)return;
+    ix=x+(tw-size)/2;iy=nd_icon_art_top(y,th,size,tiny);
+    trash_rect(dock,ix,iy,size,ND_BG,7,4,22,27);
+    trash_rect(dock,ix,iy,size,ND_SUBTLE,4,2,23,27);
+    trash_rect(dock,ix,iy,size,paper,6,4,19,23);
+    trash_rect(dock,ix,iy,size,ND_ACCENT,6,4,3,23);
+    for(i=10;i<24;i+=4)trash_rect(dock,ix,iy,size,ND_SUBTLE,11,i,11,1);
+    for(i=9;i<25;i+=5){
+        trash_rect(dock,ix,iy,size,ND_BG,i,1,2,5);
+        trash_rect(dock,ix,iy,size,ND_ACCENT,i,1,1,4);
+    }
+    if(!tiny)centered_text_tight(dock,ND_TEXT,"NOTES",x,y+th-9,tw);
+    (void)draw_plugin_badge(dock,item,x,y,tw);
+}
+static void draw_timer_tile(struct NDDock *dock,const struct NDItem *item,
+                            int x,int y,int tw,int th)
+{
+    static const unsigned char widths[24]={10,16,18,20,22,22,24,24,24,24,24,24,
+        24,24,24,24,24,24,22,22,20,18,16,10};
+    int tiny=dock->conf.item_size==ND_ITEM_SIZE_TINY;
+    int size=tw-(tiny ? 4:16),ix,iy,i,light=item->online ? ND_TEXT:ND_SUBTLE;
+    unsigned long hours=0,minutes=0,seconds=0;
+    char time[20];
+    if(size>th-(tiny ? 14:35))size=th-(tiny ? 14:35);
+    if(size>38)size=38;if(size<8)return;
+    ix=x+(tw-size)/2;iy=y+3;
+    trash_rect(dock,ix,iy,size,ND_BG,12,0,10,5);
+    trash_rect(dock,ix,iy,size,light,13,0,8,2);
+    trash_rect(dock,ix,iy,size,ND_ACCENT,23,4,5,4);
+    for(i=0;i<24;++i){
+        trash_rect(dock,ix,iy,size,ND_BG,(32-widths[i])/2+1,i+7,widths[i],1);
+        trash_rect(dock,ix,iy,size,ND_SUBTLE,(32-widths[i])/2,i+6,widths[i],1);
+        if(i>2 && i<21)trash_rect(dock,ix,iy,size,light,8,i+6,16,1);
+    }
+    if(!strcmp(item->caption,"PAUSED")){
+        trash_rect(dock,ix,iy,size,ND_ACCENT,12,13,3,10);
+        trash_rect(dock,ix,iy,size,ND_ACCENT,18,13,3,10);
+    }else if(!strcmp(item->caption,"ALARM")){
+        trash_rect(dock,ix,iy,size,ND_ACCENT2,15,11,3,10);
+        trash_rect(dock,ix,iy,size,ND_ACCENT2,15,24,3,2);
+    }else{
+        trash_rect(dock,ix,iy,size,ND_BG,15,10,2,9);
+        trash_rect(dock,ix,iy,size,ND_ACCENT,15,17,7,2);
+        trash_rect(dock,ix,iy,size,ND_ACCENT2,14,16,4,4);
+    }
+    if(!strcmp(item->caption,"ALARM"))strcpy(time,"DONE");
+    else if(sscanf(item->value,"%lu:%lu:%lu",&hours,&minutes,&seconds)==3){
+        if(hours)sprintf(time,"%luh%02lum",hours,minutes);
+        else sprintf(time,"%lu:%02lu",minutes,seconds);
+    }else strcpy(time,"--:--");
+    centered_text_tight(dock,light,time,x,y+th-(tiny ? 2:22),tw);
+    if(!tiny)centered_text_tight(dock,ND_TEXT,"TIMER",x,y+th-9,tw);
+}
+static void draw_trash_tile(struct NDDock *dock,const struct NDItem *item,
+                            int x,int y,int tw,int th)
+{
+    int tiny=dock->conf.item_size==ND_ITEM_SIZE_TINY;
+    int full=item->online && atol(item->value)>0;
+    int size=tw-(tiny ? 4 : 16),ix,iy,rib;
+    int light=item->online ? ND_TEXT : ND_SUBTLE;
+    if (size>th-(tiny ? 4 : 24)) size=th-(tiny ? 4 : 24);
+    if (size>48) size=48;
+    if (size<8) return;
+    ix=x+(tw-size)/2;iy=nd_icon_art_top(y,th,size,tiny);
+    /* Shadow, tapered metal body and its three pressed ribs. */
+    trash_rect(dock,ix,iy,size,ND_BG,8,12,19,19);
+    trash_rect(dock,ix,iy,size,ND_BG,6,10,21,17);
+    trash_rect(dock,ix,iy,size,ND_SUBTLE,8,12,17,16);
+    trash_rect(dock,ix,iy,size,light,8,12,2,14);
+    trash_rect(dock,ix,iy,size,ND_SUBTLE,10,27,13,2);
+    for (rib=12;rib<=20;rib+=4) {
+        trash_rect(dock,ix,iy,size,ND_BG,rib,15,2,10);
+        trash_rect(dock,ix,iy,size,light,rib,15,1,9);
+    }
+    if (full) {
+        /* Two sheets rising above the rim make the full state distinct
+         * even on a two-colour screen, independently of the count badge. */
+        trash_rect(dock,ix,iy,size,ND_BG,7,2,10,11);
+        trash_rect(dock,ix,iy,size,light,8,3,8,9);
+        trash_rect(dock,ix,iy,size,ND_ACCENT,10,5,4,1);
+        trash_rect(dock,ix,iy,size,ND_BG,16,5,9,8);
+        trash_rect(dock,ix,iy,size,light,17,6,7,6);
+        trash_rect(dock,ix,iy,size,ND_ACCENT,18,8,4,1);
+        trash_rect(dock,ix,iy,size,ND_BG,5,11,23,3);
+        trash_rect(dock,ix,iy,size,light,6,11,21,1);
+    } else {
+        /* A fitted lid and handle indicate the empty state. */
+        trash_rect(dock,ix,iy,size,ND_BG,12,4,9,5);
+        trash_rect(dock,ix,iy,size,light,13,5,7,2);
+        trash_rect(dock,ix,iy,size,ND_BG,4,8,25,5);
+        trash_rect(dock,ix,iy,size,light,5,9,23,2);
+        trash_rect(dock,ix,iy,size,ND_SUBTLE,6,11,21,1);
+    }
+    if (!tiny) centered_text_tight(dock,ND_TEXT,"TRASH",x,y+th-9,tw);
+    if (full) (void)draw_plugin_badge(dock,item,x,y,tw);
+}
+
 static void draw_dopus_tile(struct NDDock *dock,int index,
                             const struct NDItem *item,
                             int x,int y,int tw,int th)
 {
-    draw_plugin_launcher_artwork(dock,index,"DOPUS",x,y,tw,th);
+    draw_plugin_launcher_artwork(dock,index,"DOpus4",x,y,tw,th);
     if (dopus_application_running(item))
         fill(dock,ND_ACCENT2,x+tw-9,y+5,4,4);
 }
@@ -1361,6 +1570,9 @@ void draw_tile(struct NDDock *dock, int index)
     const char *tile_value=item->value;
     dock->graph_view[index].valid=0;   /* set again by the plain graph layout */
     if (!dock->window || !item_visible(dock,index)) return;
+    /* A direct hover/full paint also consumes any queued content update. */
+    dock->dirty_tiles[index]=0;
+    dock->graph_step[index]=0;
     ++dock->diagnostic_tile_paints;
     tile_coords(dock, index, &x, &y);
     tile_dimensions(dock,index,&tw,&th);
@@ -1456,6 +1668,29 @@ void draw_tile(struct NDDock *dock, int index)
             draw_running_indicator(dock,index,x,y,tw);
             return;
         }
+    }
+    if (item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"ARCHIVE")) {
+        draw_archiver_tile(dock,item,x,y,tw,th);
+        return;
+    }
+    if(item->kind==ND_ITEM_PLUGIN && (!strcmp(item->id,"SCREENSHOT") || !strcmp(item->id,"SCREENMODE"))){
+        draw_screen_plugin_tile(dock,item,x,y,tw,th,!strcmp(item->id,"SCREENSHOT"));return;
+    }
+    if(item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"SCREENSWITCHER")){
+        draw_plugin_launcher_artwork(dock,index,"SCREENS",x,y,tw,th);return;
+    }
+    if(item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"WEATHER")){
+        draw_weather_tile(dock,item,x,y,tw,th);return;
+    }
+    if(item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"NOTES")){
+        draw_notes_tile(dock,item,x,y,tw,th);return;
+    }
+    if(item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"TIMER")){
+        draw_timer_tile(dock,item,x,y,tw,th);return;
+    }
+    if (item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"TRASH")) {
+        draw_trash_tile(dock,item,x,y,tw,th);
+        return;
     }
     if (item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"DOPUS4")) {
         draw_dopus_tile(dock,index,item,x,y,tw,th);
@@ -1601,16 +1836,21 @@ static void draw_scroll_control(struct NDDock *dock, int direction)
 }
 static void draw_insertion_marker(struct NDDock *dock)
 {
-    int x,y,w,h;
-    if (!dock->edit_mode || !dock->is_drag ||
-        !item_visible(dock,dock->drag_to)) return;
-    tile_coords(dock,dock->drag_to,&x,&y);
-    tile_dimensions(dock,dock->drag_to,&w,&h);
+    int x,y,w,h,index,after;
+    if (!dock->edit_mode) return;
+    if (dock->is_drag) { index=dock->drag_to;after=dock->drag_after; }
+    else if (dock->drop_preview) {
+        index=dock->drop_preview_item;after=dock->drop_preview_after;
+    } else return;
+    if (!item_visible(dock,index)) return;
+    tile_coords(dock,index,&x,&y);
+    tile_dimensions(dock,index,&w,&h);
     if (vertical(dock))
-        fill(dock,ND_ACCENT,x+8,dock->drag_after ? y+h : y-3,w-16,3);
+        fill(dock,ND_ACCENT,x+8,after ? y+h : y-3,w-16,3);
     else
-        fill(dock,ND_ACCENT,dock->drag_after ? x+w : x-3,y+8,3,h-16);
+        fill(dock,ND_ACCENT,after ? x+w : x-3,y+8,3,h-16);
 }
+
 static void draw_tab(struct NDDock *dock)
 {
     struct RastPort *rp = dock->window->RPort;
@@ -1684,13 +1924,18 @@ void mark_tile_dirty(struct NDDock *dock, int index)
 void refresh_volume_meters(struct NDDock *dock)
 {
     int i;
-    APTR requesters=quiet_requesters();
+    APTR requesters;
+    /* Do not send filesystem requests for meters the user cannot see. Before
+     * the first window opens all meters are initialised as before. */
+    if (dock->hidden || dock->covered || dock->box_pending) return;
+    requesters=quiet_requesters();
     for (i = 0; i < dock->conf.count; ++i) {
         struct NDItem *item = &dock->conf.items[i];
         UWORD next = ND_NO_METER;
         BPTR lock;
         struct InfoData info;
         if (!nd_item_supports_space_meter(item)) continue;
+        if (dock->window && !item_visible(dock,i)) continue;
         if (!item->show_volume_meter) {
             if (item->meter != ND_NO_METER) {
                 item->meter = ND_NO_METER;

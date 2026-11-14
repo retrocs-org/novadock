@@ -1,8 +1,8 @@
 NOVADOCK_ID=SCREENMODE
-NOVADOCK_NAME=Screen Mode
-NOVADOCK_VERSION=0.1
+NOVADOCK_NAME=SMODE
+NOVADOCK_VERSION=0.2
 NOVADOCK_AUTHOR=NovaDock
-NOVADOCK_DESCRIPTION=Shows the Workbench resolution; click to switch between saved ScreenMode presets.
+NOVADOCK_DESCRIPTION=Shows the Workbench resolution; click for available display modes or saved presets.
 NOVADOCK_LICENSE=MIT
 NOVADOCK_FEATURES=click,popup
 NOVADOCK_PROGRAM=ScreenMode
@@ -10,3 +10,4 @@ NOVADOCK_VIEW=METER
 NOVADOCK_ABI=1
 NOVADOCK_OPTION=PRESETS|Presets drawer|FILE||SYS:Prefs/Presets
 NOVADOCK_OPTION=PROGRAM|ScreenMode program|FILE||SYS:Prefs/ScreenMode
+NOVADOCK_OPTION=CHOOSER|Click opens|CHOICE|MODES,PRESETS|MODES

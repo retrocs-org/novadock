@@ -10,7 +10,7 @@ vc -O -Iinclude -Iplugin_src/common -o Plugins/Memory plugin_src/memory/memory.c
 vc -O -Iinclude -Iplugin_src/common -Iplugin_src/network -o Plugins/Network plugin_src/network/network.c plugin_src/network/nd_network.c plugin_src/network/nd_netcontrol.c plugin_src/network/nd_roadshow.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 vc -O -Iinclude -Iplugin_src/common -o Plugins/MusicPlayer plugin_src/musicplayer/musicplayer.c plugin_src/musicplayer/nd_musicplayer.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 vc -O -Iinclude -Iplugin_src/common -o Plugins/DOpus4 plugin_src/dopus4/dopus4.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/ArchiveExtractor plugin_src/archive/archive.c plugin_src/archive/nd_archive.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/ArchiveExtractor plugin_src/archive/nd_archive_dialog.c plugin_src/archive/archive.c plugin_src/archive/nd_archive.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 vc -O -Iinclude -Iplugin_src/common -Iplugin_src/command -o Plugins/Command plugin_src/command/command.c plugin_src/command/nd_command.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 vc -O -Iinclude -Iplugin_src/common -o Plugins/RunningApps plugin_src/runningapps/runningapps.c plugin_src/common/nd_client.c
 vc -O -Iinclude -Iplugin_src/common -o Plugins/Trash plugin_src/trash/trash.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
@@ -25,8 +25,13 @@ vc -O -Iinclude -Iplugin_src/common -Iplugin_src/mixer -o Plugins/Mixer plugin_s
 vc -O -Iinclude -Iplugin_src/common -Iplugin_src/screenshot -o Plugins/Screenshot plugin_src/screenshot/screenshot.c plugin_src/screenshot/nd_shotfile.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 vc -O -Iinclude -Iplugin_src/common -Iplugin_src/screenmode -o Plugins/ScreenMode plugin_src/screenmode/screenmode.c plugin_src/screenmode/nd_scrmode.c src/interaction.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 vc -O -Iinclude -Iplugin_src/common -Iplugin_src/script -o Plugins/Script plugin_src/script/script.c plugin_src/script/nd_script.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/bitskim -o Plugins/BitSkim plugin_src/bitskim/bitskim.c plugin_src/bitskim/nd_bitskim.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -o Plugins/Timer plugin_src/timer/timer.c plugin_src/timer/nd_timer.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -o Plugins/Notes plugin_src/notes/notes.c plugin_src/notes/nd_notes.c plugin_src/notes/nd_markdown.c plugin_src/notes/nd_note_editor.c plugin_src/clipboard/nd_clipboard_popup.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+
+vc -O -Iinclude -Iplugin_src/common -o Plugins/ScreenSwitcher plugin_src/screenswitcher/screenswitcher.c plugin_src/clipboard/nd_clipboard_popup.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -o Plugins/Weather plugin_src/weather/weather.c plugin_src/weather/nd_weather.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/interaction.c
 MakeIcon
 Echo "Built NovaDock, unified preferences, the plugins, utilities, and Workbench icons."
 Echo "Optional installation: Execute install.amiga"
-
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/bitskim -o Plugins/BitSkim plugin_src/bitskim/bitskim.c plugin_src/bitskim/nd_bitskim.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c

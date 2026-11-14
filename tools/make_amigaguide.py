@@ -19,10 +19,11 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'NovaDock.guide'
 WIDTH = 76
-# Contents page: every Markdown document, with the title the manual uses.
+# Curated user and SDK topics. Repository/operator documents stay source-only.
+SOURCE_ONLY_DOCS = {"README.md", "docs/RELEASING.md", "docs/RELEASE_CHECKLIST.md"}
 GROUPS = (
     ('Using NovaDock', (
-        ('README.md', 'About NovaDock and installation'),
+        ('docs/USING_NOVADOCK.md', 'Getting started and installation'),
         ('docs/LAUNCHERS_AND_ICONS.md', 'Launchers and icons'),
         ('docs/RESPONSIVE_SETTINGS.md', 'Responsive settings and diagnostics'),
         ('docs/AUTOHIDE_AND_DOCK_MENU.md', 'Auto-hide and the dock menu'),
@@ -33,11 +34,13 @@ GROUPS = (
         ('docs/ARexx_AND_DROPS.md', 'ARexx, tooltips and drops'),
         ('docs/EVENT_HOOKS.md', 'Event hooks'))),
     ('Bundled plugins', (
+        ('docs/WEATHER_PLUGIN.md', 'Weather'),
         ('docs/AMIRC_PLUGIN.md', 'AmIRC'),
         ('docs/BITSKIM_PLUGIN.md', 'BitSkim'),
         ('docs/NETWORK_PLUGIN.md', 'Network'),
         ('docs/CLIPBOARD_PLUGIN.md', 'Clipboard History'),
-        ('docs/ARCHIVE_PLUGIN.md', 'Archive Extractor'),
+        ('docs/ARCHIVE_PLUGIN.md', 'Archiver'),
+        ('docs/TIMER_AND_NOTES.md', 'Timer and Notes'),
         ('docs/COMMAND_TILE.md', 'Command tiles'),
         ('docs/SCRIPT_TILE.md', 'Script tiles'),
         ('docs/DOPUS4_PLUGIN.md', 'Directory Opus 4'),
@@ -46,6 +49,7 @@ GROUPS = (
         ('docs/MIXER_PLUGIN.md', 'Mixer'),
         ('docs/SCREENSHOT_PLUGIN.md', 'Screenshot'),
         ('docs/SCREENMODE_PLUGIN.md', 'Screen Mode'),
+        ('docs/SCREEN_SWITCHER_PLUGIN.md', 'Screen Switcher'),
         ('docs/TRASH_PLUGIN.md', 'Trash'),
         ('docs/GAMES_PLUGIN.md', 'WHDLoad games'))),
     ('Writing plugins', (
@@ -54,9 +58,7 @@ GROUPS = (
         ('docs/PLUGIN_API.md', 'Plugin protocol'),
         ('docs/PLUGIN_MANIFEST.md', 'Plugin manifests'),
         ('docs/PLUGIN_SETTINGS.md', 'Plugin settings'))),
-    ('Maintaining NovaDock', (
-        ('docs/RELEASING.md', 'Building and publishing releases'),
-        ('docs/RELEASE_CHECKLIST.md', 'Release checklist'),
+    ('Upgrading settings', (
         ('docs/NETWORK_MIGRATION.md', 'Upgrading Network settings'),)),
 )
 # Typography the Amiga's Latin-1 fonts do not have.
@@ -302,7 +304,7 @@ def build():
     titles = {p: t for _, entries in GROUPS for p, t in entries}
     listed = [p for _, entries in GROUPS for p, _ in entries]
     missing = sorted(set(['README.md'] + [str(p.relative_to(ROOT)) for p in
-                     (ROOT / 'docs').glob('*.md')]) - set(listed))
+                     (ROOT / 'docs').glob('*.md')]) - set(listed) - SOURCE_ONLY_DOCS)
     if missing:
         raise SystemExit('NovaDock.guide: add to GROUPS in '
                          'tools/make_amigaguide.py: ' + ', '.join(missing))
@@ -328,7 +330,7 @@ def build():
         _, body, sections = docs[p]
         title = titles[p]
         out += ['', f'@node {node_name(p)} "{title}"', '@toc Main',
-                f'@{{b}}{escape(title)}@{{ub}}', '=' * len(title), '']
+                f'@{{b}}{escape(title)}@{{ub}}', '=' * max(8, len(title)), '']
         index = []
         if len(sections) >= 4:
             # Link lines count the node's displayed text: the three-line

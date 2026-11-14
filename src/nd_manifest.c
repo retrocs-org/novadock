@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "nd_manifest.h"
-#include "nd_version.h"
+#include "nd_plugin_labels.h"
+#include "nd_plugin_versions.h"
 #include "nd_options.h"
 
 static void copy_text(char *dest,const char *src,size_t size)
@@ -137,7 +138,9 @@ int nd_manifest_line(struct NDManifest *m,const char *line)
         copy_text(def->default_value,parts[4],sizeof(def->default_value));
         if (!nd_option_validate(def,def->default_value))
             return fail(m,"option default does not match its type");
-        for (i=0;i<m->option_count;++i)
+        {const char *name=nd_plugin_label_upgrade(m->id,m->name);
+     if(name)copy_text(m->name,name,sizeof(m->name));}
+    for (i=0;i<m->option_count;++i)
             if (!strcmp(m->options[i].key,def->key))
                 return fail(m,"duplicate option key");
         ++m->option_count;
@@ -173,7 +176,7 @@ int nd_manifest_bundled_id(const char *id)
     static const char *bundled[]={"CLOCK","CPU","RAM","CHIPRAM","FASTRAM",
         "NET","ROADSHOW","MUSIC","EYES","DOPUS4","ARCHIVE","RUNNINGAPPS",
         "COMMAND","TRASH","WHDLOAD","AMIRC","CLIPBOARD","BITSKIM",
-        "MIXER","SCREENSHOT","SCREENMODE",
+        "MIXER","SCREENSHOT","SCREENMODE","TIMER","NOTES","SCREENSWITCHER","WEATHER",
         NULL};
     int i;
     if (!id) return 0;
@@ -269,47 +272,55 @@ int nd_manifest_merge(struct NDConfig *cfg,const struct NDManifest *m,
 /* Public metadata for the bundled plugins (descriptions follow the
  * project website's plugin list). */
 struct BuiltinPlugin {
-    const char *id,*name,*features,*description;
+    const char *id,*name,*features,*description,*version;
     int multiple;
 };
 static const struct BuiltinPlugin builtin_plugins[]={
     {"BITSKIM","BitSkim","meter,click,drop,badge",
-     "Transfer speed/results and stable-ID file sending; starts or restores BitSkim.",0},
+     "Transfer speed/results and stable-ID file sending; starts or restores BitSkim.",ND_PLUGIN_VERSION_BITSKIM,0},
     {"AMIRC","AmIRC","meter,click,badge",
-     "AmIRC status and unread event badges; click to start or restore it.",0},
+     "AmIRC status and unread event badges; click to start or restore it.",ND_PLUGIN_VERSION_AMIRC,0},
     {"CLIPBOARD","Clippy","meter,click,popup,badge",
-     "Session text history; click to copy, delete, clear or pause capture.",0},
+     "Session text history; click to copy, delete, clear or pause capture.",ND_PLUGIN_VERSION_CLIPBOARD,0},
     {"CLOCK","Clock","meter,click,popup",
-     "Digital or analogue clock; click opens a calendar.",0},
+     "Digital or analogue clock; click opens a calendar.",ND_PLUGIN_VERSION_CLOCK,0},
     {"CPU","CPU Activity","meter,graph",
-     "Activity graph or meter from scheduler activity (not an exact CPU percentage).",0},
+     "Activity graph or meter from scheduler activity (not an exact CPU percentage).",ND_PLUGIN_VERSION_CPU,0},
     {"RAM","RAM","meter,graph",
-     "Chip and Fast memory readings or bars, or a two-line history graph.",0},
-    {"CHIPRAM","Chip RAM","meter,graph","Free Chip memory.",0},
-    {"FASTRAM","Fast RAM","meter,graph","Free Fast memory.",0},
+     "Chip and Fast memory readings or bars, or a two-line history graph.",ND_PLUGIN_VERSION_RAM,0},
+    {"CHIPRAM","Chip RAM","meter,graph","Free Chip memory.",ND_PLUGIN_VERSION_RAM,0},
+    {"FASTRAM","Fast RAM","meter,graph","Free Fast memory.",ND_PLUGIN_VERSION_RAM,0},
     {"NET","Network","meter,graph,click,badge",
-     "Roadshow Online/Offline controls and live packet meters or graphs.",0},
+     "Roadshow Online/Offline controls and live packet meters or graphs.",ND_PLUGIN_VERSION_NET,0},
     {"MUSIC","MusicPlayer","meter,click,media",
-     "EaglePlayer, AmigaAMP and HippoPlayer playback controls via ARexx.",0},
+     "EaglePlayer, AmigaAMP, HippoPlayer and LumiAMP playback controls via ARexx.",ND_PLUGIN_VERSION_MUSIC,0},
     {"EYES","Eyes","",
-     "Two eyes follow the Workbench mouse pointer; optional blinking.",1},
-    {"DOPUS4","DOpus 4","meter,click,badge",
-     "Starts Directory Opus 4, restores its iconified screen or brings it forward.",0},
-    {"ARCHIVE","Archive Extractor","meter,drop,badge",
-     "Drop ZIP, LHA, RAR, ARJ, LZX, TAR or GZ archives to unpack them beside the archive.",0},
-    {"WHDLOAD","WHDLoad Games","meter,click,popup",
-     "Lists the WHDLoad games in a drawer and starts them as Workbench does.",0},
+     "Two eyes follow the Workbench mouse pointer; optional blinking.",ND_PLUGIN_VERSION_EYES,1},
+    {"DOPUS4","DOpus4","meter,click,badge",
+     "Starts Directory Opus 4, restores its iconified screen or brings it forward.",ND_PLUGIN_VERSION_DOPUS4,0},
+    {"ARCHIVE","ARCHIVE","meter,drop,badge",
+     "Drop archives to unpack them, or files and drawers to create ZIP or LHA archives.",ND_PLUGIN_VERSION_ARCHIVE,0},
+    {"WHDLOAD","WHDLoad","meter,click,popup",
+     "Lists the WHDLoad games in a drawer and starts them as Workbench does.",ND_PLUGIN_VERSION_WHDLOAD,0},
     {"TRASH","Trash","meter,click,drop,badge",
-     "Drop files and drawers to move them to the Trashcan; empty it from the tile's menu.",0},
-    {"RUNNINGAPPS","Running Apps","meter,click,popup,badge",
-     "On-demand browser for open applications; select one to bring it forward.",0},
+     "Drop files and drawers to move them to the Trashcan; empty it from the tile's menu.",ND_PLUGIN_VERSION_TRASH,0},
+    {"RUNNINGAPPS","APPS","meter,click,popup,badge",
+     "On-demand browser for open applications; select one to bring it forward.",ND_PLUGIN_VERSION_RUNNINGAPPS,0},
     {"MIXER","Mixer","meter,click,popup",
-     "AHI output volume: click for a slider and mute; remembered across restarts.",0},
-    {"SCREENSHOT","Screenshot","click,badge",
-     "Click to save the front screen or Workbench as an IFF picture after a countdown.",0},
-    {"SCREENMODE","Screen Mode","click,popup",
-     "Shows the Workbench resolution; click to switch between saved ScreenMode presets.",0},
-    {NULL,NULL,NULL,NULL,0}
+     "AHI output volume: click for a slider and mute; remembered across restarts.",ND_PLUGIN_VERSION_MIXER,0},
+    {"SCREENSHOT","SHOT","click,badge",
+     "Capture the front screen or Workbench as indexed or true-colour IFF, with a Workbench icon.",ND_PLUGIN_VERSION_SCREENSHOT,0},
+    {"SCREENMODE","SMODE","click,popup",
+     "Shows the Workbench resolution; click for available display modes or saved presets.",ND_PLUGIN_VERSION_SCREENMODE,0},
+    {"TIMER","Timer","meter,click,popup",
+     "Countdown with pause, reset and a non-modal reminder.",ND_PLUGIN_VERSION_TIMER,0},
+    {"NOTES","Notes","meter,click,popup,badge",
+     "Permanent titled notes with a picker and multiline editor.",ND_PLUGIN_VERSION_NOTES,0},
+    {"SCREENSWITCHER","SCREENS","click,popup",
+     "Pick an open public screen and bring it forward.",ND_PLUGIN_VERSION_SCREENSWITCHER,0},
+    {"WEATHER","Weather","click,popup,badge",
+     "Current conditions and a five-day forecast, with an offline cache.",ND_PLUGIN_VERSION_WEATHER,0},
+    {NULL,NULL,NULL,NULL,NULL,0}
 };
 int nd_manifest_builtin(const char *id,struct NDManifest *m)
 {
@@ -321,7 +332,7 @@ int nd_manifest_builtin(const char *id,struct NDManifest *m)
             nd_manifest_init(m,b->name);
             strncpy(m->id,b->id,sizeof(m->id)-1);
             strncpy(m->name,b->name,sizeof(m->name)-1);
-            strcpy(m->version,ND_VERSION);
+            strcpy(m->version,b->version);
             strcpy(m->author,"NovaDock");
             strncpy(m->description,b->description,sizeof(m->description)-1);
             strncpy(m->features,b->features,sizeof(m->features)-1);
@@ -402,7 +413,7 @@ int nd_package_check(struct NDManifest *m,const char *manifest_file,
         static const char *programs[]={"Clock","Eyes","Activity","Memory",
             "Network","Roadshow","MusicPlayer","DOpus4","ArchiveExtractor",
             "Command","RunningApps","Trash","Games","AmIRC","BitSkim",
-            "Clipboard","Mixer","Screenshot","ScreenMode","Script",NULL};
+            "Clipboard","Mixer","SHOT","ScreenMode","Script","Timer","Notes","ScreenSwitcher","Weather",NULL};
         const char *dot=strrchr(m->program,'.');
         int k;
         /* Also reserve icons/manifests and transaction suffixes. */

@@ -6,7 +6,7 @@
                                              its download archives)
     python3 tools/update_version.py --check  exit 1 if anything disagrees
 
-include/nd_version.h is generated (C programs build their $VER strings and
+include/nd_version.h is generated (dock programs build their $VER strings and
 version texts from it).  Shell scripts, the release tools, CI and the
 website chrome read VERSION themselves.  Release text that names the
 version in prose (website pages, README, installer) is checked here, and
@@ -18,9 +18,10 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 HEADER = ROOT / 'include' / 'nd_version.h'
-# Text that mentions the release as "NovaDock <version>" / "NovaDock-<version>".
-TEXT_FILES = ['README.md', 'Install-NovaDock'] + \
-    sorted(str(p.relative_to(ROOT)) for p in (ROOT / 'public-web').glob('*.php'))
+# Current build mentions. Screenshot captions retain the captured release version.
+TEXT_FILES = ['README.md', 'Install-NovaDock', 'novadock.cfg'] + \
+    sorted(str(p.relative_to(ROOT)) for p in (ROOT / 'public-web').glob('*.php')
+           if p.name != 'features.php')
 MENTION = re.compile(r'(NovaDock[ -])(\d+\.\d+(?:\.\d+)?)\b')
 
 
@@ -59,7 +60,8 @@ def previous_version():
 def main():
     check = '--check' in sys.argv[1:]
     version, date = read_version()
-    problems = []
+    from update_plugin_versions import sync as sync_plugins
+    problems = sync_plugins(check=check)
     header = header_text(version, date)
     old = previous_version()
     if not HEADER.exists() or HEADER.read_text('ascii') != header:

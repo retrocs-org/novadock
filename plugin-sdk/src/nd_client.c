@@ -451,14 +451,14 @@ static void close_wait_timer(struct NDClient *c)
     if (c->wait_request) {DeleteIORequest(c->wait_request);c->wait_request=NULL;}
     if (c->wait_port) {DeleteMsgPort(c->wait_port);c->wait_port=NULL;}
 }
-unsigned int nd_client_wait(struct NDClient *c,unsigned int ticks)
+unsigned int nd_client_wait_signals(struct NDClient *c,unsigned int ticks,unsigned long extra_signals)
 {
     struct timerequest *timer;
     struct DateStamp before,after;
     ULONG signals,timer_signal;
     LONG elapsed;
     if (!ticks) return 0;
-    if (!c || !open_wait_timer(c)) {Delay(ticks);return ticks;}
+    if (!c || !open_wait_timer(c)) {if(extra_signals && ticks>5U)ticks=5U;Delay(ticks);return ticks;}
     /* A wake can arrive between the preceding exchange and this wait. Keep
      * it as a forced-exchange marker instead of discarding it and delaying a
      * click/settings action until the next heartbeat. */
@@ -471,7 +471,7 @@ unsigned int nd_client_wait(struct NDClient *c,unsigned int ticks)
     timer->tr_time.tv_micro=(ticks%50U)*20000UL;
     SendIO(c->wait_request);
     timer_signal=1UL<<c->wait_port->mp_SigBit;
-    signals=Wait(timer_signal|ND_WAKE_SIGNAL);
+    signals=Wait(timer_signal|ND_WAKE_SIGNAL|extra_signals);
     if (signals&ND_WAKE_SIGNAL) c->wake_pending=1;
     if (!CheckIO(c->wait_request)) AbortIO(c->wait_request);
     WaitIO(c->wait_request);
@@ -484,6 +484,9 @@ unsigned int nd_client_wait(struct NDClient *c,unsigned int ticks)
     if (elapsed>(LONG)ticks) elapsed=(LONG)ticks;
     return (unsigned int)elapsed;
 }
+unsigned int nd_client_wait(struct NDClient *c,unsigned int ticks)
+{return nd_client_wait_signals(c,ticks,0);}
+
 void nd_client_close(struct NDClient *c)
 {
     close_wake_port(c);

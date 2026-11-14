@@ -6,6 +6,7 @@ static void populated_dock(struct NDConfig *cfg)
     int i;
     struct NDItem music;
     nd_default_config(cfg);
+    cfg->count=11; /* fixed paging fixture: omit newly bundled optional tools */
     /* A test-only extra meter keeps the paging fixture independent of the
      * number of retired or newly bundled optional plugins. */
     cfg->items[cfg->count]=cfg->items[3];

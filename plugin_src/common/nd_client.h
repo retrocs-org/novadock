@@ -112,6 +112,8 @@ unsigned int nd_client_delay_ticks(const struct NDClient *c,
  * is the value to pass as ELAPSED_TICKS to nd_client_update_quiet. Falls back
  * to Delay() if timer.device cannot be opened. */
 unsigned int nd_client_wait(struct NDClient *c,unsigned int ticks);
+/* Also wake for caller-owned UI ports. Never consumes their messages. */
+unsigned int nd_client_wait_signals(struct NDClient *c,unsigned int ticks,unsigned long extra_signals);
 /* ND_EVENT2_* bits received since the previous call (ABI 5 docks only;
  * always 0 with an older dock).  Reading clears them. */
 unsigned long nd_client_events2(struct NDClient *c);

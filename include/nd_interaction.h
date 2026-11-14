@@ -46,12 +46,14 @@ int nd_build_openwith(char *dest, size_t limit, const char *tool,
  * tool path and the safely quoted dropped object. */
 int nd_build_openwith_action(char *dest,size_t limit,const char *tool,
                              const char *arguments,const char *file);
-/* The middle three fifths of a tile are its action drop target.  The outer
- * fifths remain insertion zones while Edit mode is active. */
+/* The middle three fifths of a tile are its action drop target in locked mode. */
 int nd_drop_opens_item(int position,int extent);
 /* Return 1 when an insertion pointer is on the trailing half of a tile.
  * Horizontal docks pass X/width; vertical docks pass Y/height. */
 int nd_drop_after_item(int position,int extent);
+/* New objects insert at a tile edge, or append on background/transient media.
+ * Unlike reordering, no source item is removed from the list first. */
+int nd_drop_insert_position(int target,int after,int persistent_count);
 /* Convert a tile edge choice to the final list position expected by the
  * config mover. This also preserves row-boundary moves whose list order does
  * not change (for example, moving the last item of row 1 before row 2). */

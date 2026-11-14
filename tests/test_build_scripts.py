@@ -25,3 +25,24 @@ for program in programs:
     for source in wanted:
         assert (ROOT / source).exists(), f'{program}: {source} does not exist'
 print(f'build.amiga matches the Makefile for all {len(programs)} programs.')
+
+# Switching development versions must also remove old runnable downloads.
+import importlib.util
+import tempfile
+spec = importlib.util.spec_from_file_location('package_cleanup', ROOT/'tools/package_release.py')
+package_cleanup = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(package_cleanup)
+with tempfile.TemporaryDirectory() as temporary:
+    folder = Path(temporary)
+    obsolete = ['NovaDock-0.1-source.zip', 'NovaDock-0.1-plugin-sdk.zip',
+                'NovaDock-0.1.lha', 'NovaDock-0.1.lha.sha256', 'NovaDock-0.1.readme',
+                'NovaDock-0.1-plugin-sdk.zip.sha256',
+                'NovaDock-0.1-public-web-updated.zip',
+                'NovaDock-0.2-continued-source-and-site.zip']
+    retained = ['NovaDock-0.2-source.zip', 'NovaDock-0.2-plugin-sdk.zip',
+                'NovaDock-0.2.lha', 'NovaDock-0.2.readme', 'SHA256SUMS.txt', 'notes.txt']
+    for name in obsolete + retained:
+        (folder/name).write_text('fixture')
+    package_cleanup.prune_downloads(folder, '0.2')
+    assert sorted(p.name for p in folder.iterdir()) == sorted(retained)
+print('Version changes remove old generated downloads and retain unrelated files.')

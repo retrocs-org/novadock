@@ -106,6 +106,7 @@ struct NDMediaMessage {
 #define ND_HOST_ABI ND_EXT_ABI_VERSION
 #define ND_EXT_HAS_GRAPH 1U
 #define ND_EXT_HAS_MEDIA 2U
+#define ND_EVENT2_NOTE_NEW 2UL /* bundled Notes: open a new permanent note */
 #define ND_EVENT2_REFRESH 1UL  /* user asked for a fresh value now */
 struct NDExtMessage {
     struct NDMediaMessage media; /* v1 header followed by the media fields */

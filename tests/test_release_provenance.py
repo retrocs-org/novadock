@@ -164,6 +164,61 @@ class IntegrityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Publication inventory'):
             r.publication_assets(manifest)
 
+    def prepare_aminet_fixture(self):
+        readme = self.out/'NovaDock-0.1.readme'
+        readme.write_text("Short:        Extensible application dock\nAuthor:       Unit test\nUploader:     old@unit-test.invalid\nType:         util/wb\nVersion:      0.1\nArchitecture: m68k-amigaos >= 3.0.0\nDistribution: Aminet\n\nA local test submission.\n")
+        archive = self.out/'NovaDock-0.1.lha'
+        archive.with_suffix('.lha.sha256').write_text(r.digest(archive)+'  '+archive.name+'\n')
+        self.archive_sources()
+        self.state['assets'] = r.seal_assets(self.out)
+        r.write_json(self.out/'build-state.json', self.state)
+        r.prepare(self.args)
+        return r.bundle(self.out)
+
+    def test_aminet_uses_frozen_bundle_after_checkout_or_version_changes(self):
+        manifest = self.prepare_aminet_fixture()
+        (self.root/'docs/guide.md').write_text('Newer documentation on main')
+        (self.root/'VERSION').write_text('VERSION=0.2\n')
+        with patch.object(r, 'commit', side_effect=AssertionError('checkout guard called')), \
+             patch.object(r, 'check_build', side_effect=AssertionError('current source checked')):
+            self.assertEqual(r.bundle_for_aminet(self.out), manifest)
+        (self.out/'NovaDock-0.1.lha').write_bytes(b'changed')
+        with self.assertRaisesRegex(ValueError, 'modified release asset'):
+            r.bundle_for_aminet(self.out)
+
+    def test_aminet_contact_override_preserves_published_bytes(self):
+        import aminet_release as am
+        manifest = self.prepare_aminet_fixture()
+        before = {name:r.digest(self.out/name) for name in manifest['assets']}
+        frozen_manifest = r.digest(self.out/'manifest.json')
+        with patch.object(am, 'archive_crc'):
+            folder, submission, fields = r.aminet_preflight(self.out, manifest, 'lha', 'new@unit-test.invalid')
+            self.assertEqual(fields['Uploader'], 'new@unit-test.invalid')
+            self.assertNotEqual(folder, self.out/'aminet')
+            self.assertEqual(r.digest(folder/'novadock.lha'), r.digest(self.out/'NovaDock-0.1.lha'))
+            self.assertEqual(r.aminet_preflight(self.out, manifest, 'lha', 'new@unit-test.invalid')[0], folder)
+        self.assertEqual(before, {name:r.digest(self.out/name) for name in manifest['assets']})
+        self.assertEqual(frozen_manifest, r.digest(self.out/'manifest.json'))
+
+    def test_aminet_incomplete_upload_is_not_retried_after_contact_override(self):
+        import aminet_release as am
+        manifest = self.prepare_aminet_fixture()
+        cfg = r.load_json(self.args.config);cfg['uploader']='new@unit-test.invalid'
+        self.args.config.write_text(json.dumps(cfg))
+        with patch.object(am, 'archive_crc'):
+            folder, submission, fields = r.aminet_preflight(self.out, manifest, 'lha', cfg['uploader'])
+            am.save_receipt(folder, {'submission_sha256':r.hashlib.sha256(json.dumps(submission,sort_keys=True).encode()).hexdigest(), 'status':'in_progress','completed_files':[]})
+            with patch.object(am, 'upload', side_effect=AssertionError('upload was retried')):
+                with self.assertRaisesRegex(ValueError, 'Partial Aminet submission'):
+                    r.submit_aminet(self.args)
+
+    def test_completed_aminet_release_does_not_resubmit_for_new_contact(self):
+        manifest = self.prepare_aminet_fixture()
+        receipt = r.publication_receipt(self.out);receipt['completed']=['aminet']
+        r.write_json(self.out/'receipt.json',receipt)
+        with patch.object(r, 'aminet_preflight', side_effect=AssertionError('new submission prepared')):
+            r.submit_aminet(self.args)
+
     def test_host_debug_bundles_are_not_release_inputs(self):
         path = self.root/'tests/nd_sample_test.dSYM/Contents/Resources/DWARF/nd_sample_test'
         path.parent.mkdir(parents=True)

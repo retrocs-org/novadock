@@ -2,8 +2,11 @@
 
 NovaDock already supplies the settings application. Declare your plugin's
 fields in its manifest, and NovaDockPrefs builds the window opened by
-**right-clicking your dock tile > Edit settings...**. No separate preferences
-executable or custom GadTools form is needed for ordinary options.
+**right-clicking your dock tile > Edit settings...**.
+
+Every plugin menu ends with **Edit settings...** and **Remove**, including
+plugins with additional actions. A failure to start the shared editor is
+reported with a screen beep. No separate preferences executable or custom GadTools form is needed for ordinary options.
 
 ## 1. Declare the fields
 

@@ -1,8 +1,8 @@
 NOVADOCK_ID=SCREENSHOT
-NOVADOCK_NAME=Screenshot
-NOVADOCK_VERSION=0.1
+NOVADOCK_NAME=SHOT
+NOVADOCK_VERSION=0.2
 NOVADOCK_AUTHOR=NovaDock
-NOVADOCK_DESCRIPTION=Click to save the front screen or Workbench as an IFF picture after a countdown.
+NOVADOCK_DESCRIPTION=Capture the front screen or Workbench as indexed or true-colour IFF, with a Workbench icon.
 NOVADOCK_LICENSE=MIT
 NOVADOCK_FEATURES=click,badge
 NOVADOCK_PROGRAM=Screenshot

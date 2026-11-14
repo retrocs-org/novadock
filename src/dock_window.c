@@ -90,6 +90,7 @@ int open_window(struct NDDock *dock)
     dock->hover_ticks = 0;
     dock->tip_item = -1;
     dock->press_item = -1;
+    dock->drop_preview=0;
     build_scaled_icon_bitmaps(dock);
     build_brush_bitmaps(dock);
     refresh_running_items(dock);
@@ -116,6 +117,7 @@ void update_live_window(struct NDDock *dock)
                         dock->screen->Height,dock->screen->BarHeight,&dock->tab_box);
     dock->hover=-1;dock->hover_ticks=0;dock->tip_item=-1;
     dock->press_item=-1;dock->drag_to=-1;dock->is_drag=0;
+    dock->drop_preview=0;
     dock->idle_ticks=0;
     build_scaled_icon_bitmaps(dock);
     remap_brush_colors(dock);
@@ -128,11 +130,15 @@ void update_live_window(struct NDDock *dock)
         dock->box_pending=1;dock->box_target_hidden=dock->hidden;
         ChangeWindowBox(dock->window,target->left,target->top,
                         target->width,target->height);
-    } else {dock->box_pending=0;draw_all(dock);}
+    } else {dock->box_pending=0;refresh_drop_zones(dock);draw_all(dock);}
 }
 int hovered_tile(struct NDDock *dock, int mx, int my)
 {
     int i, x, y,w,h,first,last;
+    /* The idle pointer normally sits outside the window. Multi-row tile
+     * coordinates walk the layout, so reject that common case once. */
+    if (!dock || !dock->window || mx<0 || my<0 ||
+        mx>=dock->window->Width || my>=dock->window->Height) return -1;
     first=dock->overflow ? dock->view_start : 0;
     last=dock->overflow ? first+dock->visible_count : dock->conf.count;
     if (last>dock->conf.count) last=dock->conf.count;
@@ -179,7 +185,9 @@ void scroll_view(struct NDDock *dock,int direction)
     if (dock->view_start<0) dock->view_start=0;
     if (dock->view_start>maximum) dock->view_start=maximum;
     dock->hover=-1;dock->hover_ticks=0;
-    /* Running indicators are only kept current for visible launchers. */
+    refresh_drop_zones(dock);
+    /* Off-page meters and indicators are refreshed as they enter view. */
+    refresh_volume_meters(dock);
     refresh_running_items(dock);
     draw_all(dock);
 }

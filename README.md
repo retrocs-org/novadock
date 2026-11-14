@@ -50,7 +50,7 @@ Configure `VBCC` for your vbcc installation and `LHA` for **LHa for UNIX** (the 
 sh scripts/make-release.sh /path/to/releases
 ```
 
-The script regenerates the manual/catalog definitions, rebuilds all Amiga programs, stages a clean installer package and creates `NovaDock-0.1.lha`, its SHA-256 checksum and an accompanying readme. The archive contains the `NovaDock` installation drawer and its outer `NovaDock.info`, including the installer and prebuilt icons. It uses LH5 compression with level-1 headers, tests CRCs, extracts the archive and compares every file before replacing a previous release.
+The script regenerates the manual/catalog definitions, rebuilds all Amiga programs, stages a clean installer package and creates `NovaDock-0.2.lha`, its SHA-256 checksum and an accompanying readme. The archive contains the `NovaDock` installation drawer and its outer `NovaDock.info`, including the installer and prebuilt icons. It uses LH5 compression with level-1 headers, tests CRCs, extracts the archive and compares every file before replacing a previous release.
 
 `VC` can override the compiler command for a custom vbcc configuration. `ND_SKIP_BUILD=1` packages existing binaries when a rebuild has already completed. `UPLOADER` optionally fills the readme's uploader field. Normal builds never upload anything.
 
@@ -71,7 +71,7 @@ python3 tools/aminet_release.py check /path/to/releases/aminet
 
 Only when ready to submit, run the same command with `--upload`. Alternatively, `make-release.sh /path/to/releases --upload-aminet` explicitly builds, prepares and submits in one invocation (with `UPLOADER` set). Upload transfers only the archive and matching readme, with the readme last. The manifest and checksums stay local. Submission goes to Aminet incoming; publication depends on Aminet processing. No upload is performed by the default build or by double-clicking the local Mac launcher.
 
-Aminet recommends a stable filename, so its copy is `novadock.lha` with the version in the readme; local releases remain versioned. For replacing older differently named releases, set `AMINET_REPLACES` to full Aminet paths separated by semicolons, for example `util/wb/NovaDock-0.1.lha`. Omit it for the first release or updates to the same `novadock.lha` filename. Edited or rebuilt prepared files fail the hash check; prepare the submission again before uploading.
+Aminet recommends a stable filename, so its copy is `novadock.lha` with the version in the readme; local releases remain versioned. For replacing older differently named releases, set `AMINET_REPLACES` to full Aminet paths separated by semicolons, for example `util/wb/NovaDock-0.2.lha`. Omit it for the first release or updates to the same `novadock.lha` filename. Edited or rebuilt prepared files fail the hash check; prepare the submission again before uploading.
 
 See [Aminet's upload instructions](https://wiki.aminet.net/Uploading_instructions) and [readme format](https://wiki.aminet.net/The_Readme_file). The default target is anonymous FTP at `main.aminet.net/new`, as documented there. Recheck their instructions before a future public release.
 
@@ -153,7 +153,7 @@ Default installed layout:
 
 Only the application drawer, Preferences drawer and shared-data parent are selectable. Help, settings and translations use their standard assignments. The shared directory has no `.info`, so it stays out of Workbench's normal icon view; Show All Files can still reveal it. The unpacked distribution retains its drawer and installer icons.
 
-When an installed executable is detected, every user level, including Novice, displays its locations and offers Update or Uninstall. Use the Installer's Abort Install button to cancel. Uninstall always asks for confirmation and whether to keep settings; Novice does not bypass these questions. Update is selected by default, but the choice is always shown. Updates retain custom binary/shared-data locations, migrate the earlier default shared-data location to `SYS:NovaDock`, and move older manuals directly into `HELP:`. Imported plugins and themes are preserved. Leftover resources alone do not count as an installed application. Uninstall automatically resolves recorded application, Preferences and shared-data locations, falling back to documented standard and legacy directories. It never asks you to select directories, including when the Plugins drawer is missing but Themes or Tools remains. It only asks for removal confirmation and whether to keep settings. Uninstall deletes only NovaDock's files from old shared Help locations and never removes the HELP: root.
+When an installed executable is detected, every user level, including Novice, displays its locations and offers Update or Uninstall. Use the Installer's Abort Install button to cancel. Uninstall always asks for confirmation and whether to keep settings and saved Notes; Novice does not bypass these questions. Update is selected by default, but the choice is always shown. Updates retain custom binary/shared-data locations, migrate the earlier default shared-data location to `SYS:NovaDock`, and move older manuals directly into `HELP:`. Imported plugins and themes are preserved. Leftover resources alone do not count as an installed application. Uninstall automatically resolves recorded application, Preferences and shared-data locations, falling back to documented standard and legacy directories. It never asks you to select directories, including when the Plugins drawer is missing but Themes or Tools remains. It only asks for removal confirmation and whether to keep settings. Uninstall deletes only NovaDock's files from old shared Help locations and never removes the HELP: root.
 
 BitSkim defaults to `SYS:Utilities/BitSkim/BitSkim`; custom executable paths remain configurable. The installer stays in the distribution package.
 
@@ -164,3 +164,9 @@ with `python3 scripts/release.py` (plan, build, check, prepare, confirmed publis
 the same tool. See [docs/RELEASING.md](docs/RELEASING.md) for setup and commands.
 
 The standalone plugin SDK source tree is in [plugin-sdk/](plugin-sdk/README.md).
+
+Timer and Notes (0.2): countdown reminders and a permanent collection of titled notes. See [Timer and Notes](docs/TIMER_AND_NOTES.md).
+
+Screen Switcher (plugin 0.1): pick a public screen and bring it forward. See [Screen Switcher](docs/SCREEN_SWITCHER_PLUGIN.md).
+
+Weather (plugin 0.1): current conditions and a cached five-day forecast. See [Weather](docs/WEATHER_PLUGIN.md).

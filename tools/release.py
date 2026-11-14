@@ -314,8 +314,8 @@ def build(args):
     print('Build verified. Run prepare, review manifest.json, then explicitly publish.')
 
 
-def inventory(directory, assets):
-    if set(assets) != required_assets(version()):
+def inventory(directory, assets, release_version=None):
+    if set(assets) != required_assets(release_version or version()):
         raise ValueError('Incomplete or unexpected release bundle assets.')
     allowed = set(assets) | {'build-state.json', 'manifest.json', 'release.json', 'receipt.json', 'aminet'}
     if directory.is_symlink() or any(p.is_symlink() for p in directory.rglob('*')):
@@ -600,20 +600,111 @@ def publication_receipt(directory):
     return receipt
 
 
-def aminet_preflight(directory, manifest, lha=None):
-    for suffix in ('lha', 'readme'):
-        release = directory/('NovaDock-'+manifest['version']+'.'+suffix)
-        submission = directory/'aminet'/('novadock.'+suffix)
-        if digest(release) != digest(submission):
-            raise ValueError('Aminet files differ from the verified repository release.')
+def bundle_for_aminet(directory):
+    """Verify the frozen release and its embedded provenance, independent of HEAD."""
+    from zipfile import ZipFile
+    path = directory/'manifest.json'
+    if not path.is_file():
+        raise ValueError('No prepared release manifest. Prepare a release before submitting to Aminet.')
+    manifest = load_json(path)
+    v = manifest.get('version', '')
+    if manifest.get('schema') != 2 or not re.fullmatch(r'[0-9]+(?:\.[0-9]+)*(?:[-.][A-Za-z0-9]+)*', v):
+        raise ValueError('Invalid prepared release version/schema.')
+    release_tag(manifest['tag'])
+    inventory(directory, manifest['assets'], v)
+    publication_assets(manifest)
+    info = load_json(directory/'BUILD-INFO.json')
+    state = load_json(directory/'build-state.json')
+    if info.get('prebuilt') or any(info.get(k) != manifest.get(k) for k in ('commit','version','source_sha256','prebuilt')):
+        raise ValueError('Prepared build provenance differs from manifest.')
+    if state.get('assets') != manifest['assets'] or state.get('source_sha256') != manifest['source_sha256']:
+        raise ValueError('Prepared build record differs from manifest.')
+    if provenance.fingerprint(info['inputs']) != manifest['source_sha256']:
+        raise ValueError('Prepared source fingerprint differs from build record.')
+    if manifest['notes'] != (directory/'RELEASE-NOTES.md').read_text():
+        raise ValueError('Prepared release notes differ from manifest.')
+    if (directory/'release.json').exists() and load_json(directory/'release.json') != manifest:
+        raise ValueError('Manifest aliases differ.')
+    with ZipFile(directory/f'NovaDock-{v}-continued-source-and-site.zip') as archive:
+        names = archive.namelist()
+        if len(names) != len(set(names)):
+            raise ValueError('Duplicate prepared source entries.')
+        if json.loads(archive.read('NovaDock/build/provenance/amiga.json')) != info:
+            raise ValueError('Archived build provenance differs from manifest.')
+        for name, expected in info['inputs'].items():
+            if Path(name).is_absolute() or '..' in Path(name).parts:
+                raise ValueError('Invalid prepared source path.')
+            if hashlib.sha256(archive.read('NovaDock/'+name)).hexdigest() != expected:
+                raise ValueError('Archived release source differs from recorded fingerprint.')
+    return manifest
+
+
+def aminet_preflight(directory, manifest, lha=None, uploader=None):
     import aminet_release
-    return aminet_release.check(directory/'aminet', lha or os.environ.get('LHA', 'lha'))
+    import tempfile
+    v = manifest['version']; lha = lha or os.environ.get('LHA', 'lha')
+    archive = directory/f'NovaDock-{v}.lha'
+    readme = directory/f'NovaDock-{v}.readme'
+    fields = aminet_release.readme_fields(readme)
+    original = directory/'aminet'
+    desired = uploader if uploader is not None else fields['Uploader']
+    if not isinstance(desired, str) or not re.fullmatch(r'[^\s<>@()]+@[^\s<>@()]+\.[^\s<>@()]+', desired):
+        raise ValueError('Configure a valid Aminet uploader email.')
+    if desired == fields['Uploader']:
+        folder = original
+        expected_readme = readme.read_bytes()
+    else:
+        # Never alter a submitted pair or rewrite the immutable repository assets.
+        if (original/'upload-receipt.json').exists():
+            raise ValueError('An Aminet attempt already exists; inspect its receipt before changing contact.')
+        contact_id = hashlib.sha256((digest(directory/'manifest.json')+'\0'+desired).encode()).hexdigest()[:16]
+        folder = directory.parent/('aminet-'+v+'-'+contact_id)
+        text = readme.read_bytes().decode('latin-1')
+        expected_readme = re.sub(r'^Uploader:.*$', lambda match: 'Uploader:     '+desired, text, flags=re.M).encode('latin-1')
+        if not folder.exists():
+            with tempfile.TemporaryDirectory(prefix='.aminet-contact-', dir=directory.parent) as tmp:
+                stage = Path(tmp); staged_archive = stage/archive.name
+                shutil.copyfile(archive, staged_archive)
+                staged_archive.with_suffix('.readme').write_bytes(expected_readme)
+                staged_archive.with_suffix('.lha.sha256').write_text(digest(archive)+'  '+archive.name+'\n')
+                aminet_release.prepare(staged_archive, folder, lha)
+    submission, contact = aminet_release.check(folder, lha)
+    if digest(archive) != digest(folder/'novadock.lha') or (folder/'novadock.readme').read_bytes() != expected_readme:
+        raise ValueError('Aminet submission differs from the verified archive or selected contact.')
+    return folder, submission, contact
+
+
+def submit_aminet(args):
+    import aminet_release
+    directory = args.output.resolve()
+    manifest = bundle_for_aminet(directory)
+    requested_release(args, manifest)
+    cfg = config(args.config)
+    receipt = publication_receipt(directory)
+    if 'aminet' in receipt['completed']:
+        print('This release was already submitted to Aminet; no files resent.')
+        return
+    folder, submission, fields = aminet_preflight(directory, manifest, cfg.get('env', {}).get('LHA'), cfg.get('uploader'))
+    status = aminet_release.submission_status(folder, submission)
+    if receipt['current'] == 'aminet' and status != 'completed':
+        raise ValueError('Interrupted Aminet submission requires inspection before retry.')
+    binding = {'path':str(folder), 'sha256':digest(folder/'submission.json')}
+    if receipt.get('aminet_submission') and receipt['aminet_submission'] != binding and receipt['current'] == 'aminet':
+        raise ValueError('Cannot change contact during an interrupted Aminet submission.')
+    receipt['current'] = 'aminet'; receipt['aminet_submission'] = binding
+    write_json(directory/'receipt.json', receipt)
+    aminet_release.upload(folder, submission, fields)
+    receipt['current'] = None; receipt['completed'].append('aminet')
+    write_json(directory/'receipt.json', receipt)
+    print('Aminet submitted; publication awaits moderator review.')
 
 
 def publish(args):
     targets = selected_targets(args)
     if not (getattr(args, 'confirm_publish', False) or getattr(args, 'execute', False)):
         raise ValueError('Publication requires --confirm-publish. Use check to validate locally.')
+    if targets == ['aminet']:
+        return submit_aminet(args)
     directory = args.output.resolve()
     m = bundle(directory)
     requested_release(args, m)
@@ -626,17 +717,20 @@ def publish(args):
         raise ValueError('Bundle must be built from the current committed checkout; rebuild and prepare again.')
     provenance.tracked_inputs(provenance.source_inputs(ROOT), ROOT)
     receipt = publication_receipt(directory)
+    if 'aminet' in targets and 'aminet' in receipt['completed']:
+        targets = [target for target in targets if target != 'aminet']
+        print('Aminet already submitted; no files resent.')
     adapters = {}
     local_tag(m['tag'], sha)
     # Preflight every selected destination before any tag creation, push or upload.
     for target in targets:
         if target == 'aminet':
-            submission, fields = aminet_preflight(directory, m, cfg.get('env', {}).get('LHA'))
+            folder, submission, fields = aminet_preflight(directory, m, cfg.get('env', {}).get('LHA'), cfg.get('uploader'))
             import aminet_release
-            status = aminet_release.submission_status(directory/'aminet', submission)
+            status = aminet_release.submission_status(folder, submission)
             if receipt['current'] == 'aminet' and status != 'completed':
                 raise ValueError('Interrupted Aminet submission requires inspection; do not blindly resubmit.')
-            adapters[target] = (submission, fields)
+            adapters[target] = (folder, submission, fields)
             continue
         if target not in configured:
             raise ValueError('Destination missing from prepared manifest: '+target)
@@ -662,8 +756,8 @@ def publish(args):
         write_json(directory/'receipt.json', receipt)
         if target == 'aminet':
             import aminet_release
-            submission, fields = adapters[target]
-            aminet_release.upload(directory/'aminet', submission, fields)
+            folder, submission, fields = adapters[target]
+            aminet_release.upload(folder, submission, fields)
             print('Aminet submitted; moderator acceptance is separate.')
         else:
             api, project, url = adapters[target]
@@ -685,8 +779,12 @@ def aminet(args):
         args.to = 'aminet'
         args.confirm_publish = True
         return publish(args)
-    m = bundle(args.output.resolve())
-    aminet_preflight(args.output.resolve(), m, config(args.config).get('env', {}).get('LHA'))
+    m = bundle_for_aminet(args.output.resolve())
+    cfg = config(args.config)
+    folder, submission, fields = aminet_preflight(args.output.resolve(), m, cfg.get('env', {}).get('LHA'), cfg.get('uploader'))
+    import aminet_release
+    aminet_release.report(folder, submission, fields)
+    print('Submission directory:', folder)
     print('Aminet pair verified locally. Publish with --to aminet --confirm-publish to submit.')
 
 

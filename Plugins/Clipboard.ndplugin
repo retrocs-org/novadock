@@ -1,6 +1,6 @@
 NOVADOCK_ID=CLIPBOARD
 NOVADOCK_NAME=Clippy
-NOVADOCK_VERSION=0.1
+NOVADOCK_VERSION=0.2
 NOVADOCK_AUTHOR=NovaDock
 NOVADOCK_DESCRIPTION=Session text history; click to restore, delete, clear or pause capture. Up to 8K per clip; nothing is saved to a history file.
 NOVADOCK_LICENSE=MIT

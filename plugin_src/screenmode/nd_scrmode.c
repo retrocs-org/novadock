@@ -52,3 +52,21 @@ int nd_scrmode_text(unsigned int width,unsigned int height,unsigned int depth,
     strcpy(out,text);
     return 1;
 }
+
+unsigned long nd_scrmode_encode(const struct NDScreenModePreset *p,
+                                unsigned char *b,unsigned long size)
+{
+    unsigned long id;
+    if(!p || !b || size<62 || p->display_id==0xffffffffUL || !p->width ||
+       !p->height || p->width>65535U || p->height>65535U ||
+       p->depth<1 || p->depth>32 || p->control>65535U)return 0;
+    memset(b,0,62);memcpy(b,"FORM",4);b[7]=54;memcpy(b+8,"PREFPRHD",8);
+    b[19]=6;memcpy(b+26,"SCRM",4);b[33]=28;id=p->display_id;
+    b[50]=(unsigned char)(id>>24);b[51]=(unsigned char)(id>>16);
+    b[52]=(unsigned char)(id>>8);b[53]=(unsigned char)id;
+    b[54]=(unsigned char)(p->width>>8);b[55]=(unsigned char)p->width;
+    b[56]=(unsigned char)(p->height>>8);b[57]=(unsigned char)p->height;
+    b[58]=(unsigned char)(p->depth>>8);b[59]=(unsigned char)p->depth;
+    b[60]=(unsigned char)(p->control>>8);b[61]=(unsigned char)p->control;
+    return 62;
+}

@@ -28,7 +28,7 @@ static int icon_source(const struct NDDock *dock,const struct NDConfig *cfg,
     int dopus_icon=item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"DOPUS4");
     int music_icon=item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"MUSIC");
     int running_apps_icon=item->kind==ND_ITEM_PLUGIN &&
-                          (!strcmp(item->id,"BITSKIM") || !strcmp(item->id,"RUNNINGAPPS") || !strcmp(item->id,"CLIPBOARD") || !strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW"));
+                          (!strcmp(item->id,"SCREENSWITCHER") || !strcmp(item->id,"BITSKIM") || !strcmp(item->id,"RUNNINGAPPS") || !strcmp(item->id,"CLIPBOARD") || !strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW"));
     path[0]='\0';
     /* DOpus is deliberately drawn like a launcher. Use the icon beside its
      * configured executable, so changing Program path in the plugin

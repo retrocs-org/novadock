@@ -15,8 +15,8 @@ int main(void)
     static const char *weather[]={
         "; comment lines and other tool types are ignored",
         "DONOTWAIT",
-        "NOVADOCK_ID=WEATHER",
-        "NOVADOCK_NAME=Weather",
+        "NOVADOCK_ID=DEMOFORECAST",
+        "NOVADOCK_NAME=DemoForecast",
         "NOVADOCK_VIEW=GRAPH",
         "NOVADOCK_ABI=2",
         "NOVADOCK_MULTIPLE=YES",
@@ -26,7 +26,7 @@ int main(void)
         "NOVADOCK_FUTURE=ignored",
         NULL};
     static const char *weather2[]={
-        "NOVADOCK_ID=WEATHER",
+        "NOVADOCK_ID=DEMOFORECAST",
         "NOVADOCK_MULTIPLE=YES",
         "NOVADOCK_OPTION=CITY|City|TEXT||Stockholm",
         "NOVADOCK_OPTION=WIND|Show wind|BOOL||YES",
@@ -36,12 +36,12 @@ int main(void)
     struct NDOptionDef defs[16];
     int i,n,before;
 
-    assert(load(&m,"Work:NovaDock/Plugins/Weather",weather));
-    assert(!strcmp(m.id,"WEATHER") && !strcmp(m.name,"Weather"));
+    assert(load(&m,"Work:NovaDock/Plugins/DemoForecast",weather));
+    assert(!strcmp(m.id,"DEMOFORECAST") && !strcmp(m.name,"DemoForecast"));
     assert(m.graph==1 && m.abi==2 && m.multiple_instances &&
            m.option_count==3);
     assert(nd_manifest_bundled_id("RUNNINGAPPS"));
-    assert(!strcmp(m.options[1].id,"WEATHER") && !strcmp(m.options[1].choices,"C,F"));
+    assert(!strcmp(m.options[1].id,"DEMOFORECAST") && !strcmp(m.options[1].choices,"C,F"));
 
     { static const char *l[]={"NOVADOCK_ID=EXTENDED","NOVADOCK_ABI=5",NULL};
       assert(load(&m,"Plugins/Extended",l) && m.abi==5); }
@@ -70,32 +70,32 @@ int main(void)
     /* Merge: new plugins arrive disabled with their schema. */
     nd_default_config(&cfg);
     before=cfg.count;
-    assert(load(&m,"Plugins/Weather",weather));
-    assert(nd_manifest_merge(&cfg,&m,"Plugins/Weather")==ND_MANIFEST_ADDED);
+    assert(load(&m,"Plugins/DemoForecast",weather));
+    assert(nd_manifest_merge(&cfg,&m,"Plugins/DemoForecast")==ND_MANIFEST_ADDED);
     assert(cfg.count==before+1);
     assert(cfg.items[before].kind==ND_ITEM_PLUGIN && !cfg.items[before].enabled);
     assert(cfg.items[before].multiple_instances);
-    assert(cfg.items[before].graph && !strcmp(cfg.items[before].command,"Plugins/Weather"));
-    n=nd_option_collect(&cfg,"WEATHER",defs,16);
+    assert(cfg.items[before].graph && !strcmp(cfg.items[before].command,"Plugins/DemoForecast"));
+    n=nd_option_collect(&cfg,"DEMOFORECAST",defs,16);
     assert(n==3);
-    assert(nd_manifest_merge(&cfg,&m,"Plugins/Weather")==ND_MANIFEST_UNCHANGED);
+    assert(nd_manifest_merge(&cfg,&m,"Plugins/DemoForecast")==ND_MANIFEST_UNCHANGED);
     assert(cfg.count==before+1);
     /* An upgrade refreshes the schema, keeps stored values and the tile. */
-    assert(nd_option_set(&cfg,"WEATHER","CITY","Lund"));
+    assert(nd_option_set(&cfg,"DEMOFORECAST","CITY","Lund"));
     cfg.items[before].enabled=1;
-    assert(load(&m,"Plugins/Weather",weather2));
-    assert(nd_manifest_merge(&cfg,&m,"Plugins/Weather")==ND_MANIFEST_UPDATED);
-    n=nd_option_collect(&cfg,"WEATHER",defs,16);
-    assert(n==2 && !strcmp(nd_option_get(&cfg,"WEATHER","CITY"),"Lund"));
+    assert(load(&m,"Plugins/DemoForecast",weather2));
+    assert(nd_manifest_merge(&cfg,&m,"Plugins/DemoForecast")==ND_MANIFEST_UPDATED);
+    n=nd_option_collect(&cfg,"DEMOFORECAST",defs,16);
+    assert(n==2 && !strcmp(nd_option_get(&cfg,"DEMOFORECAST","CITY"),"Lund"));
     assert(cfg.items[before].enabled);
     /* The result survives a save/load round trip. */
     assert(nd_write_config(&cfg,"tests/nd_manifest_test.cfg"));
     {
         struct NDConfig back;
         assert(nd_load_config(&back,"tests/nd_manifest_test.cfg")==0);
-        assert(nd_option_collect(&back,"WEATHER",defs,16)==2);
+        assert(nd_option_collect(&back,"DEMOFORECAST",defs,16)==2);
         for (i=0;i<back.count;++i)
-            if (!strcmp(back.items[i].id,"WEATHER")) break;
+            if (!strcmp(back.items[i].id,"DEMOFORECAST")) break;
         assert(i<back.count && back.items[i].enabled);
     }
     remove("tests/nd_manifest_test.cfg");

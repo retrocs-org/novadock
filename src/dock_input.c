@@ -24,6 +24,7 @@ void detach_appwindow(struct NDDock *dock)
     if (dock->app_window && WorkbenchBase) {
         RemoveAppWindow(dock->app_window);
         dock->app_window = NULL;
+        dock->drop_zones=0;
     }
 }
 static void attach_appmenus(struct NDDock *dock)
@@ -47,6 +48,89 @@ static int workbench_task_running(void)
     Permit();
     return task != NULL;
 }
+/* Workbench calls this while it owns the drag display locks. Only simple
+ * graphics calls are safe here: never refresh the dock or open a window.
+ * Complementing the same strip on enter and leave restores its pixels. */
+static ULONG drop_zone_hook(__reg("a0") struct Hook *hook,
+                            __reg("a2") APTR reserved,
+                            __reg("a1") struct AppWindowDropZoneMsg *message)
+{
+    struct NDDock *dock=(struct NDDock *)hook->h_Data;
+    struct RastPort rp;
+    int index=(int)(message->adzm_UserData/2),after;
+    int x,y,w,h,left,top,right,bottom;
+    (void)reserved;
+    if (message->adzm_Action!=ADZMACTION_Enter &&
+        message->adzm_Action!=ADZMACTION_Leave) return 0;
+    if (!dock->edit_mode || !message->adzm_RastPort ||
+        !item_visible(dock,index)) return 0;
+    after=(int)(message->adzm_UserData&1);
+    tile_coords(dock,index,&x,&y);
+    tile_dimensions(dock,index,&w,&h);
+    if (vertical(dock)) {
+        left=x+8;right=x+w-9;
+        top=after ? y+h-3 : y;bottom=top+2;
+    } else {
+        top=y+8;bottom=y+h-9;
+        left=after ? x+w-3 : x;right=left+2;
+    }
+    /* A hook may draw only within its own drop zone. */
+    if (left<message->adzm_DropZoneBox.Left) left=message->adzm_DropZoneBox.Left;
+    if (top<message->adzm_DropZoneBox.Top) top=message->adzm_DropZoneBox.Top;
+    if (right>=message->adzm_DropZoneBox.Left+message->adzm_DropZoneBox.Width)
+        right=message->adzm_DropZoneBox.Left+message->adzm_DropZoneBox.Width-1;
+    if (bottom>=message->adzm_DropZoneBox.Top+message->adzm_DropZoneBox.Height)
+        bottom=message->adzm_DropZoneBox.Top+message->adzm_DropZoneBox.Height-1;
+    if (right<left || bottom<top) return 0;
+    rp=*message->adzm_RastPort;
+    SetDrMd(&rp,COMPLEMENT);
+    SetAfPt(&rp,NULL,0);
+    RectFill(&rp,left,top,right,bottom);
+    return 0;
+}
+static int add_drop_zones(struct NDDock *dock)
+{
+    struct TagItem tags[3];
+    struct IBox box;
+    int i,after,x,y,w,h;
+    if (!dock->edit_mode || WorkbenchBase->lib_Version<44) return 1;
+    memset(&dock->drop_hook,0,sizeof(dock->drop_hook));
+    dock->drop_hook.h_Entry=(HOOKFUNC)drop_zone_hook;
+    dock->drop_hook.h_Data=dock;
+    tags[0].ti_Tag=WBDZA_Box;tags[0].ti_Data=(ULONG)&box;
+    tags[1].ti_Tag=WBDZA_Hook;tags[1].ti_Data=(ULONG)&dock->drop_hook;
+    tags[2].ti_Tag=TAG_DONE;tags[2].ti_Data=0;
+    for (i=0;i<nd_media_persistent_count(&dock->conf);++i) {
+        if (!item_visible(dock,i)) continue;
+        tile_coords(dock,i,&x,&y);tile_dimensions(dock,i,&w,&h);
+        for (after=0;after<2;++after) {
+            box.Left=x;box.Top=y;box.Width=w;box.Height=h;
+            if (vertical(dock)) {
+                box.Top=y+(after ? h/2 : 0);
+                box.Height=after ? h-h/2 : h/2;
+            } else {
+                box.Left=x+(after ? w/2 : 0);
+                box.Width=after ? w-w/2 : w/2;
+            }
+            if (!AddAppWindowDropZoneA(dock->app_window,1,(ULONG)(i*2+after),tags))
+                return 0;
+        }
+    }
+    /* Installing zones otherwise disables drops on the gaps, paging arrows
+     * and transient media. Keep the whole window as a final fallback. */
+    box.Left=0;box.Top=0;box.Width=dock->window->Width;
+    box.Height=dock->window->Height;
+    tags[1].ti_Tag=TAG_DONE;
+    if (!AddAppWindowDropZoneA(dock->app_window,1,0,tags)) return 0;
+    dock->drop_zones=1;
+    return 1;
+}
+void refresh_drop_zones(struct NDDock *dock)
+{
+    if (!dock->app_window) return;
+    detach_appwindow(dock);
+    attach_appwindow(dock);
+}
 void attach_appwindow(struct NDDock *dock)
 {
     /* AddAppWindowA can only be used after LoadWB.  Opening
@@ -56,9 +140,15 @@ void attach_appwindow(struct NDDock *dock)
         WorkbenchBase = OpenLibrary("workbench.library", 36);
     if (!dock->window || !dock->drop_port || !WorkbenchBase ||
         !workbench_task_running()) return;
-    if (!dock->app_window)
+    if (!dock->app_window) {
         dock->app_window = AddAppWindowA(1UL, 0UL, dock->window,
                                          dock->drop_port, NULL);
+        if (dock->app_window && !add_drop_zones(dock)) {
+            /* Partial zone allocation must never leave a restricted target. */
+            detach_appwindow(dock);
+            dock->app_window=AddAppWindowA(1UL,0UL,dock->window,dock->drop_port,NULL);
+        }
+    }
     attach_appmenus(dock);
 }
 void stop_hotkeys(struct NDDock *dock)
@@ -106,8 +196,11 @@ int start_hotkeys(struct NDDock *dock)
     right_button.ix_Version=IX_VERSION;
     right_button.ix_Class=IECLASS_RAWMOUSE;
     right_button.ix_Code=IECODE_RBUTTON;
-    right_button.ix_CodeMask=0;
-    right_button.ix_QualMask=IX_NORMALQUALS;
+    /* Match the exact down code, regardless of held buttons/modifiers.
+     * A qualifier mask of IX_NORMALQUALS with a zero qualifier rejects
+     * the right-button flag carried by the press itself. */
+    right_button.ix_CodeMask=0xffff;
+    right_button.ix_QualMask=0;
     filter=CreateCxObj(CX_FILTER,0,0);
     sender=CxSender(dock->hotkey_port,ND_CX_RBUTTON_ID);
     if (filter && sender) {

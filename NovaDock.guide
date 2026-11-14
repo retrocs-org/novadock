@@ -1,10 +1,10 @@
 @database NovaDock.guide
-@$VER: NovaDock.guide 0.1 (26.10.2026)
+@$VER: NovaDock.guide 0.2 (14.11.2026)
 @author "NovaDock contributors"
 @(c) "Copyright 2026 NovaDock contributors, MIT licence"
-@node Main "NovaDock 0.1 manual"
+@node Main "NovaDock 0.2 manual"
 
-@{b}NovaDock 0.1@{ub}
+@{b}NovaDock 0.2@{ub}
 A lightweight, extensible dock for Classic AmigaOS Workbench.
 
 Select a topic. Press Help in any NovaDock Preferences window to
@@ -12,7 +12,7 @@ return to this manual.
 
 @{b}Using NovaDock@{ub}
 
-  @{" About NovaDock and installation " link README}
+  @{" Getting started and installation " link USING_NOVADOCK}
   @{" Launchers and icons " link LAUNCHERS_AND_ICONS}
   @{" Responsive settings and diagnostics " link RESPONSIVE_SETTINGS}
   @{" Auto-hide and the dock menu " link AUTOHIDE_AND_DOCK_MENU}
@@ -25,11 +25,13 @@ return to this manual.
 
 @{b}Bundled plugins@{ub}
 
+  @{" Weather " link WEATHER_PLUGIN}
   @{" AmIRC " link AMIRC_PLUGIN}
   @{" BitSkim " link BITSKIM_PLUGIN}
   @{" Network " link NETWORK_PLUGIN}
   @{" Clipboard History " link CLIPBOARD_PLUGIN}
-  @{" Archive Extractor " link ARCHIVE_PLUGIN}
+  @{" Archiver " link ARCHIVE_PLUGIN}
+  @{" Timer and Notes " link TIMER_AND_NOTES}
   @{" Command tiles " link COMMAND_TILE}
   @{" Script tiles " link SCRIPT_TILE}
   @{" Directory Opus 4 " link DOPUS4_PLUGIN}
@@ -38,6 +40,7 @@ return to this manual.
   @{" Mixer " link MIXER_PLUGIN}
   @{" Screenshot " link SCREENSHOT_PLUGIN}
   @{" Screen Mode " link SCREENMODE_PLUGIN}
+  @{" Screen Switcher " link SCREEN_SWITCHER_PLUGIN}
   @{" Trash " link TRASH_PLUGIN}
   @{" WHDLoad games " link GAMES_PLUGIN}
 
@@ -49,289 +52,132 @@ return to this manual.
   @{" Plugin manifests " link PLUGIN_MANIFEST}
   @{" Plugin settings " link PLUGIN_SETTINGS}
 
-@{b}Maintaining NovaDock@{ub}
+@{b}Upgrading settings@{ub}
 
-  @{" Building and publishing releases " link RELEASING}
-  @{" Release checklist " link RELEASE_CHECKLIST}
   @{" Upgrading Network settings " link NETWORK_MIGRATION}
 
 Website: novadock.retrocs.org
 Source:  github.com/retrocs-org/novadock
 @endnode
 
-@node README "About NovaDock and installation"
+@node USING_NOVADOCK "Getting started and installation"
 @toc Main
-@{b}About NovaDock and installation@{ub}
-===============================
+@{b}Getting started and installation@{ub}
+================================
 
 @{b}Sections@{ub}
-  @{" Features " link README 26}
-  @{" Requirements " link README 42}
-  @{" Build " link README 49}
-  @{" Building an Amiga LHA release " link README 68}
-  @{" Installing on AmigaOS " link README 126}
-  @{" Plugin development " link README 206}
-  @{" License " link README 212}
-  @{" Maintainer release tool " link README 262}
+  @{" Install, update or remove " link USING_NOVADOCK 16}
+  @{" Start and stop " link USING_NOVADOCK 52}
+  @{" First use " link USING_NOVADOCK 64}
+  @{" Add and arrange tiles " link USING_NOVADOCK 79}
+  @{" Save settings " link USING_NOVADOCK 97}
+  @{" Help and development " link USING_NOVADOCK 105}
 
-NovaDock is a lightweight, extensible dock for Classic AmigaOS Workbench
-3.x.
+NovaDock is an application dock for Classic AmigaOS Workbench 3.x. It keeps
+applications, drawers, disks and useful plugin controls within easy reach.
+It requires AmigaOS 3.0 or newer and a 68k Amiga. Individual plugins may
+need other software; their help pages describe those requirements.
 
-  * Website: novadock.retrocs.org (https://novadock.retrocs.org)
-  * Source: github.com/retrocs-org/novadock
-    (https://github.com/retrocs-org/novadock)
+@{b}Install, update or remove@{ub}
+-------------------------
 
-Fresh installations start with the Nord theme and six tiles: the boot disk
-(SYS:), the installation's default shell (NewShell), Music, CPU, RAM and
-Clock. Add other tiles or open their settings from the dock's right-click
-menus. Updates keep existing settings; choose Reset in the installer to use
-this layout.
+Unpack the application archive, open its drawer and double-click
+@{b}Install-NovaDock@{ub}. The installer needs Commodore Installer version 42 or
+newer. Keep the supplied StartInstaller launcher beside the installer.
 
-@{b}Features@{ub}
---------
+  * @{b}Novice@{ub} uses the standard locations, keeps existing settings and starts
+    NovaDock automatically with Workbench and after installation.
+  * @{b}Intermediate@{ub} lets you select the application and Preferences drawers.
+  * @{b}Expert@{ub} also lets you select the shared-data parent drawer.
 
-  * Application, command, drawer, and volume launchers with Workbench icons.
-  * Application groups, normal and tiny layouts, multiple rows, themes,
-    auto-hide, and screen-edge placement.
-  * Running-application indicators, tooltips, drag-and-drop, and drawer
-    popups.
-  * Bundled CPU, memory, clock, music, archive, Directory Opus 4, and
-    running-app plugins.
-  * A unified Preferences application with Plugin Manager, organization,
-    diagnostics, and About pages.
-  * Recoverable atomic configuration saving, adaptive plugin pacing, and
-    dock-capacity diagnostics.
-  * A documented plugin SDK with a small example plugin.
+When NovaDock is already installed, the installer offers @{b}Update@{ub} or
+@{b}Uninstall@{ub}. Updates preserve your configuration, custom installation paths,
+imported plugins and themes. @{b}Reset@{ub} restores the default configuration and
+keeps the previous file as novadock.cfg.old. Uninstall asks whether to keep
+your settings and saved Notes. @{b}Remove settings@{ub} deletes the default Notes
+collection in ENVARC:NovaDock/Notes, including deleted-note backups. Notes
+stored in a custom drawer are kept. Use @{b}Abort Install@{ub} to cancel the
+installer. An empty settings drawer may remain after removal; choosing
+@{b}Remove settings@{ub} leaves no saved configuration or default Notes inside it.
 
-@{b}Requirements@{ub}
-------------
+The standard locations are:
 
-  * AmigaOS 3.0 or newer.
-  * A classic 68k Amiga.
-  * Optional plugin dependencies are described in the files under docs/.
+  * Application: SYS:Utilities/NovaDock
+  * Preferences: SYS:Prefs/NovaDockPrefs
+  * Plugins, themes, artwork and scripts: SYS:NovaDock/
+  * Help: HELP:NovaDock.guide
+  * Active settings: ENV:NovaDock/novadock.cfg
+  * Permanent settings: ENVARC:NovaDock/novadock.cfg
 
-@{b}Build@{ub}
------
+The installer adds startup entries and the required assignments. Help,
+translations and settings keep their standard locations even when you choose
+custom application or shared-data drawers. German and Swedish translations
+follow the language selected in Locale preferences.
 
-Install vbcc with an AmigaOS m68k target and a compatible Amiga NDK, then
-run:
+@{b}Start and stop@{ub}
+--------------
 
-    sh scripts/build-amiga.sh -B
+Double-click NovaDock to start the dock. Double-click NovaDockPrefs to open
+its settings. After installation, the dock can start with Workbench.
 
-To build and copy the required Amiga files into a shared development
-directory:
+Right-click the dock background for its menu, including Preferences and
+Quit. From a Shell, NovaDock QUIT asks the running dock to stop. Quit and
+restart after manually replacing plugin executables so their resident
+processes are also replaced. The installer handles this when updating the
+application.
 
-    sh scripts/build-and-stage-amiga.sh "/path/to/shared/bin"
+@{b}First use@{ub}
+---------
 
-The staging script creates a NovaDock subdirectory at the destination. Its
-outer NovaDock.info sets Workbench to Show Only Icons and View By Icon, so
-files without icons stay out of the normal package view. On AmigaOS,
-double-click @{b}Install-NovaDock@{ub} in that drawer to install with the standard
-Installer, or start the programs directly from it.
+A fresh configuration uses the Nord theme and six tiles: System, Shell,
+Music, CPU, RAM and Clock. Existing installations retain their layout.
 
-@{b}Building an Amiga LHA release@{ub}
------------------------------
+Click a launcher to open its application or drawer. Plugin clicks perform
+their own actions: the clock opens a calendar, Notes opens its collection,
+SHOT takes a screenshot and MODES opens the resolution picker. CPU and RAM
+clicks switch between their meter and graph views.
 
-Configure VBCC for your vbcc installation and LHA for @{b}LHa for UNIX@{ub} (the
-archiver that can create archives; lhasa only extracts), then run:
+Hover over a tile for its tooltip. Right-click a tile for its actions,
+settings and removal. Plugin help pages explain extra controls and software
+requirements.
 
-    sh scripts/make-release.sh /path/to/releases
-
-The script regenerates the manual/catalog definitions, rebuilds all Amiga
-programs, stages a clean installer package and creates NovaDock-0.1.lha, its
-SHA-256 checksum and an accompanying readme. The archive contains the
-NovaDock installation drawer and its outer NovaDock.info, including the
-installer and prebuilt icons. It uses LH5 compression with level-1 headers,
-tests CRCs, extracts the archive and compares every file before replacing a
-previous release.
-
-VC can override the compiler command for a custom vbcc configuration.
-ND_SKIP_BUILD=1 packages existing binaries when a rebuild has already
-completed. UPLOADER optionally fills the readme's uploader field. Normal
-builds never upload anything.
-
-@{b}Preparing an Aminet submission@{ub}
-
-    UPLOADER="your-email\@example.com" AUTHOR="Your name" \\
-      sh scripts/make-release.sh /path/to/releases --aminet
-
-This builds the usual versioned release and prepares aminet/novadock.lha,
-aminet/novadock.readme and a local submission.json containing hashes. This
-command only prepares and previews files; it makes no connection to Aminet.
-Set your real uploader email when you are ready. The readme is wrapped to 78
-columns, with required metadata and a Short field of at most 40 characters.
-
-Review the prepared files, then run a local check:
-
-    python3 tools/aminet_release.py check /path/to/releases/aminet
-
-Only when ready to submit, run the same command with --upload.
-Alternatively, make-release.sh /path/to/releases --upload-aminet explicitly
-builds, prepares and submits in one invocation (with UPLOADER set). Upload
-transfers only the archive and matching readme, with the readme last. The
-manifest and checksums stay local. Submission goes to Aminet incoming;
-publication depends on Aminet processing. No upload is performed by the
-default build or by double-clicking the local Mac launcher.
-
-Aminet recommends a stable filename, so its copy is novadock.lha with the
-version in the readme; local releases remain versioned. For replacing older
-differently named releases, set AMINET_REPLACES to full Aminet paths
-separated by semicolons, for example util/wb/NovaDock-0.1.lha. Omit it for
-the first release or updates to the same novadock.lha filename. Edited or
-rebuilt prepared files fail the hash check; prepare the submission again
-before uploading.
-
-See Aminet's upload instructions
-(https://wiki.aminet.net/Uploading_instructions) and readme format
-(https://wiki.aminet.net/The_Readme_file). The default target is anonymous
-FTP at main.aminet.net/new, as documented there. Recheck their instructions
-before a future public release.
-
-@{b}Installing on AmigaOS@{ub}
+@{b}Add and arrange tiles@{ub}
 ---------------------
 
-@{b}Install-NovaDock@{ub} is a GUI installer for the Commodore Installer included
-with AmigaOS 3.x (version 42 or later). @{b}Novice@{ub} is selected by default: it
-uses the standard paths, enables startup with Workbench and opens NovaDock
-after installation, without asking for these choices. Existing settings are
-kept, and updates retain recorded installation paths.
+Open Preferences and use @{b}Add item@{ub} to choose an application, drawer or disk,
+installed plugin, or spacer. Enable the desired plugins through their
+catalogue entries; their settings are available from the tile's right-click
+menu or the Preferences plugin pages.
 
-@{b}Average (Intermediate)@{ub} asks for the application drawer (default
-SYS:Utilities) and Preferences drawer (default SYS:Prefs). Each binary and
-its .info file goes directly into the selected drawer. Shared components use
-SYS:NovaDock.
+Unlock the dock from its background menu to arrange it. Drop an application,
+drawer or disk from Workbench onto the dock to add it. An insertion line
+shows whether it will be placed before or after the tile. Drag existing
+tiles to rearrange them. Removing a tile does not uninstall its application.
+Lock the dock again when you finish arranging it.
 
-@{b}Expert@{ub} also asks for the shared-data parent (default SYS:), where a NovaDock
-drawer holds plugins, artwork, themes, scripts and helper tools. Help,
-settings and translations use their standard locations in every mode.
+Preferences controls screen edge, alignment, rows, tile size, themes,
+labels, auto-hide and keyboard shortcuts. The other chapters explain
+launchers, groups, removable media, running applications and drawer popups.
 
-Both Average and Expert ask two separate Yes/No questions, in order: start
-NovaDock automatically with Workbench, then start NovaDock when installation
-finishes. Updates retain recorded locations in every mode.
+@{b}Save settings@{ub}
+-------------
 
-The dock's messages, menus and calendar are translated into German and
-Swedish; the installer adds these translations to LOCALE:Catalogs, and
-NovaDock uses the language chosen in Locale preferences.
+@{b}Use@{ub} applies settings to the current session. @{b}Save@{ub} also stores them
+permanently for the next restart. Updates retain saved settings. When an
+invalid configuration is found, recovery choices help you restore a working
+configuration or use the built-in defaults.
 
-The AmigaGuide manual, NovaDock.guide, is always installed as
-HELP:NovaDock.guide: press @{b}Help@{ub} in any NovaDock Preferences window, or the
-@{b}Help...@{ub} button on its About page, to open it in MultiView.
+@{b}Help and development@{ub}
+--------------------
 
-Existing settings are kept unless you choose to reset them (the old file is
-saved as novadock.cfg.old). Run the installer again to update NovaDock,
-keeping your settings and imported plugins and themes, or to remove it. A
-running NovaDock is stopped first: NovaDock QUIT asks a running dock to quit
-from the Shell.
+Press @{b}Help@{ub} in Preferences or use @{b}Help...@{ub} on its About page to open this
+manual in MultiView. Start with the bundled-plugin chapters for each tile's
+controls and settings.
 
-The Workbench icon uses the bundled StartInstaller launcher. It prefers
-SYS:System/Installer, falls back to C:Installer, and runs with a 64 KB
-stack. Keep the launcher beside Install-NovaDock. Uninstall progress is
-recorded in ENVARC:NovaDock-Uninstall.log so the last completed step can be
-checked after a restart.
-
-The Shell script install.amiga installs the standard locations. Use the GUI
-installer to select custom locations. The installer records NovaDock:,
-NovaDockApp: and NovaDockPrefs: in S:User-Startup. Help uses HELP: without
-an extra assignment. Updates preserve imported components. The old Utilities
-drawer is backed up before the application replaces it.
-
-Adding, moving and removing tiles updates the existing dock window when its
-window resources and fitted tile dimensions remain compatible. Existing
-scaled artwork and plugin state are reused; only new artwork is loaded.
-Changes to the theme, font, refresh mode or fitted tile size use the full
-rebuild path.
-
-The optional @{"BitSkim plugin" link BITSKIM_PLUGIN} starts or restores BitSkim, shows nearby
-computers, incoming offers, transfer speed and retained results. Right-click
-Send file or drop one file to choose a recipient using protocol 2; Open
-BitSkim for detailed transfer information. BitSkim is installed separately.
-
-The optional @{"AmIRC plugin" link AMIRC_PLUGIN} shows IRC client status and can start or restore
-AmIRC. Add it through the dock background menu.
-
-@{"Settings saves and Diagnostics" link RESPONSIVE_SETTINGS} now separate background file writes from live
-dock updates.
-
-Network replaces the standalone Roadshow plugin and combines its controls
-with packet meters/graphs in one tile. Its right-click menu offers Online or
-Offline, a Details window, and settings; the main Network interface selector
-derives its driver/unit automatically. Sampling overrides require explicit
-opt-in under Advanced. Failed connection changes open an error popup. See
-@{"Network" link NETWORK_PLUGIN}, including requirements for compatible TCP/IP stacks.
-
-@{"Clippy" link CLIPBOARD_PLUGIN} offers a centered picker and a separate management window.
-@{"AmIRC unread alerts" link AMIRC_PLUGIN} use numbered badges through the supplied event hook.
-Repeated Apps clicks keep its running-application popup open.
-
-After manually replacing executables, quit and start NovaDock to replace
-resident plugin processes as well. The installer handles stopping the dock
-for an update; copying binaries alone does not update a running process.
-
-@{b}Plugin development@{ub}
-------------------
-
-Start with @{"the Plugin SDK quick start" link PLUGIN_SDK_QUICKSTART}. The complete protocol is documented
-in @{"the Plugin API" link PLUGIN_API}.
-
-@{b}License@{ub}
--------
-
-NovaDock is released under the MIT License.
-
-Network full-stack shutdown first puts the selected Roadshow interface
-offline, then runs NetShutdown. The native bridged A2065 comparison
-completed with this sequence; direct NetShutdown hung with the dock stopped.
-A failed interface step produces an error and leaves full shutdown
-unstarted. Network uses separate IN/OUT meters by default; online clicks
-still switch to the two-channel graph.
-
-Default installed layout:
-
-  * SYS:Utilities/NovaDock and .info: visible application.
-  * SYS:Prefs/NovaDockPrefs and .info: visible Preferences application.
-  * SYS:NovaDock/: shared data, with no drawer icon. Plugins, Themes, Icons,
-    Rexx, and Tools live here; Tools/SaveConfig writes saved settings.
-  * HELP:NovaDock.guide and .info: the manual goes directly into HELP:,
-    without a subdrawer. The default tool is SYS:Utilities/MultiView.
-  * ENV:NovaDock/novadock.cfg: active settings; Use updates ENV.
-  * ENVARC:NovaDock/novadock.cfg: permanent settings; Save updates ENV and
-    ENVARC. Settings drawers have icons, and the existing config
-    filename/format is preserved.
-
-Only the application drawer, Preferences drawer and shared-data parent are
-selectable. Help, settings and translations use their standard assignments.
-The shared directory has no .info, so it stays out of Workbench's normal
-icon view; Show All Files can still reveal it. The unpacked distribution
-retains its drawer and installer icons.
-
-When an installed executable is detected, every user level, including
-Novice, displays its locations and offers Update or Uninstall. Use the
-Installer's Abort Install button to cancel. Uninstall always asks for
-confirmation and whether to keep settings; Novice does not bypass these
-questions. Update is selected by default, but the choice is always shown.
-Updates retain custom binary/shared-data locations, migrate the earlier
-default shared-data location to SYS:NovaDock, and move older manuals
-directly into HELP:. Imported plugins and themes are preserved. Leftover
-resources alone do not count as an installed application. Uninstall
-automatically resolves recorded application, Preferences and shared-data
-locations, falling back to documented standard and legacy directories. It
-never asks you to select directories, including when the Plugins drawer is
-missing but Themes or Tools remains. It only asks for removal confirmation
-and whether to keep settings. Uninstall deletes only NovaDock's files from
-old shared Help locations and never removes the HELP: root.
-
-BitSkim defaults to SYS:Utilities/BitSkim/BitSkim; custom executable paths
-remain configurable. The installer stays in the distribution package.
-
-@{b}Maintainer release tool@{ub}
------------------------
-
-Compile, test, package and publish the same tagged release to GitHub and
-GitLab with python3 scripts/release.py (plan, build, check, prepare,
-confirmed publish and separate source push). Aminet submission is supported
-by the same tool. See @{"docs/RELEASING.md" link RELEASING} for setup and commands.
-
-The standalone plugin SDK source tree is in @{"plugin-sdk/" link README}.
+The Plugin SDK chapters cover writing a plugin, its protocol, manifest and
+settings window. The Themes chapter explains creating and importing themes.
+ARexx and event-hook chapters describe automating the dock and integrating
+applications.
 @endnode
 
 @node LAUNCHERS_AND_ICONS "Launchers and icons"
@@ -345,9 +191,9 @@ The standalone plugin SDK source tree is in @{"plugin-sdk/" link README}.
   @{" Unified Launcher Action " link LAUNCHERS_AND_ICONS 78}
   @{" Bundled icons " link LAUNCHERS_AND_ICONS 136}
   @{" Installation or upgrades " link LAUNCHERS_AND_ICONS 173}
-  @{" Dock context menu and direct manipulation (NovaDock 0.1) " link LAUNCHERS_AND_ICONS 183}
-  @{" Later 0.1: tooltips, Workbench drops, ARexx " link LAUNCHERS_AND_ICONS 279}
-  @{" Stack, quoting and running applications " link LAUNCHERS_AND_ICONS 285}
+  @{" Dock context menu and direct manipulation (NovaDock 0.2) " link LAUNCHERS_AND_ICONS 183}
+  @{" Tooltips, Workbench drops and ARexx " link LAUNCHERS_AND_ICONS 281}
+  @{" Stack, quoting and running applications " link LAUNCHERS_AND_ICONS 287}
 
 NovaDock supports separate @{b}application/command@{ub} launchers and @{b}Workbench
 folder/drawer@{ub} launchers. Both use the optional third field for a custom
@@ -519,7 +365,7 @@ including older two-field and three-field LAUNCH= entries. Add new launcher
 entries via Preferences or edit the configuration file. On a fresh install,
 two stock launcher tiles show bundled example icons.
 
-@{b}Dock context menu and direct manipulation (NovaDock 0.1)@{ub}
+@{b}Dock context menu and direct manipulation (NovaDock 0.2)@{ub}
 --------------------------------------------------------
 
 The runtime dock includes a small native Intuition popup for each item type.
@@ -574,14 +420,16 @@ on or off. Ordinary subdirectories such as SYS:Utilities default to off,
 while roots ending in : default to on. A disabled meter is not polled,
 drawn, or added to the tooltip. Older configuration lines without an
 explicit choice use those same root-on/subdirectory-off defaults; the final
-extended field stores the per-drawer choice. Multiple dropped objects are
-handled in drop-message order. The centre three fifths of an application
-tile is its @{b}Open With@{ub} target. NovaDock launches one application instance per
-dropped object, placing the action's configured arguments before the quoted
-object path and respecting its working directory. ARexx actions, drawers,
-plugins and spacers are not Open With targets. In Edit mode, the outer
-fifths of a tile remain insertion zones; dropping there inserts before that
-tile, while dropping on the surrounding dock background appends the objects.
+extended field stores the per-drawer choice. Multiple dropped objects keep
+their supplied order. Unlock the dock to add objects anywhere on it: drop on
+the first half of a tile to insert before it, or the second half to insert
+after it. Background drops append. Previously removed application entries
+are reused rather than duplicated.
+
+Lock the dock to use drop actions. The centre three fifths of an application
+tile opens dropped objects with that application, using its stored arguments
+and working directory. Drawer tiles copy objects; plugin tiles use their own
+drop actions. These actions are disabled during Edit mode.
 
 NovaDock may be started from User-Startup before LoadWB has fully brought
 the Workbench process online. If Workbench initially rejects the AppWindow,
@@ -615,8 +463,8 @@ drawer opener (C:WBRUN) is still needed on some earlier OS3 configurations.
 disabled plugin preservation, and serialization. Native 68k compilation and
 the locked dock menu have also been exercised on Workbench.
 
-@{b}Later 0.1: tooltips, Workbench drops, ARexx@{ub}
--------------------------------------------
+@{b}Tooltips, Workbench drops and ARexx@{ub}
+-----------------------------------
 
 See ARexx_AND_DROPS.md for drag-to-add/remove behavior, tooltips and control
 commands.
@@ -1197,7 +1045,7 @@ behavior. Search does not change the order of the running-window snapshot.
 @node THEMES "Themes"
 @toc Main
 @{b}Themes@{ub}
-======
+========
 
 NovaDock keeps each bundled theme in its own directory below PROGDIR:Themes.
 A pack contains one small text file:
@@ -1352,7 +1200,7 @@ cannot be removed.
   @{" Optional ARexx host " link AREXX_AND_DROPS 9}
   @{" Tooltip behavior " link AREXX_AND_DROPS 136}
   @{" Drag-and-drop behavior " link AREXX_AND_DROPS 154}
-  @{" Native testing checklist " link AREXX_AND_DROPS 189}
+  @{" Native testing checklist " link AREXX_AND_DROPS 194}
 
 @{b}Optional ARexx host@{ub}
 -------------------
@@ -1378,7 +1226,7 @@ Supported commands (case insensitive):
   @{b}PING@{ub}
       Returns PONG
   @{b}VERSION@{ub}
-      Returns 0.1
+      Returns 0.2
   @{b}STATUS@{ub}
       Returns RUNNING and the number of visible tiles
   @{b}LIST@{ub}
@@ -1514,10 +1362,15 @@ are accepted for compatibility, ignored, and omitted on the next save.
     sub-drawer, ALL). This works while locked. A small window opens only if
     Copy reports an error. Whole volumes are never copied, and the Workbench
     window of the destination is not refreshed automatically.
-  * In Edit mode, drag an application, data/project icon, or Workbench
-    directory onto the background or outer edge of a tile: creates a
-    launcher at that position, provided the 12-tile limit permits it. The
-    centre of an application tile remains its Open With target.
+  * In Edit mode, drop an application, project icon or directory anywhere on
+    the dock to add it. The first half of a tile inserts before it; the
+    second half inserts after it. An insertion line previews the insertion
+    edge while you drag over the unlocked dock. Background drops append.
+    Multiple objects keep their supplied order, subject to the dock
+    capacity.
+  * Edit mode never sends drops to applications, drawers or plugins. Lock
+    the dock again to use Open With, copying, Trash and other plugin drop
+    actions.
   * In Edit mode, drag any dock tile onto another tile to reorder launchers,
     drawers, and plugins without activating the dragged item.
   * Drag a launcher or drawer genuinely outside the dock to remove it. A
@@ -1615,10 +1468,97 @@ An ARexx handler could look like this:
     END
 @endnode
 
+@node WEATHER_PLUGIN "Weather"
+@toc Main
+@{b}Weather@{ub}
+========
+
+@{b}Sections@{ub}
+  @{" Location and forecasts " link WEATHER_PLUGIN 12}
+  @{" Requirements " link WEATHER_PLUGIN 32}
+  @{" Settings " link WEATHER_PLUGIN 60}
+  @{" Weather data " link WEATHER_PLUGIN 71}
+
+Add @{b}Weather@{ub} from Preferences -> Add item -> Plugin. Its executable is
+Plugins/Weather, ID WEATHER, and its independent plugin version is 0.1.
+
+@{b}Location and forecasts@{ub}
+----------------------
+
+Right-click the tile and choose @{b}Edit settings...@{ub}. Enter a city and country,
+for example Stockholm, Sweden, and choose Celsius or Fahrenheit. Save or Use
+these settings. An empty location leaves network fetching disabled.
+
+The tile shows the current modelled temperature and a weather symbol. Its
+pixel-art icon changes automatically for clear skies, partial cloud,
+overcast, fog, drizzle, rain, sleet, snow and thunderstorms, without
+animation timers. Click it for today's conditions and five daily forecasts
+labelled with local weekday names, with low/high temperatures and rain
+probability. @{b}Refresh@{ub} asks for an update; manual requests are limited to one
+a minute. Close or Escape dismisses the window.
+
+Automatic updates run every 30 minutes by default. Downloads take place in a
+separate process so the dock and forecast controls remain responsive. Failed
+updates retain the last successful data; a star badge marks stale cached
+conditions. The window shows the observation time and update status.
+
+@{b}Requirements@{ub}
+------------
+
+An internet connection and an HTTPS-capable Amiga Wget or curl are required.
+Select the downloader executable and its type in the plugin settings. The
+default is C:curl with downloader type @{b}CURL@{ub}. A downloader with current TLS
+and certificate support is needed; certificate checks are not disabled. Only
+one download runs at a time. HTTPS connections allow up to 90 seconds for
+DNS, connection and TLS setup, and up to 120 seconds for the complete
+transfer. The dock stops waiting after 150 seconds; the independent
+downloader cleans up when it exits. The downloader runs below normal task
+priority. Failed updates retry after five minutes.
+
+For Classic AmigaOS, use a TLS-enabled CPU build of curl
+(https://aminet.net/package/comm/tcp/curl-8.23.0) and the AmiSSL version
+required by that build (https://github.com/jens-maus/amissl/releases). The
+68000 curl build has no TLS; choose a 68020 or later build on a matching
+CPU. Install the downloader separately, then set its executable path and
+type in Weather settings. Existing settings are kept when upgrading. A Wget
+build that reports "Unsupported scheme" cannot fetch HTTPS URLs, even when
+ping and ordinary web downloads work. Weather reports this limitation in its
+forecast window. Do not disable certificate checks; ensure the Amiga's date
+is correct and its certificate bundle is current.
+
+The last successful forecast is saved in ENVARC:NovaDock/Weather.cache,
+keyed by location and units. A cached forecast can be shown after restarting
+or when offline. Invalid or partial responses never replace valid data.
+
+@{b}Settings@{ub}
+--------
+
+  @{b}Setting            Meaning                                Default@{ub}
+  -----------------------------------------------------------------
+  Location           City and country used for lookup       Empty
+  Temperature units  Celsius or Fahrenheit                  C
+  HTTPS downloader   Wget or curl executable                C:curl
+  Downloader type    Command-line options for WGET or CURL  CURL
+  Refresh minutes    Automatic interval, 15-360 minutes     30
+
+@{b}Weather data@{ub}
+------------
+
+Data is provided by Open-Meteo (https://open-meteo.com/) under CC BY 4.0
+(https://creativecommons.org/licenses/by/4.0/). Current conditions are
+weather-model estimates. The free API is for non-commercial use; see
+Open-Meteo's terms (https://open-meteo.com/en/terms) for service details.
+The city entered in settings is sent for geocoding, then its coordinates are
+used to request a forecast. No precise device-location detection is used.
+
+The weather test fixture in the source tree is an Open-Meteo Stockholm
+response and retains this attribution.
+@endnode
+
 @node AMIRC_PLUGIN "AmIRC"
 @toc Main
 @{b}AmIRC@{ub}
-=====
+========
 
 The optional AmIRC tile shows whether AmIRC is running and connected. It can
 show connection status, your nickname, the current channel or the server
@@ -1707,7 +1647,7 @@ through the dock tile. Unread event counts are session-local, not saved.
 @node BITSKIM_PLUGIN "BitSkim"
 @toc Main
 @{b}BitSkim@{ub}
-=======
+========
 
 @{b}Sections@{ub}
   @{" Add and use " link BITSKIM_PLUGIN 16}
@@ -1856,7 +1796,7 @@ not trigger reconnection.
 @node NETWORK_PLUGIN "Network"
 @toc Main
 @{b}Network@{ub}
-=======
+========
 
 @{b}Sections@{ub}
   @{" Tile and controls " link NETWORK_PLUGIN 20}
@@ -2170,40 +2110,96 @@ unpinned or deleted. Explicit Clear/Delete and reducing the configured limit
 can remove pinned entries. Pins and clipboard contents remain session-local.
 @endnode
 
-@node ARCHIVE_PLUGIN "Archive Extractor"
+@node ARCHIVE_PLUGIN "Archiver"
 @toc Main
-@{b}Archive Extractor@{ub}
-=================
+@{b}Archiver@{ub}
+========
 
-Archive Extractor is a bundled drop target for common Amiga archive formats.
-It uses unpacker commands already installed in C:; NovaDock does not bundle
-or replace those tools.
+@{b}Sections@{ub}
+  @{" Drop an item " link ARCHIVE_PLUGIN 13}
+  @{" Icons and progress " link ARCHIVE_PLUGIN 68}
+  @{" Formats and commands " link ARCHIVE_PLUGIN 89}
+  @{" Destinations and source files " link ARCHIVE_PLUGIN 108}
 
-@{b}Use@{ub}
----
+Archiver unpacks supported archives and creates ZIP or LHA archives using
+the commands installed in C:. Existing saved Extract tiles keep working; the
+internal ARCHIVE ID and Plugins/ArchiveExtractor executable are retained.
 
-  1. Add or enable @{b}Extract@{ub} in Preferences > Organize. It is enabled in a
-     fresh default configuration and offered in @{b}Add item > Plugins@{ub} after
-     upgrading an older configuration.
-  2. Drag an archive's Workbench icon onto the Extract tile. This works
-     while the dock is locked.
-  3. NovaDock creates a drawer beside the archive, using the archive
-     filename without its final extension, and extracts into that drawer.
+@{b}Drop an item@{ub}
+------------
 
-Archive Extractor is deliberately drop-only. An ordinary left click does
-nothing; it cannot start an empty extraction or change the tile's display.
+Use the tile while the dock is @{b}locked@{ub}. When unlocked, drops add dock items.
 
-For example, dropping Work:Downloads/Demo.lha creates Work:Downloads/Demo/.
-The tile reports EXTRACTING, then DONE or a short error status. A separate
-@{b}NovaDock Archive Extractor@{ub} Shell window displays the unpacker's live,
-file-by-file output and any prompts. None of the supported extractors are
-started in quiet mode, so the archive contents remain visible as they are
-unpacked. When it finishes, the window shows the result and remains open
-until RETURN is pressed or its close gadget is clicked. Extraction runs in a
-separate helper process, so the dock and its other plugins keep responding
-while the window is open. After a successful extraction, the helper notifies
-Workbench that the destination drawer was added; an open window for the
-archive's parent directory refreshes automatically to show it.
+  * @{b}An archive:@{ub} open @{b}Extract archive@{ub}. The destination defaults to the
+    archive's parent drawer. @{b}Create new drawer@{ub} is selected and its name
+    defaults to the archive filename without the archive suffix. Change the
+    destination or drawer name, then press @{b}Extract@{ub}.
+  * @{b}Several files or drawers:@{ub} open one @{b}Create archive@{ub} dialog and put all
+    selected items in the same ZIP/LHA archive. The filename starts empty
+    and must be entered. Multiple selected archives are packed together
+    rather than unpacked.
+  * @{b}A normal file or drawer:@{ub} open @{b}Create archive@{ub}. Choose ZIP or LHA, the
+    destination drawer and archive filename, then press @{b}Compress@{ub}.
+  * @{b}Create Workbench icon (.info):@{ub} selected initially in both dialogs; the
+    last choice is remembered. Creates an icon for the saved archive or the
+    new extraction drawer. Existing icons are preserved. Turn it off to save
+    without adding an icon.
+  * @{b}Extract directly:@{ub} clear @{b}Create new drawer@{ub} to use the chosen drawer
+    itself. A confirmation explains that the unpacker may replace matching
+    files. The new-drawer icon option is disabled in this mode.
+  * @{b}Cancel:@{ub} closes the dialog without creating an archive.
+
+@{b}Open destination when finished@{ub} opens the saved archive's parent drawer or
+shows the extracted files after a successful operation (including unpacker
+warnings). It starts off and remembers your choice. In a finished Shell
+window, press @{b}O@{ub} to open the destination at any time, then click or press
+Return to close the window. Opening a drawer requires Workbench V44 or
+later.
+
+Compression remembers the last format, save drawer and icon choice across
+restarts. A missing save drawer falls back to the source's parent;
+unavailable formats fall back to an installed command. Multi-item filenames
+still start empty. Extraction keeps its same-parent destination and
+new-drawer defaults, and remembers its own icon choice. Last-used choices
+live in ENV:/ENVARC: under NovaDock as ArchiveFormat, ArchiveSaveDrawer,
+ArchiveCreateIcon, ArchiveExtractIcon and ArchiveOpenDestination.
+
+Browse opens the standard save requester. The filename extension follows the
+selected format. ZIP creation requires C:Zip; LHA creation requires C:LhA.
+Unpackers alone cannot create an archive. Missing tools are explained
+without changing source files. Single archive drops still open extraction.
+Combined archives put each selected basename at their top level, including
+sources from different parent drawers. Redundant selections already inside a
+selected drawer are included once. Conflicting top-level names are refused;
+rename or narrow the selection before retrying. Up to 128 dropped objects
+are accepted.
+
+Supported suffixes and common file signatures identify archives. A drawer
+with a name such as Photos.zip is still a drawer and opens compression.
+Recognised archives without a suffix suggest <name>.unpacked as the new
+drawer name. Ordinary left clicks do nothing; right-click @{b}Edit settings...@{ub}
+changes the status refresh interval.
+
+@{b}Icons and progress@{ub}
+------------------
+
+The idle tile shows a zipped archive box. Its arrow points @{b}up while
+compressing@{ub} and @{b}down while extracting@{ub}. Simultaneous compression and
+extraction show both directions. A badge counts active jobs. Selecting
+options keeps the idle icon. The tooltip is always headed @{b}ARCHIVE@{ub} and shows
+the operation and current source basename (up to 31 characters). Concurrent
+jobs show their count and @{b}Multiple items@{ub}. The latest result remains briefly
+visible after completion. Completed jobs stop showing the activity arrow and
+badge even while their output window remains open. If a helper exits without
+a final result, its abandoned status is cleared and briefly shows
+@{b}INTERRUPTED@{ub}. Only live helper processes count as active jobs.
+
+An independent helper owns each dialog and live Shell progress window, so
+the dock stays responsive. The output window reports success or failure and
+stays open when the operation finishes. Click inside the Shell window, press
+Return, or use its close gadget to dismiss it. Mouse-to-close is enabled
+only after the archive command has finished; clicks during an operation do
+not dismiss it.
 
 @{b}Formats and commands@{ub}
 --------------------
@@ -2224,47 +2220,146 @@ unavailable until one of its commands is installed. Right-click the tile and
 choose @{b}Edit settings...@{ub} to change only its lightweight status refresh
 interval.
 
-@{b}Safety and retry behaviour@{ub}
---------------------------
+@{b}Destinations and source files@{ub}
+-----------------------------
 
-  * The destination drawer must not already exist. This avoids silently
-    mixing an archive with old contents or prompting from a background
-    command.
-  * Paths containing shell control characters, wildcards or quotes are
-    rejected.
-  * Drawers and unknown extensions cannot be dropped on this tile.
-  * A failed extraction removes the new drawer when it is still empty. If
-    the unpacker had already written files, the extraction window asks
-    whether to delete the partial drawer (C:Delete ... ALL) or keep it for
-    inspection.
-  * Every extraction writes its own T:NovaDockArchive-<id>.status file, so
-    several archives can be dropped at once; the tile shows EXTRACTING 2
-    while two are running and then the latest result.
-  * Extractor shells receive a 16 KB stack.
-  * Extractors receive an interactive CON: window for both input and output.
-    This exposes their normal progress and error text and permits input when
-    an installed tool requests it. NovaDock waits only inside the
-    short-lived extraction helper, never inside the dock process.
+  * Existing output archives are refused; choose a different name.
+  * An archive cannot be saved inside the drawer being compressed, or
+    replace the source file. Whole volume roots are not accepted as
+    compression sources.
+  * Compression runs from the source parent, so the archive contains the
+    source basename and its descendants rather than an absolute drive path.
+  * A source file or drawer's existing .info file is included beside it in
+    ZIP and LHA archives. Icons inside a drawer are included through
+    recursion. Sources without an icon still archive normally. The @{b}Create
+    Workbench icon@{ub} checkbox controls the new archive's icon; it does not
+    exclude source icons. The progress window explicitly names each included
+    source icon.
+  * Output is built in a reserved temporary drawer beside the chosen
+    destination. Only a successful result is renamed to the chosen filename.
+    If another file takes that name, the completed result is retained
+    separately and reported.
+  * Failed compression cleans up only its own temporary output. Source files
+    and existing archives are preserved.
+  * With @{b}Create new drawer@{ub} selected, an existing drawer is refused. After
+    failure, an empty newly created drawer is removed; a non-empty partial
+    drawer can be kept or removed through the existing confirmation prompt.
+  * Direct extraction never removes the chosen existing drawer during
+    failure cleanup. Unpacker output should be reviewed if an operation
+    fails.
+  * Info-ZIP/UnZip result 1 is shown as @{b}WARNINGS@{ub}, with the output retained.
+    Review its messages: files may have been skipped. Actual errors still
+    use failure cleanup, and other unpackers keep their normal success
+    rules.
+  * Paths containing shell control characters, quotes or wildcards are
+    refused. Source basenames starting with - are refused to avoid command
+    options.
+  * Per-helper status files keep concurrent jobs separate. Workbench windows
+    refresh after successful operations where workbench.library supports it.
 
-NovaDock constructs these command forms:
+Creation commands are Zip -r output source and LhA -r a output source, run
+from the source parent with quoted arguments, plus source.info when present.
+The installed commands provide recursion, compression and extraction;
+NovaDock does not bundle them.
+@endnode
 
-    UnZip -o archive -d destination
-    LhA x archive destination/
-    UnRAR x -o+ archive destination/
-    ARJ x -y archive destination/
-    CD destination + UnARJ x archive
-    LZX x archive destination/
-    CD destination + UnLZX -x archive
-    CD destination + tar -xvf archive        (or -xzvf for .tar.gz/.tgz)
-    gzip >destination/name -dc archive.gz
+@node TIMER_AND_NOTES "Timer and Notes"
+@toc Main
+@{b}Timer and Notes@{ub}
+===============
 
-For .tar.gz the destination drawer drops both extensions (src-1.0.tar.gz
-becomes src-1.0/). A single .gz file is decompressed into a drawer of its
-own name without the .gz.
+Available in NovaDock 0.2. Add either plugin from @{b}Add plugin@{ub} or enable it in
+Preferences. Right-click @{b}Edit settings...@{ub} to save its preferences in the
+normal NovaDock configuration.
 
-Command paths and file paths are quoted by the implementation. The portable
-host tests cover case-insensitive recognition, destination naming,
-unsafe-path rejection and command construction.
+@{b}Timer@{ub}
+-----
+
+Click Timer to open its controls. Enter a duration in seconds (1 to 86400),
+then choose @{b}Start@{ub}. @{b}Pause@{ub} keeps the remaining time; Start resumes it. @{b}Reset@{ub}
+uses the entered duration and stops the countdown. Close the controls to
+leave a running timer counting down in the dock. Changing the duration
+during a run requires Reset. The tile shows remaining hours, minutes and
+seconds and a progress meter.
+
+At zero, a reminder window opens or comes forward. The tile says @{b}TIME IS UP@{ub}
+until Reset or a new countdown. The optional screen flash happens once. The
+reminder stays responsive and the dock continues running.
+
+Settings: @{b}Default seconds@{ub}, @{b}Reminder message@{ub}, @{b}Flash screen on completion@{ub}.
+Changed defaults apply to the next fresh countdown; they do not interrupt a
+run. The duration and message preferences are saved; an active countdown is
+session-only. Timing uses the hardware EClock, so changing the wall clock or
+pausing dock display updates does not change the elapsed duration.
+
+@{b}Notes@{ub}
+-----
+
+Right-click Notes and choose @{b}Add new note...@{ub}. Enter a title and write in the
+multiline editor. @{b}Save@{ub} keeps it open and reports the saved-note count;
+@{b}Save/close@{ub}, the close gadget and Escape save before closing. @{b}Discard@{ub} closes
+without saving. A completely empty new draft is not saved.
+
+Click the dock icon, or choose @{b}Browse notes@{ub}, to open a picker in the same
+style as Running Apps. Each entry shows its title and a readable preview.
+Click an entry, or use the arrow keys and Return, to open it. An empty
+collection starts a new draft. The dock badge counts saved notes. Selecting
+another note saves the current note before switching. If saving fails, the
+current editor stays open. Selecting the already-open note brings its window
+forward without changing it.
+
+@{b}Editing and formatting@{ub}
+
+The white page wraps and scrolls. Drag across text, or use Shift and the
+arrow keys, to select it. Choose @{b}Normal@{ub}, @{b}H1@{ub}, @{b}H2@{ub}, @{b}H3@{ub} or @{b}H4@{ub} for paragraph
+styles. @{b}B@{ub} and @{b}I@{ub} toggle bold and italic. The font chooser offers Topaz 8,
+Topaz 9 and Courier 13; the colour chooser offers black, red, blue, green,
+purple and grey. Inline font, style and colour changes apply to the
+selection. Without a selection they set the style for the next text you
+type. Courier falls back to Topaz when its font is unavailable.
+
+Right-click the page for @{b}Cut@{ub}, @{b}Copy@{ub}, @{b}Paste@{ub}, @{b}Delete selected text@{ub} and @{b}Remove
+formatting@{ub}. Amiga+A selects all; Amiga+C/X/V copies, cuts and pastes;
+Amiga+S saves; Amiga+B/I changes style. Control shortcuts work too.
+Clipboard transfers are plain text. A failed clipboard operation preserves
+the note. Text uses the system's Amiga character encoding.
+
+@{b}Markdown and permanent files@{ub}
+
+@{b}View@{ub} switches between @{b}Formatted@{ub} and @{b}Markdown@{ub}. Both edit the same saved text;
+switching views preserves the cursor/selection. Headings, bold, italic,
+escapes and inline code use Markdown. Fonts and colours are saved separately
+in note metadata, so the Markdown source contains no generated HTML. The
+formatted editor handles this subset; other Markdown constructs remain
+visible as source text. Formatting a selection normalizes the supported
+markup while preserving its visible text.
+
+Notes live in ENVARC:NovaDock/Notes and survive dock and system restarts.
+New notes are .md files with YAML front matter containing the title and note
+metadata. Older .ndnote files remain readable. The @{b}Notes drawer@{ub} setting
+selects another permanent drawer; its parent must exist. A folder change
+applies after the current editor closes. Back up the whole drawer. Up to 32
+notes and 8 KB of Markdown per note (1024 logical lines) are supported. An
+edit or formatting change that cannot fit is refused without losing text.
+Custom font/colour runs have a separate 2 KB metadata limit. External
+changes to a file's Markdown invalidate stale font/colour metadata; its text
+is retained.
+
+@{b}Delete@{ub} moves the open saved note to the collection's @{b}Deleted@{ub} drawer and
+updates the count. To recover one, move its file back to the notes drawer
+under an unused note-NNNN.md filename. Deleting an unsaved draft just closes
+it.
+
+Saving checks for external changes and stages complete files before
+replacing them. Failure leaves the editor open with your text intact; a
+conflicting file is not overwritten. On shutdown, unsaved work is saved when
+safe. Conflicts attempt a separate recovered-...ndnote file; failed
+replacement can retain a .save-... drawer with new and old recovery files.
+Invalid files are kept and reported as read errors.
+
+Both plugins sleep for up to ten seconds while idle with their windows
+closed, and wake immediately for dock actions. Timer refreshes once a second
+while running. Editing windows remain responsive without blocking the dock.
 @endnode
 
 @node COMMAND_TILE "Command tiles"
@@ -2512,7 +2607,7 @@ require changing DOpus's default configuration.
 @node EYES_PLUGIN "Eyes"
 @toc Main
 @{b}Eyes@{ub}
-====
+========
 
 @{b}Sections@{ub}
   @{" Installation " link EYES_PLUGIN 14}
@@ -2590,7 +2685,7 @@ of its X11 source code.
 @{b}MusicPlayer@{ub}
 ===========
 
-MusicPlayer is one logical dock item for three separately installed AmigaOS
+MusicPlayer is one logical dock item for four separately installed AmigaOS
 music players. On a top or bottom dock it spans two ordinary tile widths so
 the module title and controls are not cramped. It remains one item for
 selection, dragging, paging and configuration. Left and right docks retain a
@@ -2650,6 +2745,26 @@ state and 0..64 volume slider synchronized. These newer commands are
 intended for HippoPlayer 2.47 or later. Select HIPPOPLAYER for MODE to force
 it, or leave MODE at AUTO and set PREFER if several supported players run.
 
+@{b}LumiAMP@{ub}
+-------
+
+LumiAMP (https://www.amigaworld.de/software/lumiamp/) 0.5 is detected
+through its fixed LUMIAMP ARexx port. Choose LUMIAMP as Player to force it,
+or set Preferred player to LUMIAMP when using automatic detection. Set
+Default application to the installed LumiAMP executable to launch it from
+the idle tile.
+
+The supplied profile follows LumiAMP's included English ARexx reference:
+PLAY, PAUSE, RESUME, STOP, PREV, NEXT, GETSTATE TITLE, GETSTATE TIME,
+STATUS, GETSTATE VOLUME and VOLUME 0..100. Resuming a paused track uses
+RESUME, preserving its position. A stopped track uses PLAY. Its
+playing/paused state and volume slider follow the player's query results; an
+empty tag title remains unavailable.
+
+Optional LUMI_* command settings allow overrides without changing the other
+player profiles. LumiAMP and its decoder libraries must be installed
+separately.
+
 AmigaAMP commands remain version-dependent and should be checked against the
 installed player. Automatic metadata queries are enabled for EaglePlayer.
 EaglePlayer's bundled 2.06 guide documents STATUS G VOL and VOLUME 0..255,
@@ -2670,7 +2785,7 @@ binaries or copyrighted music are included.
 @node MIXER_PLUGIN "Mixer"
 @toc Main
 @{b}Mixer@{ub}
-=====
+========
 
 The Mixer tile (Plugins/Mixer, ID MIXER) shows the AHI output volume and
 changes it. It needs AHI 4 or later.
@@ -2746,27 +2861,39 @@ IFF ILBM picture that any Amiga paint program or viewer can load.
 @{b}Using it@{ub}
 --------
 
-  1. Click the tile. It counts down (IN 2, IN 1), so you can bring another
-     screen to the front first. A click during the countdown cancels it.
+  1. Click the camera icon. Its countdown-clock symbol gives you time to
+     bring another screen to the front first. A click during the countdown
+     cancels it.
   2. The front screen (or Workbench, see Settings) is copied and saved as
      Screenshot-YYYYMMDD-HHMMSS.iff in the chosen drawer. A second shot
      within the same second gets -1, -2 and so on.
-  3. The tile shows SAVED, and its badge counts the shots taken since the
-     plugin started.
+  3. A check mark confirms the picture was saved. The badge counts shots
+     taken since the plugin started. A Workbench .info icon is created
+     beside the image so it appears in Icons Only views; double-click opens
+     MultiView.
 
-While a large screen is being written the tile shows SAVING n%.
+The camera changes to a flash while capturing or writing the picture, then
+returns to its idle appearance after the saved indication. A cross marks a
+cancelled or failed operation. Hover over the tile for countdown, save
+progress or error details; status words are kept out of the tile itself.
 
 @{b}What is saved@{ub}
 -------------
 
-  * The whole screen at its own resolution, with its palette (CMAP) and
-    display mode (CAMG), ByteRun1 compressed, up to 256 colours.
+  * Indexed screens retain their palette (CMAP) and display mode (CAMG).
+    15-, 16-, 24- and 32-bit RTG screens are read through the
+    CyberGraphX-compatible interface (including compatible Picasso96 setups)
+    and saved as 24-bit RGB ILBM images. Both paths use lossless ByteRun1
+    compression.
   * The screen is copied with one blit while Intuition is locked, then
     written without the lock, so other programs are held up only for that
     copy. The copy needs as much memory as the screen itself; NO MEMORY
     means it was not available.
-  * 15-, 16- and 24-bit RTG screens are not supported yet and report DEEP
-    SCREEN. 8-bit RTG screens work.
+  * True-colour capture needs cybergraphics.library version 41 or newer and
+    a compatible RTG bitmap. Missing support reports NO RTG READER.
+  * Screen copies use memory according to their size and depth. True-colour
+    encoding needs only one additional RGB row, rather than another full
+    image.
   * The mouse pointer is a sprite and is not part of the picture.
 
 @{b}Settings@{ub}
@@ -2789,60 +2916,108 @@ While a large screen is being written the tile shows SAVING n%.
 @{b}Screen Mode@{ub}
 ===========
 
-The Screen Mode tile (Plugins/ScreenMode, ID SCREENMODE) shows the size of
-the Workbench screen, for example 800x600x8, and switches between saved
-ScreenMode presets.
+@{b}Sections@{ub}
+  @{" Choose a resolution " link SCREENMODE_PLUGIN 13}
+  @{" Applying a mode " link SCREENMODE_PLUGIN 32}
+  @{" Saved presets " link SCREENMODE_PLUGIN 50}
+  @{" Settings " link SCREENMODE_PLUGIN 58}
 
-@{b}Making presets@{ub}
---------------
+The @{b}MODES@{ub} tile (Plugins/ScreenMode, ID SCREENMODE) opens a direct resolution
+picker. It is separate from @{b}SCREENS@{ub}, which switches between already open
+public screens.
 
-Open @{b}Prefs/ScreenMode@{ub}, choose a mode, then @{b}Project > Save As...@{ub} and save it
-in the presets drawer (by default SYS:Prefs/Presets) under a name such as
-PAL Laced or RTG 1024. Repeat for each mode you want to switch between.
+@{b}Choose a resolution@{ub}
+-------------------
 
-@{b}Switching@{ub}
----------
+  1. Click MODES to list available Workbench-compatible display modes.
+  2. Select a resolution and colour depth, then click @{b}Use@{ub} or press Return.
+  3. The picker closes and Workbench changes mode. @{b}Cancel@{ub}, Escape or the
+     close gadget dismisses the list without changing anything.
 
-  1. Click the tile. A window lists every ScreenMode preset in the drawer
-     with its size and display mode name.
-  2. Select one and choose @{b}Use@{ub} (or press Return).
-  3. The plugin runs ScreenMode FROM <preset> USE, the same as opening the
-     preset in ScreenMode and choosing @{b}Use@{ub}, and Workbench reopens in the new
-     mode. The setting is not saved to ENVARC:; open ScreenMode and choose
-     @{b}Save@{ub} to keep it after a reboot.
+Each row shows width, height, bit depth and the display driver's mode name.
+Unavailable modes are excluded. The active mode is highlighted and scrolled
+into view when the picker opens. Its @{b}CURRENT@{ub} marker remains visible when you
+select a different row. Native modes retain the current depth where
+supported. Fixed-depth display modes use the depth reported by their driver.
+The list holds up to 128 modes, sorted by resolution and depth; reopen it to
+refresh the available modes.
 
-Workbench can only change its screen while no other window is open on it.
-The plugin therefore asks NovaDock to close its own windows first (the ARexx
-command SUSPEND) and to reopen them (RESUME) once the new Workbench screen
-is up, or after 12 seconds. Close other programs' windows on Workbench
-first, or Intuition asks you to.
+The mode list is allocated and scanned only while the picker opens, then
+released when it closes. No extra idle scan or large resident list is kept.
 
-The tile shows SWITCHING meanwhile, and FAILED or NOT STARTED if ScreenMode
-reported an error or could not be found.
+@{b}Applying a mode@{ub}
+---------------
+
+The plugin writes a temporary ScreenMode preference file and applies it
+through the system ScreenMode command, without opening its Preferences GUI.
+NovaDock closes its own visitor windows during the change and reopens them
+afterward. Other applications' Workbench windows must also be closed if the
+system asks you to close them.
+
+@{b}Use@{ub} changes the current session only. To keep a mode after reboot, save it
+through the system ScreenMode preferences. Selecting the exact current mode
+closes the picker without reopening Workbench.
+
+The temporary preference file belongs to the worker until the command exits,
+including when the resident times out or quits. Failed or abandoned choices
+cannot delete another operation's files. Only one mode switch runs at a
+time.
+
+@{b}Saved presets@{ub}
+-------------
+
+Set @{b}Click opens@{ub} to @{b}PRESETS@{ub} in the plugin settings to list saved ScreenMode
+preference files instead. Create these with the system ScreenMode editor's
+@{b}Project > Save As...@{ub} command. Select a preset and choose @{b}Use@{ub}. Set @{b}Click
+opens@{ub} back to @{b}MODES@{ub} for the direct resolution list.
 
 @{b}Settings@{ub}
 --------
 
+  @{b}Click opens@{ub}
+      Meaning: Available display modes or saved presets
+      Default: MODES
   @{b}Presets drawer@{ub}
-      Meaning: Drawer searched for ScreenMode preset files
+      Meaning: Drawer containing saved ScreenMode files
       Default: SYS:Prefs/Presets
   @{b}ScreenMode program@{ub}
-      Meaning: The ScreenMode preferences editor
+      Meaning: System command used to apply the selection
       Default: SYS:Prefs/ScreenMode
 
-The editor command runs in a separate worker while the tile keeps answering
-the dock. A command that has not completed after 15 seconds shows COMMAND
-TIMEOUT and the dock resumes. The worker is not forcibly killed: another
-mode switch is refused until it exits (SWITCH STILL RUNNING). A late
-completion is discarded after the waiting plugin has left; it cannot access
-deleted reply ports. A failed SUSPEND aborts the operation before launching
-the editor.
+Hover over the monitor icon to see the current dimensions or error details.
+A command that has not completed after 15 seconds reports a timeout and
+NovaDock resumes. The worker is allowed to finish safely; another switch
+waits until it exits.
+@endnode
+
+@node SCREEN_SWITCHER_PLUGIN "Screen Switcher"
+@toc Main
+@{b}Screen Switcher@{ub}
+===============
+
+Add @{b}SCREENS@{ub} in Preferences -> Add item -> Plugin. Its executable is
+Plugins/ScreenSwitcher and its ID is SCREENSWITCHER. The plugin starts at
+its own version 0.1; the dock remains version 0.2.
+
+Click the tile to list up to 32 public screens, sorted by registered name,
+with their dimensions. Choose a screen with the mouse, or use the arrow keys
+and Return. Escape, clicking outside, or clicking the dock tile again closes
+the picker. Reopen it to refresh the list.
+
+Switching brings the chosen screen forward without changing its resolution
+or closing applications. Private screens are excluded. If a screen closes
+while the picker is open, the tile reports "Screen closed"; reopen the list.
+Screen Mode remains a separate plugin for saved resolution presets.
+
+The screen list is scanned only when opening the picker. The plugin sleeps
+between dock messages while idle, and keeps no screen pointers after a scan.
+There are no plugin settings to configure.
 @endnode
 
 @node TRASH_PLUGIN "Trash"
 @toc Main
 @{b}Trash@{ub}
-=====
+========
 
 The Trash tile is the Workbench Trashcan on the dock. Add it with @{b}Add item >
 Plugins > Trash@{ub} in NovaDock Preferences.
@@ -2856,12 +3031,15 @@ Plugins > Trash@{ub} in NovaDock Preferences.
       Opens the Trashcan on the system disk (SYS:Trashcan)
   @{b}Menu: Open trash@{ub}
       The same
+  @{b}Menu: Refresh@{ub}
+      Recounts the known Trashcans
   @{b}Menu: Empty trash...@{ub}
       Asks, then deletes everything in the trash
   @{b}Menu: Remove@{ub}
       Removes the tile from the dock
 
-The tile shows EMPTY or the number of items, and a badge with the count.
+The tile shows a closed trashcan when empty and a paper-filled trashcan when
+it contains items. A badge shows the count. The icons follow your theme.
 
 @{b}How it works@{ub}
 ------------
@@ -2878,11 +3056,17 @@ deleting uses C:Delete ... ALL QUIET FORCE, so it also removes protected
 files. It empties SYS:Trashcan and every Trashcan the plugin has used since
 the last reboot. Other Trashcans can be emptied from Workbench.
 
-The count is refreshed whenever the plugin moves or deletes something, not
-on a timer, so the plugin never reads a floppy disk on its own. Objects put
-in a Trashcan by Workbench itself are counted after the next drop or Empty.
-With AmigaOS 3.5 or later, open Workbench windows update at once; on 3.0 and
-3.1, use @{b}Window > Update@{ub} in Workbench.
+The icon and count refresh automatically when files are added, removed or
+renamed in SYS:Trashcan or another Trashcan used by NovaDock since startup.
+Filesystem notifications trigger a recount; idle disks are not repeatedly
+scanned. A newly created system Trashcan is watched too.
+
+Filesystems without notification support can be updated with @{b}Refresh@{ub} in the
+tile menu. Changes made through NovaDock also refresh the count. Other
+volumes' Trashcans are included after NovaDock has used them.
+
+With AmigaOS 3.5 or later, NovaDock trash actions also update open Workbench
+windows; on 3.0 and 3.1, use @{b}Window > Update@{ub} in Workbench.
 @endnode
 
 @node GAMES_PLUGIN "WHDLoad games"
@@ -3133,16 +3317,20 @@ packages only from a source you trust.
 ================================
 
 @{b}Sections@{ub}
-  @{" 1. Declare the fields " link PLUGIN_SDK_SETTINGS 15}
-  @{" 2. Import and open the form " link PLUGIN_SDK_SETTINGS 73}
-  @{" 3. Read the values " link PLUGIN_SDK_SETTINGS 97}
-  @{" 4. Understand Use, Save and notification " link PLUGIN_SDK_SETTINGS 136}
-  @{" Custom preferences applications " link PLUGIN_SDK_SETTINGS 153}
+  @{" 1. Declare the fields " link PLUGIN_SDK_SETTINGS 19}
+  @{" 2. Import and open the form " link PLUGIN_SDK_SETTINGS 77}
+  @{" 3. Read the values " link PLUGIN_SDK_SETTINGS 101}
+  @{" 4. Understand Use, Save and notification " link PLUGIN_SDK_SETTINGS 140}
+  @{" Custom preferences applications " link PLUGIN_SDK_SETTINGS 157}
 
 NovaDock already supplies the settings application. Declare your plugin's
 fields in its manifest, and NovaDockPrefs builds the window opened by
-@{b}right-clicking your dock tile > Edit settings...@{ub}. No separate preferences
-executable or custom GadTools form is needed for ordinary options.
+@{b}right-clicking your dock tile > Edit settings...@{ub}.
+
+Every plugin menu ends with @{b}Edit settings...@{ub} and @{b}Remove@{ub}, including plugins
+with additional actions. A failure to start the shared editor is reported
+with a screen beep. No separate preferences executable or custom GadTools
+form is needed for ordinary options.
 
 @{b}1. Declare the fields@{ub}
 ---------------------
@@ -3473,9 +3661,9 @@ values or a ten-second heartbeat.
 Use the normal update helpers for plugins that must receive every click
 immediately. Plugin actions are returned in the reply to the next exchange,
 so a quiet heartbeat is also the maximum input latency while an unchanged
-tile is idle. The bundled Clock, Eyes and Archive Extractor use a two-second
-idle heartbeat. DOpus 4 uses one to two seconds so its start/front action
-remains quick. MusicPlayer keeps its control-driven exchanges.
+tile is idle. The bundled Clock, Eyes and Archiver use a two-second idle
+heartbeat. DOpus 4 uses one to two seconds so its start/front action remains
+quick. MusicPlayer keeps its control-driven exchanges.
 
 The helper remembers the latest host pacing hint:
 
@@ -3578,11 +3766,11 @@ remains a plugin event, while Shift + click is consumed by the dock.
       Click behavior: Cycle RX/TX, RX and TX
       Notes: Reads a configured SANA-II interface; OPTION.NET.* in the
       unified novadock.cfg
-  @{b}ArchiveExtractor@{ub}
-      Display: Installed unpackers and latest result
-      Click behavior: Drop an archive
-      Notes: Host-routed ZIP, LHA/LZH, RAR and ARJ extraction with a live
-      Shell progress window; see ARCHIVE_PLUGIN.md
+  @{b}ArchiveExtractor (Archiver)@{ub}
+      Display: Archive icon and operation state
+      Click behavior: Drop files or drawers
+      Notes: Unpacks archives; creates ZIP/LHA files through a native save
+      dialog. See ARCHIVE_PLUGIN.md
   @{b}Hello@{ub}
       Display: Text from example plugin
       Click behavior: Toggle text
@@ -3827,12 +4015,12 @@ item... > Plugins@{ub}, together with a ready-made settings page.
 Put NOVADOCK_ lines either in a text file named after the program with the
 suffix .ndplugin, or as tool types in the program's own icon:
 
-    Plugins/Weather            the plugin executable
-    Plugins/Weather.ndplugin   text manifest  (or)
-    Plugins/Weather.info       icon with the same lines as tool types
+    Plugins/DemoForecast            the plugin executable
+    Plugins/DemoForecast.ndplugin   text manifest  (or)
+    Plugins/DemoForecast.info       icon with the same lines as tool types
 
-    NOVADOCK_ID=WEATHER
-    NOVADOCK_NAME=Weather
+    NOVADOCK_ID=DEMOFORECAST
+    NOVADOCK_NAME=Demo Forecast
     NOVADOCK_VIEW=GRAPH
     NOVADOCK_ABI=2
     NOVADOCK_MULTIPLE=YES
@@ -4041,410 +4229,6 @@ three sampling override controls. Taller screens fit these together without
 a scrollbar; smaller screens keep scrolling so all options remain reachable.
 
 For a complete SDK walkthrough, see @{"Creating your plugin settings window" link PLUGIN_SDK_SETTINGS}.
-@endnode
-
-@node RELEASING "Building and publishing releases"
-@toc Main
-@{b}Building and publishing releases@{ub}
-================================
-
-@{b}Sections@{ub}
-  @{" Commands " link RELEASING 21}
-  @{" Configure once " link RELEASING 55}
-  @{" Finish and commit release inputs " link RELEASING 130}
-  @{" Build, check and prepare " link RELEASING 151}
-  @{" Review the manifest " link RELEASING 194}
-  @{" Publish selected destinations " link RELEASING 222}
-  @{" Combined release command " link RELEASING 260}
-  @{" Upload source separately " link RELEASING 284}
-  @{" Aminet and interrupted uploads " link RELEASING 314}
-  @{" Validation and website updates " link RELEASING 343}
-
-Run python3 scripts/release.py from the project root with Python 3.9 or
-newer. tools/release.py is the same entry point and remains supported. Build
-once, review the prepared manifest, then publish the same verified bytes to
-each selected destination. No command deploys the website or creates hosted
-repositories.
-
-@{b}Commands@{ub}
---------
-
-  @{b}plan@{ub}
-      Purpose: Print ordered commands and target information
-      Uploads: None
-  @{b}build@{ub}
-      Purpose: Run host tests, compile all native programs, package and
-      validate
-      Uploads: None
-  @{b}check@{ub}
-      Purpose: Verify current source, binaries, provenance, packages and
-      checksums
-      Uploads: None
-  @{b}prepare@{ub}
-      Purpose: Seal notes, destinations and exact assets in a manifest
-      Uploads: None
-  @{b}publish@{ub}
-      Purpose: Preflight every selected destination, then publish
-      Uploads: Explicit confirmation required
-  @{b}release@{ub}
-      Purpose: Prepare and publish, reusing an identical prepared manifest
-      Uploads: Explicit confirmation required
-  @{b}source@{ub}
-      Purpose: Preflight or push a committed source branch
-      Uploads: Separate source confirmation required
-
-NovaDock has one available build target: Classic AmigaOS m68k, baseline
-68000, AmigaOS 3.0 or later. Signing and notarization do not apply to this
-target. Compilation and host checks are recorded separately from native
-runtime checks. Complete docs/RELEASE_CHECKLIST.md on your supported
-configurations before publishing; a successful compiler invocation does not
-certify runtime behaviour.
-
-@{b}Configure once@{ub}
---------------
-
-The default configuration is external to the project:
-~/Development/tools/git-release/projects/novadock.json. This matches the
-shared release-tool layout. Override it with NOVADOCK_RELEASE_CONFIG or
---config PATH. If the shared file is absent, an existing ignored
-work/release-config.json is accepted for compatibility. Start from
-examples/release-config.json and set the real private GitLab HTTPS and SSH
-URLs in the external copy. Never commit local machine paths or credential
-settings. The earlier nested URL format from
-docs/release-targets.example.json remains accepted.
-
-The public destination is https://github.com/retrocs-org/novadock. The tool
-validates HTTPS and Git push URLs as the same repository, including nested
-GitLab groups. Credential-bearing URLs, query strings, encoded paths,
-traversal, custom ports and non-HTTPS API destinations are rejected. The
-prepared manifest records the exact destinations; changing local
-configuration after preparation blocks publication. Keep manifests and
-receipts private if they identify an internal repository. They are not part
-of the public source packages.
-
-Allowed local build environment overrides are VBCC, VC, LHA, CC, PHP,
-FLEXCAT, AUTHOR, AMINET_REPLACES and NOVADOCK_RELEASE_PYTHON. Use executable
-paths for tool overrides. The selected Python interpreter is used for every
-release step, including the shell build/staging scripts and host checks.
-Without an override, the interpreter running release.py is used. Configure
-vbcc/vasm/vlink with the AmigaOS m68k target and a compatible NDK. LHA must
-be LHa for UNIX with archive creation support. PHP and a host C compiler are
-needed for validation. The uploader defaults to support\@retrocs.org; set
-uploader in the local JSON or pass --uploader to override it.
-
-API credentials can come from environment variables or 1Password CLI,
-matching the shared release configuration. The default provider reads
-GITHUB_TOKEN or GITLAB_TOKEN. To use 1Password, configure a copied secret
-reference or an exact vault/item/field lookup in the external file:
-
-    "credentials": {
-      "github": {
-        "provider": "1password",
-        "vault": "Your vault",
-        "item": "github.com",
-        "field": "your-org/novadock-rw"
-      },
-      "gitlab": {
-        "provider": "1password",
-        "reference": "op://vault/item/field"
-      }
-    }
-
-Optional account selects a 1Password account. Use provider: "env" with
-variable: "YOUR_TOKEN_VARIABLE" for a different environment variable. Values
-in the JSON are references, never token contents. A configured provider is
-used explicitly; an environment token does not silently override a 1Password
-setting.
-
-Secrets are read only for confirmed repository publication, held in memory
-and redacted from release errors. They are not copied into environment
-variables, notes, manifests or receipts. Build subprocesses receive no API
-tokens or 1Password session/service-account credentials. Planning, checking,
-preparation, source pushing and the build itself do not retrieve 1Password
-secrets.
-
-GitHub needs repository Contents write access; GitLab needs API access and a
-role allowed to create releases and generic packages. SSH keys or Git
-credential helpers provide separate Git push access. Configure/sign in to
-the 1Password CLI before publication if using that provider. Do not put
-literal tokens in command arguments, URLs, configuration, notes, source
-files or shell history, and avoid shell tracing. Unknown or ambiguous secret
-fields stop before uploads and their output is not displayed.
-
-The repositories must already exist, and the internal GitLab project must
-already be private with its generic package registry enabled. The tool does
-not configure repository visibility, credentials, keys, DNS or hosting.
-
-@{b}Finish and commit release inputs@{ub}
---------------------------------
-
-Update VERSION and its CHANGELOG section, then refresh generated source
-before committing:
-
-    python3 tools/update_version.py
-    python3 tools/update_site_chrome.py
-    python3 tools/generate_catalog.py
-    python3 tools/make_amigaguide.py
-    python3 tools/generate_info_icons.py
-    python3 tools/sync_github_releases.py --upcoming
-    python3 tools/package_release.py
-
-Review and commit the intended source. These generators are repeated during
-build; if they change tracked inputs, finish the generated changes and
-commit before building again. All selected source inputs must be tracked,
-including website captions, documentation, manifests and SDK helpers.
-Ignored or untracked build inputs cannot silently enter a publishable
-release.
-
-@{b}Build, check and prepare@{ub}
-------------------------
-
-    python3 scripts/release.py plan
-    python3 scripts/release.py build
-    python3 scripts/release.py check
-    python3 scripts/release.py prepare
-
-The default output directory is outputs/release. Use --output PATH on each
-command to select another directory; it must be outside the source tree or
-below ignored outputs/. build requires an empty directory and always
-compiles fresh binaries. Preserve failed output as evidence and use a fresh
-directory to retry. There is no unified skip-build option. The older
-standalone packaging scripts remain available for local maintenance, but
-their files are not automatically trusted as a publishable build.
-
-For compatibility, prepare also runs build when its output has no build
-record. For the explicit workflow above, it only seals already checked
-artifacts. Use prepare --notes docs/RELEASE-NOTES.md to seal a reviewed
-notes file instead of notes generated from CHANGELOG. This deliberately
-changes the checksums and manifest; it is refused once the manifest has been
-prepared.
-
-Build records connect the exact source fingerprint and commit to all native
-executables, compiler identity and artifact hashes. The fingerprint covers
-the explicit source inventory, documentation, build tools, tests, plugin
-metadata and website inputs. Generated downloads, compiled binaries, local
-configuration and provenance records are excluded from their own input
-fingerprint. The source ZIPs include build/provenance/amiga.json, identical
-to the release's BUILD-INFO.json.
-
-Changing any release input after building requires another build. Checks
-reject stale fingerprints, changed binaries, stale source archive contents,
-missing or unexpected assets, duplicate entries and symlinked files. Package
-checks also compare the website's downloads and checksum list with the
-release bytes. These checks establish matching provenance; they do not
-promise bit-for-bit reproducibility across toolchains.
-
-An extracted source tree may build and prepare local files with a null
-commit. Publishing requires a clean, committed Git checkout at the source
-root, with the same commit and tracked inputs as the build. Do not edit
-build records to bypass this requirement.
-
-@{b}Review the manifest@{ub}
--------------------
-
-Review outputs/release/manifest.json, RELEASE-NOTES.md, BUILD-INFO.json and
-the Aminet readme. release.json is a compatibility alias and must match
-manifest.json. The manifest contains version/tag derived from VERSION, exact
-source commit, source fingerprint, configured repository destinations, notes
-and every asset hash. It is immutable: preparing again may confirm identical
-data, but cannot replace it with different notes or destinations. Use a new
-release directory for changed input.
-
-Each release uploads exactly four assets:
-
-  * NovaDock-VERSION.lha
-  * NovaDock-VERSION.lha.sha256
-  * NovaDock-VERSION-plugin-sdk.zip
-  * NovaDock-VERSION-plugin-sdk.zip.sha256
-
-GitHub and GitLab provide source archives from the tag automatically; source
-ZIP and tar.gz files are not uploaded separately. Both checksum sidecars
-contain the SHA-256 and filename of their corresponding download.
-
-Source/site packages, the Aminet readme, release notes, BUILD-INFO.json and
-the complete SHA256SUMS.txt are retained locally for validation and
-deployment. The manifest distinguishes this full build inventory from its
-four publication assets. Manifests, local configuration and receipts are
-never release downloads.
-
-@{b}Publish selected destinations@{ub}
------------------------------
-
-    python3 scripts/release.py publish --to gitlab,github --confirm-publish
-    python3 scripts/release.py publish --to aminet --confirm-publish
-
-Or select --to gitlab,github,aminet to preflight all three before any
-upload. The default destinations are GitLab and GitHub. Destination names
-must be distinct. Without --confirm-publish, publication is refused before
-network access. The previous --execute flag remains an explicit confirmation
-alias; --target github or --target gitlab remains available for older
-operator commands.
-
-Before any push or upload, the tool checks the manifest, current source and
-binaries, clean commit, tokens, destination identity, existing assets,
-release notes and remote tags. Annotated remote tags are peeled to their
-source commit. A conflicting tag stops publication. It creates an annotated
-local tag and pushes only that exact annotated tag object, without force or
-automatic tag following, then verifies the remote commit. It does not push
-branches or change default branches; the separate source command below is
-used for branch publication.
-
-GitHub uploads into a draft, verifies every returned SHA-256 digest and only
-then publishes the release. Existing assets are reused only with matching
-known hashes; unknown or conflicting digests, unexpected assets and changed
-notes stop the run. Published releases missing assets are not silently
-modified. Versions beginning with 0. are marked prerelease. No gh
-installation is needed.
-
-GitLab uses versioned generic-package paths. Each existing or uploaded file
-is stream-downloaded and hashed before its link is advertised in a release.
-Matching packages are reused; conflicting bytes, notes or links stop
-publication. GitLab has no matching prerelease flag. No glab installation is
-needed.
-
-GitHub draft discovery checks the latest 100 releases before looking up the
-tag; very old interrupted drafts may need manual inspection.
-
-@{b}Combined release command@{ub}
-------------------------
-
-    python3 scripts/release.py release --to gitlab,github,aminet --confirm-publish
-
-This prepares an unprepared build and then uses the same publisher. If no
-build exists, preparation first performs the normal fresh build. An existing
-prepared manifest is reused; the command cannot silently replace its notes,
-tag annotation, assets or destinations. prepare --tag-message "NovaDock 0.1"
-records a custom annotation in the manifest. Use --tag 0.1 to choose an
-exact tag; without it a new preparation defaults to v<VERSION>. Application
-version and package filenames still derive from VERSION. Git validates the
-tag name. Once prepared, omitting --tag reuses the manifest tag; an explicit
-different tag or annotation is refused before credential lookup. Changing
-tags or annotations requires a fresh preparation directory.
-
-    python3 scripts/release.py prepare --tag 0.1 --tag-message "NovaDock 0.1 release"
-    python3 scripts/release.py publish --tag 0.1 --to gitlab,github --confirm-publish
-
-The combined release command accepts the same --tag and --tag-message
-options. After publication, refresh the website release list as described
-below. Website source and SDK links then follow the actual published tag,
-including bare version numbers, rather than assuming a v prefix.
-
-@{b}Upload source separately@{ub}
-------------------------
-
-    python3 scripts/release.py source --to gitlab,github --dry-run
-    python3 scripts/release.py source --to gitlab,github --confirm-push
-
-This preflights every selected branch push before uploading to any
-repository, pushes the reviewed commit ID without force or automatic tag
-following, and verifies the resulting branch commit. It performs no
-compilation, release-tag creation or binary upload. source_branch in the
-external JSON selects the remote branch; an empty value uses the current
-branch. The checkout must be clean with required source inputs tracked.
-Tracked private configuration, build evidence or local output blocks it.
-
-For a new extracted source tree, explicitly add --init. Initialization is
-allowed only when all selected remotes have no refs and a Git
-author/committer identity is configured. It stages only the selected public
-source inventory, respects .gitignore and commits it. --commit-message
-"Import NovaDock source" customizes that first commit. Existing repositories
-are never reset or replaced. An unfinished repository with already staged
-files must be reviewed before initialization can continue. If a selected
-remote already has history, clone it and import changes there. source --init
---dry-run only checks and describes the import; it creates no metadata or
-commit. Source publication still requires --confirm-push.
-
-Generated website downloads are ignored by Git and rebuilt during packaging.
-Private machine toolchain adapters belong in ignored work/ or an external
-tools directory. Cross-builds always select the same public C sources as
-native builds; private compatibility source overrides are not used.
-
-@{b}Aminet and interrupted uploads@{ub}
-------------------------------
-
-Aminet submission uses anonymous FTP to main.aminet.net, directory /new,
-with the uploader email as the contact. The adapter verifies the LHA CRC and
-the prepared pair's hashes against the repository release. It sends
-novadock.lha first and novadock.readme last. Submission success means
-awaiting moderation, not publication on the public archive. Repository
-publishing alone never submits to Aminet.
-
-outputs/release/receipt.json records the manifest hash, destination
-currently in progress and completed destinations. A different manifest
-cannot reuse it. Rerun the same manifest for a failed repository
-destination; verified matching assets are reused and successful releases are
-preserved. No cross-service rollback or automatic network retry occurs.
-
-Aminet also maintains aminet/upload-receipt.json, bound to that submission's
-exact bytes. It records transfer progress before connecting and after each
-file. A completed receipt prevents duplicate submission. An incomplete
-receipt blocks automatic retry, including uncertain connection failures:
-inspect the incoming server and receipt before deciding recovery. Do not
-delete receipts to bypass the check. Re-preparing over an existing Aminet
-upload receipt is refused.
-
-The standalone tools/aminet_release.py retains its own offline prepare/check
-and explicit upload commands and observes the same receipt rules. The
-compatibility release.py aminet command checks locally; --execute routes
-through the unified confirmed publisher.
-
-@{b}Validation and website updates@{ub}
-------------------------------
-
-Ordinary tests use mocked APIs, fake FTP transfers and temporary Git
-repositories; they never publish real tags or submit files. Run:
-
-    python3 tests/test_release_tool.py
-    python3 tests/test_release_provenance.py
-    python3 tests/test_release_integration.py
-    python3 tests/test_aminet_release.py
-
-Exercise publication against dedicated test repositories before a production
-release. Preserve build records and receipts as evidence of the release run.
-After publishing, run python3 tools/sync_github_releases.py and redeploy the
-PHP website to show actual release dates and assets. Publishing attaches the
-website ZIP; it does not deploy it. Refreshing website inputs changes the
-next build's fingerprint and cannot silently change an already prepared
-release.
-
-API references: GitHub releases
-(https://docs.github.com/en/rest/releases/releases), GitLab generic packages
-(https://docs.gitlab.com/user/packages/generic_packages/) and GitLab
-releases (https://docs.gitlab.com/api/releases/). Aminet references: upload
-instructions (https://wiki.aminet.net/Uploading_instructions) and readme
-format (https://wiki.aminet.net/The_Readme_file).
-
-Credential references: 1Password read command
-(https://developer.1password.com/docs/cli/reference/commands/read/).
-@endnode
-
-@node RELEASE_CHECKLIST "Release checklist"
-@toc Main
-@{b}Release checklist@{ub}
-=================
-
-  * Set VERSION and its release date, update CHANGELOG, and regenerate
-    version metadata.
-  * Build all programs and run the host and native source checks.
-  * Verify the LHA extracts correctly and matches the staged drawer.
-  * Test a fresh install, updating existing settings and uninstalling with
-    settings retained.
-  * Open Preferences, Help, Diagnostics and each bundled app on supported
-    screen sizes.
-  * Check the low-resource preset, configuration recovery and Save/Use
-    behavior.
-  * Test Clipboard search, empty results, pinning and copying; test Apps
-    title selection.
-  * Check drawers, icon loading, keyboard navigation and auto-hide.
-  * Verify optional hardware and network dependencies on the target
-    configuration.
-  * Review release notes, uploader details, repository targets and download
-    checksums.
-  * Publish from a clean committed checkout using the release tool.
-
-Host tests and compilation do not replace interactive checks on the
-supported AmigaOS configurations. Record test results privately and retain
-any open issues.
 @endnode
 
 @node NETWORK_MIGRATION "Upgrading Network settings"

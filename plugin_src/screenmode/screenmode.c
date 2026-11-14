@@ -1,9 +1,5 @@
-/* Screen mode: shows the Workbench screen size and switches between saved
- * ScreenMode presets.  A click lists the presets in a drawer (files saved
- * with ScreenMode's "Save As..."); Use runs "ScreenMode FROM <preset> USE".
- * Workbench can only reset its screen when no other window is open on it,
- * so the dock is asked to close its windows first (ARexx SUSPEND) and to
- * come back (RESUME) once the new Workbench screen is up. */
+/* Screen Mode: list available display modes and apply a selected mode
+ * directly. Saved presets remain available as an alternate chooser. */
 #include <exec/types.h>
 #include <exec/memory.h>
 #include <exec/lists.h>
@@ -26,20 +22,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 #include "nd_interaction.h"
 #include "nd_scrmode.h"
 
-const char nd_version[]=ND_VER_STRING("ScreenMode");
+const char nd_version[]=ND_PLUGIN_VER_STRING(SCREENMODE,"ScreenMode");
 long __stack=16384;
 struct IntuitionBase *IntuitionBase=NULL;
 struct GfxBase *GfxBase=NULL;
 struct Library *GadToolsBase=NULL;
 struct RxsLib *RexxSysBase=NULL;
 
-#define MAX_PRESETS 32
+#define MAX_PRESETS 128
 #define G_LIST 1
 #define G_USE 2
 #define G_CANCEL 3
@@ -48,6 +44,8 @@ struct Preset {
     struct Node node;
     char label[96];
     char path[256];
+    struct NDScreenModePreset mode;
+    int generated;
 };
 struct Chooser {
     struct Screen *screen;
@@ -55,19 +53,20 @@ struct Chooser {
     APTR visual;
     struct Gadget *gadgets,*list;
     struct List rows;
-    struct Preset presets[MAX_PRESETS];
+    struct Preset *presets;
     int count,selected;
 };
-struct Settings { char presets[128],program[128]; };
+struct Settings { char presets[128],program[128],chooser[16]; };
 /* What identifies the current Workbench screen: size, depth and mode. */
 struct WBSignature { struct Screen *screen; UWORD width,height,depth; ULONG mode; };
 
 static void read_settings(const char *id,struct Settings *s)
 {
-    struct NDOptionString fields[2];
+    struct NDOptionString fields[3];
     fields[0].key="PRESETS";fields[0].fallback="SYS:Prefs/Presets";fields[0].out=s->presets;fields[0].limit=sizeof(s->presets);
     fields[1].key="PROGRAM";fields[1].fallback="SYS:Prefs/ScreenMode";fields[1].out=s->program;fields[1].limit=sizeof(s->program);
-    nd_plugin_option_strings(id,fields,2);
+    fields[2].key="CHOOSER";fields[2].fallback="MODES";fields[2].out=s->chooser;fields[2].limit=sizeof(s->chooser);
+    nd_plugin_option_strings(id,fields,3);
 }
 static int workbench_signature(struct WBSignature *sig)
 {
@@ -124,6 +123,7 @@ static void scan_presets(struct Chooser *c,const char *drawer)
             Close(file);
             if (length<=0 || !nd_scrmode_parse(buffer,(unsigned long)length,&preset))
                 continue;
+            p->generated=0;p->mode=preset;
             (void)nd_scrmode_text(preset.width,preset.height,preset.depth,
                                   size_text,sizeof(size_text));
             mode_name(preset.display_id,name,sizeof(name));
@@ -149,41 +149,103 @@ static void scan_presets(struct Chooser *c,const char *drawer)
         AddTail(&c->rows,&c->presets[i].node);
     }
 }
+/* Enumerate only installed, available Workbench modes. Native modes keep
+ * the current colour depth where possible; fixed RTG modes use their depth. */
+static void scan_modes(struct Chooser *c)
+{
+    struct DisplayInfo display;struct DimensionInfo dims;
+    struct WBSignature current;struct Preset *p;
+    ULONG id=INVALID_ID;LONG width,height;char name[40];int i,j,have;
+    have=workbench_signature(&current);c->count=0;
+    /* Keep the active mode even when the installed list exceeds our bound. */
+    if(have){
+        p=&c->presets[c->count++];memset(p,0,sizeof(*p));p->generated=1;
+        p->mode.display_id=current.mode;p->mode.width=current.width;
+        p->mode.height=current.height;p->mode.depth=current.depth;p->mode.control=1;
+        mode_name(current.mode,name,sizeof(name));
+        sprintf(p->label,"* CURRENT  %ux%ux%u  %.31s",current.width,current.height,current.depth,name);
+    }
+    while((id=NextDisplayInfo(id))!=INVALID_ID){
+        if(c->count>=MAX_PRESETS)break;
+        if((have && id==current.mode) || ModeNotAvailable(id))continue;
+        memset(&display,0,sizeof(display));memset(&dims,0,sizeof(dims));
+        if(!GetDisplayInfoData(NULL,(UBYTE *)&display,sizeof(display),DTAG_DISP,id) ||
+           !GetDisplayInfoData(NULL,(UBYTE *)&dims,sizeof(dims),DTAG_DIMS,id) ||
+           display.NotAvailable || !(display.PropertyFlags&DIPF_IS_WB) ||
+           !dims.MaxDepth || dims.MaxDepth>32)continue;
+        width=(LONG)dims.Nominal.MaxX-dims.Nominal.MinX+1;
+        height=(LONG)dims.Nominal.MaxY-dims.Nominal.MinY+1;
+        if(width<1 || height<1 || width>65535L || height>65535L ||
+           width<dims.MinRasterWidth || height<dims.MinRasterHeight ||
+           width>dims.MaxRasterWidth || height>dims.MaxRasterHeight)continue;
+        p=&c->presets[c->count];memset(p,0,sizeof(*p));p->generated=1;
+        p->mode.display_id=id;p->mode.width=(unsigned int)width;
+        p->mode.height=(unsigned int)height;p->mode.control=1;
+        p->mode.depth=have ? current.depth:4;
+        if((display.PropertyFlags&DIPF_IS_FOREIGN) || p->mode.depth>dims.MaxDepth)
+            p->mode.depth=dims.MaxDepth;
+        mode_name(id,name,sizeof(name));
+        sprintf(p->label,"%ux%ux%u  %.31s%s",p->mode.width,p->mode.height,p->mode.depth,
+                name,have && id==current.mode ? " (current)":"");++c->count;
+    }
+    for(i=1;i<c->count;++i)for(j=i;j>0;--j){
+        struct Preset *a=&c->presets[j-1],*b=&c->presets[j];struct Preset swap;
+        int order=a->mode.width!=b->mode.width ? (a->mode.width>b->mode.width ? 1:-1):
+            a->mode.height!=b->mode.height ? (a->mode.height>b->mode.height ? 1:-1):
+            a->mode.depth!=b->mode.depth ? (a->mode.depth>b->mode.depth ? 1:-1):strcmp(a->label,b->label);
+        if(order<=0)break;swap=*a;*a=*b;*b=swap;
+    }
+    c->rows.lh_Head=(struct Node *)&c->rows.lh_Tail;c->rows.lh_Tail=NULL;
+    c->rows.lh_TailPred=(struct Node *)&c->rows.lh_Head;
+    for(i=0;i<c->count;++i){
+        c->presets[i].node.ln_Name=c->presets[i].label;AddTail(&c->rows,&c->presets[i].node);
+        if(have && c->presets[i].mode.display_id==current.mode)c->selected=i;
+    }
+}
 static void close_chooser(struct Chooser *c)
 {
     if (c->win) {CloseWindow(c->win);c->win=NULL;}
     if (c->gadgets) {FreeGadgets(c->gadgets);c->gadgets=NULL;}
     if (c->visual) {FreeVisualInfo(c->visual);c->visual=NULL;}
     if (c->screen) {UnlockPubScreen(NULL,c->screen);c->screen=NULL;}
+    if(c->presets){FreeVec(c->presets);c->presets=NULL;}
     c->list=NULL;
 }
 static int open_chooser(struct Chooser *c,const struct Settings *s)
 {
     struct NewGadget ng;
     struct Gadget *g;
-    int fy,top,left,width=420,height;
-    scan_presets(c,s->presets);
+    int fy,top,left,width=460,height,rows;
+    c->presets=AllocVec(sizeof(struct Preset)*MAX_PRESETS,MEMF_PUBLIC|MEMF_CLEAR);
+    if(!c->presets)return 0;
     c->selected=-1;
+    if(!strcmp(s->chooser,"PRESETS"))scan_presets(c,s->presets);else scan_modes(c);
     c->screen=LockPubScreen(NULL);
-    if (!c->screen) return 0;
+    if (!c->screen) {close_chooser(c);return 0;}
     c->visual=GetVisualInfo(c->screen,TAG_DONE);
     if (!c->visual) {close_chooser(c);return 0;}
     fy=c->screen->Font ? c->screen->Font->ta_YSize : 8;
+    if(width>c->screen->Width-12)width=c->screen->Width-12;
+    rows=(c->screen->Height-3*fy-40)/(fy+2);if(rows>10)rows=10;if(rows<2)rows=2;
     top=c->screen->WBorTop+fy+1+4;
     left=c->screen->WBorLeft;
     g=CreateContext(&c->gadgets);
     memset(&ng,0,sizeof(ng));
     ng.ng_TextAttr=c->screen->Font;ng.ng_VisualInfo=c->visual;
     ng.ng_LeftEdge=left+8;ng.ng_TopEdge=top+fy+4;
-    ng.ng_Width=width-16;ng.ng_Height=(fy+2)*8+4;
-    ng.ng_GadgetText=(UBYTE *)(c->count ? "Presets" : "No ScreenMode presets in this drawer");
+    ng.ng_Width=width-16;ng.ng_Height=(fy+2)*rows+4;
+    ng.ng_GadgetText=(UBYTE *)(!strcmp(s->chooser,"PRESETS") ?
+        (c->count ? "Saved presets":"No saved presets"):
+        (c->count==MAX_PRESETS ? "Available modes (first 128)":c->count ? "Available display modes":"No display modes available"));
     ng.ng_GadgetID=G_LIST;ng.ng_Flags=PLACETEXT_ABOVE;
     c->list=g=CreateGadget(LISTVIEW_KIND,g,&ng,GTLV_Labels,(ULONG)&c->rows,
-                           GTLV_ShowSelected,(ULONG)NULL,TAG_DONE);
+                           GTLV_ShowSelected,(ULONG)NULL,
+                           GTLV_Selected,c->selected>=0 ? (ULONG)c->selected:~0UL,
+                           GTLV_MakeVisible,c->selected>=0 ? (ULONG)c->selected:0UL,TAG_DONE);
     ng.ng_TopEdge+=ng.ng_Height+8;ng.ng_Width=100;ng.ng_Height=fy+6;
     ng.ng_GadgetText=(UBYTE *)"Use";ng.ng_GadgetID=G_USE;
     ng.ng_Flags=PLACETEXT_IN;
-    g=CreateGadget(BUTTON_KIND,g,&ng,GA_Disabled,TRUE,TAG_DONE);
+    g=CreateGadget(BUTTON_KIND,g,&ng,GA_Disabled,c->selected<0,TAG_DONE);
     ng.ng_LeftEdge=left+width-108;ng.ng_GadgetText=(UBYTE *)"Cancel";
     ng.ng_GadgetID=G_CANCEL;
     g=CreateGadget(BUTTON_KIND,g,&ng,TAG_DONE);
@@ -280,7 +342,8 @@ static int dock_command(const char *command)
  * Deadline expiry resumes the dock without killing a live Amiga process.
  * The worker's global guard prevents overlapping switches until it exits. */
 static const char *apply_preset(struct NDClient *client,const struct Settings *s,
-                                const char *preset,const char *program,int *quit)
+                                const char *preset,const char *program,int *quit,
+                                const char *cleanup,int *transferred)
 {
     char command[600],portname[64];
     struct WBSignature before,now;
@@ -293,6 +356,7 @@ static const char *apply_preset(struct NDClient *client,const struct Settings *s
     unsigned int event;
     size_t n;
     Forbid();guard=FindPort((STRPTR)MODE_GUARD);Permit();
+    *transferred=0;
     if(guard)return "SWITCH STILL RUNNING";
     if(!nd_quote_path(command,sizeof(command)/2,s->program))return "BAD PROGRAM";
     strcat(command," FROM ");n=strlen(command);
@@ -317,7 +381,11 @@ static const char *apply_preset(struct NDClient *client,const struct Settings *s
                 continue;
             }
             if(m->kind==1){
-                if(claimed){m->kind=-1;}else {strcpy(m->command,command);claimed=1;}
+                if(claimed){m->kind=-1;}else {
+                    strcpy(m->command,command);m->cleanup[0]=0;
+                    if(cleanup && *cleanup){strcpy(m->cleanup,cleanup);*transferred=1;}
+                    claimed=1;
+                }
                 ReplyMsg((struct Message *)m);
             }else {
                 rc=m->result;done=1;finished_at=mode_ticks();FreeVec(m);
@@ -332,13 +400,29 @@ static const char *apply_preset(struct NDClient *client,const struct Settings *s
             else if(seen_closed || !same_signature(&before,&now))break;
             if(mode_ticks()-finished_at>=600UL)break;
         }else if(age>=750UL){problem=claimed ? "COMMAND TIMEOUT":"NOT STARTED";break;}
-        event=nd_client_update_quiet(client,"SCREEN","SWITCHING",ND_NO_METER,10,250U);
+        event=nd_client_update_quiet(client,"SMODE","SWITCHING",ND_NO_METER,10,250U);
         if(event&ND_EVENT_QUIT){*quit=1;problem="CANCELLED";break;}
         (void)nd_client_wait(client,10);
     }
     (void)dock_command("RESUME");
     close_mode_port(port);
     return problem;
+}
+static int write_mode_preset(const struct NDScreenModePreset *mode,char *directory,char *path)
+{
+    unsigned char buffer[62];unsigned long size=nd_scrmode_encode(mode,buffer,sizeof(buffer));
+    BPTR lock,file;int serial,ok;
+    directory[0]=path[0]=0;if(!size)return 0;
+    for(serial=0;serial<20;++serial){
+        sprintf(directory,"T:NovaDockMode-%08lx-%08lx-%d",(ULONG)FindTask(NULL),mode_ticks(),serial);
+        lock=CreateDir(directory);if(lock){UnLock(lock);break;}
+    }
+    if(serial==20){directory[0]=0;return 0;}
+    sprintf(path,"%s/mode.prefs",directory);file=Open(path,MODE_NEWFILE);
+    if(!file){mode_clean_preset(directory);directory[0]=0;return 0;}
+    ok=Write(file,buffer,(LONG)size)==(LONG)size;
+    if(!Close(file))ok=0;
+    if(!ok){mode_clean_preset(directory);directory[0]=0;}return ok;
 }
 int main(int argc,char **argv)
 {
@@ -349,7 +433,7 @@ int main(int argc,char **argv)
     char value[32];
     const char *problem=NULL;
     unsigned int event,elapsed=0,since=100000U,message=0;
-    int reread=1,choice,quit_requested=0;
+    int reread=1,choice,quit_requested=0,transferred;
     if(argc==3 && !strcmp(argv[1],"WORK"))return mode_worker(argv[2]);
     if (argc<2) return 20;
     IntuitionBase=(struct IntuitionBase *)OpenLibrary("intuition.library",39);
@@ -378,27 +462,37 @@ int main(int argc,char **argv)
                 (void)nd_scrmode_text(sig.width,sig.height,sig.depth,value,sizeof(value));
             else strcpy(value,"NO WORKBENCH");
         }
-        event=nd_client_update_quiet(&client,"SCREEN",value,ND_NO_METER,elapsed,500U);
+        event=nd_client_update_quiet(&client,"SMODE",value,ND_NO_METER,elapsed,500U);
         if (event&ND_EVENT_QUIT) break;
         if (event&ND_EVENT_SETTINGS) reread=1;
         if (nd_client_events2(&client)&ND_EVENT2_REFRESH) since=100000U;
         if (event&ND_EVENT_CLICK) {
             if (chooser->win) close_chooser(chooser);
-            else (void)open_chooser(chooser,&settings);
+            else if(!open_chooser(chooser,&settings)){strcpy(value,"PICKER FAILED");message=250;}
         }
         if (chooser->win) {
             choice=chooser_events(chooser);
             if (choice>=0) {
-                char preset[256];
-                strcpy(preset,chooser->presets[choice].path);
-                /* Our own window would block the Workbench reset too. */
+                char preset[280],directory[256];struct NDScreenModePreset selected;
+                int generated=chooser->presets[choice].generated,same=0;
+                selected=chooser->presets[choice].mode;directory[0]=0;
+                if(generated){
+                    if(workbench_signature(&sig))same=selected.display_id==sig.mode &&
+                        selected.width==sig.width && selected.height==sig.height && selected.depth==sig.depth;
+                    if(!same && !write_mode_preset(&selected,directory,preset)){
+                        strcpy(value,"PRESET WRITE FAILED");message=250;close_chooser(chooser);elapsed=0;continue;
+                    }
+                }else strcpy(preset,chooser->presets[choice].path);
+                /* Close our visitor window and release the screen lock before Use. */
                 close_chooser(chooser);
-                problem=apply_preset(&client,&settings,preset,argv[0],&quit_requested);
-                if(quit_requested)break;
-                if (problem) {strcpy(value,problem);message=250;}
-                else since=100000U;
+                if(!same){
+                    problem=apply_preset(&client,&settings,preset,argv[0],&quit_requested,directory,&transferred);
+                    if(!transferred && directory[0])mode_clean_preset(directory);
+                    if(quit_requested)break;
+                    if(problem){strcpy(value,problem);message=250;}else since=100000U;
+                }else since=100000U;
             } else if (choice==-2) close_chooser(chooser);
-            if (chooser->win) {Delay(5);elapsed=5;}
+            if (chooser->win)elapsed=nd_client_wait_signals(&client,250U,1UL<<chooser->win->UserPort->mp_SigBit);
             else elapsed=0;
         } else elapsed=nd_client_wait(&client,
                                       message ? 50U : nd_client_delay_ticks(&client,250U));

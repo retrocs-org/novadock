@@ -67,7 +67,7 @@ static int exists(const char *path)
     if (!lock) return 0;
     UnLock(lock);return 1;
 }
-int main(int argc,char **argv)
+int main(void)
 {
     char script[512],directory[512],qscript[1030],command[1300],error[650];
     const char *installer;
@@ -75,7 +75,6 @@ int main(int argc,char **argv)
     struct FileInfoBlock info;
     LONG result;
     int ok=0;
-    (void)argc; (void)argv;
     script[0]=directory[0]=0;
     /* GetProgramDir remains valid after uninstall removes NovaDock assigns.
      * It also avoids relying on a cached Workbench project/drawer argument. */
@@ -97,7 +96,7 @@ int main(int argc,char **argv)
     else if (exists("C:Installer")) installer="C:Installer";
     else {problem("Installer was not found in SYS:System or C:.");return 20;}
     if (!quoted(qscript,sizeof(qscript),script)) return 20;
-    sprintf(command,"\"%s\" %s APPNAME NovaDock MINUSER NOVICE DEFUSER NOVICE",
+    sprintf(command,"\"%s\" %s APPNAME NovaDock MINUSER NOVICE DEFUSER NOVICE LOGFILE T:NovaDock-Install.log",
             installer,qscript);
     input=Open("NIL:",MODE_OLDFILE);output=Open("NIL:",MODE_NEWFILE);
     if (!input || !output) {

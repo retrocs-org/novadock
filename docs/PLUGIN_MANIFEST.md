@@ -11,14 +11,14 @@ Put `NOVADOCK_` lines either in a text file named after the program with the
 suffix `.ndplugin`, or as tool types in the program's own icon:
 
 ```text
-Plugins/Weather            the plugin executable
-Plugins/Weather.ndplugin   text manifest  (or)
-Plugins/Weather.info       icon with the same lines as tool types
+Plugins/DemoForecast            the plugin executable
+Plugins/DemoForecast.ndplugin   text manifest  (or)
+Plugins/DemoForecast.info       icon with the same lines as tool types
 ```
 
 ```text
-NOVADOCK_ID=WEATHER
-NOVADOCK_NAME=Weather
+NOVADOCK_ID=DEMOFORECAST
+NOVADOCK_NAME=Demo Forecast
 NOVADOCK_VIEW=GRAPH
 NOVADOCK_ABI=2
 NOVADOCK_MULTIPLE=YES

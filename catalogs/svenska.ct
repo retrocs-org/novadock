@@ -56,9 +56,6 @@ Dockan låst
 MSG_0020
 Verktygsmenyns startåtgärd misslyckades
 ; Tools Launcher Action failed
-MSG_0021
-Arkivet stöds inte eller osäker sökväg
-; Unsupported archive or unsafe path
 MSG_0022
 Öppna med misslyckades
 ; Open With failed
@@ -107,9 +104,6 @@ Använd standard|Avsluta
 MSG_0038
 NovaDock-kalender
 ; NovaDock Calendar
-MSG_0039
-Packar upp arkivet i en ny låda
-; Extracting archive into new folder
 MSG_0040
 Disk isatt: %.28s
 ; Disk inserted: %.28s
@@ -134,9 +128,6 @@ Fäste %.28s
 MSG_0047
 Dockan har nu %d rader
 ; Dock now uses %d rows
-MSG_0048
-Packar upp %d arkiv
-; Extracting %d archives
 MSG_0050
 Öppnade med %.31s
 ; Opened with %.31s
@@ -401,3 +392,21 @@ Kopierar 1 objekt till %.28s
 MSG_0159
 Kopierar %d objekt till %.28s
 ; Copying %d items to %.28s
+MSG_0160
+Refresh
+; Refresh
+MSG_0161
+Could not open item in Archiver
+; Could not open item in Archiver
+MSG_0162
+Archiver opened for dropped item
+; Archiver opened for dropped item
+MSG_0163
+Archiver opened for %d items
+; Archiver opened for %d items
+MSG_0164
+Browse notes
+; Browse notes
+MSG_0165
+Add new note...
+; Add new note...

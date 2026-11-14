@@ -1,4 +1,6 @@
+#include "nd_plugin_labels.h"
 #include "nd_config.h"
+#include "nd_version.h"
 #include "nd_options.h"
 #include <ctype.h>
 #include <stdio.h>
@@ -292,7 +294,9 @@ static int add_item(struct NDConfig *cfg, int kind, const char *name,
     p->meter = 65535U;
     /* Transfer progress is not a time-series monitor. Ignore saved graph
      * flags from older builds as well as graph requests on new items. */
-    p->graph = graph && kind == ND_ITEM_PLUGIN && strcmp(p->id,"BITSKIM");
+    p->graph = graph && kind == ND_ITEM_PLUGIN && strcmp(p->id,"BITSKIM") &&
+               strcmp(p->id,"SCREENSHOT") && strcmp(p->id,"SCREENMODE") &&
+               strcmp(p->id,"SCREENSWITCHER") && strcmp(p->id,"WEATHER");
     p->enabled = enabled;
     p->multiple_instances = kind == ND_ITEM_PLUGIN && multiple_instances;
     p->launch_mode = ND_LAUNCH_AUTO;
@@ -961,10 +965,12 @@ void nd_default_config(struct NDConfig *cfg)
     add_item(cfg, ND_ITEM_PLUGIN, "Clock", "Plugins/Clock", "CLOCK", NULL, 0, 1, 0);
     add_item(cfg, ND_ITEM_PLUGIN, "Network", "Plugins/Network", "NET", NULL, 0, 0, 0);
     add_item(cfg, ND_ITEM_PLUGIN, "Eyes", "Plugins/Eyes", "EYES", NULL, 0, 0, 1);
-    add_item(cfg, ND_ITEM_PLUGIN, "DOpus 4", "Plugins/DOpus4", "DOPUS4", NULL, 0, 0, 0);
-    add_item(cfg, ND_ITEM_PLUGIN, "Extract", "Plugins/ArchiveExtractor", "ARCHIVE", NULL, 0, 0, 0);
-    add_item(cfg, ND_ITEM_PLUGIN, "Running Apps", "Plugins/RunningApps",
+    add_item(cfg, ND_ITEM_PLUGIN, "DOpus4", "Plugins/DOpus4", "DOPUS4", NULL, 0, 0, 0);
+    add_item(cfg, ND_ITEM_PLUGIN, "ARCHIVE", "Plugins/ArchiveExtractor", "ARCHIVE", NULL, 0, 0, 0);
+    add_item(cfg, ND_ITEM_PLUGIN, "APPS", "Plugins/RunningApps",
              "RUNNINGAPPS", NULL, 0, 0, 0);
+    add_item(cfg,ND_ITEM_PLUGIN,"Timer","Plugins/Timer","TIMER",NULL,0,0,0);
+    add_item(cfg,ND_ITEM_PLUGIN,"Notes","Plugins/Notes","NOTES",NULL,0,0,0);
 }
 const char *nd_theme_name(int theme)
 {
@@ -1531,9 +1537,11 @@ int nd_load_config(struct NDConfig *cfg, const char *filename)
             {"Network","Plugins/Network","NET",0,0},
             {"MusicPlayer","Plugins/MusicPlayer","MUSIC",0,0},
             {"Eyes","Plugins/Eyes","EYES",0,1},
-            {"DOpus 4","Plugins/DOpus4","DOPUS4",0,0},
-            {"Extract","Plugins/ArchiveExtractor","ARCHIVE",0,0},
-            {"Running Apps","Plugins/RunningApps","RUNNINGAPPS",0,0}
+            {"DOpus4","Plugins/DOpus4","DOPUS4",0,0},
+            {"ARCHIVE","Plugins/ArchiveExtractor","ARCHIVE",0,0},
+            {"APPS","Plugins/RunningApps","RUNNINGAPPS",0,0},
+            {"Timer","Plugins/Timer","TIMER",0,0},
+            {"Notes","Plugins/Notes","NOTES",0,0}
         };
         int i,j,found;
         for (j=0;j<(int)(sizeof(bundled)/sizeof(bundled[0]));++j) {
@@ -1553,6 +1561,10 @@ int nd_load_config(struct NDConfig *cfg, const char *filename)
                          bundled[j].graph,0,bundled[j].multiple);
         }
     }
+    {int i;for(i=0;i<cfg->count;++i)if(cfg->items[i].kind==ND_ITEM_PLUGIN){
+        const char *name=nd_plugin_label_upgrade(cfg->items[i].id,cfg->items[i].label);
+        if(name)copy_string(cfg->items[i].label,name,sizeof(cfg->items[i].label));
+    }}
     upgrade_network_tiles(cfg);
     normalize_row_counts(cfg);
     apply_saved_network_view(cfg);
@@ -1874,7 +1886,7 @@ int nd_write_config(const struct NDConfig *cfg, const char *filename)
     remove(tmp);
     f = fopen(tmp, "w");
     if (!f) return 0;
-    if (fprintf(f, "# NovaDock 0.1 - text configuration\nSIDE=%s\nPOSITION=%s\nFONT=%s\nLABELS=%s\nITEM_SIZE=%s\nTHEME=%s\nSHAPE=%s\nTILE_WIDTH=%d\nTILE_HEIGHT=%d\nGAP=%d\nROWS=%d\nLEFT_CLICK=%s\nTOOLTIPS=%s\nALWAYS_ON_TOP=%s\nRUNNING_APPS=%s\nREFRESH_MODE=%s\nAUTO_HIDE=%s\nHIDE_DELAY=%d\n",
+    if (fprintf(f, "# NovaDock " ND_VERSION " - text configuration\nSIDE=%s\nPOSITION=%s\nFONT=%s\nLABELS=%s\nITEM_SIZE=%s\nTHEME=%s\nSHAPE=%s\nTILE_WIDTH=%d\nTILE_HEIGHT=%d\nGAP=%d\nROWS=%d\nLEFT_CLICK=%s\nTOOLTIPS=%s\nALWAYS_ON_TOP=%s\nRUNNING_APPS=%s\nREFRESH_MODE=%s\nAUTO_HIDE=%s\nHIDE_DELAY=%d\n",
                 cfg->side == ND_SIDE_TOP ? "TOP" : cfg->side == ND_SIDE_LEFT ? "LEFT" : cfg->side == ND_SIDE_RIGHT ? "RIGHT" : "BOTTOM",
                 nd_position_name(cfg->position),nd_font_name(cfg->font_mode),
                 nd_label_mode_name(cfg->label_mode),

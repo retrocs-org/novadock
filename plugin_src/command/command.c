@@ -9,12 +9,12 @@
 #include <proto/dos.h>
 #include <stdio.h>
 #include <string.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 #include "nd_command.h"
 
-const char nd_version[]=ND_VER_STRING("Command");
+const char nd_version[]=ND_PLUGIN_VER_STRING(COMMAND,"Command");
 /* Honoured by the vbcc and libnix startup code; harmless elsewhere. */
 long __stack=16384;
 

@@ -3,6 +3,7 @@
 
 /* Defined below, private to this file. */
 static int plugin_can_launch(const struct NDDock *dock, const struct NDItem *item);
+static int plugin_settings_action(const struct NDDock *dock,const struct NDItem *item);
 static int popup_count_for(const struct NDDock *dock);
 static const char *popup_label_en(const struct NDDock *dock, int item);
 static const char *popup_label(const struct NDDock *dock, int item);
@@ -59,6 +60,15 @@ void open_trash(struct NDDock *dock)
         open_drawer("SYS:Trashcan");
     } else show_feedback(dock,"The trash is empty",0);
 }
+/* Every plugin ends with Settings and Remove, after its own actions. */
+static int plugin_settings_action(const struct NDDock *dock,const struct NDItem *item)
+{
+    if (!strcmp(item->id,"TRASH")) return 3;
+    if (!strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW")) return 2;
+    if (!strcmp(item->id,"BITSKIM")) return 4;
+    if (!strcmp(item->id,"CLIPBOARD") || !strcmp(item->id,"NOTES")) return 2;
+    return plugin_can_launch(dock,item) ? 1 : 0;
+}
 static int popup_count_for(const struct NDDock *dock)
 {
     const struct NDItem *item;
@@ -69,13 +79,8 @@ static int popup_count_for(const struct NDDock *dock)
     if (item->transient==ND_TRANSIENT_TASK) return ITEM_TEXT(item,ND_TEXT_ARGS)[0] ? 4 : 3;
     if (item->kind==ND_ITEM_DRAWER || item->kind==ND_ITEM_GROUP) return 4;
     if (item->kind==ND_ITEM_LAUNCH) return 3;
-    if (item->kind==ND_ITEM_PLUGIN && is_trash_tile(dock,dock->popup_item))
-        return 3;
-    if(item->kind==ND_ITEM_PLUGIN && (!strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW")))return 4;
-    if (item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"BITSKIM"))return 6;
-    if (item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"CLIPBOARD"))return 4;
     if (item->kind==ND_ITEM_PLUGIN)
-        return plugin_can_launch(dock,item) ? 3 : 2;
+        return plugin_settings_action(dock,item)+2;
     return 1;
 }
 static const char *launcher_actions[] = {
@@ -94,10 +99,11 @@ static const char *drawer_actions[] = {
     "Open", "Popup contents", "Edit settings...", "Remove"
 };
 static const char *trash_actions[] = {
-    "Open trash", "Empty trash...", "Remove"
+    "Open trash", "Empty trash...", "Refresh", "Edit settings...", "Remove"
 };
 static const char *network_actions[]={"Details...", "Edit settings...", "Remove"};
 static const char *bitskim_actions[]={"Open BitSkim", "Send file...", "Toggle receiving", "Cancel transfer", "Edit settings...", "Remove"};
+static const char *notes_actions[]={"Browse notes", "Add new note...", "Edit settings...", "Remove"};
 static const char *clipboard_actions[]={"Clipboard history", "Manage history...", "Edit settings...", "Remove"};
 static const char *plugin_actions[] = {
     "Launch", "Edit settings...", "Remove"
@@ -129,6 +135,7 @@ static const char *popup_label_en(const struct NDDock *dock, int item)
         if(it->kind==ND_ITEM_PLUGIN && (!strcmp(it->id,"NET") || !strcmp(it->id,"ROADSHOW")))return item==0 ? (dock->popup_network_online ? "Offline":"Online"):network_actions[item-1];
         if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"BITSKIM"))return bitskim_actions[item];
         if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"CLIPBOARD"))return clipboard_actions[item];
+        if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"NOTES"))return notes_actions[item];
         if (it->kind==ND_ITEM_PLUGIN)
             return plugin_actions[item + (plugin_can_launch(dock,it) ? 0 : 1)];
     }
@@ -575,16 +582,26 @@ static int spacer_popup_action(struct NDDock *dock,int index,int action)
 }
 static int plugin_popup_action(struct NDDock *dock, int index, int action)
 {
-    int launchable;
+    int launchable,settings;
     char args[80];
     const struct NDItem *item=&dock->conf.items[index];
+    settings=plugin_settings_action(dock,item);
+    if (action==settings) {
+        sprintf(args,"PAGE=PLUGIN PLUGIN=%s FOCUSED=1",item->id);
+        if (!launch_companion(dock,"NovaDockPrefs",args) && dock->screen)
+            DisplayBeep(dock->screen);
+        return 0;
+    }
+    if (action==settings+1) return remove_dragged_item(dock,index);
     if (is_trash_tile(dock,index)) {
         if (action==0) open_trash(dock);
         else if (action==1) {
             /* The helper asks before deleting anything. */
             if (!launch_plugin_helper(dock,index,"EMPTY",NULL))
                 show_feedback(dock,"Could not start the Trash plugin",1);
-        } else if (action==2) return remove_dragged_item(dock,index);
+        }
+        if (action==2 && !launch_plugin_helper(dock,index,"REFRESH",NULL))
+            show_feedback(dock,"Could not start the Trash plugin",1);
         return 0;
     }
     if(!strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW")){
@@ -594,8 +611,7 @@ static int plugin_popup_action(struct NDDock *dock, int index, int action)
         }else if(action==1){
             if(!launch_plugin_helper(dock,index,"DETAILS",NULL))
                 show_feedback(dock,"Could not open Network details",1);
-        }else if(action==2)(void)launch_companion(dock,"NovaDockPrefs","PAGE=PLUGIN PLUGIN=NET FOCUSED=1");
-        else if(action==3)return remove_dragged_item(dock,index);
+        }
         return 0;
     }
     if(!strcmp(item->id,"BITSKIM")){
@@ -606,17 +622,18 @@ static int plugin_popup_action(struct NDDock *dock, int index, int action)
         }
         else if(action==2)dock->conf.items[index].media_event|=ND_EVENT_BITSKIM_RECEIVING;
         else if(action==3)dock->conf.items[index].media_event|=ND_EVENT_BITSKIM_CANCEL;
-        else if(action==4)(void)launch_companion(dock,"NovaDockPrefs","PAGE=PLUGIN PLUGIN=BITSKIM FOCUSED=1");
-        else if(action==5)return remove_dragged_item(dock,index);
+
+        return 0;
+    }
+    if(!strcmp(item->id,"NOTES")){
+        if(action==0){if(dock->conf.items[index].clicks<3)++dock->conf.items[index].clicks;}
+        else if(action==1)dock->plugin_event2[index]|=ND_EVENT2_NOTE_NEW;
         return 0;
     }
     if(!strcmp(item->id,"CLIPBOARD")){
         if(action==0)launch_item(dock,index);
         else if(action==1)dock->conf.items[index].media_event|=ND_EVENT_MANAGE_HISTORY;
-        else if(action==2){
-            sprintf(args,"PAGE=PLUGIN PLUGIN=%s FOCUSED=1",item->id);
-            (void)launch_companion(dock,"NovaDockPrefs",args);
-        }else if(action==3)return remove_dragged_item(dock,index);
+
         return 0;
     }
     launchable=plugin_can_launch(dock,item);
@@ -626,14 +643,6 @@ static int plugin_popup_action(struct NDDock *dock, int index, int action)
             (void)launch_default_music_application(dock);
         return 0;
     }
-    if (action==(launchable ? 1 : 0)) {
-        sprintf(args,"PAGE=PLUGIN PLUGIN=%s FOCUSED=1",item->id);
-        if (!launch_companion(dock,"NovaDockPrefs",args) && dock->screen)
-            DisplayBeep(dock->screen);
-        return 0;
-    }
-    if (action==(launchable ? 2 : 1))
-        return remove_dragged_item(dock,index);
     return 0;
 }
 static int add_spacer_to_dock(struct NDDock *dock)
@@ -737,6 +746,8 @@ static int remove_row_from_dock(struct NDDock *dock)
 void set_edit_mode(struct NDDock *dock,int on)
 {
     dock->edit_mode=on ? 1 : 0;
+    refresh_drop_zones(dock);
+    dock->drop_preview=0;
     dock->press_item=-1;dock->drag_to=-1;dock->drag_after=0;dock->is_drag=0;
     draw_all(dock);
     show_feedback(dock,dock->edit_mode ?

@@ -4,6 +4,15 @@
 #include <string.h>
 /* Built-in schemas are static metadata, not additional configuration files. */
 static const struct NDOptionDef builtin[] = {
+ {"WEATHER","LOCATION","Location (city, country)","TEXT","",""},
+ {"WEATHER","UNITS","Temperature units","CHOICE","C,F","C"},
+ {"WEATHER","PROGRAM","HTTPS downloader","FILE","","C:curl"},
+ {"WEATHER","ENGINE","Downloader type","CHOICE","CURL,WGET","CURL"},
+ {"WEATHER","REFRESH_MINUTES","Refresh minutes","UINT","15,360","30"},
+ {"TIMER","SECONDS","Default seconds","UINT","1,86400","300"},
+ {"TIMER","MESSAGE","Reminder message","TEXT","","Time is up"},
+ {"TIMER","BEEP","Flash screen on completion","BOOL","","YES"},
+ {"NOTES","DRAWER","Notes drawer","FILE","","ENVARC:NovaDock/Notes"},
  {"BITSKIM","PROGRAM","BitSkim executable","FILE","","SYS:Utilities/BitSkim/BitSkim"},
  {"BITSKIM","PORT","ARexx port","TEXT","","AUTO"},
  {"BITSKIM","POLL_TICKS","Refresh ticks","UINT","25,3000","50"},
@@ -75,10 +84,11 @@ static const struct NDOptionDef builtin[] = {
  {"SCREENSHOT","DRAWER","Save in drawer","FILE","","RAM:"},
  {"SCREENSHOT","DELAY","Countdown seconds","UINT","0,30","2"},
  {"SCREENSHOT","SCREEN","Screen","CHOICE","FRONT,WORKBENCH","FRONT"},
+ {"SCREENMODE","CHOOSER","Click opens","CHOICE","MODES,PRESETS","MODES"},
  {"SCREENMODE","PRESETS","Presets drawer","FILE","","SYS:Prefs/Presets"},
  {"SCREENMODE","PROGRAM","ScreenMode program","FILE","","SYS:Prefs/ScreenMode"},
- {"MUSIC","MODE","Player","CHOICE","AUTO,EAGLEPLAYER,AMIGAAMP,HIPPOPLAYER","AUTO"},
- {"MUSIC","PREFER","Preferred player","CHOICE","EAGLEPLAYER,AMIGAAMP,HIPPOPLAYER","EAGLEPLAYER"},
+ {"MUSIC","MODE","Player","CHOICE","AUTO,EAGLEPLAYER,AMIGAAMP,HIPPOPLAYER,LUMIAMP","AUTO"},
+ {"MUSIC","PREFER","Preferred player","CHOICE","EAGLEPLAYER,AMIGAAMP,HIPPOPLAYER,LUMIAMP","EAGLEPLAYER"},
  {"MUSIC","DEFAULT_APP","Default application","FILE","",""},
  {"MUSIC","POLL_TICKS","Refresh ticks","UINT","25,3000","100"},
  {"MUSIC","AUTO_QUERY","Query metadata","BOOL","","YES"},
@@ -130,7 +140,23 @@ static const struct NDOptionDef builtin[] = {
  {"MUSIC","HIPPO_QUERY_VOLUME","Hippo volume query","TEXT","","GET VOLU"},
  {"MUSIC","HIPPO_SET_VOLUME","Hippo volume cmd","TEXT","","VOLUME"},
  {"MUSIC","HIPPO_QUERY_PLAYING","Hippo playing query","TEXT","","GET PLAY"},
- {"MUSIC","HIPPO_VOLUME_MAX","Hippo volume maximum","UINT","1,65535","64"}
+ {"MUSIC","HIPPO_VOLUME_MAX","Hippo volume maximum","UINT","1,65535","64"},
+ {"MUSIC","LUMI_PORT","Lumi ARexx port","TEXT","","LUMIAMP"},
+ {"MUSIC","LUMI_PORT_ALT","Lumi Alternate port","TEXT","","LUMIAMP"},
+ {"MUSIC","LUMI_PLAY","Lumi Play command","TEXT","","PLAY"},
+ {"MUSIC","LUMI_PAUSE","Lumi Pause command","TEXT","","PAUSE"},
+ {"MUSIC","LUMI_RESUME","Lumi Resume command","TEXT","","RESUME"},
+ {"MUSIC","LUMI_STOP","Lumi Stop command","TEXT","","STOP"},
+ {"MUSIC","LUMI_PREVIOUS","Lumi Previous command","TEXT","","PREV"},
+ {"MUSIC","LUMI_NEXT","Lumi Next command","TEXT","","NEXT"},
+ {"MUSIC","LUMI_QUERY_TITLE","Lumi Title query","TEXT","","GETSTATE TITLE"},
+ {"MUSIC","LUMI_QUERY_TIME","Lumi Time query","TEXT","","GETSTATE TIME"},
+ {"MUSIC","LUMI_QUERY_VOLUME","Lumi Volume query","TEXT","","GETSTATE VOLUME"},
+ {"MUSIC","LUMI_SET_VOLUME","Lumi Volume command","TEXT","","VOLUME"},
+ {"MUSIC","LUMI_QUERY_PLAYING","Lumi Playing query","TEXT","","STATUS"},
+ {"MUSIC","LUMI_VOL_UP","Lumi Volume + command","TEXT","","VOLUME +5"},
+ {"MUSIC","LUMI_VOL_DOWN","Lumi Volume - command","TEXT","","VOLUME -5"},
+ {"MUSIC","LUMI_VOLUME_MAX","Lumi Volume maximum","UINT","1,65535","100"}
 };
 const struct NDOptionDef *nd_builtin_options(int *count)
 {

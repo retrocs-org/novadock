@@ -48,3 +48,12 @@ for name, body in nodes.items():
                 assert label in heading, f'{name}: "{label}" lands on {heading!r}'
             links += 1
 print(f'NovaDock.guide: {len(nodes)} nodes, {links} links, section links on target.')
+
+assert 'USING_NOVADOCK' in nodes
+assert 'RELEASING' not in nodes and 'RELEASE_CHECKLIST' not in nodes
+for operator_text in ('scripts/release.py', 'tools/aminet_release.py',
+                      'Building and publishing releases', 'Maintaining NovaDock',
+                      'Preparing an Aminet submission', 'Building an Amiga LHA release'):
+    assert operator_text not in text, operator_text
+assert 'PLUGIN_API' in nodes and 'PLUGIN_SDK_QUICKSTART' in nodes
+print('User guide contains application usage and SDK help, with publishing/operator material excluded.')

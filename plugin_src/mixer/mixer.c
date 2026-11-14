@@ -19,14 +19,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 #include "nd_ahiprefs.h"
 #include "nd_ahi.h"
 #include "nd_prefsave.h"
 
-const char nd_version[]=ND_VER_STRING("Mixer");
+const char nd_version[]=ND_PLUGIN_VER_STRING(MIXER,"Mixer");
 long __stack=16384;
 struct IntuitionBase *IntuitionBase=NULL;
 struct Library *GadToolsBase=NULL;

@@ -1,5 +1,6 @@
 /* NovaDock: Timer-driven work: auto-hide, hover, tooltips, feedback, media and task scans. */
 #include "dock_internal.h"
+#include "nd_weather_codes.h"
 
 /* Defined below, private to this file. */
 static void arm_timer(struct NDDock *dock);
@@ -67,7 +68,8 @@ static void arm_timer(struct NDDock *dock)
              dock->calendar || dock->folder_popup || dock->tooltip ||
              dock->icons_pending;
         index=eyes_index(dock);
-        if (index>=0 && !dock->hidden && dock->conf.items[index].online)
+        if (index>=0 && !dock->hidden && !dock->covered &&
+            dock->conf.items[index].online)
             fast=1;
     }
     dock->timer_quanta=fast ? 1 : ND_TIMER_IDLE_QUANTA;
@@ -162,6 +164,7 @@ void set_hidden(struct NDDock *dock, int hide)
     r = hide ? &dock->tab_box : &dock->full_box;
     /* ChangeWindowBox is asynchronous: don't paint in the new geometry
      * until the IDCMP_CHANGEWINDOW acknowledgement has arrived. */
+    dock->drop_preview=0;
     dock->box_pending = 1;
     dock->box_target_hidden = hide;
     dock->idle_ticks = 0;
@@ -225,7 +228,7 @@ static void eyes_timer_tick(struct NDDock *dock,int quantum)
     for (index=0;index<dock->conf.count;++index) {
         struct NDItem *item=&dock->conf.items[index];
         if (item->kind!=ND_ITEM_PLUGIN || strcmp(item->id,"EYES") ||
-            !item->online) continue;
+            !item->online || !item_visible(dock,index)) continue;
         eyes_positions(dock,index,xp,yp,&rx,&ry,&pr);
         if (dock->eyes_last_valid[index] && !blink_changed &&
             !nd_eyes_moved(dock->eyes_last_x[index][0],
@@ -256,11 +259,59 @@ void always_on_top_tick(struct NDDock *dock,int quantum)
         /* Skip the layer operation when nothing overlaps the dock. */
         WindowToFront(dock->window);
 }
+/* Workbench owns the mouse during an incoming icon drag, so ordinary dock
+ * mouse messages cannot drive its insertion feedback. Use the existing
+ * housekeeping tick and live qualifier; no additional timer is needed. */
+void update_drop_preview(struct NDDock *dock)
+{
+    int active=0,index=-1,after=0,pos,count,mx,my,scroll;
+    if (!dock->drop_zones && dock->edit_mode && dock->window && dock->screen && InputBase &&
+        !dock->hidden && !dock->covered && !dock->box_pending &&
+        !dock->popup && !dock->calendar && !dock->folder_popup &&
+        dock->press_item<0 && !dock->is_drag &&
+        (PeekQualifier() & IEQUALIFIER_LEFTBUTTON)) {
+        mx=dock->screen->MouseX-dock->window->LeftEdge;
+        my=dock->screen->MouseY-dock->window->TopEdge;
+        if (mx>=0 && my>=0 && mx<dock->window->Width &&
+            my<dock->window->Height) {
+            count=nd_media_persistent_count(&dock->conf);
+            index=hovered_tile(dock,mx,my);
+            if (index>=0) {
+                after=drop_after_tile(dock,index,mx,my);
+                pos=nd_drop_insert_position(index,after,count);
+            } else {
+                pos=count;
+                scroll=hovered_scroll(dock,mx,my);
+                if (scroll<0) pos=dock->view_start;
+                else if (scroll>0) pos=dock->view_start+dock->visible_count;
+            }
+            if (pos>count) pos=count;
+            /* Keep the hovered edge at row boundaries. Transient media and
+             * background drops instead point at the persistent append edge. */
+            if (index<0 || index>=count) {
+                index=pos<count ? pos : count-1;
+                after=pos>=count;
+            }
+            active=index>=0 && item_visible(dock,index);
+        }
+    }
+    if (active==dock->drop_preview && (!active ||
+        (index==dock->drop_preview_item && after==dock->drop_preview_after)))
+        return;
+    dock->drop_preview=active;
+    dock->drop_preview_item=index;
+    dock->drop_preview_after=after;
+    if (active) close_tooltip(dock);
+    /* Repaint only when the insertion edge changes, never every idle tick. */
+    draw_all(dock);
+}
 void hover_tick(struct NDDock *dock,int tip_delay)
 {
     int ax,ay,index;
+    update_drop_preview(dock);
     if (!dock->window || !dock->screen || dock->hidden || dock->box_pending)
         return;
+    if (dock->drop_preview) return;
     if (dock->keyboard) {
         /* The keys own the highlight until the pointer moves. */
         if (dock->screen->MouseX==dock->keyboard_mouse_x &&
@@ -375,7 +426,10 @@ void process_timer(struct NDDock *dock)
             open_popup(dock,index>=0 ? index : -2,ax,ay);
         }
         {int was_covered=dock->covered;dock->covered=dock_covered(dock);
-         if(was_covered && !dock->covered)refresh_running_items(dock);}
+         if(was_covered && !dock->covered) {
+             refresh_volume_meters(dock);
+             refresh_running_items(dock);
+         }}
         /* Startup artwork: a few tiles per tick, so the dock opens at once
          * and stays responsive while icons arrive. */
         if (dock->icons_pending) (void)load_pending_icons(dock,4);
@@ -496,6 +550,28 @@ static void show_tooltip_window(struct NDDock *dock, int index)
             second_line=plugin_detail;
         }else second_line=it->value;
         h=35;
+    } else if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"ARCHIVE")){
+        name="ARCHIVE";
+        if(it->caption[0] && strcmp(it->caption,"ARCHIVE") && strcmp(it->caption,"ARCHIVER"))
+            sprintf(plugin_detail,"%.31s: %.31s",it->value,it->caption);
+        else {
+            strncpy(plugin_detail,it->value,sizeof(plugin_detail)-1);
+            plugin_detail[sizeof(plugin_detail)-1]=0;
+        }
+        second_line=plugin_detail;h=35;
+    } else if(it->kind==ND_ITEM_PLUGIN && (!strcmp(it->id,"SCREENSHOT") || !strcmp(it->id,"SCREENMODE"))){
+        name=!strcmp(it->id,"SCREENSHOT") ? "Screenshot":"Display mode";second_line=it->value;h=35;
+    } else if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"WEATHER")){
+        const char *city=strchr(it->caption,' ');int code=-1;
+        if(!strncmp(it->caption,"WX:",3))code=atoi(it->caption+3);
+        name=city && city[1] ? city+1:"Weather";
+        sprintf(plugin_detail,"%.20s  %.20s%s",it->value,code>=0 ? nd_weather_condition(code):"",it->badge[0] ? " (cached)":"");
+        second_line=plugin_detail;h=35;
+    } else if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"NOTES")){
+        name="Notes";second_line=it->value;h=35;
+    } else if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"TIMER")){
+        name="Timer";sprintf(plugin_detail,"%.15s: %.31s",it->caption,it->value);
+        second_line=plugin_detail;h=35;
     } else if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"BITSKIM")){
         name="BitSkim";second_line=it->value;h=35;
     } else if (nd_item_supports_space_meter(it) && it->show_volume_meter &&

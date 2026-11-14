@@ -60,9 +60,6 @@ Dock locked
 MSG_0020 (20//)
 Tools Launcher Action failed
 ;
-MSG_0021 (21//)
-Unsupported archive or unsafe path
-;
 MSG_0022 (22//)
 Open With failed
 ;
@@ -111,9 +108,6 @@ Use defaults|Quit
 MSG_0038 (38//)
 NovaDock Calendar
 ;
-MSG_0039 (39//)
-Extracting archive into new folder
-;
 MSG_0040 (40//)
 Disk inserted: %.28s
 ;
@@ -137,9 +131,6 @@ Pinned %.28s
 ;
 MSG_0047 (47//)
 Dock now uses %d rows
-;
-MSG_0048 (48//)
-Extracting %d archives
 ;
 MSG_0050 (50//)
 Opened with %.31s
@@ -404,3 +395,21 @@ Copying 1 item to %.28s
 ;
 MSG_0159 (159//)
 Copying %d items to %.28s
+;
+MSG_0160 (160//)
+Refresh
+;
+MSG_0161 (161//)
+Could not open item in Archiver
+;
+MSG_0162 (162//)
+Archiver opened for dropped item
+;
+MSG_0163 (163//)
+Archiver opened for %d items
+;
+MSG_0164 (164//)
+Browse notes
+;
+MSG_0165 (165//)
+Add new note...

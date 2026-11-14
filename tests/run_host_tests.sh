@@ -26,6 +26,23 @@ $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_calendar.c -o "$REGRES
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_config_fallback.c src/config.c src/nd_options.c plugin_src/common/nd_option_runtime.c -o "$REGRESSION_TMP/config"
 mkdir -p "$REGRESSION_TMP/ENV:NovaDock"
 (cd "$REGRESSION_TMP" && ./config)
+$CC -std=c89 -Wall -Wextra -pedantic -Iplugin_src/timer tests/test_timer.c plugin_src/timer/nd_timer.c -o "$REGRESSION_TMP/timer"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_screen_art.c -o "$REGRESSION_TMP/screen_art"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_weather_art.c -o "$REGRESSION_TMP/weather_art"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_plugin_labels.c -o "$REGRESSION_TMP/plugin_labels"
+"$REGRESSION_TMP/plugin_labels"
+"$REGRESSION_TMP/weather_art"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude -Iplugin_src/weather tests/test_weather.c plugin_src/weather/nd_weather.c -o "$REGRESSION_TMP/weather"
+$CC -std=c89 -Wall -Wextra -pedantic tests/test_weather_worker.c -o "$REGRESSION_TMP/weather_worker"
+"$REGRESSION_TMP/weather_worker"
+"$REGRESSION_TMP/weather"
+"$REGRESSION_TMP/screen_art"
+$CC -std=c89 -Wall -Wextra -pedantic -Iplugin_src/notes tests/test_markdown.c plugin_src/notes/nd_markdown.c plugin_src/notes/nd_notes.c -o "$REGRESSION_TMP/markdown"
+"$REGRESSION_TMP/markdown"
+"$REGRESSION_TMP/timer"
+$CC -std=c89 -Wall -Wextra -pedantic -Iplugin_src/notes tests/test_notes.c plugin_src/notes/nd_notes.c plugin_src/notes/nd_markdown.c -o "$REGRESSION_TMP/notes"
+mkdir -p "$REGRESSION_TMP/stage"
+(cd "$REGRESSION_TMP" && ./notes)
 rm -rf "$REGRESSION_TMP"
 $CC -std=c89 -Wall -Wextra -pedantic tests/test_mode_worker.c -o tests/nd_mode_worker_test
 ./tests/nd_mode_worker_test
@@ -266,15 +283,17 @@ grep -q 'g->SpecialInfo' include/nd_numeric_gadget.h ||
 if [ "$(grep -c 'copy_complete_file' src/config.c)" -lt 4 ]; then
   fail_review "atomic configuration saves need the staged-copy fallback."
 fi
-for f in "$DOCK_ALL" prefs/novadockprefs.c plugin_src/clock/clock.c \
-  plugin_src/eyes/eyes.c plugin_src/activity/activity.c plugin_src/memory/memory.c \
-  plugin_src/network/network.c \
-  plugin_src/musicplayer/musicplayer.c plugin_src/dopus4/dopus4.c \
-  plugin_src/archive/archive.c plugin_src/runningapps/runningapps.c \
-  tools/makeicon.c tools/setupstartup.c; do
+for f in "$DOCK_ALL" prefs/novadockprefs.c tools/makeicon.c tools/setupstartup.c; do
   grep -q '^const char nd_version\[\] *= *ND_VER_STRING("' "$f" ||
-    fail_review "$f needs a global \$VER string from ND_VER_STRING (VERSION)."
+    fail_review "$f needs a dock version string."
 done
+python3 tools/update_plugin_versions.py --check
+python3 tests/test_plugin_versions.py
+python3 tests/test_screen_switcher.py
+python3 tests/test_screenmode_picker.py
+python3 tests/test_truecolor_screenshot.py
+python3 tests/test_plugin_launch_paths.py
+python3 tests/test_plugin_click_actions.py
 # Badges (ABI 4): older docks QUIT plugins on unknown commands, so the client
 # may send ND_MSG_BADGE only after the dock advertised ND_EVENT_HOST_BADGES.
 grep -q 'return c->host_badges ? send_badge(c) : ND_EVENT_NONE;' plugin_src/common/nd_client.c &&
@@ -317,12 +336,12 @@ grep -q 'cfg->running_section=0' src/config.c ||
 grep -q 'Plugins/RunningApps' Makefile &&
   grep -q 'Plugins/RunningApps' Makefile.cross &&
   grep -q 'Plugins/RunningApps' build.amiga &&
-  grep -q 'Plugins/RunningApps' install.amiga &&
+  grep -q '^Copy Plugins TO SYS:NovaDock/Plugins ALL$' install.amiga &&
   grep -q 'collect_apps' plugin_src/runningapps/runningapps.c &&
   grep -q 'raise_app' plugin_src/runningapps/runningapps.c ||
   fail_review "the optional Running Apps popup plugin must be built and installed."
 grep -q '"RUNNINGAPPS"' src/nd_manifest.c &&
-  grep -q '"Running Apps","Plugins/RunningApps"' src/config.c ||
+  grep -q '"APPS","Plugins/RunningApps"' src/config.c ||
   fail_review "Running Apps must remain in the bundled disabled plugin catalogue."
 grep -q 'load_active_theme' plugin_src/runningapps/runningapps.c &&
   grep -q 'draw_app_glyph' plugin_src/runningapps/runningapps.c &&
@@ -349,7 +368,7 @@ grep -q 'layout->rows=rows' src/layout.c ||
 grep -q 'SYS_Asynch,TRUE' plugin_src/command/command.c &&
   ! grep -q 'Delay(' plugin_src/command/command.c ||
   fail_review "the command tile must run commands asynchronously and wake on clicks."
-grep -q 'Plugins/Command' install.amiga && grep -q 'Plugins/Command:' Makefile &&
+grep -q '^Copy Plugins TO SYS:NovaDock/Plugins ALL$' install.amiga && grep -q 'Plugins/Command:' Makefile &&
   grep -q 'Plugins/Command' build.amiga ||
   fail_review "the Command plugin must be built and installed."
 grep -q '"Add item..."' "$DOCK_ALL" &&
@@ -493,7 +512,7 @@ if ! grep -q '"DOPUS4","PROGRAM","Program path","FILE"' src/nd_options.c ||
   echo "DOpus settings test failed: Program path must offer an ASL file chooser." >&2
   exit 1
 fi
-if ! grep -q 'Archive Extractor is a drop target' "$DOCK_ALL"; then
+if ! grep -q 'Archiver is a drop target' "$DOCK_ALL"; then
   echo "Archive interaction test failed: the drop target must ignore ordinary clicks." >&2
   exit 1
 fi
@@ -507,7 +526,7 @@ done
 if ! grep -q 'toggle_monitor_view' "$DOCK_ALL" ||
    ! grep -q '"DROP HERE"' plugin_src/archive/archive.c ||
    grep -q '"DROP ARCHIVE"' plugin_src/archive/archive.c; then
-  echo "Dock-click test failed: CPU/RAM toggles and compact Extract text are required." >&2
+  echo "Dock-click test failed: CPU/RAM toggles and the Archiver drop target are required." >&2
   exit 1
 fi
 if ! grep -q 'format_ram_tooltip' "$DOCK_ALL" ||
@@ -692,7 +711,7 @@ if ! grep -q 'ND_ARCHIVE_IDLE_TICKS' plugin_src/archive/archive.c ||
    ! sed -n '/^static void wake_plugin(struct NDDock/,/^}/p' "$DOCK_ALL" |
        grep -q 'ND_WAKE_SIGNAL' ||
    ! sed -n '/^\(static \)*int launch_archive_helper/,/^}/p' "$DOCK_ALL" |
-       grep -q 'launch_plugin_helper(dock,index,"EXTRACT"' ||
+       grep -q 'launch_plugin_helper(dock,index,"HANDLE"' ||
    ! grep -q 'nd_client_wait(&client,effective_wait)' \
        plugin_src/musicplayer/musicplayer.c; then
   echo "Idle plugin pacing test failed: passive tiles must sleep and wake on demand." >&2
@@ -715,6 +734,18 @@ echo "Shared-screen colour and refresh safety checks passed."
 
 # Optional website checks for hosts with Python 3 (not required on AmigaOS).
 if command -v "$PYTHON" >/dev/null 2>&1; then
+  "$PYTHON" tests/test_performance.py
+  "$PYTHON" tests/test_archiver_status.py
+"$PYTHON" tests/test_archiver_workflow.py
+"$PYTHON" tests/test_archiver_destination.py
+"$PYTHON" tests/test_notes_collection.py
+"$PYTHON" tests/test_notes_render.py
+"$PYTHON" tests/test_add_plugin_picker.py
+"$PYTHON" tests/test_plugin_shutdown.py
+"$PYTHON" tests/test_archiver_batch.py
+"$PYTHON" tests/test_trash_notifications.py
+"$PYTHON" tests/test_drop_preview.py
+  "$PYTHON" tests/test_plugin_menu.py
   "$PYTHON" tests/test_info_icons.py
   if [ "${ND_DEFER_WEB_CHECKS:-0}" = 1 ]; then
     echo "Website package checks deferred until release packaging completes."
@@ -724,3 +755,5 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
     echo "Website checks skipped in the source-only archive."
   fi
 fi
+
+"$PYTHON" tests/test_gadtools_scroll.py

@@ -1,4 +1,4 @@
-# NovaDock 0.1 — ARexx, tooltips and file drops
+# NovaDock 0.2 — ARexx, tooltips and file drops
 
 ## Optional ARexx host
 
@@ -24,7 +24,7 @@ Supported commands (case insensitive):
 | Command | Behavior |
 |---------|----------|
 | `PING` | Returns `PONG` |
-| `VERSION` | Returns `0.1` |
+| `VERSION` | Returns `0.2` |
 | `STATUS` | Returns `RUNNING` and the number of visible tiles |
 | `LIST` | Returns semicolon-separated 1-based tile numbers and names for every tile |
 | `LIST STEM tiles` | Fills the ARexx stem `TILES.`: `TILES.COUNT`, and `TILES.n.LABEL`, `TILES.n.KIND` (`LAUNCHER`, `DRAWER`, `GROUP`, `PLUGIN`, `SPACER`, `DISK` or `TASK`), `TILES.n.ID` and `TILES.n.VALUE` (plugin tiles) for n = 1 to COUNT; returns the count. Labels may contain any character, including `;` |
@@ -130,10 +130,13 @@ accepted for compatibility, ignored, and omitted on the next save.
   sub-drawer, `ALL`). This works while locked. A small window opens only if
   Copy reports an error. Whole volumes are never copied, and the Workbench
   window of the destination is not refreshed automatically.
-- In Edit mode, drag an application, data/project icon, or Workbench directory
-  onto the background or outer edge of a tile: creates a launcher at that
-  position, provided the 12-tile limit permits it. The centre of an
-  application tile remains its Open With target.
+- In Edit mode, drop an application, project icon or directory anywhere on
+  the dock to add it. The first half of a tile inserts before it; the second
+  half inserts after it. An insertion line previews the insertion edge while you
+  drag over the unlocked dock. Background drops append. Multiple objects keep their
+  supplied order, subject to the dock capacity.
+- Edit mode never sends drops to applications, drawers or plugins. Lock the
+  dock again to use Open With, copying, Trash and other plugin drop actions.
 - In Edit mode, drag any dock tile onto another tile to reorder launchers, drawers, and
   plugins without activating the dragged item.
 - Drag a launcher or drawer genuinely outside the dock to remove it. A release

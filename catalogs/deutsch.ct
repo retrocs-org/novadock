@@ -56,9 +56,6 @@ Dock gesperrt
 MSG_0020
 Startaktion aus dem Hilfsmittel-Menü fehlgeschlagen
 ; Tools Launcher Action failed
-MSG_0021
-Archiv nicht unterstützt oder unsicherer Pfad
-; Unsupported archive or unsafe path
 MSG_0022
 Öffnen mit fehlgeschlagen
 ; Open With failed
@@ -107,9 +104,6 @@ Standardwerte|Beenden
 MSG_0038
 NovaDock-Kalender
 ; NovaDock Calendar
-MSG_0039
-Archiv wird in neue Schublade entpackt
-; Extracting archive into new folder
 MSG_0040
 Diskette eingelegt: %.28s
 ; Disk inserted: %.28s
@@ -134,9 +128,6 @@ MSG_0046
 MSG_0047
 Das Dock hat jetzt %d Reihen
 ; Dock now uses %d rows
-MSG_0048
-%d Archive werden entpackt
-; Extracting %d archives
 MSG_0050
 Geöffnet mit %.31s
 ; Opened with %.31s
@@ -401,3 +392,21 @@ MSG_0158
 MSG_0159
 %d Objekte werden kopiert nach %.28s
 ; Copying %d items to %.28s
+MSG_0160
+Refresh
+; Refresh
+MSG_0161
+Could not open item in Archiver
+; Could not open item in Archiver
+MSG_0162
+Archiver opened for dropped item
+; Archiver opened for dropped item
+MSG_0163
+Archiver opened for %d items
+; Archiver opened for %d items
+MSG_0164
+Browse notes
+; Browse notes
+MSG_0165
+Add new note...
+; Add new note...

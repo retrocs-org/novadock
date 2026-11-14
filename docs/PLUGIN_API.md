@@ -153,7 +153,7 @@ send only changed values or a ten-second heartbeat.
 Use the normal update helpers for plugins that must receive every click
 immediately. Plugin actions are returned in the reply to the next exchange,
 so a quiet heartbeat is also the maximum input latency while an unchanged
-tile is idle. The bundled Clock, Eyes and Archive Extractor use a two-second
+tile is idle. The bundled Clock, Eyes and Archiver use a two-second
 idle heartbeat. DOpus 4 uses one to two seconds so its start/front action
 remains quick. MusicPlayer keeps its control-driven exchanges.
 
@@ -249,7 +249,7 @@ remains a plugin event, while Shift + click is consumed by the dock.
 | `Activity` | CPU used percentage with graph | Shift-click graphs | EClock time outside a lowest-priority Exec task |
 | `Memory` | Separate Chip (`G`) and Fast (`F`) used-total meters and graphs | Per-tile settings | Uses AvailMem; Chip is Workbench's `graphics mem`; legacy `RAM` IDs still support all/chip selection |
 | `Network` | RX/TX packets/sec, dual graph | Cycle RX/TX, RX and TX | Reads a configured SANA-II interface; `OPTION.NET.*` in the unified `novadock.cfg` |
-| `ArchiveExtractor` | Installed unpackers and latest result | Drop an archive | Host-routed ZIP, LHA/LZH, RAR and ARJ extraction with a live Shell progress window; see `ARCHIVE_PLUGIN.md` |
+| `ArchiveExtractor` (Archiver) | Archive icon and operation state | Drop files or drawers | Unpacks archives; creates ZIP/LHA files through a native save dialog. See `ARCHIVE_PLUGIN.md` |
 | `Hello` | Text from example plugin | Toggle text | SDK template, not enabled by default |
 
 Archive drops are a bundled host integration rather than a new wire-protocol

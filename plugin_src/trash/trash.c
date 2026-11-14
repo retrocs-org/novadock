@@ -7,14 +7,15 @@
  *
  * Moving is a Rename() within the object's own volume, never a copy, so it
  * is instant and cannot leave half-moved data.  The resident recounts only
- * after a helper changed something (a marker in T:), so it never spins a
- * floppy motor or raises an insert-volume requester on its own.
+ * after a filesystem notification or helper change, without repeatedly
+ * scanning disks or raising insert-volume requesters.
  * AmigaOS 3.0 or later, any 68000; C89 for vbcc. */
 #include <exec/types.h>
 #include <exec/memory.h>
 #include <dos/dos.h>
 #include <dos/dosextens.h>
 #include <dos/dostags.h>
+#include <dos/notify.h>
 #include <intuition/intuition.h>
 #include <workbench/workbench.h>
 #include <workbench/icon.h>
@@ -25,10 +26,10 @@
 #include <proto/wb.h>
 #include <stdio.h>
 #include <string.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 
-const char nd_version[]=ND_VER_STRING("Trash");
+const char nd_version[]=ND_PLUGIN_VER_STRING(TRASH,"Trash");
 struct IntuitionBase *IntuitionBase=NULL;
 struct Library *IconBase=NULL;
 struct Library *WorkbenchBase=NULL;
@@ -174,6 +175,83 @@ static long count_items(void)
     return total;
 }
 
+/* Directory notifications cover changes made by Workbench and other tools.
+ * Requests and their names must stay at stable addresses until EndNotify.
+ * The system path is watched even before its Trashcan has been created. */
+#define TRASH_WATCH_MAX (TRASH_MAX_DIRS+2)
+#define TRASH_NOTIFY_PATH 256
+struct TrashWatch {
+    struct MsgPort *port;
+    struct NotifyRequest requests[TRASH_WATCH_MAX];
+    char paths[TRASH_WATCH_MAX][TRASH_NOTIFY_PATH];
+    int count,marker_watched;
+};
+static int watch_path(struct TrashWatch *watch,const char *path)
+{
+    struct NotifyRequest *request;
+    int i;
+    if (!watch->port || strlen(path)>=TRASH_NOTIFY_PATH) return 0;
+    for (i=0;i<watch->count;++i)
+        if (!strcmp(watch->paths[i],path)) return 1;
+    if (watch->count>=TRASH_WATCH_MAX) return 0;
+    i=watch->count;
+    strcpy(watch->paths[i],path);
+    request=&watch->requests[i];
+    memset(request,0,sizeof(*request));
+    request->nr_Name=(STRPTR)watch->paths[i];
+    request->nr_UserData=!strcmp(path,TRASH_CHANGED) ? 2UL : 1UL;
+    request->nr_Flags=NRF_SEND_MESSAGE|NRF_WAIT_REPLY;
+    request->nr_stuff.nr_Msg.nr_Port=watch->port;
+    if (StartNotify(request)) {++watch->count;return 1;}
+    EndNotify(request);
+    return 0;
+}
+static void watch_trashcans(struct TrashWatch *watch)
+{
+    char dirs[TRASH_MAX_DIRS][TRASH_PATH];
+    int i,count;
+    if (!watch->port) return;
+    watch_path(watch,"SYS:Trashcan");
+    count=known_trashcans(dirs);
+    for (i=0;i<count;++i) watch_path(watch,dirs[i]);
+}
+static int trash_changed(struct TrashWatch *watch)
+{
+    struct NotifyMessage *message;
+    int changed=0;
+    if (!watch->port) return 0;
+    while ((message=(struct NotifyMessage *)GetMsg(watch->port))!=NULL) {
+        changed|=(int)message->nm_NReq->nr_UserData;
+        ReplyMsg((struct Message *)message);
+    }
+    return changed;
+}
+/* Reuse the existing housekeeping cadence; no disk lookup on an idle tick
+ * when marker notifications are available. Unsupported handlers keep the
+ * original RAM marker fallback. */
+static int trash_refresh_pending(struct TrashWatch *watch)
+{
+    int changed=trash_changed(watch);
+    if ((changed&2) || !watch->marker_watched) {
+        if (exists(TRASH_CHANGED)) {
+            DeleteFile((STRPTR)TRASH_CHANGED);
+            watch_trashcans(watch);
+            changed|=1;
+        }
+    }
+    return changed&1;
+}
+static void stop_trash_watch(struct TrashWatch *watch)
+{
+    int i;
+    /* Reply to outstanding notifications before ending their requests. */
+    (void)trash_changed(watch);
+    for (i=0;i<watch->count;++i) EndNotify(&watch->requests[i]);
+    (void)trash_changed(watch);
+    watch->count=0;
+    if (watch->port) {DeleteMsgPort(watch->port);watch->port=NULL;}
+}
+
 /* ---- PUT ---------------------------------------------------------------- */
 
 /* TEXT is passed as an argument, never as the format: file names may
@@ -306,10 +384,15 @@ static void describe(long items,char *value,char *badge)
 int main(int argc,char **argv)
 {
     struct NDClient client;
+    static struct TrashWatch watch;
     unsigned int event,elapsed=0;
     char value[32],badge[ND_BADGE_LEN];
     long items;
     int rc;
+    if (argc>=3 && !strcmp(argv[2],"REFRESH")) {
+        touch(TRASH_CHANGED);
+        return 0;
+    }
     if (argc>=3 && (!strcmp(argv[2],"PUT") || !strcmp(argv[2],"EMPTY"))) {
         IntuitionBase=(struct IntuitionBase *)OpenLibrary((STRPTR)"intuition.library",37);
         if (!strcmp(argv[2],"PUT")) rc=argc>=4 ? trash_put(argv[3]) : 10;
@@ -318,24 +401,23 @@ int main(int argc,char **argv)
         return rc;
     }
     if (argc<2 || !nd_client_init(&client,argv[1])) return 20;
+    watch.port=CreateMsgPort();
+    watch.marker_watched=watch_path(&watch,TRASH_CHANGED);
+    watch_trashcans(&watch);
     items=count_items();
     describe(items,value,badge);
     for (;;) {
+        if (trash_refresh_pending(&watch)) {
+            items=count_items();describe(items,value,badge);
+        }
         event=nd_client_update_quiet(&client,"TRASH",value,ND_NO_METER,
                                      elapsed,TRASH_HEARTBEAT_TICKS);
         if (!(event&ND_EVENT_QUIT)) event|=nd_client_set_badge(&client,badge);
         if (event&ND_EVENT_QUIT) break;
-        /* A helper changed a Trashcan: recount once (T: is normally RAM). */
-        if (exists(TRASH_CHANGED)) {
-            DeleteFile((STRPTR)TRASH_CHANGED);
-            items=count_items();
-            describe(items,value,badge);
-            elapsed=0;
-            continue;
-        }
         elapsed=nd_client_wait(&client,
                                nd_client_delay_ticks(&client,TRASH_POLL_TICKS));
     }
+    stop_trash_watch(&watch);
     nd_client_close(&client);
     return 0;
 }

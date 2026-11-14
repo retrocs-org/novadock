@@ -1,6 +1,6 @@
-# MusicPlayer plugin — EaglePlayer, AmigaAMP and HippoPlayer
+# MusicPlayer plugin — EaglePlayer, AmigaAMP, HippoPlayer and LumiAMP
 
-MusicPlayer is one logical dock item for three separately installed AmigaOS
+MusicPlayer is one logical dock item for four separately installed AmigaOS
 music players. On a top or bottom dock it spans two ordinary tile widths so
 the module title and controls are not cramped. It remains one item for
 selection, dragging, paging and configuration. Left and right docks retain a
@@ -61,6 +61,23 @@ select the adjacent playlist entry and then issue `PLAY`; Play/Pause uses
 button state and 0..64 volume slider synchronized. These newer commands are
 intended for HippoPlayer 2.47 or later. Select `HIPPOPLAYER` for MODE to force
 it, or leave MODE at AUTO and set PREFER if several supported players run.
+
+## LumiAMP
+
+[LumiAMP](https://www.amigaworld.de/software/lumiamp/) 0.5 is detected through
+its fixed `LUMIAMP` ARexx port. Choose `LUMIAMP` as Player to force it, or set
+Preferred player to `LUMIAMP` when using automatic detection. Set Default
+application to the installed LumiAMP executable to launch it from the idle tile.
+
+The supplied profile follows LumiAMP's included English ARexx reference:
+`PLAY`, `PAUSE`, `RESUME`, `STOP`, `PREV`, `NEXT`, `GETSTATE TITLE`,
+`GETSTATE TIME`, `STATUS`, `GETSTATE VOLUME` and `VOLUME 0..100`.
+Resuming a paused track uses `RESUME`, preserving its position. A stopped
+track uses `PLAY`. Its playing/paused state and volume slider follow the
+player's query results; an empty tag title remains unavailable.
+
+Optional `LUMI_*` command settings allow overrides without changing the other
+player profiles. LumiAMP and its decoder libraries must be installed separately.
 
 AmigaAMP commands remain version-dependent and should be checked against the
 installed player. Automatic metadata queries are enabled for EaglePlayer.

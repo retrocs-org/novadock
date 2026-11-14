@@ -17,18 +17,23 @@
 #include <proto/dos.h>
 #include <proto/graphics.h>
 #include <proto/intuition.h>
+#include <proto/icon.h>
+#include <proto/wb.h>
+#include <workbench/workbench.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 #include "nd_shotfile.h"
+#include "nd_cybergraphics.h"
 
-const char nd_version[]=ND_VER_STRING("Screenshot");
+const char nd_version[]=ND_PLUGIN_VER_STRING(SCREENSHOT,"Screenshot");
 long __stack=16384;
 struct IntuitionBase *IntuitionBase=NULL;
 struct GfxBase *GfxBase=NULL;
+struct Library *CyberGfxBase=NULL,*IconBase=NULL,*WorkbenchBase=NULL;
 
 struct ShotSettings {
     char drawer[96];
@@ -69,9 +74,33 @@ static int pick_name(const char *drawer,char *path,unsigned int size)
     ((struct Process *)FindTask(NULL))->pr_WindowPtr=old;
     return 0;
 }
+/* A project icon makes the image visible in Workbench's Icons Only view. */
+static int screenshot_icon(const char *path)
+{
+    struct DiskObject *icon;STRPTR old_tool;BPTR object,parent;int ok=0;
+    IconBase=OpenLibrary("icon.library",36);
+    if(IconBase){
+        icon=GetDefDiskObject(WBPROJECT);
+        if(icon){
+            old_tool=icon->do_DefaultTool;icon->do_DefaultTool="SYS:Utilities/MultiView";
+            icon->do_CurrentX=NO_ICON_POSITION;icon->do_CurrentY=NO_ICON_POSITION;
+            ok=PutDiskObject((STRPTR)path,icon)!=0;
+            icon->do_DefaultTool=old_tool;FreeDiskObject(icon);
+        }
+        CloseLibrary(IconBase);IconBase=NULL;
+    }
+    WorkbenchBase=OpenLibrary("workbench.library",44);
+    if(WorkbenchBase){
+        object=Lock((STRPTR)path,ACCESS_READ);
+        if(object){parent=ParentDir(object);UnLock(object);
+            if(parent){UpdateWorkbench(FilePart((STRPTR)path),parent,UPDATEWB_ObjectAdded);UnLock(parent);}}
+        CloseLibrary(WorkbenchBase);WorkbenchBase=NULL;
+    }
+    return ok;
+}
 /* Returns NULL on success, or the text the tile shows. */
 static const char *capture(struct NDClient *client,const struct ShotSettings *s,
-                           char *saved,unsigned int saved_size)
+                           char *saved,unsigned int saved_size,int *icon_ok)
 {
     static ULONG rgb[3*256+2];
     static unsigned char palette[3*256];
@@ -82,10 +111,12 @@ static const char *capture(struct NDClient *client,const struct ShotSettings *s,
     unsigned char *line=NULL;
     char path[200],progress[32];
     ULONG lock,mode;
-    unsigned int width,height,depth,colors,y,i,percent,shown=101;
+    unsigned int width,height,depth=0,colors=0,y,i,percent,shown=101;
+    int deep=0;
     const char *problem=NULL;
     BPTR dir;
     APTR old;
+    *icon_ok=0;
     old=((struct Process *)FindTask(NULL))->pr_WindowPtr;
     ((struct Process *)FindTask(NULL))->pr_WindowPtr=(APTR)-1;
     dir=Lock((STRPTR)s->drawer,ACCESS_READ);
@@ -93,6 +124,8 @@ static const char *capture(struct NDClient *client,const struct ShotSettings *s,
     if (!dir) return "NO DRAWER";
     UnLock(dir);
     if (!pick_name(s->drawer,path,sizeof(path))) return "NAME FAILED";
+    if(nd_client_update_quiet(client,"SHOT","CAPTURING",ND_NO_METER,0,500U)&ND_EVENT_QUIT)
+        return "CANCELLED";
     if (s->workbench) {
         workbench=LockPubScreen((STRPTR)"Workbench");
         if (!workbench) return "NO WORKBENCH";
@@ -106,11 +139,12 @@ static const char *capture(struct NDClient *client,const struct ShotSettings *s,
     width=(unsigned int)screen->Width;height=(unsigned int)screen->Height;
     depth=(unsigned int)GetBitMapAttr(screen->RastPort.BitMap,BMA_DEPTH);
     mode=GetVPModeID(&screen->ViewPort);
-    if (depth<1 || depth>8) problem="DEEP SCREEN";
+    deep=depth>8;
+    if (depth<1 || depth>32) problem="BAD DEPTH";
+    else if(deep && (!CyberGfxBase || !nd_cgx_bitmap(screen->RastPort.BitMap)))problem="NO RTG READER";
     else if (width>ND_SHOT_MAX_WIDTH) problem="TOO WIDE";
     else {
-        colors=1U<<depth;
-        GetRGB32(screen->ViewPort.ColorMap,0,colors,rgb);
+        if(!deep){colors=1U<<depth;GetRGB32(screen->ViewPort.ColorMap,0,colors,rgb);}
         copy=AllocBitMap(width,height,depth,0,screen->RastPort.BitMap);
         if (copy) {
             BltBitMap(screen->RastPort.BitMap,0,0,copy,0,0,(WORD)width,
@@ -121,21 +155,22 @@ static const char *capture(struct NDClient *client,const struct ShotSettings *s,
     UnlockIBase(lock);
     if (workbench) UnlockPubScreen(NULL,workbench);
     if (problem) return problem;
-    colors=1U<<depth;
+    if(deep && !nd_cgx_bitmap(copy)){FreeBitMap(copy);return "NO RTG COPY";}
     for (i=0;i<colors*3U;++i) palette[i]=(unsigned char)(rgb[i]>>24);
     /* ReadPixelLine8 reads planar and chunky (RTG) bitmaps alike. */
     InitRastPort(&rp);rp.BitMap=copy;
     temp=rp;temp.Layer=NULL;
-    line_map=AllocBitMap(width,1,depth,0,copy);
-    line=(unsigned char *)AllocVec(((width+15U)>>4)<<4,MEMF_PUBLIC|MEMF_CLEAR);
-    if (!line_map || !line) problem="NO MEMORY";
+    if(!deep)line_map=AllocBitMap(width,1,depth,0,copy);
+    line=(unsigned char *)AllocVec(deep ? width*3UL:(((width+15U)>>4)<<4),MEMF_PUBLIC|MEMF_CLEAR);
+    if ((!deep && !line_map) || !line) problem="NO MEMORY";
     else {
         temp.BitMap=line_map;
-        if (!nd_shot_begin(&writer,path,width,height,depth,palette,colors,mode))
+        if (!nd_shot_begin(&writer,path,width,height,deep ? 24U:depth,palette,colors,deep ? 0:mode))
             problem="WRITE FAILED";
         for (y=0;!problem && y<height;++y) {
-            ReadPixelLine8(&rp,0,(LONG)y,width,line,&temp);
-            if (!nd_shot_row(&writer,line)) problem="WRITE FAILED";
+            if(deep){if(nd_cgx_rgb_line(line,width,&rp,y)!=width)problem="READ FAILED";}
+            else if(ReadPixelLine8(&rp,0,(LONG)y,width,line,&temp)!=(LONG)width)problem="READ FAILED";
+            if (!problem && !nd_shot_row(&writer,line)) problem="WRITE FAILED";
             /* Keep the dock answered while a big screen is encoded. */
             percent=(y*10U/height)*10U;
             if (percent!=shown) {
@@ -150,6 +185,7 @@ static const char *capture(struct NDClient *client,const struct ShotSettings *s,
     WaitBlit();
     if (line_map) FreeBitMap(line_map);
     FreeBitMap(copy);
+    if(!problem)*icon_ok=screenshot_icon(path);
     if (!problem && saved) {
         strncpy(saved,path,saved_size-1);
         saved[saved_size-1]='\0';
@@ -163,11 +199,13 @@ int main(int argc,char **argv)
     char value[32],badge[8],saved[200];
     const char *problem;
     unsigned int event,elapsed=0,countdown=0,message=0,wait,taken=0;
-    int reread=1;
+    int reread=1,icon_ok;
     if (argc<2) return 20;
     IntuitionBase=(struct IntuitionBase *)OpenLibrary("intuition.library",39);
     GfxBase=(struct GfxBase *)OpenLibrary("graphics.library",39);
+    CyberGfxBase=OpenLibrary("cybergraphics.library",41);
     if (!IntuitionBase || !GfxBase || !nd_client_init(&client,argv[1])) {
+        if(CyberGfxBase)CloseLibrary(CyberGfxBase);
         if (GfxBase) CloseLibrary((struct Library *)GfxBase);
         if (IntuitionBase) CloseLibrary((struct Library *)IntuitionBase);
         return 20;
@@ -179,10 +217,10 @@ int main(int argc,char **argv)
             countdown=countdown>elapsed ? countdown-elapsed : 0;
             sprintf(value,"IN %u",(countdown+49U)/50U);
             if (!countdown) {
-                problem=capture(&client,&settings,saved,sizeof(saved));
+                problem=capture(&client,&settings,saved,sizeof(saved),&icon_ok);
                 if (problem) strcpy(value,problem);
                 else {
-                    strcpy(value,"SAVED");
+                    strcpy(value,icon_ok ? "SAVED":"SAVED (NO ICON)");
                     if (taken<99) ++taken;
                     sprintf(badge,"%u",taken);
                     (void)nd_client_set_badge(&client,badge);
@@ -211,6 +249,7 @@ int main(int argc,char **argv)
         elapsed=nd_client_wait(&client,wait);
     }
     nd_client_close(&client);
+    if(CyberGfxBase)CloseLibrary(CyberGfxBase);
     CloseLibrary((struct Library *)GfxBase);
     CloseLibrary((struct Library *)IntuitionBase);
     return 0;

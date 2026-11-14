@@ -1,8 +1,8 @@
 #ifndef ND_SHOTFILE_H
 #define ND_SHOTFILE_H
-/* Portable IFF ILBM writer for screenshots: up to 8 bitplanes, ByteRun1
+/* Portable IFF ILBM writer for screenshots: indexed or 24-bit RGB, ByteRun1
  * compressed, with CMAP and CAMG (display mode).  Rows are given as one
- * byte per pixel (pen numbers), as graphics.library ReadPixelLine8 returns. */
+ * byte per indexed pixel, or three bytes per RGB pixel (red, green, blue). */
 #include <stdio.h>
 #define ND_SHOT_MAX_WIDTH 4096
 struct NDShotWriter {
@@ -18,7 +18,8 @@ struct NDShotWriter {
  * the packed length. */
 unsigned int nd_byterun1(const unsigned char *src,unsigned int n,
                          unsigned char *dst);
-/* PALETTE holds COLORS RGB triplets (0..255).  Returns 1 on success. */
+/* Indexed depth 1-8 uses COLORS palette triplets. Depth 24 uses RGB rows
+ * and COLORS=0 with no palette. Returns 1 on success. */
 int nd_shot_begin(struct NDShotWriter *w,const char *path,unsigned int width,
                   unsigned int height,unsigned int depth,
                   const unsigned char *palette,unsigned int colors,

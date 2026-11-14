@@ -38,7 +38,8 @@ struct PopupTheme {
 
 struct NDClipQuick {
     struct Window *window;struct PopupTheme theme;struct NDClipHistory clips;
-    int columns,rows,tile_width,tile_height,page,page_size,pages,hover;
+    int columns,rows,tile_width,tile_height,page,page_size,pages,hover,selected;
+    char heading[32],empty[80],title[80],footer[80],item[16];
 };
 static void trim_line(char *line)
 {
@@ -238,8 +239,8 @@ static void draw_quick(struct NDClipQuick *q)
     SetAPen(rp,q->theme.pens[PT_ACCENT]);Move(rp,0,0);Draw(rp,q->window->Width-1,0);
     Draw(rp,q->window->Width-1,q->window->Height-1);Draw(rp,0,q->window->Height-1);Draw(rp,0,0);
     SetAPen(rp,q->theme.pens[PT_TEXT]);SetBPen(rp,q->theme.pens[PT_BG]);
-    centered_text(q,"CLIPPY",rp->TxBaseline+5,0,q->window->Width);
-    if(!q->clips.count){centered_text(q,"Clipboard is empty",Q_HEAD+26,0,q->window->Width);}
+    centered_text(q,q->heading[0] ? q->heading:"CLIPPY",rp->TxBaseline+5,0,q->window->Width);
+    if(!q->clips.count){centered_text(q,q->empty[0] ? q->empty:"Clipboard is empty",Q_HEAD+26,0,q->window->Width);}
     for(slot=0;slot<q->page_size;++slot){
         index=q->page*q->page_size+slot;if(index>=(int)q->clips.count)break;
         origin(q,slot,&x,&y);fill_tile(q,slot==q->hover ? PT_HOVER:PT_TILE,x,y,q->tile_width,q->tile_height);
@@ -255,17 +256,28 @@ static void draw_quick(struct NDClipQuick *q)
             if(q->clips.text[index][pos]=='\n')++pos;text[n]=0;
             Move(rp,x+14,y+12+rp->TxBaseline+line*(rp->TxHeight+1));Text(rp,text,n);
         }
-        sprintf(label,"Clip %d",index+1);SetBPen(rp,q->theme.pens[slot==q->hover ? PT_HOVER:PT_TILE]);
+        sprintf(label,"%s %d",q->item[0] ? q->item:"Clip",index+1);SetBPen(rp,q->theme.pens[slot==q->hover ? PT_HOVER:PT_TILE]);
         centered_text(q,label,y+q->tile_height-8,x,q->tile_width);
     }
     SetAPen(rp,q->theme.pens[PT_SUBTLE]);SetBPen(rp,q->theme.pens[PT_BG]);
     if(q->pages>1){
         sprintf(label,"<   Page %d / %d   >",q->page+1,q->pages);
         centered_text(q,label,q->window->Height-8,0,q->window->Width);
-    }else centered_text(q,q->clips.count ? "Click to copy - Esc to close":"Esc to close",q->window->Height-8,0,q->window->Width);
+    }else centered_text(q,q->footer[0] ? q->footer:q->clips.count ? "Click to copy - Esc to close":"Esc to close",q->window->Height-8,0,q->window->Width);
 }
+void nd_clip_quick_labels(struct NDClipQuick *q,const char *heading,const char *empty,
+                           const char *title,const char *footer,const char *item)
+{
+    if(!q)return;
+    strncpy(q->heading,heading,sizeof(q->heading)-1);strncpy(q->empty,empty,sizeof(q->empty)-1);
+    strncpy(q->title,title,sizeof(q->title)-1);strncpy(q->footer,footer,sizeof(q->footer)-1);
+    strncpy(q->item,item,sizeof(q->item)-1);
+}
+int nd_clip_quick_selected(const struct NDClipQuick *q){return q ? q->selected:-1;}
 struct NDClipQuick *nd_clip_quick_create(void)
 {return AllocVec(sizeof(struct NDClipQuick),MEMF_PUBLIC|MEMF_CLEAR);}
+unsigned long nd_clip_quick_signals(const struct NDClipQuick *q)
+{return q && q->window ? 1UL<<q->window->UserPort->mp_SigBit:0;}
 int nd_clip_quick_active(const struct NDClipQuick *q)
 {return q && q->window!=NULL;}
 void nd_clip_quick_close(struct NDClipQuick *q)
@@ -281,7 +293,13 @@ int nd_clip_quick_open(struct NDClipQuick *q,const struct NDClipHistory *history
 {
     struct Screen *screen;int width,height,left,top,maxcols,maxrows,i,count;
     if(!q)return 0;nd_clip_quick_close(q);nd_clip_history_init(&q->clips,ND_CLIP_MAX);
-    for(i=(int)history->count-1;i>=0;--i)if(!nd_clip_history_add(&q->clips,history->text[i]))goto fail;
+    q->selected=-1;
+    if(history->count>ND_CLIP_MAX)goto fail;
+    for(i=0;i<(int)history->count;++i){
+        size_t size=strlen(history->text[i])+1;if(size>ND_CLIP_TEXT_MAX)goto fail;
+        q->clips.text[i]=malloc(size);if(!q->clips.text[i])goto fail;
+        strcpy(q->clips.text[i],history->text[i]);++q->clips.count;
+    }
     screen=LockPubScreen("Workbench");if(!screen)goto fail;
     load_active_theme(&q->theme);obtain_theme_pens(&q->theme,screen);
     count=q->clips.count ? (int)q->clips.count:1;
@@ -297,7 +315,7 @@ int nd_clip_quick_open(struct NDClipQuick *q,const struct NDClipHistory *history
     height=Q_HEAD+q->rows*(q->tile_height+Q_GAP)-Q_GAP+Q_FOOT;
     left=(screen->Width-width)/2;top=screen->BarHeight+(screen->Height-screen->BarHeight-height)/2;
     if(left<0)left=0;if(top<screen->BarHeight)top=screen->BarHeight;
-    q->window=OpenWindowTags(NULL,WA_PubScreen,(ULONG)screen,WA_Title,(ULONG)"NovaDock Clipboard Picker",
+    q->window=OpenWindowTags(NULL,WA_PubScreen,(ULONG)screen,WA_Title,(ULONG)(q->title[0] ? q->title:"NovaDock Clipboard Picker"),
         WA_Left,left,WA_Top,top,WA_Width,width,WA_Height,height,WA_Borderless,TRUE,WA_Activate,TRUE,
         WA_RMBTrap,TRUE,WA_SimpleRefresh,TRUE,WA_ReportMouse,TRUE,
         WA_IDCMP,IDCMP_MOUSEBUTTONS|IDCMP_MOUSEMOVE|IDCMP_REFRESHWINDOW|IDCMP_INACTIVEWINDOW|IDCMP_RAWKEY,TAG_DONE);
@@ -321,10 +339,10 @@ const char *nd_clip_quick_events(struct NDClipQuick *q)
         else if(cls==IDCMP_MOUSEBUTTONS && code==SELECTDOWN){
             if(q->pages>1 && my>=q->window->Height-Q_FOOT){change_page(q,mx<q->window->Width/2 ? -1:1);continue;}
             slot=hit(q,mx,my);if(slot<0){nd_clip_quick_close(q);continue;}
-            return q->clips.text[q->page*q->page_size+slot];
+            q->selected=q->page*q->page_size+slot;return q->clips.text[q->selected];
         }else if(cls==IDCMP_RAWKEY && q->clips.count){
             next=q->hover<0 ? 0:q->hover;
-            if(code==0x44)return q->clips.text[q->page*q->page_size+next];
+            if(code==0x44){q->selected=q->page*q->page_size+next;return q->clips.text[q->selected];}
             if(code==0x4f){if(next>0)--next;else {change_page(q,-1);continue;}}
             else if(code==0x4e){
                 index=q->page*q->page_size+next+1;

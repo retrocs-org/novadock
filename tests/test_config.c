@@ -31,7 +31,7 @@ int main(void)
     recovered=cfg;nd_config_set_theme(&recovered,"Classic");
     assert(!nd_config_can_update_live(&cfg,&recovered));
     assert(!nd_config_can_update_live(NULL,&cfg));
-    assert(cfg.count == 11);
+    assert(cfg.count == 13);
     assert(cfg.side == ND_SIDE_BOTTOM);
     assert(cfg.position == ND_POSITION_CENTER);
     assert(cfg.font_mode == ND_FONT_WORKBENCH);
@@ -143,9 +143,9 @@ int main(void)
         cfg.items[n].enabled=1;
         ++cfg.count;
     }
-    assert(cfg.count==24);
+    assert(cfg.count==26);
     assert(nd_add_plugin_instance(&cfg,7));
-    assert(cfg.count==25 && !strcmp(cfg.items[24].id,"EYES"));
+    assert(cfg.count==27 && !strcmp(cfg.items[26].id,"EYES"));
     nd_default_config(&cfg); /* keep the fixed catalogue indexes below */
     assert(strcmp(cfg.items[8].id, "DOPUS4") == 0 && !cfg.items[8].enabled);
     assert(strcmp(cfg.items[9].id,"ARCHIVE")==0 && !cfg.items[9].enabled);
@@ -331,7 +331,9 @@ int main(void)
     assert(nd_parse_line(&cfg, "Side=Left") == 1 && cfg.side == ND_SIDE_LEFT);
     assert(nd_parse_line(&cfg, "TOOLTIPS=no") == 1 && cfg.tooltips == 0);
     assert(nd_load_config(&cfg, "novadock.cfg") == 0);
-    assert(cfg.count == 17); /* six active tiles plus optional definitions */
+    assert(cfg.count == 19); /* six active tiles plus optional definitions */
+    assert(!cfg.items[17].enabled && !strcmp(cfg.items[17].id,"TIMER"));
+    assert(!cfg.items[18].enabled && !strcmp(cfg.items[18].id,"NOTES"));
     assert(!cfg.items[16].enabled && !strcmp(cfg.items[16].id,"BITSKIM"));
     assert(!cfg.items[14].enabled && !strcmp(cfg.items[14].id,"AMIRC"));
     assert(!cfg.items[15].enabled && !strcmp(cfg.items[15].id,"CLIPBOARD"));
@@ -351,7 +353,7 @@ int main(void)
     fputs("OPTION.CHIPRAM.POLL_TICKS=60\n",legacy);
     fclose(legacy);
     assert(nd_load_config(&cfg,"tests/legacy-ram.cfg")==0);
-    assert(cfg.count==9 && !strcmp(cfg.items[0].id,"RAM"));
+    assert(cfg.count==11 && !strcmp(cfg.items[0].id,"RAM"));
     /* Every bundled plugin remains available to Add Item after loading a
      * configuration written before that plugin shipped. */
     assert(!strcmp(cfg.items[1].id,"CLOCK") && !cfg.items[1].enabled);
@@ -384,7 +386,7 @@ int main(void)
     remove("tests/known-good.cfg.good");
     remove("tests/known-good.cfg.bak");
     assert(nd_load_config(&cfg, "this-file-does-not-exist.cfg") == -1);
-    assert(cfg.count == 11);
+    assert(cfg.count == 13);
     puts("Config tests passed.");
     return 0;
 }

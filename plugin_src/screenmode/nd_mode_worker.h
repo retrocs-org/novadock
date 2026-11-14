@@ -2,7 +2,7 @@
 #define ND_MODE_WORKER_H
 #define MODE_GUARD "NovaDock.ScreenMode.Switch"
 #define MODE_MAGIC 0x4E444D53UL
-struct ModeMessage {struct Message msg;ULONG magic;int kind;LONG result;char command[600];};
+struct ModeMessage {struct Message msg;ULONG magic;int kind;LONG result;char command[600],cleanup[256];};
 static ULONG mode_ticks(void)
 {
     struct DateStamp d;DateStamp(&d);
@@ -14,6 +14,13 @@ static int mode_send(const char *name,struct ModeMessage *m)
     Forbid();port=FindPort((STRPTR)name);
     if(port){PutMsg(port,(struct Message *)m);sent=1;}
     Permit();return sent;
+}
+/* Only a unique temporary directory created for a mode selection is owned. */
+static void mode_clean_preset(const char *directory)
+{
+    char path[280];
+    if(!directory || strncmp(directory,"T:NovaDockMode-",15) || strlen(directory)>250)return;
+    sprintf(path,"%s/mode.prefs",directory);DeleteFile(path);DeleteFile((STRPTR)directory);
 }
 /* A separately loaded executable owns the possibly blocking editor command.
  * Only a copied command crosses the handshake. The resident may time out or
@@ -58,6 +65,7 @@ static int mode_worker(const char *parent)
             if(input && output)m->result=SystemTags((STRPTR)m->command,
                 SYS_Input,input,SYS_Output,output,NP_StackSize,16384UL,TAG_DONE);
             if(input)Close(input);if(output)Close(output);
+            mode_clean_preset(m->cleanup);
             m->kind=2;m->msg.mn_ReplyPort=NULL;
             if(mode_send(parent,m))m=NULL;
         }

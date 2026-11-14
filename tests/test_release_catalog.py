@@ -38,6 +38,15 @@ with tempfile.TemporaryDirectory() as tmp:
         assert not result.stderr, result.stderr
         html = result.stdout.decode('ascii')
         assert '/tree/0.1' in html and '/tree/v0.1' not in html, name
+    # A newer development version and upcoming entries must not invent source tags.
+    upcoming = m.upcoming('9.9', '9.9')
+    older = {'version': '0.0', 'tag': 'old', 'status': 'published'}
+    (site/'releases.json').write_text(json.dumps([upcoming, older, {'version': '0.1', 'tag': '0.1', 'status': 'published'}]))
+    result = subprocess.run([php, str(site/'developers.php')], capture_output=True, check=True)
+    assert '/tree/0.1' in result.stdout.decode('ascii')
+    (site/'releases.json').write_text('[]')
+    result = subprocess.run([php, str(site/'developers.php')], capture_output=True, check=True)
+    assert '/tree/main' in result.stdout.decode('ascii')
     future = m.upcoming('0.2', '0.2')
     future.update(status='published', date='2026-12-01', prerelease=False)
     (site/'releases.json').write_text(json.dumps([future]))

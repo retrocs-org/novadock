@@ -189,6 +189,15 @@ def check_maintenance_detection(text, nodes):
             if head(node) in procedures: check_removal_calls(procedures[head(node)])
     check_removal_calls(removal)
     assert sum(head(n) == 'askbool' for n in walk([removal])) == 2
+    # Both Workbench and direct script starts keep the log outside removed data.
+    assert 'LOGFILE T:NovaDock-Install.log' in (ROOT/'tools/startinstaller.c').read_text()
+    assert head(removal['items'][2]['items'][0]) == 'set'
+    assert removal['items'][2]['items'][0]['items'][1][2] == '@default-dest'
+    assert removal['items'][2]['items'][0]['items'][2][2] == 'T:'
+    removal_text = text.split('(procedure P_REMOVE', 1)[1]
+    assert removal_text.index('(P_DROP_ASSIGN)') < removal_text.index('Before deleting program drawer')
+    assert '(if (<> #dest "") ((set #del #dest) (P_DELETE)))' in removal_text
+    assert '(set #del "ENVARC:NovaDock") (P_DELETE)' in removal_text
     clean = scenario({})
     assert not clean['#installed']
     normal = scenario({app: 1, shared+'/Plugins': 2, 'DH0:Locale/Help/NovaDock.guide': 1})
@@ -226,6 +235,19 @@ def check_maintenance_detection(text, nodes):
     assert not scenario({shared+'/Plugins': 2})['#installed']  # leftovers
     assert not scenario({package+'/NovaDock': 1, package+'/Plugins': 2},
                         {'NovaDock': package})['#installed']  # unpacked package
+    # A portable/staged run may assign every NovaDock location to the package.
+    # Ignore those temporary locations and still find an existing standard install.
+    package_files = {package+'/NovaDock': 1, package+'/Plugins': 2,
+                     package+'/NovaDockPrefs': 1, package+'/NovaDock.guide': 1}
+    package_assigns = {name: package for name in
+                       ('NovaDockApp', 'NovaDockPrefs', 'NovaDock', 'NovaDockHelp')}
+    portable = scenario(package_files, package_assigns)
+    assert not portable['#installed'] and portable['#current'] == ''
+    assert portable['#appdir'] == 'SYS:Utilities' and portable['#prefs'] == 'SYS:Prefs'
+    staged = scenario({**package_files, app: 1, shared+'/Plugins': 2,
+                       'DH0:Locale/Help/NovaDock.guide': 1}, package_assigns)
+    assert staged['#installed-app'] == app and staged['#current'] == shared
+    assert staged['#prefs'] == 'SYS:Prefs' and staged['#oldhelpdir'] != package
     install = next(n for n in nodes if head(n) == 'procedure' and n['items'][1][2] == 'P_INSTALL')
     choose = install['items'][2]['items'][0]
     assert head(choose) == 'if' and choose['items'][1][2] == '#installed'
@@ -300,6 +322,79 @@ def check_installation_levels(nodes):
     print('Installer levels: 0/2/3 path questions; independent boot/launch choices checked in all 12 scenarios.')
 
 
+def check_fresh_path_guards(nodes):
+    """Missing application/data targets must not compare as empty paths."""
+    install = next(n for n in nodes if head(n) == 'procedure' and n['items'][1][2] == 'P_INSTALL')
+    statements = install['items'][2]['items']
+    end = next(i for i,n in enumerate(statements) if head(n) == 'set' and n['items'][1][2] == '#options')
+    guards = statements[1:end]
+    def scenario(destination):
+        env = {'#appdir':'SYS:Utilities', '#app':'SYS:Utilities/NovaDock',
+               '#prefs':'SYS:Prefs', '#dest':destination, '#src':'Bin:NovaDock',
+               '#helpdir':'HELP:', '#current':''}
+        existing = {'SYS:':'System:', 'Bin:':'Bin:', 'SYS:Utilities':'System:Utilities',
+                    'SYS:Prefs':'System:Prefs', 'HELP:':'System:Locale/Help',
+                    'Bin:NovaDock':'Bin:NovaDock'}
+        def evaluate(node):
+            if isinstance(node, tuple):
+                if node[0]=='str': return node[2]
+                return env[node[2]] if node[2] in env else int(node[2])
+            name,args=head(node),node['items'][1:]
+            if name=='set': env[args[0][2]]=evaluate(args[1]); return env[args[0][2]]
+            if name=='if': return evaluate(args[1]) if evaluate(args[0]) else (evaluate(args[2]) if len(args)>2 else None)
+            if name=='and': return all(evaluate(a) for a in args)
+            if name=='or': return any(evaluate(a) for a in args)
+            if name=='abort': raise ValueError(evaluate(args[0]))
+            if name=='noreq': return None
+            values=[evaluate(a) for a in args]
+            if name=='=': return values[0]==values[1]
+            if name=='<>': return values[0]!=values[1]
+            if name=='expandpath': return existing.get(values[0], '')
+            if name=='exists': return 2 if values[0] in existing else 0
+            if name=='tackon': return values[0]+('' if values[0].endswith(':') else '/')+values[1]
+            if name=='pathonly': return values[0].rsplit('/',1)[0] if '/' in values[0] else values[0].split(':')[0]+':'
+            if name=='fileonly': return values[0].rsplit('/',1)[-1].rsplit(':',1)[-1]
+            if name=='cat': return ''.join(values)
+            if name=='patmatch': return re.fullmatch(re.escape(values[0]).replace(r'\#\?', '.*'),values[1]) is not None
+            raise AssertionError(name)
+        for node in guards: evaluate(node)
+        return env
+    fresh=scenario('SYS:NovaDock')
+    assert fresh['#app-check']=='System:Utilities/NovaDock'
+    assert fresh['#dest-check']=='System:NovaDock'
+    for destination in ('SYS:Utilities', 'SYS:Utilities/NovaDock', 'Bin:NovaDock'):
+        try: scenario(destination)
+        except ValueError: pass
+        else: raise AssertionError('unsafe shared destination accepted: '+destination)
+    print('Fresh path guards: missing default targets accepted; conflicting destinations rejected.')
+
+
+def check_startup_label_collisions(nodes):
+    """Installer startup labels use prefix matching, not exact matching."""
+    install = next(n for n in nodes if head(n)=='procedure' and n['items'][1][2]=='P_INSTALL')
+    entries=[n for n in walk([install]) if head(n)=='startup']
+    names=[n['items'][1][2] for n in entries]
+    active=[name for name in names if name!='NovaDock']
+    assert set(active)=={'NovaDock application','NovaDock preferences','NovaDock resources','NovaDock manual'}
+    assert names[0]=='NovaDock', 'legacy cleanup must precede active assignments'
+    for name in active:
+        assert not any(other!=name and other.startswith(name) for other in active)
+    # Reproduce the native Installer prefix replacement on fresh and legacy
+    # sections. Every modern location must survive the complete sequence.
+    for initial in ([], ['NovaDock application','NovaDock preferences','NovaDock manual'],
+                    ['NovaDock','NovaDock application','NovaDock preferences','NovaDock manual']):
+        blocks=[(name,'old') for name in initial]
+        for name in names:
+            for i,(old,_) in enumerate(blocks):
+                if old.startswith(name): blocks[i]=(old,name);break
+            else: blocks.append((name,name))
+        assert set(active).issubset({value for _,value in blocks})
+    removal=next(n for n in nodes if head(n)=='procedure' and n['items'][1][2]=='P_DROP_ASSIGN')
+    removal_names=[n['items'][1][2] for n in walk([removal]) if head(n)=='startup']
+    assert removal_names[0]=='NovaDock' and set(active).issubset(removal_names)
+    print('Startup labels: app, Preferences, shared data and manual survive prefix matching.')
+
+
 def check_maintenance_levels(nodes):
     """Model Installer's suppressed Novice prompts and real user-level changes."""
     final = nodes[-1]
@@ -357,6 +452,8 @@ def main():
     nodes = parse(tokenize(SCRIPT.read_text('latin-1')))
     check_maintenance_detection(SCRIPT.read_text('latin-1'), nodes)
     check_installation_levels(nodes)
+    check_fresh_path_guards(nodes)
+    check_startup_label_collisions(nodes)
     check_maintenance_levels(nodes)
     procedures = {head_node['items'][1][2] for head_node in walk(nodes)
                   if head(head_node) == 'procedure'}
@@ -448,6 +545,9 @@ def main():
     assert 'Tools/SaveConfig' in (ROOT/'src/dock_save.c').read_text()
     shell = (ROOT/'install.amiga').read_text()
     assert 'Copy SaveConfig TO SYS:NovaDock/Tools/SaveConfig' in shell
+    assert 'Copy Plugins TO SYS:NovaDock/Plugins ALL' in shell
+    assert shell.index('NovaDock QUIT') < shell.index('Rename SYS:Utilities/NovaDock')
+    assert 'IF WARN\n  Echo "NovaDock could not be stopped.' in shell
     assert 'Copy Icons/SoftwarePackage.info TO SYS:NovaDock.info' not in shell
     assert 'Copy NovaDock.guide TO HELP:NovaDock.guide' in shell
     assert shell.index('Copy SYS:Resources/NovaDock/Themes') < shell.index('Copy Themes/Mocha/theme.cfg')

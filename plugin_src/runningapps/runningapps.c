@@ -18,10 +18,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 
-const char nd_version[]=ND_VER_STRING("RunningApps");
+const char nd_version[]=ND_PLUGIN_VER_STRING(RUNNINGAPPS,"RunningApps");
 long __stack=16384;
 
 struct IntuitionBase *IntuitionBase=NULL;

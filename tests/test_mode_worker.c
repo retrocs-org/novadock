@@ -22,7 +22,7 @@ struct MsgPort {struct Node mp_Node;int mp_Flags,mp_SigBit;void *mp_SigTask;stru
 struct Process {void *pr_WindowPtr;};struct DateStamp {long ds_Days,ds_Minute,ds_Tick;};
 static struct Process self;
 static struct MsgPort *registry[8],*parent;
-static int commands,allocations,disappear,refuse_reply,blocked_second,command_result;
+static int commands,allocations,disappear,refuse_reply,blocked_second,command_result,deletes;
 static void Forbid(void){}static void Permit(void){}
 static void FreeSignal(int n){(void)n;}
 static void Delay(int n){(void)n;}
@@ -40,6 +40,7 @@ static struct Message *GetMsg(struct MsgPort *p){struct Message *m=p->head;if(m)
 static void ReplyMsg(struct Message *m){enqueue(m->mn_ReplyPort,m);}
 static void PutMsg(struct MsgPort *,struct Message *);
 static BPTR Open(STRPTR name,int mode){(void)name;(void)mode;return 1;}
+static int DeleteFile(STRPTR path){assert(!strncmp(path,"T:NovaDockMode-",15));++deletes;return 1;}
 static int Close(BPTR n){(void)n;return 1;}
 static LONG SystemTags(STRPTR command,...);
 static int nd_quote_path(char *out,size_t size,const char *path){if(strlen(path)+3>size)return 0;sprintf(out,"\"%s\"",path);return 1;}
@@ -48,7 +49,7 @@ static void PutMsg(struct MsgPort *p,struct Message *message)
 {
     struct ModeMessage *m=(struct ModeMessage *)message;
     if(p==parent && m->kind==1 && !refuse_reply){
-        strcpy(m->command,"ScreenMode FROM preset USE");ReplyMsg(message);
+        strcpy(m->command,"ScreenMode FROM preset USE");strcpy(m->cleanup,"T:NovaDockMode-test");ReplyMsg(message);
     }else enqueue(p,message);
 }
 static LONG SystemTags(STRPTR command,...)
@@ -65,11 +66,11 @@ int main(void)
     struct ModeMessage *m;struct MsgPort *reply;
     make_parent();assert(mode_ticks()==10);
     assert(start_mode_worker("Plugins/ScreenMode","PARENT"));
-    assert(mode_worker("PARENT")==0 && commands==1 && blocked_second);
+    assert(mode_worker("PARENT")==0 && commands==1 && blocked_second && deletes==2);
     m=(struct ModeMessage *)GetMsg(parent);assert(m && m->kind==2 && m->result==0);FreeVec(m);
     command_result=20;assert(mode_worker("PARENT")==0);
-    m=(struct ModeMessage *)GetMsg(parent);assert(m->result==20);FreeVec(m);
-    disappear=1;assert(mode_worker("PARENT")==0 && !parent && allocations==0);
+    m=(struct ModeMessage *)GetMsg(parent);assert(m->result==20 && deletes==4);FreeVec(m);
+    disappear=1;assert(mode_worker("PARENT")==0 && !parent && allocations==0 && deletes==6);
     assert(mode_worker("MISSING")==0 && allocations==0);
     make_parent();refuse_reply=1;
     assert(mode_worker("PARENT")==20);assert(!FindPort(MODE_GUARD));

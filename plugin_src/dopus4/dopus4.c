@@ -19,13 +19,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 
 /* Version string for the AmigaDOS Version command (kept global so the
  * linker never discards it). */
-const char nd_version[]=ND_VER_STRING("DOpus4");
+const char nd_version[]=ND_PLUGIN_VER_STRING(DOPUS4,"DOpus4");
 /* Honoured by the vbcc and libnix startup code; harmless elsewhere. */
 long __stack=16384;
 
@@ -351,7 +351,7 @@ int main(int argc,char **argv)
         else if (pending_front) status="STARTING";
         else status="OFFLINE";
         heartbeat_ticks=500U;
-        event=nd_client_update_quiet(&client,"DOPUS 4",status,ND_NO_METER,
+        event=nd_client_update_quiet(&client,"DOpus4",status,ND_NO_METER,
                                      elapsed_ticks,heartbeat_ticks);
         if (!(event&ND_EVENT_QUIT))
             event|=nd_client_set_badge(&client,(online || resident) ? "*" : "");

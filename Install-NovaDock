@@ -1,6 +1,6 @@
-; $VER: Install-NovaDock 0.1 (26.10.2026)
+; $VER: Install-NovaDock 0.2 (14.11.2026)
 ;
-; GUI installer for NovaDock 0.1, for the Commodore Installer (V42 and
+; GUI installer for NovaDock 0.2, for the Commodore Installer (V42 and
 ; later, as shipped with AmigaOS 3.x).  Double-click the Install-NovaDock
 ; icon, or from a Shell:  Installer Install-NovaDock APPNAME NovaDock
 ;
@@ -11,7 +11,7 @@
 ; Binary and shared-data assignments persist in S:User-Startup.
 
 (set @app-name "NovaDock")
-(set #version "0.1")
+(set #version "0.2")
 (set #standard-dest "SYS:NovaDock")
 (set #appdir "SYS:Utilities")
 (set #app "SYS:Utilities/NovaDock")
@@ -66,10 +66,12 @@
 ; Uninstall resolves recorded and documented locations here, never by asking
 ; for paths. Shared-data detection also tolerates a missing Plugins drawer.
 (if (= (exists "NovaDockApp:NovaDock" (noreq)) 1)
-    ((set #appdir (expandpath "NovaDockApp:"))
-     (set #app (tackon #appdir "NovaDock"))))
+    (if (<> (expandpath "NovaDockApp:") (expandpath #src))
+        ((set #appdir (expandpath "NovaDockApp:"))
+         (set #app (tackon #appdir "NovaDock")))))
 (if (= (exists "NovaDockPrefs:" (noreq)) 2)
-    (set #prefs (expandpath "NovaDockPrefs:")))
+    (if (<> (expandpath "NovaDockPrefs:") (expandpath #src))
+        (set #prefs (expandpath "NovaDockPrefs:"))))
 (set #installed 0)
 (set #installed-app "")
 (set #had-assign 0)
@@ -81,10 +83,18 @@
         (if (= (exists "NovaDock:NovaDock" (noreq)) 1)
             (if (<> (expandpath "NovaDock:") (expandpath #src))
                 (set #installed-app (expandpath "NovaDock:NovaDock"))))))
+; The distribution can be launched with temporary assigns of its own.
+; It must never become the target of an update or uninstall.
+(if (= #installed-app (tackon (expandpath #src) "NovaDock"))
+    (set #installed-app ""))
 (if (<> #installed-app "") (set #installed 1))
+(set #assigned-shared 0)
 (if (or (= (exists "NovaDock:Plugins" (noreq)) 2)
         (= (exists "NovaDock:Themes" (noreq)) 2)
         (= (exists "NovaDock:Tools" (noreq)) 2))
+    (if (<> (expandpath "NovaDock:") (expandpath #src))
+        (set #assigned-shared 1)))
+(if #assigned-shared
     ((set #had-assign 1) (set #current (expandpath "NovaDock:")))
     (if (or (= (exists (tackon #standard-dest "Plugins") (noreq)) 2)
             (= (exists (tackon #standard-dest "Themes") (noreq)) 2)
@@ -101,7 +111,8 @@
 (if (= #current (expandpath #src)) (set #current ""))
 (set #oldhelpdir "")
 (if (= (exists "NovaDockHelp:" (noreq)) 2)
-    (set #oldhelpdir (expandpath "NovaDockHelp:"))
+    (if (<> (expandpath "NovaDockHelp:") (expandpath #src))
+        (set #oldhelpdir (expandpath "NovaDockHelp:")))
     (if (and (<> #current "") (= (exists (tackon #current "NovaDock.guide") (noreq)) 1))
         (set #oldhelpdir #current)
         (if (= (exists "HELP:english/NovaDock.guide" (noreq)) 1)
@@ -128,13 +139,16 @@
     (makeassign "NovaDockHelp" (safe))
     (makeassign "NovaDockApp" (safe))
     (makeassign "NovaDockPrefs" (safe))
+    (startup "NovaDock"
+        (prompt "Removing the previous NovaDock startup assignment")
+        (help @startup-help) (command "; NovaDock legacy assignment removed"))
     (startup "NovaDock application"
         (prompt "Removing the NovaDock application location")
         (help @startup-help) (command "; NovaDock application removed"))
     (startup "NovaDock preferences"
         (prompt "Removing the NovaDock Preferences location")
         (help @startup-help) (command "; NovaDock Preferences removed"))
-    (startup "NovaDock"
+    (startup "NovaDock resources"
         (prompt "Removing the NovaDock shared component assignment")
         (help @startup-help)
         (command "; NovaDock removed"))
@@ -195,24 +209,28 @@
     (set #dest (tackon #parent "NovaDock"))
     (set @default-dest #dest)
     ))
-    (if (or (= (expandpath #appdir) (expandpath #dest))
-            (= (expandpath #prefs) (expandpath #dest)))
+    ; expandpath requires an existing object. Resolve the selected parent
+    ; drawers before appending names that a fresh install has not created.
+    (set #app-check (tackon (expandpath #appdir) "NovaDock"))
+    (set #dest-check (tackon (expandpath (pathonly #dest)) (fileonly #dest)))
+    (if (or (= (expandpath #appdir) #dest-check)
+            (= (expandpath #prefs) #dest-check))
         (abort "Choose application and Preferences drawers separate from the shared-components drawer."))
     ; Never copy a binary over its own package source.
     (if (or (= (expandpath #appdir) (expandpath #src))
             (= (expandpath #prefs) (expandpath #src)))
         (abort "Choose application and Preferences drawers outside this installer package."))
     ; Never overwrite the distribution or use the application path for resources.
-    (if (or (= (expandpath #helpdir) (expandpath #app))
-            (patmatch (cat (expandpath #app) "/#?") (expandpath #helpdir)))
+    (if (or (= (expandpath #helpdir) #app-check)
+            (patmatch (cat #app-check "/#?") (expandpath #helpdir)))
         (abort "Choose a manual directory outside the old Utilities application drawer."))
-    (if (= (expandpath #dest) (expandpath #src))
+    (if (= #dest-check (expandpath #src))
         (abort "Choose a shared-components drawer separate from this installer package."))
-    (if (patmatch (cat (expandpath #app) "/#?") (expandpath #dest))
+    (if (patmatch (cat #app-check "/#?") #dest-check)
         (abort "Shared components cannot be inside the old Utilities application drawer."))
-    (if (and (<> #current "") (patmatch (cat #current "/#?") (expandpath #dest)))
+    (if (and (<> #current "") (patmatch (cat #current "/#?") #dest-check))
         (abort "Choose a shared drawer outside the previous installation drawer."))
-    (if (= (expandpath #dest) (expandpath #app))
+    (if (= #dest-check #app-check)
         (abort "Choose a shared-components drawer outside SYS:Utilities/NovaDock."))
     (if (= (exists #app (noreq)) 2)
         (if (or (exists (cat #app ".previous") (noreq)) (exists (cat #app ".previous.info") (noreq)))
@@ -503,6 +521,11 @@
             (dest "ENV:NovaDock")))
 
     ; Record binary drawers for Start, Preferences, update and uninstall.
+    ; Installer matches startup labels by prefix. Retire the old broad label
+    ; before writing distinct blocks, so shared data cannot replace the app.
+    (startup "NovaDock"
+        (prompt "Retiring the previous NovaDock startup assignment")
+        (help @startup-help) (command "; NovaDock legacy assignment retired"))
     (makeassign "NovaDockApp" #appdir)
     (startup "NovaDock application"
         (prompt "Recording the NovaDock application location")
@@ -516,7 +539,7 @@
     ; Assigns find the selected shared and manual drawers after reboot.
     (complete 92)
     (makeassign "NovaDock" #dest)
-    (startup "NovaDock"
+    (startup "NovaDock resources"
         (prompt "Recording the NovaDock shared-components location")
         (help @startup-help)
         (command (cat "Assign >NIL: NovaDock: \"" #dest "\"")))
@@ -564,6 +587,8 @@
 
 (procedure P_REMOVE
 (
+    ; A relative Installer transcript must not recreate the removed drawer.
+    (set @default-dest "T:")
     ; Installer suppresses questions at Novice level. Elevate only while
     ; asking for removal consent/settings, then restore the chosen level.
     (set #remove-level @user-level)
@@ -579,11 +604,16 @@
     (
         (set #settings
             (askbool
-                (prompt "Also remove your NovaDock settings?\n\n"
-                        "(ENVARC:NovaDock and ENV:NovaDock)")
+                (prompt "Also remove your NovaDock settings and saved Notes?\n\n"
+                        "Keep settings preserves your configuration and Notes.\n"
+                        "Remove settings deletes saved settings and default Notes.\n\n"
+                        "Notes stored in a custom drawer are kept.")
                 (help "Keep them if you may install NovaDock again: it "
-                      "will then start with your dock exactly as before."
-                      "\n\n" @askbool-help)
+                      "will then start with your dock exactly as before.\n\n"
+                      "Removing settings also removes Notes in the default "
+                      "ENVARC:NovaDock/Notes drawer, including deleted-note backups. "
+                      "Notes in a separately configured drawer are not removed.\n\n"
+                      @askbool-help)
                 (choices "Keep settings" "Remove settings")
                 (default 1)))
         (user #remove-level)
@@ -622,13 +652,16 @@
                                   "novadock.catalog"))
                 (P_DELETE)
             ))
+        ; An assign holds a lock on its target drawer. Release it first.
+        (P_DROP_ASSIGN)
         (set #stage "Before deleting program drawer") (P_TRACE)
         (if (<> #dest "")
             (run (cat "Delete \"" #dest "\" ALL QUIET FORCE")))
         (set #stage "After deleting program drawer") (P_TRACE)
         (if (<> #dest "")
             ((set #del (cat #dest ".info")) (P_DELETE)))
-        (P_DROP_ASSIGN)
+        ; Remove an empty root left by a recursive Delete or delayed lock.
+        (if (<> #dest "") ((set #del #dest) (P_DELETE)))
         (if (= #settings 0)
         (
             ; ENV: may be a RAM soft link to ENVARC:. Remove live files first,
@@ -643,6 +676,7 @@
             (run "Delete ENVARC:NovaDock ALL QUIET FORCE")
             (set #del "ENVARC:NovaDock.info") (P_DELETE)
             (set #del "ENV:NovaDock.info") (P_DELETE)
+            (set #del "ENVARC:NovaDock") (P_DELETE)
             (set #stage "After deleting settings") (P_TRACE)
         ))
         (complete 100)

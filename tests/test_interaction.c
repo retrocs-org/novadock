@@ -5,7 +5,17 @@
 int main(void)
 {
     struct NDRexxCommand c;
+    /* New drops use insertion edges rather than move destinations. */
+
     char buffer[500];
+    assert(nd_drop_insert_position(0,0,3)==0);
+    assert(nd_drop_insert_position(0,1,3)==1);
+    assert(nd_drop_insert_position(2,1,3)==3);
+    assert(nd_drop_insert_position(-1,0,3)==3);
+    assert(nd_drop_insert_position(3,0,3)==3);
+    assert(nd_drop_insert_position(4,1,3)==3);
+    assert(nd_drop_insert_position(-1,0,0)==0);
+    assert(nd_drop_insert_position(0,1,-1)==-1);
     assert(nd_parse_rexx(" ping ",&c) && c.action==ND_RX_PING);
     assert(nd_parse_rexx("VERSION",&c) && c.action==ND_RX_VERSION);
     assert(nd_parse_rexx("LIST",&c) && c.action==ND_RX_LIST);

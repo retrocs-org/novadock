@@ -13,11 +13,11 @@
 #include <rexx/storage.h>
 #include <stdio.h>
 #include <string.h>
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 #include "nd_bitskim.h"
-const char nd_version[]=ND_VER_STRING("BitSkim");
+const char nd_version[]=ND_PLUGIN_VER_STRING(BITSKIM,"BitSkim");
 long __stack=16384;
 struct RxsLib *RexxSysBase=NULL;
 struct Library *WorkbenchBase=NULL;

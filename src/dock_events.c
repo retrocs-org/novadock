@@ -107,9 +107,8 @@ static int open_dropped_objects(struct NDDock *dock,int index,
     }
     return opened;
 }
-/* The centre of an application tile is an Open With target.  Its outer
- * fifths remain insertion zones while Edit mode is active, so adding and
- * arranging launchers stays available without making locked mode editable. */
+/* Edit mode always adds objects. Locked mode routes drops to the tile action,
+ * so arranging the dock cannot accidentally launch, copy or trash a file. */
 void dropped_icons(struct NDDock *dock)
 {
     struct AppMessage *m;
@@ -117,6 +116,7 @@ void dropped_icons(struct NDDock *dock)
     int i, kind, rc, pos, added,opened,failed;
     char path[ND_COMMAND_LEN], icon[ND_COMMAND_LEN], name[ND_LABEL_LEN];
     char added_name[ND_LABEL_LEN],message[200];
+    if (dock->drop_preview) {dock->drop_preview=0;draw_all(dock);}
     while (dock->drop_port &&
            (m=(struct AppMessage *)GetMsg(dock->drop_port)) != NULL) {
         if (m->am_Type==AMTYPE_APPMENUITEM) {
@@ -128,7 +128,7 @@ void dropped_icons(struct NDDock *dock)
             continue;
         }
         pos=hovered_tile(dock,m->am_MouseX,m->am_MouseY);
-        if (is_trash_tile(dock,pos)) {
+        if (!dock->edit_mode && is_trash_tile(dock,pos)) {
             /* One helper per object; each move is a rename on its own
              * volume, and the helper reports anything it cannot move. */
             opened=failed=0;
@@ -146,7 +146,7 @@ void dropped_icons(struct NDDock *dock)
                 show_feedback(dock,nd_tr("Some items could not be moved to the trash"),1);
             continue;
         }
-        if(pos>=0 && pos<dock->conf.count && dock->conf.items[pos].kind==ND_ITEM_PLUGIN &&
+        if(!dock->edit_mode && pos>=0 && pos<dock->conf.count && dock->conf.items[pos].kind==ND_ITEM_PLUGIN &&
            !strcmp(dock->conf.items[pos].id,"BITSKIM")){
             failed=m->am_NumArgs!=1;
             if(!failed)failed=!build_wb_path(&m->am_ArgList[0],path,sizeof(path),&kind) || kind==ND_ITEM_DRAWER;
@@ -155,18 +155,13 @@ void dropped_icons(struct NDDock *dock)
             if(failed)show_feedback(dock,"BitSkim accepts one regular file at a time",1);
             continue;
         }
-        if (drop_extracts_archive(dock,pos)) {
-            opened=failed=0;
-            for (i=0;i<m->am_NumArgs;++i) {
-                if (!build_wb_path(&m->am_ArgList[i],path,sizeof(path),&kind) ||
-                    kind==ND_ITEM_DRAWER ||
-                    !launch_archive_helper(dock,pos,path)) ++failed;
-                else ++opened;
-            }
+        if (!dock->edit_mode && drop_extracts_archive(dock,pos)) {
+            opened=launch_archive_drop(dock,pos,m) ? m->am_NumArgs:0;
+            failed=opened ? 0:m->am_NumArgs;
             ReplyMsg((struct Message *)m);
             if (opened && !failed) {
-                if (opened==1) strcpy(message,nd_tr("Extracting archive into new folder"));
-                else sprintf(message,nd_trf("Extracting %d archives"),opened);
+                if (opened==1) strcpy(message,nd_tr("Archiver opened for dropped item"));
+                else sprintf(message,nd_trf("Archiver opened for %d items"),opened);
                 show_feedback(dock,message,0);
             } else if (opened) {
                 /* Separate catalog strings: plurals differ per language. */
@@ -177,11 +172,11 @@ void dropped_icons(struct NDDock *dock)
                 show_feedback(dock,message,1);
             } else {
                 DisplayBeep(dock->screen);
-                show_feedback(dock,"Unsupported archive or unsafe path",1);
+                show_feedback(dock,"Could not open item in Archiver",1);
             }
             continue;
         }
-        if (drop_opens_launcher(dock,pos,m->am_MouseX,m->am_MouseY)) {
+        if (!dock->edit_mode && drop_opens_launcher(dock,pos,m->am_MouseX,m->am_MouseY)) {
             const char *label=dock->conf.items[pos].label;
             opened=open_dropped_objects(dock,pos,m,&failed);
             ReplyMsg((struct Message *)m);
@@ -201,7 +196,7 @@ void dropped_icons(struct NDDock *dock)
             }
             continue;
         }
-        if (drop_copies_into_drawer(dock,pos,m->am_MouseX,m->am_MouseY)) {
+        if (!dock->edit_mode && drop_copies_into_drawer(dock,pos,m->am_MouseX,m->am_MouseY)) {
             const struct NDItem *target=&dock->conf.items[pos];
             char copy[ND_COMMAND_LEN*5];
             opened=failed=0;
@@ -233,6 +228,10 @@ void dropped_icons(struct NDDock *dock)
             show_feedback(dock,"Dock locked - right-click and choose Unlock dock",1);
             continue;
         }
+        if (pos>=0)
+            pos=nd_drop_insert_position(pos,
+                    drop_after_tile(dock,pos,m->am_MouseX,m->am_MouseY),
+                    nd_media_persistent_count(&dock->conf));
         if (pos<0 && dock->overflow) {
             int scroll=hovered_scroll(dock,m->am_MouseX,m->am_MouseY);
             if (scroll<0) pos=dock->view_start;
@@ -302,7 +301,7 @@ static void click_tile(struct NDDock *dock,int index,int mx,int my,
             if (!it->media_capabilities)
                 (void)launch_default_music_application(dock);
         } else if (!strcmp(it->id,"ARCHIVE")) {
-            /* Archive Extractor is a drop target. Ordinary
+            /* Archiver is a drop target. Ordinary
              * clicks must never queue a plugin action. */
         } else if (!strcmp(it->id,"TRASH")) {
             open_trash(dock);
@@ -313,6 +312,12 @@ static void click_tile(struct NDDock *dock,int index,int mx,int my,
         } else if (!strcmp(it->id,"RUNNINGAPPS")) {
             if(!launch_plugin_helper(dock,index,"OPEN",NULL))
                 show_feedback(dock,"Could not open Running Apps",1);
+        } else if (!strcmp(it->id,"SCREENSHOT") || !strcmp(it->id,"SCREENMODE") ||
+                   !strcmp(it->id,"SCREENSWITCHER") || !strcmp(it->id,"WEATHER")) {
+            /* These tiles perform actions, even if a Shift qualifier is
+             * present. A stale graph flag must not turn them into monitors. */
+            if(it->graph){it->graph=0;draw_tile(dock,index);}
+            if(it->clicks<3)++it->clicks;
         } else if (!strcmp(it->id,"CPU") ||
                    !strcmp(it->id,"RAM") || !strcmp(it->id,"NET") ||
                    !strcmp(it->id,"ROADSHOW")) {
@@ -435,8 +440,12 @@ void window_events(struct NDDock *dock)
                     dock->window->Width == target->width &&
                     dock->window->Height == target->height) {
                     dock->hidden = dock->box_target_hidden;
+                    refresh_drop_zones(dock);
                     dock->box_pending = 0;
-                    if(!dock->hidden)refresh_running_items(dock);
+                    if(!dock->hidden) {
+                        refresh_volume_meters(dock);
+                        refresh_running_items(dock);
+                    }
                     dock->hover = -1;
                     dock->hover_ticks = 0;
                     dock->idle_ticks = 0;

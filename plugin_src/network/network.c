@@ -17,9 +17,9 @@
 #include <string.h>
 #include "nd_client.h"
 #include "nd_option_runtime.h"
-#include "nd_version.h"
+#include "nd_plugin_versions.h"
 #include "nd_netcontrol.h"
-const char nd_version[]=ND_VER_STRING("Network");
+const char nd_version[]=ND_PLUGIN_VER_STRING(NET,"Network");
 long __stack=16384;
 struct ExpansionBase *ExpansionBase=NULL;
 #define NC_MAGIC 0x4e434e54UL

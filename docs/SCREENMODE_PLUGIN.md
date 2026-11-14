@@ -1,45 +1,59 @@
 # Screen Mode plugin
 
-The Screen Mode tile (`Plugins/ScreenMode`, ID `SCREENMODE`) shows the size of
-the Workbench screen, for example `800x600x8`, and switches between saved
-ScreenMode presets.
+The **MODES** tile (`Plugins/ScreenMode`, ID `SCREENMODE`) opens a direct
+resolution picker. It is separate from **SCREENS**, which switches between
+already open public screens.
 
-## Making presets
+## Choose a resolution
 
-Open **Prefs/ScreenMode**, choose a mode, then **Project > Save As...** and
-save it in the presets drawer (by default `SYS:Prefs/Presets`) under a name
-such as `PAL Laced` or `RTG 1024`. Repeat for each mode you want to switch
-between.
+1. Click MODES to list available Workbench-compatible display modes.
+2. Select a resolution and colour depth, then click **Use** or press Return.
+3. The picker closes and Workbench changes mode. **Cancel**, Escape or the
+   close gadget dismisses the list without changing anything.
 
-## Switching
+Each row shows width, height, bit depth and the display driver's mode name.
+Unavailable modes are excluded. The active mode is highlighted and scrolled
+into view when the picker opens. Its **CURRENT** marker remains visible when
+you select a different row. Native modes
+retain the current depth where supported. Fixed-depth display modes use the
+depth reported by their driver. The list holds up to 128 modes, sorted by
+resolution and depth; reopen it to refresh the available modes.
 
-1. Click the tile. A window lists every ScreenMode preset in the drawer with
-   its size and display mode name.
-2. Select one and choose **Use** (or press Return).
-3. The plugin runs `ScreenMode FROM <preset> USE`, the same as opening the
-   preset in ScreenMode and choosing **Use**, and Workbench reopens in the new
-   mode. The setting is not saved to ENVARC:; open ScreenMode and choose
-   **Save** to keep it after a reboot.
+The mode list is allocated and scanned only while the picker opens, then
+released when it closes. No extra idle scan or large resident list is kept.
 
-Workbench can only change its screen while no other window is open on it.
-The plugin therefore asks NovaDock to close its own windows first (the ARexx
-command `SUSPEND`) and to reopen them (`RESUME`) once the new Workbench screen
-is up, or after 12 seconds. Close other programs' windows on Workbench
-first, or Intuition asks you to.
+## Applying a mode
 
-The tile shows `SWITCHING` meanwhile, and `FAILED` or `NOT STARTED` if
-ScreenMode reported an error or could not be found.
+The plugin writes a temporary ScreenMode preference file and applies it
+through the system ScreenMode command, without opening its Preferences GUI.
+NovaDock closes its own visitor windows during the change and reopens them
+afterward. Other applications' Workbench windows must also be closed if the
+system asks you to close them.
+
+**Use** changes the current session only. To keep a mode after reboot, save
+it through the system ScreenMode preferences. Selecting the exact current
+mode closes the picker without reopening Workbench.
+
+The temporary preference file belongs to the worker until the command exits,
+including when the resident times out or quits. Failed or abandoned choices
+cannot delete another operation's files. Only one mode switch runs at a time.
+
+## Saved presets
+
+Set **Click opens** to **PRESETS** in the plugin settings to list saved
+ScreenMode preference files instead. Create these with the system ScreenMode
+editor's **Project > Save As...** command. Select a preset and choose **Use**.
+Set **Click opens** back to **MODES** for the direct resolution list.
 
 ## Settings
 
 | Setting | Meaning | Default |
 |---|---|---|
-| Presets drawer | Drawer searched for ScreenMode preset files | `SYS:Prefs/Presets` |
-| ScreenMode program | The ScreenMode preferences editor | `SYS:Prefs/ScreenMode` |
+| Click opens | Available display modes or saved presets | `MODES` |
+| Presets drawer | Drawer containing saved ScreenMode files | `SYS:Prefs/Presets` |
+| ScreenMode program | System command used to apply the selection | `SYS:Prefs/ScreenMode` |
 
-The editor command runs in a separate worker while the tile keeps answering
-the dock. A command that has not completed after 15 seconds shows COMMAND
-TIMEOUT and the dock resumes. The worker is not forcibly killed: another mode
-switch is refused until it exits (SWITCH STILL RUNNING). A late completion is
-discarded after the waiting plugin has left; it cannot access deleted reply
-ports. A failed SUSPEND aborts the operation before launching the editor.
+Hover over the monitor icon to see the current dimensions or error details.
+A command that has not completed after 15 seconds reports a timeout and
+NovaDock resumes. The worker is allowed to finish safely; another switch
+waits until it exits.

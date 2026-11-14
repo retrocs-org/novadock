@@ -405,7 +405,7 @@ static int open_page(struct DiagnosticsPage *p)
             "NovaDock Preferences - Diagnostics"),
         WA_Gadgets,(ULONG)p->gadgets,WA_DragBar,TRUE,WA_CloseGadget,TRUE,
         WA_Activate,TRUE,WA_DepthGadget,TRUE,
-        WA_IDCMP,IDCMP_GADGETUP|IDCMP_CLOSEWINDOW|IDCMP_REFRESHWINDOW|IDCMP_RAWKEY,
+        WA_IDCMP,LISTVIEWIDCMP|IDCMP_CLOSEWINDOW|IDCMP_REFRESHWINDOW|IDCMP_RAWKEY,
         WA_Flags,WFLG_SMART_REFRESH|WFLG_ACTIVATE,TAG_DONE);
     if (!p->win) return 0;GT_RefreshWindow(p->win,NULL);return 1;
 }

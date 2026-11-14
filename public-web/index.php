@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/layout.php';
-site_header('Home', 'Home', 'NovaDock 0.1 - a Classic AmigaOS Workbench dock with plugin support.');
+site_header('Home', 'Home', 'NovaDock 0.2 - a Classic AmigaOS Workbench dock with plugin support.');
 ?>
 <!-- content -->
 <div class="intro">

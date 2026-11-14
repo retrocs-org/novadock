@@ -5,7 +5,7 @@
 int main(void)
 {
     struct NDGraphHistory h;
-    unsigned int a, b, i;
+    unsigned int a, b, i, age, expected;
     nd_graph_reset(&h);
     assert(!nd_graph_get(&h, 0, &a, &b));
     nd_graph_push(&h, 0, 100);
@@ -27,6 +27,18 @@ int main(void)
     assert(a == 3U);
     assert(!nd_graph_get(&h, ND_GRAPH_SAMPLES, &a, &b));
     assert(!nd_graph_get(&h, 0, NULL, &b));
+    /* Compare every age against a sequential reference across many wraps. */
+    nd_graph_reset(&h);
+    for (i=0;i<ND_GRAPH_SAMPLES*4U;++i) {
+        nd_graph_push(&h,i%101U,(i+7U)%101U);
+        assert(h.next==(i+1U)%ND_GRAPH_SAMPLES);
+        for (age=0;age<h.count;++age) {
+            expected=i-age;
+            assert(nd_graph_get(&h,age,&a,&b));
+            assert(a==expected%101U && b==(expected+7U)%101U);
+        }
+        assert(!nd_graph_get(&h,h.count,&a,&b));
+    }
     nd_graph_reset(&h);
     assert(h.count == 0 && h.next == 0);
     puts("Graph history tests passed.");

@@ -102,7 +102,7 @@ FEATURES
 - Running-application indicators, tooltips and removable-media tiles.
 - Plugins include CPU, RAM, clock/calendar, network IN/OUT meters, music,
   BitSkim transfers, AmIRC, Clippy clipboard history, running apps, mixer,
-  screenshots, Screen Mode, scripts, archive extraction and Directory Opus.
+  screenshots, Screen Mode, scripts, ZIP/LHA archiving, Timer, Notes and Directory Opus.
 - One Preferences program with a Plugin Manager that imports and removes
   third-party plugin packages, an organizer, diagnostics and ARexx control.
 - A public plugin SDK and manifest format for third-party plugins.

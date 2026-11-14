@@ -60,7 +60,7 @@ int nd_shot_begin(struct NDShotWriter *w,const char *path,unsigned int width,
     unsigned long cmap;
     memset(w,0,sizeof(*w));
     if (!path || !width || !height || width>ND_SHOT_MAX_WIDTH || height>32767 ||
-        depth<1 || depth>8 || colors>256 || (colors && !palette)) return 0;
+        depth<1 || (depth>8 && depth!=24) || (depth==24 && colors) || colors>256 || (colors && !palette)) return 0;
     w->width=width;w->height=height;w->depth=depth;
     w->plane_bytes=((width+15U)/16U)*2U;
     w->planar=(unsigned char *)malloc(w->plane_bytes);
@@ -93,13 +93,15 @@ int nd_shot_begin(struct NDShotWriter *w,const char *path,unsigned int width,
 }
 int nd_shot_row(struct NDShotWriter *w,const unsigned char *pens)
 {
-    unsigned int plane,x,n;
+    unsigned int plane,x,n,channel;
+    unsigned int stride=w && w->depth==24 ? 3U:1U;
     if (!w || w->failed || !pens || w->row>=w->height) return 0;
     for (plane=0;plane<w->depth;++plane) {
-        unsigned char bit=(unsigned char)(1U<<plane);
+        unsigned char bit=(unsigned char)(1U<<(plane&7U));
+        channel=w->depth==24 ? plane/8U:0;
         memset(w->planar,0,w->plane_bytes);
         for (x=0;x<w->width;++x)
-            if (pens[x]&bit) w->planar[x>>3]|=(unsigned char)(0x80U>>(x&7U));
+            if (pens[x*stride+channel]&bit) w->planar[x>>3]|=(unsigned char)(0x80U>>(x&7U));
         n=nd_byterun1(w->planar,w->plane_bytes,w->packed);
         if (!put(w,w->packed,n)) return 0;
     }

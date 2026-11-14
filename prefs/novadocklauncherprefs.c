@@ -610,7 +610,7 @@ static int open_ui(struct Editor *e)
                WA_Gadgets,(ULONG)e->gadgets,
                WA_DragBar,TRUE,WA_Activate,TRUE,WA_DepthGadget,TRUE,
                WA_CloseGadget,TRUE,
-               WA_IDCMP,IDCMP_GADGETUP|IDCMP_CLOSEWINDOW|IDCMP_REFRESHWINDOW|IDCMP_RAWKEY,
+               WA_IDCMP,LISTVIEWIDCMP|IDCMP_CLOSEWINDOW|IDCMP_REFRESHWINDOW|IDCMP_RAWKEY,
                WA_Flags,WFLG_SMART_REFRESH|WFLG_ACTIVATE,TAG_DONE);
     if (!e->win) return 0;
     if (!e->focused && WorkbenchBase && e->drop_port)

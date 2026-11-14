@@ -14,7 +14,7 @@ SANITIZE=1 sh tests/run_host_tests.sh
 sh tests/amiga_syntax_check.sh
 ```
 
-The native build produces 25 Amiga Hunk executables. Host tests exercise the
+The native build produces 29 Amiga Hunk executables. Host tests exercise the
 portable logic; native syntax checking requires AmigaOS headers and a
 m68k-amigaos GCC installation. Set M68K_CC and OPENNDK when they are not found
 in the standard locations.
@@ -108,3 +108,16 @@ loader, clipboard IFF, BitSkim status text, AHI and ScreenMode preferences,
 Script tile results, Network settings and MusicPlayer replies. Crashes are
 kept as `fuzz-out/<target>/crash-*`; rerun one with
 `fuzz-out/fuzz_<target> fuzz-out/<target>/crash-...`.
+
+## Plugin versions
+
+Bundled plugins have their own releases in `include/nd_plugin_versions.h`.
+`VERSION` controls the dock and its utilities only. For each changed plugin,
+bump its minor version once for the next release and update its date. Changes
+to linked shared client code count as plugin changes. New plugins start at 0.1.
+CPU uses Activity's release; RAM, Chip RAM and Fast RAM share Memory's release.
+
+Run `python3 tools/update_plugin_versions.py` after editing the header. This
+updates the version in each shipped `.ndplugin` manifest. The native executable
+and built-in Preferences catalogue read the same header. The release version
+check rejects stale plugin manifests without changing plugin releases.

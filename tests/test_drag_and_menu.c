@@ -61,7 +61,7 @@ int main(void)
     assert(a.count == 5 && !a.items[0].enabled);
     assert(nd_write_config(&a, filename));
     assert(nd_load_config(&b, filename) == 0);
-    assert(b.count == 14 && b.left_click == ND_CLICK_MENU);
+    assert(b.count == 16 && b.left_click == ND_CLICK_MENU);
     assert(!strcmp(b.items[10].id,"EYES") &&
            b.items[10].multiple_instances && !b.items[10].enabled);
     assert(!strcmp(b.items[11].id,"DOPUS4") && !b.items[11].enabled);
