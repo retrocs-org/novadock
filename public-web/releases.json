@@ -1,5 +1,19 @@
 [
   {
+    "version": "0.2",
+    "tag": "v0.2",
+    "status": "upcoming",
+    "prerelease": true,
+    "date": null,
+    "release_url": "https://github.com/retrocs-org/novadock/releases/tag/v0.2",
+    "binary_url": "https://github.com/retrocs-org/novadock/releases/download/v0.2/NovaDock-0.2.lha",
+    "source_url": "https://github.com/retrocs-org/novadock/archive/refs/tags/v0.2.zip",
+    "source_tar_url": "https://github.com/retrocs-org/novadock/archive/refs/tags/v0.2.tar.gz",
+    "sdk_url": "https://github.com/retrocs-org/novadock/releases/download/v0.2/NovaDock-0.2-plugin-sdk.zip",
+    "sdk_checksums_url": "https://github.com/retrocs-org/novadock/releases/download/v0.2/NovaDock-0.2-plugin-sdk.zip.sha256",
+    "checksums_url": "https://github.com/retrocs-org/novadock/releases/download/v0.2/NovaDock-0.2.lha.sha256"
+  },
+  {
     "version": "0.1",
     "tag": "0.1",
     "status": "published",
