@@ -1,30 +1,35 @@
 # Changelog
 
-## NovaDock 0.2 - In development
+## NovaDock 0.2
 
-- Weather icons, weekday forecasts and an offline cache.
-- LumiAMP playback, metadata and volume controls.
-- Shorter plugin names, with old default names upgraded automatically.
+### Features
 
-- Screen Switcher opens a picker for public screens.
-- Camera and display icons; screenshot status appears in the icon.
-- True-colour RTG screenshots with Workbench icons.
-- Choose resolutions directly, with the active display mode highlighted.
-- Newly added plugins start correctly from discovered installation paths.
+- Weather with current conditions, five-day forecasts and an offline cache.
+- Timer with countdowns, pause, reset and reminders.
+- Permanent Notes with formatting, Markdown view and recoverable deletion.
+- Archiver creates ZIP/LHA archives from files and drawers, and offers extraction destinations.
+- Screen Switcher lists and switches between public screens.
 
-- Close sleeping plugin windows cleanly before restarting the dock.
-- Timer countdowns with pause, reset and reminders.
-- Permanent Notes with a picker, recoverable deletion and Markdown view.
-- Notes headings, selected-text formatting, fonts and colours.
-- Archiver remembers compression choices and can open the finished destination.
-- Archiver combines dropped files and drawers into ZIP/LHA archives, preserves icons, and adds destination dialogs and operation details; finished or abandoned jobs clear their activity indicator.
-- Lower idle CPU use with multi-row docks, off-page animations and notification-driven Trash refresh.
-- Faster running-app checks and graph updates, with fewer redundant redraws and disk queries.
-- Trashcan icons show empty/full status and refresh after external changes.
-- Unlocked Workbench drops add items before or after a tile, with an insertion marker.
-- Consistent settings and removal actions for every plugin, including Trash.
-- Open tile menus directly with a right-click while the dock is inactive.
-- Install all bundled plugins, retain custom paths and saved Notes, and clean up startup entries on removal.
+### Enhancements
+
+- LumiAMP playback, track information and volume controls.
+- Direct screen-mode selection with the current mode highlighted.
+- True-colour RTG screenshots, Workbench icons and capture-status icons.
+- Empty/full Trash icons that refresh after external changes.
+- Drag-and-drop placement with a visible insertion marker.
+- Consistent plugin settings, shorter names and automatic default-name migration.
+- Lower idle CPU use and faster running-app checks, graphs and Notes selection.
+
+### Bug fixes
+
+- Tile menus open on right-click even when the dock is inactive.
+- The plugin picker includes CPU and RAM; scrollbar arrows respond to clicks and holds.
+- SHOT, SMODE and SCREENS start reliably and perform their intended click actions.
+- Multi-item archive drops create one archive, include existing .info files and return to idle when finished.
+- Notes save, browse and close correctly, fit the tile and keep clean Markdown.
+- Open plugin windows close cleanly before restarting the dock.
+- Installers include every bundled plugin, preserve custom paths and saved Notes, and clean up startup entries.
+- Uninstall logs stay outside removed application folders, and package files are excluded from maintenance detection.
 
 ## NovaDock 0.1 - First public release
 
