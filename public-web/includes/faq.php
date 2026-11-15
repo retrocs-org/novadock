@@ -5,7 +5,7 @@
 <p>NovaDock targets AmigaOS 3.0 or later and a 68000 or better.</p>
 </details>
 <details><summary>Can I download a ready-made program?</summary>
-<p>The LHA package contains the programs and a graphical installer. Check <a href="download.php">Downloads</a> for release availability, or choose the source package to build it yourself.</p>
+<p>The LHA package contains the programs and a graphical installer. Check <a href="get.php">Get NovaDock</a> for release availability, or choose the source package to build it yourself.</p>
 </details>
 <details><summary>Where do I change settings?</summary>
 <p>Open NovaDockPrefs from SYS:Prefs/ for dock settings. Right-click a plugin and choose <b>Edit settings...</b> for its options.</p>

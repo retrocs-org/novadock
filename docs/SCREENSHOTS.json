@@ -1,7 +1,7 @@
 {
-  "captured": "2026-11-11",
-  "environment": "AmigaOS 3.2.1 Workbench; standard Nord layout",
-  "processing": "Application-only crops, reduced to native dimensions; GIF previews.",
+  "captured": "2026-11-15",
+  "environment": "AmigaOS Workbench; Nord theme with example dock layouts",
+  "processing": "Application-window and dock-only crops; lightweight GIF images and thumbnails.",
   "images": [
     {
       "file": "default-dock.gif",
@@ -142,6 +142,142 @@
       "height": 302,
       "thumb_width": 268,
       "thumb_height": 145
+    },
+    {
+      "file": "dock-02.gif",
+      "capture": "dock-weather-native.png",
+      "captured": "2026-11-15",
+      "version": "0.2",
+      "crop": [
+        7,
+        505,
+        1017,
+        595
+      ],
+      "width": 1010,
+      "height": 90,
+      "thumb_width": 268,
+      "thumb_height": 24,
+      "capture_sha256": "4cb27f5f95519964132f3c7f7b88770e90d1b79f430302c4308b754e1c4fdad3"
+    },
+    {
+      "file": "notes-editor.gif",
+      "capture": "notes-native.png",
+      "captured": "2026-11-15",
+      "version": "0.2",
+      "crop": [
+        202,
+        18,
+        822,
+        418
+      ],
+      "width": 620,
+      "height": 400,
+      "thumb_width": 268,
+      "thumb_height": 173,
+      "capture_sha256": "f4dc6b68c562ff1f34d203e9f7729fbd18cfae41063222f20d13e720e2c5eee1"
+    },
+    {
+      "file": "weather-forecast.gif",
+      "capture": "weather-native.png",
+      "captured": "2026-11-15",
+      "version": "0.2",
+      "crop": [
+        232,
+        18,
+        792,
+        238
+      ],
+      "width": 560,
+      "height": 220,
+      "thumb_width": 268,
+      "thumb_height": 105,
+      "capture_sha256": "696918e91e6d3e1983b8d7a090da35c84ea67b9d8cfec761fd491d2049005579"
+    },
+    {
+      "file": "archive-create.gif",
+      "capture": "archive-native.png",
+      "captured": "2026-11-15",
+      "version": "0.2",
+      "crop": [
+        232,
+        24,
+        792,
+        232
+      ],
+      "width": 560,
+      "height": 208,
+      "thumb_width": 268,
+      "thumb_height": 100,
+      "capture_sha256": "9502a76ca6830f40424e4125b5d5d3e2b34772c933fbc6e16a2793cc1f57af13"
+    },
+    {
+      "file": "archive-extract.gif",
+      "capture": "extract-native.png",
+      "captured": "2026-11-15",
+      "version": "0.2",
+      "crop": [
+        232,
+        24,
+        792,
+        232
+      ],
+      "width": 560,
+      "height": 208,
+      "thumb_width": 268,
+      "thumb_height": 100,
+      "capture_sha256": "0214b1103e09731251959730bb3996399d0601393261859b627b375dbaf7e49b"
+    },
+    {
+      "file": "timer-controls.gif",
+      "capture": "timer-native.png",
+      "captured": "2026-11-15",
+      "version": "0.2",
+      "crop": [
+        232,
+        18,
+        792,
+        118
+      ],
+      "width": 560,
+      "height": 100,
+      "thumb_width": 268,
+      "thumb_height": 48,
+      "capture_sha256": "93bb75bf373e1e65e24ccfdb04a3ebacdc86cddf0c8de2ceb1f758e442d31ab8"
+    },
+    {
+      "file": "music-lumiamp.gif",
+      "capture": "music-source.png",
+      "captured": "2026-11-14",
+      "version": "0.2",
+      "crop": [
+        493,
+        1037,
+        850,
+        1190
+      ],
+      "width": 178,
+      "height": 77,
+      "thumb_width": 178,
+      "thumb_height": 77,
+      "capture_sha256": "98d2a6d1080bd91ef932e78f033f74d256191adf4452e4e558a1c6b2f240efd3"
+    },
+    {
+      "file": "screen-modes.gif",
+      "capture": "modes-native.png",
+      "captured": "2026-11-15",
+      "version": "0.2",
+      "crop": [
+        0,
+        0,
+        468,
+        161
+      ],
+      "width": 468,
+      "height": 161,
+      "thumb_width": 268,
+      "thumb_height": 92,
+      "capture_sha256": "f7e9097dc010bd9f3a4ce8c5fdae143bf653b4517954b38d5782ed2f90939087"
     }
   ]
 }

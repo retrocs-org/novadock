@@ -4,29 +4,27 @@ site_header('Features', 'Features', 'A short guide to NovaDock launchers, themes
 ?>
 <!-- content -->
 <p class="eyebrow">Made for your daily Workbench</p>
-<h1>Useful. Flexible.<br>Easy to make yours.</h1>
-<p class="lead">Start with your favourite apps. Add a few tools. Arrange everything the way you like.</p>
-<p class="category-links"><a href="#features">Features</a> &middot; <a href="#screenshots">Screenshots</a></p>
+<h1>Useful by nature.<br>Yours by design.</h1>
+<p class="lead">Shortcuts where you want them. Tools when you need them.</p>
+<p class="category-links"><a href="#features">Features</a> &middot; <a href="#screenshots">Screenshots</a> &middot; <a href="marketplace.php#plugins">All plugins</a></p>
 <div class="feature-list" id="features">
-<div><h2>Launch anything</h2><p>Add apps, drawers, commands and groups. Drop icons onto the dock to get started.</p></div>
-<div><h2>Put it where it works</h2><p>Use any screen edge, up to three horizontal rows, or auto-hide to keep your desktop clear.</p></div>
-<div><h2>Find things faster</h2><p>Browse drawers, jump to an open app by title and use hot keys for your favourite actions.</p></div>
-<div><h2>Choose your style</h2><p>Twelve themes, four tile shapes and two sizes. Preview changes in Preferences before applying them.</p></div>
-<div><h2>Add useful tools</h2><p>Clock, system meters, clipboard history, music and more. Built-in plugins are included with NovaDock.</p><a href="marketplace.php">Browse the marketplace &rarr;</a></div>
-<div><h2>Keep settings safe</h2><p>Use changes for this session or save them permanently. Recover a previous valid settings file from Diagnostics.</p></div>
-<div><h2>Stay light</h2><p>A low-resource preset reduces background work. Hidden docks defer scans, and artwork loads in small batches.</p></div>
-<div><h2>Go a little further</h2><p>Use ARexx commands, script-driven tiles and the plugin SDK to build your own workflow.</p><a href="developers.php">Developer guide &rarr;</a></div>
+<div><h2>Drag it into place</h2><p>Drop apps and drawers onto the dock. An insertion line shows where they will land.</p></div>
+<div><h2>Keep it out of the way</h2><p>Choose a screen edge, use up to three horizontal rows, or turn on auto-hide.</p></div>
+<div><h2>Keep a thought</h2><p>Save titled Notes with headings, selected-text formatting and a clean Markdown view.</p></div>
+<div><h2>Know what's coming</h2><p>Weather in the dock, a five-day forecast on click, and a Timer for your next task.</p></div>
+<div><h2>Pack or unpack</h2><p>Make one ZIP or LHA from multiple files and drawers. Choose where to extract archives.</p></div>
+<div><h2>Stay in control</h2><p>Music controls, public-screen switching and direct screen-mode selection, all close by.</p></div>
+<div><h2>Choose your look</h2><p>Twelve themes, four tile shapes and two sizes. Preview your changes before saving.</p></div>
+<div><h2>Make room for more</h2><p>System meters, Trash, Clippy, screenshots and more. Explore every bundled tool in the <a href="marketplace.php">marketplace</a>.</p></div>
 </div>
-<p class="note">Requires AmigaOS 3.0 or later and a 68000 or better. Some plugins need additional software or hardware. Graphs show samples rather than a fixed time scale.</p>
-
-<section id="screenshots" class="section-heading"><p class="eyebrow">See it on Workbench</p><h2>Take a closer look.</h2><p>Ten views of the dock, Preferences and bundled tools. Select a preview for the full image.</p>
-<table class="gallery" width="100%" border="0" cellpadding="10" cellspacing="4">
-<tr><td width="50%" valign="top" bgcolor="#313244"><b>Clock calendar</b><br><br><a href="screenshots/calendar.gif"><img src="screenshots/calendar-thumb.gif" width="236" height="193" border="0" alt="NovaDock Clock calendar"></a><p>Open the month calendar from Clock, with the current date highlighted and previous/next month controls.</p><small><a href="screenshots/calendar.gif">Full image (GIF)</a></small></td><td width="50%" valign="top" bgcolor="#313244"><b>Clipboard History</b><br><br><a href="screenshots/clipboard-manager.gif"><img src="screenshots/clipboard-manager-thumb.gif" width="268" height="145" border="0" alt="NovaDock Clipboard History"></a><p>Manage history from Clippy, with a search field and Copy, Delete, Clear, Pause and Pin controls. This view shows an empty history.</p><small><a href="screenshots/clipboard-manager.gif">Full image (GIF)</a></small></td></tr>
-<tr><td width="50%" valign="top" bgcolor="#313244"><b>Default Nord dock</b><br><br><a href="screenshots/default-dock.gif"><img src="screenshots/default-dock-thumb.gif" width="268" height="37" border="0" alt="NovaDock 0.1: Default Nord dock"></a><p>Six default tiles: System, Shell, Music, CPU, RAM and Clock.</p><small><a href="screenshots/default-dock.gif">Full crop (10 KB GIF)</a></small></td><td width="50%" valign="top" bgcolor="#313244"><b>General Preferences</b><br><br><a href="screenshots/preferences.gif"><img src="screenshots/preferences-thumb.gif" width="268" height="91" border="0" alt="NovaDock 0.1: General Preferences"></a><p>Click actions, auto-hide, refresh mode, hot key and Use/Save.</p><small><a href="screenshots/preferences.gif">Full crop (17 KB GIF)</a></small></td></tr>
-<tr><td width="50%" valign="top" bgcolor="#313244"><b>Appearance</b><br><br><a href="screenshots/appearance.gif"><img src="screenshots/appearance-thumb.gif" width="268" height="116" border="0" alt="NovaDock 0.1: Appearance"></a><p>Theme, shape, text and tile-size controls with the actual preview.</p><small><a href="screenshots/appearance.gif">Full crop (24 KB GIF)</a></small></td><td width="50%" valign="top" bgcolor="#313244"><b>Diagnostics</b><br><br><a href="screenshots/diagnostics.gif"><img src="screenshots/diagnostics-thumb.gif" width="268" height="90" border="0" alt="NovaDock 0.1: Diagnostics"></a><p>Live counters, save state, recovery and low-resource controls.</p><small><a href="screenshots/diagnostics.gif">Full crop (24 KB GIF)</a></small></td></tr>
-<tr><td width="50%" valign="top" bgcolor="#313244"><b>Low-resource preset</b><br><br><a href="screenshots/low-resource.gif"><img src="screenshots/low-resource-thumb.gif" width="268" height="59" border="0" alt="NovaDock 0.1: Low-resource preset"></a><p>The confirmation explains the changes before staging them.</p><small><a href="screenshots/low-resource.gif">Full crop (10 KB GIF)</a></small></td><td width="50%" valign="top" bgcolor="#313244"><b>Validated recovery</b><br><br><a href="screenshots/recovery.gif"><img src="screenshots/recovery-thumb.gif" width="268" height="46" border="0" alt="NovaDock 0.1: Validated recovery"></a><p>A known-good copy is validated before replacing the Preferences session.</p><small><a href="screenshots/recovery.gif">Full crop (11 KB GIF)</a></small></td></tr>
-<tr><td width="50%" valign="top" bgcolor="#313244"><b>Organize the dock</b><br><br><a href="screenshots/organize.gif"><img src="screenshots/organize-thumb.gif" width="268" height="95" border="0" alt="NovaDock 0.1: Organize the dock"></a><p>Order configured tiles and add optional items without editing text files.</p><small><a href="screenshots/organize.gif">Full crop (20 KB GIF)</a></small></td><td width="50%" valign="top" bgcolor="#313244"><b>Clippy picker</b><br><br><a href="screenshots/clippy-picker.gif"><img src="screenshots/clippy-picker-thumb.gif" width="268" height="122" border="0" alt="NovaDock 0.1 Clippy empty clipboard picker"></a><p>An empty clipboard is a normal state, with a clear message and Escape to close.</p><small><a href="screenshots/clippy-picker.gif">Full crop (GIF)</a></small></td></tr>
-</table>
-</section>
+<p class="note">AmigaOS 3.0 or later, with a 68000 or better. Some plugins need additional software or hardware; each marketplace listing explains what is needed.</p>
+<section id="screenshots" class="section-heading"><p class="eyebrow">See it on Workbench</p><h2>A closer look.</h2><p>Real application windows and dock views. Select an image to see it at full size.</p>
+<?php $shots = require __DIR__.'/includes/screenshot_catalog.php'; ?>
+<table class="gallery" width="100%" border="0" cellpadding="10" cellspacing="4"><tbody>
+<?php foreach (array_chunk($shots, 2) as $row): ?><tr>
+<?php foreach ($row as $shot): ?><td width="50%" valign="top"<?php if ($shot['wide']): ?> class="gallery-wide"<?php endif; ?>><b><?= site_escape($shot['title']) ?></b><a href="<?= site_escape('screenshots/'.$shot['file']) ?>"><img src="<?= site_escape('screenshots/'.$shot['file']) ?>" width="<?= $shot['width'] ?>" height="<?= $shot['height'] ?>" loading="lazy" alt="<?= site_escape($shot['alt']) ?>"></a><p><?= site_escape($shot['description']) ?></p><small><a href="<?= site_escape('screenshots/'.$shot['file']) ?>">View full image &rarr;</a></small></td><?php endforeach; ?>
+</tr><?php endforeach; ?>
+</tbody></table></section>
+<div class="closing"><h2>Pick your favourites.</h2><p>Every bundled plugin and theme comes with NovaDock.</p><p class="inline-links"><a href="get.php">Get NovaDock &rarr;</a><a href="marketplace.php">Explore the collection &rarr;</a><a href="developers.php">Make something of your own &rarr;</a></p></div>
 <!-- /content -->
 <?php site_footer(); ?>

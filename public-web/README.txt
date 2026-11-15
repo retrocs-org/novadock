@@ -1,4 +1,4 @@
-NOVADOCK 0.1 - PUBLIC WEBSITE
+NOVADOCK 0.2 - PUBLIC WEBSITE
 ============================
 
 This is the public NovaDock PHP website. Shared server-side templates render
@@ -15,9 +15,14 @@ PUBLIC LOCATIONS
   Website: https://novadock.retrocs.org
   Source:  https://github.com/retrocs-org/novadock
 
+Screenshots show real application windows and dock crops. Keep their capture
+metadata in docs/SCREENSHOTS.json. Gallery captions live in
+includes/screenshot_catalog.php. Plugin listings live in
+includes/plugin_catalog.php.
+
 CONTENTS
   index.php        Home page
-  features.php     Dock features and ten screenshots
+  features.php     Dock features and the application screenshot gallery
   marketplace.php  Plugin and theme catalogs; future community additions
   plugins.php      Redirect for older links
   theme-development.php  Theme creation, packaging and import
@@ -40,9 +45,9 @@ CONTENTS
   screenshots/*.gif actual application crops and lightweight previews
   images/px.gif     transparent 1x1 spacer for card accent strips
   downloads/*.zip   Standalone downloads (no recursive website copy)
-  downloads/NovaDock-0.1-plugin-sdk.zip   Standalone plugin SDK and example
-  downloads/NovaDock-0.1.lha  Verified runnable release
-  downloads/NovaDock-0.1.readme  Release information
+  downloads/NovaDock-0.2-plugin-sdk.zip   Standalone plugin SDK and example
+  downloads/NovaDock-0.2.lha  Verified runnable release
+  downloads/NovaDock-0.2.readme  Release information
   downloads/SHA256SUMS.txt   Binary, readme, source and SDK checksums
 
 HOW TO PREVIEW AND PUBLISH
@@ -57,8 +62,8 @@ HOW TO PREVIEW AND PUBLISH
   6. Remove obsolete .html files from earlier deployments so index.php is used.
 
 The PHP templates escape page metadata and take no request input. Navigation
-and downloads work without CSS, images or client scripts. Publishing a release
-attaches the website ZIP; deployment to your web server remains a separate step.
+and downloads work without CSS, images or client scripts. Deploy public-web/ from the main branch. The web server refresh remains a
+separate step; release download links point to the tagged release assets.
 
 SOURCE RELEASE WARNING
 The downloadable ZIP is the development source tree without public-web/
@@ -66,7 +71,7 @@ The downloadable ZIP is the development source tree without public-web/
 project archive includes both the source tree and this public-web/ folder.
 Compiled 68k binaries and the installer are included in the separate ready-to-install package; the website source ZIP remains source-only.
 
-VERSION: 0.1 (no change without project owner approval)
+APPLICATION VERSION: 0.2
 
 REBUILD PACKAGES
   From the NovaDock project root on a modern machine run:
@@ -74,9 +79,8 @@ REBUILD PACKAGES
   This refreshes downloads/ and generates full-project and website-only ZIPs.
 
 RELEASE LIST
-  Download links point to tagged GitHub release assets. The current planned
-  release is labelled Upcoming until it is published. The links intentionally
-  do not claim that unpublished files exist.
+  Download links point to tagged GitHub release assets. Refresh the fallback
+  catalogue after publishing so offline visitors also see the current release.
   Refresh published entries: python3 tools/sync_github_releases.py
   Prepare the VERSION tag offline: python3 tools/sync_github_releases.py --upcoming
   The SDK source is included in the repository under plugin-sdk/.
