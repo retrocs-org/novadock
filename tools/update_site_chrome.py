@@ -80,11 +80,13 @@ def content_of(text):
 
 
 def menu(current):
-    order = ('Home', 'Features', 'Marketplace', 'Developers', 'Support')
+    order = ('Home', 'Features', 'Downloads', 'Marketplace', 'Developers', 'Support')
     items = {label: file for file, label, _, _ in PAGES}
+    items['Downloads'] = 'get.php'
     links = []
     for label in order:
-        condition = "in_array($current, ['Developers', 'Plugin SDK', 'Theme development'], true)" if label == 'Developers' else f"$current === '{label}'"
+        current_label = 'Get NovaDock' if label == 'Downloads' else label
+        condition = "in_array($current, ['Developers', 'Plugin SDK', 'Theme development'], true)" if label == 'Developers' else f"$current === '{current_label}'"
         links.append(f'<a href="{items[label]}"<?php if ({condition}): ?> class="active" aria-current="page"<?php endif; ?>>{label}</a>')
     main_links = ' '.join(links)
     return ('<nav class="site-nav" aria-label="Main navigation">'
