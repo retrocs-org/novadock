@@ -46,3 +46,15 @@ with tempfile.TemporaryDirectory() as temporary:
     package_cleanup.prune_downloads(folder, '0.2')
     assert sorted(p.name for p in folder.iterdir()) == sorted(retained)
 print('Version changes remove old generated downloads and retain unrelated files.')
+
+# Missing translation tools must stop production packaging before any build/output.
+import os
+import subprocess
+with tempfile.TemporaryDirectory() as temporary:
+    output = Path(temporary)/'release'
+    env = dict(os.environ, FLEXCAT=str(Path(temporary)/'missing-flexcat'))
+    result = subprocess.run(['sh', str(ROOT/'scripts/make-release.sh'), str(output)],
+                            env=env, capture_output=True, text=True)
+    assert result.returncode != 0 and 'release requires FlexCat' in result.stderr
+    assert not output.exists(), 'failed prerequisite must not create release state'
+print('Release packaging refuses missing translations before building.')

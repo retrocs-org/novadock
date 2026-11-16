@@ -16,6 +16,8 @@ DESCRIPTION = 'NovaDock is a lightweight, extensible dock for Classic AmigaOS Wo
 FEATURES = (
     'Application, command, drawer and volume launchers, with drag-and-drop placement, groups and drawer popups.',
     'Thirteen themes, third-party theme imports, two tile sizes, auto-hide and multi-row layouts on any screen edge.',
+    'Native Aminet browser with recent uploads, categories, readmes and download progress.',
+    'Independent MUSIC and WHDLoad collections with recursive indexing, cached results and title filters.',
     'Current weather and five-day forecasts, permanent Markdown Notes and countdown Timer reminders.',
     'ARCHIVE creates ZIP/LHA files from multiple files and drawers, or extracts archives to a chosen destination, preserving Workbench icons.',
     'Music controls for LumiAMP, EaglePlayer, AmigaAMP and HippoPlayer; screen capture, resolution selection and public-screen switching.',

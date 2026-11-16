@@ -14,7 +14,7 @@
 - Restart NovaDock directly from the dock context menu.
 - Optional automatic network connection when the Network plugin starts.
 - Independent WHDLoad tiles with custom labels/icons, executable selection, recursive folders and cached indexes.
-- Independent SENSOR tiles with detected ZZ9000, AK_Sensors and Warp readings, channel checkboxes and a sad empty-state icon.
+- Independent SENSOR tiles for ZZ9000, AK_Sensors and Warp readings, with selectable channels; physical-board validation is pending.
 - MUSIC collections with independent folders, format checkboxes including SID, and a configurable player.
 - Collection count badges including zero, live title filters and automatic custom artwork preference.
 - WHDLoad folder warnings and automatic instance settings/cache cleanup on removal.
@@ -27,6 +27,7 @@
 - Christmas theme with evergreen tiles, cream text and red/gold accents.
 - Weather forecast table with condition icons, precipitation chances and rain/snow amounts.
 - Add Item lists plugin names simply; Preferences lists unusable plugins with repair reasons.
+- Updated user documentation, plugin guides and website screenshots for 0.3.
 
 ### Bug fixes
 
@@ -35,6 +36,8 @@
 - MUSIC and SENSOR appear after updates; bundled manifests are validated during testing.
 - WHDLoad explains invalid drawers, restores transparent tile artwork and hides unnecessary icon paging buttons.
 - Rapid network stop/start reconnects the selected interface without reloading Roadshow.
+- Release packaging requires compiled German and Swedish catalogs.
+- Planning documents stay out of the application Help guide.
 
 ## NovaDock 0.2
 

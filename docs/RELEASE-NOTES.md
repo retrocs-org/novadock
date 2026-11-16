@@ -6,6 +6,8 @@ NovaDock is a lightweight, extensible dock for Classic AmigaOS Workbench.
 
 - Application, command, drawer and volume launchers, with drag-and-drop placement, groups and drawer popups.
 - Thirteen themes, third-party theme imports, two tile sizes, auto-hide and multi-row layouts on any screen edge.
+- Native Aminet browser with recent uploads, categories, readmes and download progress.
+- Independent MUSIC and WHDLoad collections with recursive indexing, cached results and title filters.
 - Current weather and five-day forecasts, permanent Markdown Notes and countdown Timer reminders.
 - ARCHIVE creates ZIP/LHA files from multiple files and drawers, or extracts archives to a chosen destination, preserving Workbench icons.
 - Music controls for LumiAMP, EaglePlayer, AmigaAMP and HippoPlayer; screen capture, resolution selection and public-screen switching.
@@ -50,7 +52,7 @@ HTTPS-capable curl or Wget; other integrations need their corresponding apps.
 - Restart NovaDock directly from the dock context menu.
 - Optional automatic network connection when the Network plugin starts.
 - Independent WHDLoad tiles with custom labels/icons, executable selection, recursive folders and cached indexes.
-- Independent SENSOR tiles with detected ZZ9000, AK_Sensors and Warp readings, channel checkboxes and a sad empty-state icon.
+- Independent SENSOR tiles for ZZ9000, AK_Sensors and Warp readings, with selectable channels; physical-board validation is pending.
 - MUSIC collections with independent folders, format checkboxes including SID, and a configurable player.
 - Collection count badges including zero, live title filters and automatic custom artwork preference.
 - WHDLoad folder warnings and automatic instance settings/cache cleanup on removal.
@@ -63,6 +65,7 @@ HTTPS-capable curl or Wget; other integrations need their corresponding apps.
 - Christmas theme with evergreen tiles, cream text and red/gold accents.
 - Weather forecast table with condition icons, precipitation chances and rain/snow amounts.
 - Add Item lists plugin names simply; Preferences lists unusable plugins with repair reasons.
+- Updated user documentation, plugin guides and website screenshots for 0.3.
 
 #### Bugs
 
@@ -71,3 +74,5 @@ HTTPS-capable curl or Wget; other integrations need their corresponding apps.
 - MUSIC and SENSOR appear after updates; bundled manifests are validated during testing.
 - WHDLoad explains invalid drawers, restores transparent tile artwork and hides unnecessary icon paging buttons.
 - Rapid network stop/start reconnects the selected interface without reloading Roadshow.
+- Release packaging requires compiled German and Swedish catalogs.
+- Planning documents stay out of the application Help guide.

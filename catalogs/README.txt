@@ -35,9 +35,10 @@ To start a new language, create a translation file:
 
   FlexCat catalogs/novadock.cd NEWCTFILE catalogs/<language>.ct
 
-Only the dock's own messages, menus and calendar are translated in 0.1; the
+Only the dock's own messages, menus and calendar are translated; the
 Preferences application is still English-only.
 
 Release builds compile every translation automatically when FLEXCAT points to
 FlexCat (scripts/build-and-stage-amiga.sh), and Install-NovaDock installs
 them as LOCALE:Catalogs/<language>/novadock.catalog.
+Production packaging requires FlexCat and refuses to omit the catalogs.

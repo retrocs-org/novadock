@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'NovaDock.guide'
 WIDTH = 76
 # Curated user and SDK topics. Repository/operator documents stay source-only.
-SOURCE_ONLY_DOCS = {"README.md", "docs/RELEASING.md", "docs/RELEASE_CHECKLIST.md", "docs/RELEASE-NOTES.md"}
+SOURCE_ONLY_DOCS = {"README.md", "docs/RELEASING.md", "docs/RELEASE_CHECKLIST.md", "docs/RELEASE-NOTES.md", "docs/TODO.md"}
 GROUPS = (
     ('Using NovaDock', (
         ('docs/USING_NOVADOCK.md', 'Getting started and installation'),

@@ -47,6 +47,15 @@ fi
 # Standalone local packaging uses the agreed contact unless explicitly supplied.
 UPLOADER=${UPLOADER:-frossmant@icloud.com}
 export UPLOADER
+# Release packages must include the advertised dock translations.
+if [ -z "${FLEXCAT:-}" ]; then
+    FLEXCAT=$(command -v flexcat || command -v FlexCat || true)
+fi
+if [ -z "$FLEXCAT" ] || [ ! -x "$FLEXCAT" ]; then
+    echo "NovaDock: release requires FlexCat; set FLEXCAT to its executable." >&2
+    exit 1
+fi
+export FLEXCAT
 mkdir -p "$1"
 output=$(CDPATH= cd "$1" && pwd)
 

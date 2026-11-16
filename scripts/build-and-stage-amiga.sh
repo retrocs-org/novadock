@@ -158,8 +158,10 @@ for theme_directory in "$project_root"/Themes/*; do
     fi
 done
 
-# Translations: compiled with FlexCat when FLEXCAT points to it (CI builds it;
-# Aminet: dev/misc/FlexCat.lha).  Without it the dock simply stays English.
+# Local staging may remain English-only; release packaging requires FlexCat.
+if [ -z "${FLEXCAT:-}" ]; then
+    FLEXCAT=$(command -v flexcat || command -v FlexCat || true)
+fi
 if [ -n "${FLEXCAT:-}" ] && [ -x "$FLEXCAT" ]; then
     for ct in "$project_root"/catalogs/*.ct; do
         language=$(basename "$ct" .ct)
@@ -174,6 +176,18 @@ if [ -n "${FLEXCAT:-}" ] && [ -x "$FLEXCAT" ]; then
             exit 1
         fi
     done
+    "$PYTHON" - "$destination/Catalogs" "$project_root/catalogs" <<'CHECK_CATALOGS'
+from pathlib import Path
+import sys
+for source in Path(sys.argv[2]).glob('*.ct'):
+    path = Path(sys.argv[1])/source.stem/'novadock.catalog'
+    if not path.is_file():
+        raise SystemExit('NovaDock: missing compiled translation: ' + source.stem)
+    data = path.read_bytes()
+    if (len(data) < 20 or data[:4] != b'FORM' or data[8:12] != b'CTLG'
+            or int.from_bytes(data[4:8], 'big') + 8 != len(data)):
+        raise SystemExit('NovaDock: invalid compiled translation: ' + path.parent.name)
+CHECK_CATALOGS
     echo "NovaDock: compiled translations into $destination/Catalogs"
 else
     echo "NovaDock: FLEXCAT not set; translations not compiled."

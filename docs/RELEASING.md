@@ -289,6 +289,12 @@ and import changes there instead of initializing a competing history.
 
 ## Build, check and prepare
 
+Release packaging requires [FlexCat](https://github.com/adtools/flexcat). Set
+`FLEXCAT` in the external configuration to its executable, or put `flexcat` in
+PATH. Missing compilers and invalid compiled catalogs stop the release; local
+English-only staging remains available. Check the packaged German and Swedish
+catalogs as well as the built-in English text.
+
 Refresh generated inputs before committing:
 
 ```sh
