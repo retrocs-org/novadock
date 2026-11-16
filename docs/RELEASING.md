@@ -37,7 +37,8 @@ branch pushes are a separate, explicitly confirmed command.
   the intended tag; subsequent commands reuse an existing manifest's tag.
 - Both repositories receive the same annotated tag object and source commit.
   Never force-push, move or recreate a published tag through the normal workflow.
-- Release titles use the exact tag. Publish normal releases, including versions
+- Release titles use the application and version, for example **NovaDock 0.3**;
+  the Git tag remains **0.3**. Publish normal releases, including versions
   below 1.0. GitHub uses `prerelease: false` and explicitly selects Latest with
   `make_latest: "true"` after all assets verify. A draft is only an upload stage.
 - GitLab uses its ordinary published-release API, with no future release date or
@@ -46,67 +47,46 @@ branch pushes are a separate, explicitly confirmed command.
 
 ### Release notes
 
-CHANGELOG.md is the historical change list. The complete current version appears
-in `docs/RELEASE-NOTES.md`, with an application overview and installation guidance
-around it. Refresh and review this file before committing release inputs:
+CHANGELOG.md is the historical change list. docs/RELEASE-NOTES.md contains only
+the complete current-version changelog for the GitHub and GitLab descriptions.
+Keep the application overview, installation, requirements and source/licence
+information in README.md. Refresh and check the release description before
+committing release inputs:
 
 ```sh
 python3 tools/release_notes.py --write
 python3 tools/release_notes.py --check
 ```
 
-The shared generator also creates the readme embedded in the runtime LHA and the
-Aminet submission. It reads the actual bundled plugin inventory, including Weather,
-Notes, Timer, ARCHIVE, SHOT, SMODE and SCREENS, and describes LumiAMP support.
-
-Use this section order in repository release descriptions:
+Use this structure on both services:
 
 ```markdown
-# NovaDock 0.3
-
-Short application description.
-
-## Features
-
-- Concise summary of the whole application.
-
-## Installation
-
-Download NovaDock-0.3.lha, unpack it and open Install-NovaDock.
-Include requirements, setup guidance and HELP:NovaDock.guide.
-
-## Source and Licence
-
-Link to the repository, exact tagged release and MIT licence.
-
-## Version Changelog
-
-### 0.3
-
-#### Features
+### Features
 
 - New functionality introduced in this version.
 
-#### Enhancements
+### Enhancements
 
 - Improvements to existing functionality or performance.
 
-#### Bugs
+### Bugs
 
 - Problems corrected in this version.
 ```
 
-The top-level Features section summarizes the whole app. Features inside Version
-Changelog lists only new functionality. The generator maps CHANGELOG's existing
-`Bug fixes` heading to `Bugs`; nonempty groups keep the order shown above.
-The first public release lists its initial features and omits empty fix groups.
+Start directly with Features (or the first nonempty change group). Do not add
+Version Changelog, a version heading, an application overview or installation
+text; the release title already identifies the version. Keep every current-version
+change, without older releases or an unfinished placeholder. The generator maps CHANGELOG's `Bug fixes` heading to
+`Bugs`; nonempty groups retain the order shown above. The first public release
+lists its initial features and omits empty fix groups. A custom --notes file
+must retain this complete changelog-only structure.
 
-Keep all current-version changes, without older releases or an unfinished
-placeholder. Preparation checks the title, required sections, exact release link,
-versioned download name and complete current changelog. A custom `--notes` file
-may improve the overview but must preserve that structure and changelog.
-Do not include Aminet metadata headers, private paths, credentials, internal
-work notes or unsupported performance claims in repository descriptions.
+Aminet remains separate: its plain-text readme still includes the required
+metadata, application features, installation, source/licence and changelog.
+Published title/description corrections do not require moving tags or rebuilding
+downloads. Retain a separate correction receipt; do not rewrite old package
+manifests or publication receipts to disguise a metadata-only update.
 
 ### Assets and filenames
 

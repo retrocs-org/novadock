@@ -69,47 +69,21 @@ def plugin_names(root=ROOT):
     return names
 
 def changelog_markdown(root=ROOT):
-    lines = ['### '+version(root)]
+    lines = []
     for name, entries in changes(root).items():
-        if entries: lines += ['', '#### '+name, ''] + ['- '+entry for entry in entries]
+        if entries:
+            if lines: lines.append('')
+            lines += ['### '+name, ''] + ['- '+entry for entry in entries]
     return '\n'.join(lines)
 
 def markdown(root=ROOT, tag=None):
-    v = version(root); encoded = quote(tag or v, safe='')
-    return '\n'.join([
-        '# NovaDock '+v, '', DESCRIPTION, '', '## Features', '',
-        *['- '+entry for entry in FEATURES], '',
-        'Bundled plugins: '+', '.join(plugin_names(root))+'.', '',
-        '## Installation', '',
-        'Download **NovaDock-'+v+'.lha**, unpack it and open the **NovaDock** drawer.',
-        'Double-click **Install-NovaDock** and follow the graphical installer. It can',
-        'install, update or remove NovaDock, preserving settings on update.', '',
-        'Requires AmigaOS 3.0 or later and a 68000 or better. The graphical installer',
-        'needs Installer 42 or newer (included with AmigaOS 3.1 and later). For a',
-        'standard-location Shell install, run `Execute install.amiga`.', '',
-        'Help: `HELP:NovaDock.guide`. Settings and permanent Notes live under',
-        '`ENVARC:NovaDock` by default. Weather needs internet access and an',
-        'HTTPS-capable curl or Wget; other integrations need their corresponding apps.', '',
-        '## Source and Licence', '',
-        '[Source and Plugin SDK]('+REPOSITORY+') |',
-        '[Tagged release]('+REPOSITORY+'/releases/tag/'+encoded+') |',
-        '[Website]('+WEBSITE+') |',
-        '[MIT licence]('+REPOSITORY+'/blob/'+encoded+'/LICENSE)', '',
-        '## Version Changelog', '', changelog_markdown(root), '',
-    ])
+    return changelog_markdown(root)+'\n'
+
 
 def validate_notes(text, root=ROOT, tag=None):
-    headings = re.findall(r'^## (.+)$', text, re.M)
-    expected = ['Features', 'Installation', 'Source and Licence', 'Version Changelog']
-    if not text.startswith('# NovaDock '+version(root)+'\n') or headings != expected:
-        raise ValueError('Release notes need the NovaDock title and Features, Installation, Source and Licence, Version Changelog sections.')
-    if text.split('## Version Changelog\n', 1)[1].strip() != changelog_markdown(root).strip():
+    if text.strip() != markdown(root, tag).strip():
         raise ValueError('Release notes must contain the complete current-version changelog only.')
-    url = REPOSITORY+'/releases/tag/'+quote(tag or version(root), safe='')
-    if url not in text or 'NovaDock-'+version(root)+'.lha' not in text:
-        raise ValueError('Release notes must link the exact tagged release and versioned LHA.')
-    if re.search(r'\bin development\b|\bTBD\b|\bTODO\b', text, re.I):
-        raise ValueError('Release notes contain an unfinished placeholder.')
+
 
 def plain(text):
     text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'\1 (\2)', text)

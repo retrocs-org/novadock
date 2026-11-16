@@ -37,6 +37,9 @@ class ReleaseTests(unittest.TestCase):
     def save(self):
         (self.out/'release.json').write_text(json.dumps(self.m))
 
+    def test_release_title_uses_application_version_not_tag(self):
+        self.assertEqual(r.release_name({'version':'0.3','tag':'review/0.3'}),'NovaDock 0.3')
+
     def test_checksum_tampering_stops_before_publication(self):
         r.inventory(self.out, self.m['assets'])
         (self.out/('NovaDock-'+r.version()+'.lha')).write_bytes(b'changed')
@@ -63,7 +66,7 @@ class ReleaseTests(unittest.TestCase):
             def call(inner, method, path, payload=None, **kwargs):
                 calls.append((method, path, payload))
                 if path.endswith('/latest'):
-                    return {'id': 7, 'tag_name': self.m['tag'], 'draft': False, 'prerelease': False}
+                    return {'id': 7, 'tag_name': self.m['tag'], 'name': 'NovaDock '+self.m['version'], 'draft': False, 'prerelease': False}
                 if path.endswith('?per_page=100') and '/assets?' not in path:
                     return [{'tag_name': self.m['tag'], 'id': 7, 'draft': draft, 'body': 'Release notes'}]
                 if method == 'GET' and '/assets?' in path:
@@ -76,12 +79,14 @@ class ReleaseTests(unittest.TestCase):
         with patch.dict(r.os.environ, {'GITHUB_TOKEN': 'test'}):
             r.publish_github(api, 'a/b', self.out, self.m, False)
         self.assertEqual([call for call in calls if call[0] == 'PATCH'][-1][2],
-                         {'draft': False, 'prerelease': False, 'make_latest': 'true'})
+                         {'name': 'NovaDock '+self.m['version'], 'draft': False, 'prerelease': False, 'make_latest': 'true'})
 
     def test_latest_status_must_be_confirmed_before_success(self):
         original, _, _ = self.github_api(draft=False)
         for wrong in ({'id': 99}, {'id': 7, 'tag_name': self.m['tag'],
-                                    'draft': False, 'prerelease': True}):
+                                    'draft': False, 'prerelease': True},
+                      {'id': 7, 'tag_name': self.m['tag'], 'name': self.m['tag'],
+                       'draft': False, 'prerelease': False}):
             class Mock:
                 def call(inner, method, path, payload=None, **kwargs):
                     if path.endswith('/latest'): return wrong
@@ -104,7 +109,7 @@ class ReleaseTests(unittest.TestCase):
         api, calls, _ = self.github_api()
         with patch.dict(r.os.environ, {'GITHUB_TOKEN': 'test'}):
             r.publish_github(api, 'a/b', self.out, self.m, False)
-        self.assertEqual([call for call in calls if call[0] == 'PATCH'][-1], ('PATCH', '/repos/a/b/releases/7', {'draft': False, 'prerelease': False, 'make_latest': 'true'}))
+        self.assertEqual([call for call in calls if call[0] == 'PATCH'][-1], ('PATCH', '/repos/a/b/releases/7', {'name': 'NovaDock '+self.m['version'], 'draft': False, 'prerelease': False, 'make_latest': 'true'}))
         self.assertFalse(any(x[0] == 'POST' for x in calls))
 
     def test_github_published_release_missing_asset_is_not_modified(self):
@@ -123,11 +128,11 @@ class ReleaseTests(unittest.TestCase):
             def call(inner, method, path, payload=None, **kwargs):
                 calls.append((method, path))
                 if method == 'GET' and '/releases?' in path:
-                    return [{'tag_name': self.m['tag']}]
+                    return [{'tag_name': self.m['tag'], 'name': 'NovaDock '+self.m['version']}]
                 if method == 'PUT':
                     files[path] = kwargs['upload'].read_bytes(); return {}
                 if method == 'POST':
-                    self.assertEqual(payload['name'], self.m['tag'])
+                    self.assertEqual(payload['name'], 'NovaDock '+self.m['version'])
                     self.assertNotIn('released_at', payload)
                     self.assertNotIn('prerelease', payload)
                     self.assertEqual(len(files), len(r.publication_assets(self.m)))
@@ -144,6 +149,37 @@ class ReleaseTests(unittest.TestCase):
         files[next(iter(files))] = b'wrong'
         with self.assertRaisesRegex(ValueError, 'different asset'):
             r.publish_gitlab(api, 'group/project', self.out, self.m, True)
+
+    def test_gitlab_existing_release_title_corrected_without_touching_assets(self):
+        expected = r.publication_assets(self.m)
+        base = 'https://gitlab.example.org/api/v4'
+        path = '/projects/group%2Fproject'
+        release = {'name': self.m['tag'], 'description': 'Release notes',
+                   'assets': {'links': [
+                       {'name': name, 'url': base+path+'/packages/generic/novadock/'+self.m['version']+'/'+name}
+                       for name in expected]}}
+        calls = []
+        class Mock:
+            def file_digest(inner, endpoint, **kwargs): return expected[endpoint.rsplit('/',1)[-1]]
+            def call(inner, method, endpoint, payload=None, **kwargs):
+                calls.append((method,endpoint,payload))
+                if method == 'PUT':
+                    self.assertNotIn('upload',kwargs)
+                    release['name'] = payload['name']
+                    return release
+                if '/releases?' in endpoint:
+                    return [{'tag_name':self.m['tag'],'name':release['name']}]
+                return release
+        api = Mock(); api.base = base
+        r.publish_gitlab(api,'group/project',self.out,self.m,True)
+        self.assertTrue(all(call[0]=='GET' for call in calls))
+        calls.clear()
+        r.publish_gitlab(api,'group/project',self.out,self.m,False)
+        self.assertEqual([call for call in calls if call[0]!='GET'],
+                         [('PUT',path+'/releases/'+r.Q(self.m['tag']),{'name':r.release_name(self.m)})])
+        calls.clear()
+        r.publish_gitlab(api,'group/project',self.out,self.m,False)
+        self.assertTrue(all(call[0]=='GET' for call in calls))
 
     def test_gitlab_future_release_cannot_be_reported_as_normal(self):
         class Mock:
@@ -221,12 +257,12 @@ class ReleaseTests(unittest.TestCase):
                 if method == 'GET' and path.endswith('?per_page=100'):
                     return list(stored.values()) if '/assets?' in path else []
                 if method == 'GET' and path.endswith('/latest'):
-                    return {'id': 8, 'tag_name': self.m['tag'], 'draft': False, 'prerelease': False}
+                    return {'id': 8, 'tag_name': self.m['tag'], 'name': 'NovaDock '+self.m['version'], 'draft': False, 'prerelease': False}
                 if method == 'GET': return None
                 if method == 'POST':
                     self.assertTrue(payload['draft'])
                     self.assertFalse(payload['prerelease'])
-                    self.assertEqual(payload['name'], self.m['tag'])
+                    self.assertEqual(payload['name'], 'NovaDock '+self.m['version'])
                     return {'id': 8, 'draft': True}
                 if method == 'PATCH':
                     self.assertEqual(len(stored), len(r.publication_assets(self.m)))

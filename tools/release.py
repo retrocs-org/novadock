@@ -498,6 +498,10 @@ def bundle(directory):
     return manifest
 
 
+def release_name(manifest):
+    return 'NovaDock '+manifest['version']
+
+
 def publish_github(api, project, directory, manifest, dry):
     files = publication_assets(manifest)
     path = '/repos/'+project+'/releases'
@@ -523,7 +527,7 @@ def publish_github(api, project, directory, manifest, dry):
         return
     if not release:
         release = api.call('POST', path, {'tag_name': manifest['tag'], 'target_commitish': manifest['commit'],
-                           'name': manifest['tag'], 'body': (directory/'RELEASE-NOTES.md').read_text(),
+                           'name': release_name(manifest), 'body': (directory/'RELEASE-NOTES.md').read_text(),
                            'draft': True, 'prerelease': False})
     uploads = API('https://uploads.github.com', getattr(api, 'token', None) or os.environ['GITHUB_TOKEN'], github=True)
     for name in files:
@@ -534,9 +538,10 @@ def publish_github(api, project, directory, manifest, dry):
     # Publish only after every asset verifies. Explicitly bypass GitHub's
     # version-based latest heuristic, including for releases below 1.0.
     api.call('PATCH', path+'/'+str(release['id']),
-             {'draft': False, 'prerelease': False, 'make_latest': 'true'})
+             {'name': release_name(manifest), 'draft': False, 'prerelease': False, 'make_latest': 'true'})
     latest = api.call('GET', path+'/latest')
     if (latest.get('id') != release['id'] or latest.get('tag_name') != manifest['tag']
+            or latest.get('name') != release_name(manifest)
             or latest.get('draft') is not False or latest.get('prerelease') is not False):
         raise ValueError('GitHub did not confirm this normal release as Latest; preserve the receipt and inspect it.')
     print('GitHub release complete:', manifest['tag'])
@@ -570,11 +575,15 @@ def publish_gitlab(api, project, directory, manifest, dry):
         if uploaded != files[name]:
             raise ValueError('GitLab upload verification failed: '+name)
     if not release:
-        api.call('POST', path+'/releases', {'tag_name': manifest['tag'], 'name': manifest['tag'],
+        api.call('POST', path+'/releases', {'tag_name': manifest['tag'], 'name': release_name(manifest),
                  'description': (directory/'RELEASE-NOTES.md').read_text(), 'assets': {'links': links}})
+    elif release.get('name') != release_name(manifest):
+        api.call('PUT', release_path, {'name': release_name(manifest)})
     latest = api.call('GET', path+'/releases?order_by=released_at&sort=desc&per_page=1')
     if (not isinstance(latest, list) or not latest
-            or latest[0].get('tag_name') != manifest['tag'] or latest[0].get('upcoming_release')):
+            or latest[0].get('tag_name') != manifest['tag']
+            or latest[0].get('name') != release_name(manifest)
+            or latest[0].get('upcoming_release')):
         raise ValueError('GitLab did not confirm this release as latest; preserve the receipt and inspect release dates.')
     print('GitLab release complete:', manifest['tag'])
 

@@ -281,7 +281,7 @@ class IntegrityTests(unittest.TestCase):
 
     def test_notes_are_explicitly_sealed(self):
         notes = Path(self.tmp.name)/'notes.md'
-        reviewed = r.release_notes.markdown(self.root).replace('## Features', 'Reviewed overview.\n\n## Features', 1)
+        reviewed = r.release_notes.markdown(self.root)+'\n'
         notes.write_text(reviewed)
         self.args.notes = notes
         r.prepare(self.args)
@@ -291,7 +291,7 @@ class IntegrityTests(unittest.TestCase):
         notes = Path(self.tmp.name)/'notes.md'; notes.write_text('Reviewed notes')
         self.args.notes = notes
         original = (self.out/'RELEASE-NOTES.md').read_bytes()
-        with self.assertRaisesRegex(ValueError, 'Release notes need'):
+        with self.assertRaisesRegex(ValueError, 'complete current-version changelog only'):
             r.prepare(self.args)
         self.assertEqual((self.out/'RELEASE-NOTES.md').read_bytes(), original)
         self.assertFalse((self.out/'manifest.json').exists())
@@ -300,7 +300,8 @@ class IntegrityTests(unittest.TestCase):
         self.assertEqual(r.release_tag(), '0.1')
         self.args.tag = 'review/0.1'
         r.prepare(self.args)
-        self.assertIn('/releases/tag/review%2F0.1', r.bundle(self.out)['notes'])
+        self.assertEqual(r.bundle(self.out)['tag'],'review/0.1')
+        self.assertTrue(r.bundle(self.out)['notes'].startswith('### Features'))
 
     def test_receipt_cannot_be_reused_for_another_manifest(self):
         r.prepare(self.args)

@@ -53,14 +53,14 @@ class ReleaseNotesTests(unittest.TestCase):
         text = n.markdown(self.root)
         self.assertNotIn('Future version only', text)
         self.assertNotIn('Initial version only', text)
-        self.assertIn('#### Bugs', text)
+        self.assertIn('### Bugs', text)
         n.validate_notes(text, self.root)
 
-    def test_incomplete_wrong_tag_or_unfinished_notes_rejected(self):
+    def test_incomplete_extra_headings_or_unfinished_notes_rejected(self):
         original = n.markdown(self.root)
         for text in (original.replace('- Settings survive restart.\n', ''),
-                     original.replace('## Installation', '## Downloads'),
-                     original.replace('/tag/0.2', '/tag/v0.2'),
+                     '# Version Changelog\n\n'+original,
+                     '## Version 0.2\n\n'+original,
                      original+'\nIn development\n'):
             with self.assertRaises(ValueError): n.validate_notes(text, self.root)
         text = (self.root/'CHANGELOG.md').read_text()
@@ -70,11 +70,19 @@ class ReleaseNotesTests(unittest.TestCase):
     def test_custom_tag_and_first_public_features_only(self):
         (self.root/'VERSION').write_text('VERSION=0.1\n')
         text = n.markdown(self.root, 'review/0.1')
-        self.assertIn('/tag/review%2F0.1', text)
-        self.assertNotIn('#### Bugs', text)
-        self.assertNotIn('#### Enhancements', text)
-        self.assertIn('#### Features', text)
+        self.assertTrue(text.startswith('### Features\n'))
+        self.assertEqual(text,n.markdown(self.root))
+        self.assertNotIn('### Bugs', text)
+        self.assertNotIn('### Enhancements', text)
+        self.assertIn('### Features', text)
         n.validate_notes(text, self.root, 'review/0.1')
+
+    def test_repository_notes_only_contain_current_changelog(self):
+        text = n.markdown(self.root)
+        self.assertTrue(text.startswith('### Features\n'))
+        for excluded in ('Version Changelog','## Version','## Installation','Source and Licence','Bundled plugins:',n.DESCRIPTION):
+            self.assertNotIn(excluded,text)
+        with self.assertRaises(ValueError): n.validate_notes(text+'\nApplication overview\n',self.root)
 
     def test_plain_aminet_layout_contains_every_current_change(self):
         text = n.aminet(self.root, 'maintainer@example.org')
@@ -111,7 +119,7 @@ class ReleaseNotesTests(unittest.TestCase):
         self.assertEqual(len(names), 32)
         for name in ('Weather', 'Notes', 'Timer', 'SCREENS', 'SHOT', 'SMODE', 'ARCHIVE', 'MUSIC', 'SENSOR', 'ACTIONS'):
             self.assertIn(name, names)
-        self.assertIn('LumiAMP', n.markdown(ROOT))
+        self.assertIn('LumiAMP', n.aminet(ROOT, 'maintainer@example.org'))
         self.assertNotIn('Christmas', names)
         self.assertNotIn('Christmas tree', n.markdown(ROOT))
         self.assertNotIn('Christmas tree', n.aminet(ROOT, 'maintainer@example.org'))
