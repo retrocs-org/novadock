@@ -57,6 +57,18 @@ with tempfile.TemporaryDirectory() as tmp:
     html = result.stdout.decode('ascii')
     assert 'NovaDock 0.2' in html and '/0.2/NovaDock-0.2.lha' in html
     assert '/0.2/NovaDock-0.2-plugin-sdk.zip.sha256' in html
+    assert 'downloads on GitHub' not in html, 'Unknown counts must be hidden'
+    future.update(binary_download_count=1, sdk_download_count=1234)
+    previous = m.upcoming('0.1','0.1')
+    previous.update(status='published', date='2026-11-11', binary_download_count=0)
+    (site/'releases.json').write_text(json.dumps([future, previous]))
+    result = subprocess.run([php, str(site/'get.php')], capture_output=True, check=True)
+    assert not result.stderr, result.stderr
+    html = result.stdout.decode('ascii')
+    assert '1 download on GitHub' in html and '1,234 downloads on GitHub' in html
+    assert '0 downloads on GitHub' in html, 'Earlier releases display available counts'
+    assert '15 minutes' in html
+
 print('Custom release tags and matching website source/SDK links passed.')
 
 assert m.upcoming('0.1', '0.1')['checksums_url'].endswith('/NovaDock-0.1.lha.sha256')

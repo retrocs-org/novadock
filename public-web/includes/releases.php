@@ -8,8 +8,8 @@ function nd_release_entry(string $tag, string $version): array {
     $base = ND_RELEASE_REPO.'/releases/download/'.$encoded.'/';
     return ['version'=>$version, 'tag'=>$tag, 'status'=>'published', 'prerelease'=>false,
         'date'=>null, 'published_at'=>'', 'release_url'=>ND_RELEASE_REPO.'/releases/tag/'.$encoded,
-        'binary_url'=>null, 'binary_size'=>null, 'checksums_url'=>null,
-        'sdk_url'=>null, 'sdk_size'=>null, 'sdk_checksums_url'=>null,
+        'binary_url'=>null, 'binary_size'=>null, 'binary_download_count'=>null, 'checksums_url'=>null,
+        'sdk_url'=>null, 'sdk_size'=>null, 'sdk_download_count'=>null, 'sdk_checksums_url'=>null,
         'source_url'=>ND_RELEASE_REPO.'/archive/refs/tags/'.$encoded.'.zip',
         'source_tar_url'=>ND_RELEASE_REPO.'/archive/refs/tags/'.$encoded.'.tar.gz'];
 }
@@ -44,7 +44,12 @@ function nd_release_normalize(array $record): ?array {
         if (($assets[$name]['browser_download_url'] ?? null) !== $base.$name) continue;
         $entry[$key] = $base.$name;
         $size = $assets[$name]['size'] ?? null;
-        if (in_array($key, ['binary_url','sdk_url'], true) && is_int($size) && $size >= 0) $entry[$key === 'binary_url' ? 'binary_size' : 'sdk_size'] = $size;
+        if (in_array($key, ['binary_url','sdk_url'], true)) {
+            $prefix = $key === 'binary_url' ? 'binary' : 'sdk';
+            if (is_int($size) && $size >= 0) $entry[$prefix.'_size'] = $size;
+            $count = $assets[$name]['download_count'] ?? null;
+            if (is_int($count) && $count >= 0) $entry[$prefix.'_download_count'] = $count;
+        }
     }
     $entry['prerelease'] = !empty($record['prerelease']);
     if (is_string($record['published_at'] ?? null) && preg_match('~^\d{4}-\d{2}-\d{2}T[0-9:]+Z$~D', $record['published_at'])) {
@@ -64,7 +69,7 @@ function nd_release_saved_entries($records): array {
                   'sdk_url'=>'NovaDock-'.$record['version'].'-plugin-sdk.zip', 'sdk_checksums_url'=>'NovaDock-'.$record['version'].'-plugin-sdk.zip.sha256'] as $key=>$name) {
             if (($record[$key] ?? null) === $base.$name) $entry[$key] = $base.$name;
         }
-        foreach (['binary_size','sdk_size'] as $key) if (is_int($record[$key] ?? null) && $record[$key] >= 0) $entry[$key] = $record[$key];
+        foreach (['binary_size','sdk_size','binary_download_count','sdk_download_count'] as $key) if (is_int($record[$key] ?? null) && $record[$key] >= 0) $entry[$key] = $record[$key];
         $entry['prerelease'] = !empty($record['prerelease']);
         if (is_string($record['date'] ?? null) && preg_match('~^\d{4}-\d{2}-\d{2}$~D', $record['date'])) $entry['date'] = $record['date'];
         $entry['published_at'] = is_string($record['published_at'] ?? null) ? $record['published_at'] : ($entry['date'] ?? '');
@@ -158,4 +163,9 @@ function nd_release_catalog(?callable $fetch = null, ?string $cacheDir = null, ?
 function nd_release_size($bytes): string {
     if (!is_int($bytes) || $bytes < 0) return '';
     return $bytes >= 1048576 ? number_format($bytes/1048576, 1).' MB' : number_format($bytes/1024, 0).' KB';
+}
+
+function nd_release_downloads($count): string {
+    if (!is_int($count) || $count < 0) return '';
+    return number_format($count).' '.($count === 1 ? 'download' : 'downloads').' on GitHub';
 }
