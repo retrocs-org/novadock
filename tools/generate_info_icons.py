@@ -9,6 +9,17 @@ from pathlib import Path
 import struct
 
 ROOT = Path(__file__).resolve().parents[1]
+CHECK_ONLY = False
+STALE = []
+
+
+def write_asset(path, payload):
+    if CHECK_ONLY:
+        if not path.is_file() or path.read_bytes() != payload:
+            STALE.append(str(path.relative_to(ROOT)))
+    else:
+        path.write_bytes(payload)
+
 WIDTH = 54
 HEIGHT = 22
 
@@ -315,7 +326,7 @@ def plugin_icons():
         for y in range(24):
             for x in range(32):
                 canvas.pixel(x, y, pixels[index * 768 + y * 32 + x])
-        (ROOT / 'Plugins' / (name + '.info')).write_bytes(disk_object(canvas))
+        write_asset((ROOT / 'Plugins' / (name + '.info')), disk_object(canvas))
 
 
 def clipboard_art():
@@ -397,13 +408,13 @@ def timer_notes_art():
     c.rect(9, 7, 22, 20, 2)
     c.line(16, 9, 16, 14, 3)
     c.line(16, 14, 20, 14, 3)
-    (ROOT / 'Plugins/Timer.info').write_bytes(disk_object(c))
+    write_asset((ROOT / 'Plugins/Timer.info'), disk_object(c))
     c = Canvas(32, 24)
     c.rect(6, 1, 25, 22, 1)
     c.rect(8, 3, 23, 20, 2)
     for y in (6, 10, 14, 18):
         c.line(10, y, 21, y, 3)
-    (ROOT / 'Plugins/Notes.info').write_bytes(disk_object(c))
+    write_asset((ROOT / 'Plugins/Notes.info'), disk_object(c))
 
 
 def screen_switcher_art():
@@ -414,7 +425,7 @@ def screen_switcher_art():
         c.line(x+3, y+3, x+23, y+3, 3)
         c.rect(x+11, y+19, x+15, y+21, 1)
         c.line(x+7, y+22, x+19, y+22, 1)
-    (ROOT / 'Plugins/ScreenSwitcher.info').write_bytes(disk_object(c))
+    write_asset((ROOT / 'Plugins/ScreenSwitcher.info'), disk_object(c))
 
 
 def screen_plugin_icons():
@@ -445,7 +456,7 @@ for(y=0;y<32;++y)for(x=0;x<32;++x)putchar(pixels[y][x]);}return 0;}
         for y in range(32):
             for x in range(32):
                 canvas.pixel(x, y, pixels[index * 1024 + y * 32 + x])
-        (ROOT / 'Plugins' / (name + '.info')).write_bytes(disk_object(canvas))
+        write_asset((ROOT / 'Plugins' / (name + '.info')), disk_object(canvas))
 
 
 def weather_art():
@@ -472,17 +483,20 @@ for(y=0;y<32;++y)for(x=0;x<32;++x)putchar(pixels[y][x]);return 0;}
     for y in range(32):
         for x in range(32):
             canvas.pixel(x, y, pixels[y * 32 + x])
-    (ROOT / 'Plugins/Weather.info').write_bytes(disk_object(canvas))
+    write_asset((ROOT / 'Plugins/Weather.info'), disk_object(canvas))
 
 
-def main():
+def main(check=False):
+    global CHECK_ONLY
+    CHECK_ONLY = check
+    STALE.clear()
     weather_art()
     screen_plugin_icons()
     screen_switcher_art()
     timer_notes_art()
     # Supply the same complete drawer metadata to both release archives and
     # installations, while keeping the user's two planar images unchanged.
-    (ROOT / 'Icons' / 'SoftwarePackage.info').write_bytes(
+    write_asset((ROOT / 'Icons' / 'SoftwarePackage.info'),
         generic_icon('SoftwarePackage.info',kind=2))
     plugin_icons()
     outputs = ((ROOT / 'NovaDock.info', dock_art()),
@@ -494,26 +508,33 @@ def main():
                (ROOT / 'Plugins' / 'Network.info', network_art()))
     for path, canvas in outputs:
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(disk_object(canvas))
-        print('Created', path)
+        write_asset(path, disk_object(canvas))
+        if not CHECK_ONLY: print('Created', path)
     # The GUI installer: a project icon that Workbench opens with Installer.
     # The local launcher selects the supported system Installer and stack.
     installer = ROOT / 'Install-NovaDock.info'
-    installer.write_bytes(generic_icon(
+    write_asset(installer, generic_icon(
         'Install.info', kind=4, default_tool='StartInstaller',
         tool_types=('APPNAME=NovaDock', 'MINUSER=NOVICE',
                     'DEFUSER=NOVICE')))
-    print('Created', installer)
+    if not CHECK_ONLY: print('Created', installer)
     # The AmigaGuide manual, opened with MultiView (AmigaOS 3.0 and later).
     guide = ROOT / 'NovaDock.guide.info'
-    guide.write_bytes(disk_object(guide_art(), kind=4,
+    write_asset(guide, disk_object(guide_art(), kind=4,
                                   default_tool='SYS:Utilities/MultiView'))
-    print('Created', guide)
+    if not CHECK_ONLY: print('Created', guide)
+    if CHECK_ONLY:
+        if STALE:
+            raise SystemExit('Workbench icons out of date: ' + ', '.join(STALE) +
+                             '. Run python3 tools/generate_info_icons.py before committing.')
+        print('Workbench icons match their committed artwork and metadata.')
 
 
 if __name__ == '__main__':
     import sys
-    if len(sys.argv) == 3 and sys.argv[1] == '--drawer-icon':
+    if sys.argv[1:] == ['--check']:
+        main(check=True)
+    elif len(sys.argv) == 3 and sys.argv[1] == '--drawer-icon':
         # Release archives: the icon for the unpacked NovaDock drawer.
         Path(sys.argv[2]).write_bytes(generic_icon('SoftwarePackage.info',kind=2,show_icons=True))
         print('Created', sys.argv[2])

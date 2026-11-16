@@ -295,7 +295,7 @@ PATH. Missing compilers and invalid compiled catalogs stop the release; local
 English-only staging remains available. Check the packaged German and Swedish
 catalogs as well as the built-in English text.
 
-Refresh generated inputs before committing:
+When their source inputs change, refresh generated files before committing:
 
 ```sh
 python3 tools/update_version.py
@@ -304,7 +304,6 @@ python3 tools/release_notes.py --write
 python3 tools/generate_catalog.py
 python3 tools/make_amigaguide.py
 python3 tools/generate_info_icons.py
-python3 tools/sync_github_releases.py --upcoming
 python3 tools/package_release.py
 ```
 
@@ -323,6 +322,13 @@ custom paths must be outside source or under ignored `outputs/`. Build requires
 an empty directory and always compiles fresh binaries. Preserve failed output and
 use a fresh directory after fixing inputs; there is no unified skip-build option.
 For compatibility, `prepare` builds if no build record exists.
+
+Build preflight is read-only: it checks catalogs, Help, Workbench icons and the
+SDK copies without regenerating tracked files. It does not add upcoming releases
+to public-web/releases.json. The download page discovers published GitHub releases
+automatically; refreshing that fallback list is a separate website-maintenance
+operation. Stale generated inputs produce an actionable error before the output
+directory is created. Review and regenerate those inputs before committing.
 
 Build checks the version, committed release-note template, translations and host
 tests, then compiles and verifies all **39 native programs**. A release needs

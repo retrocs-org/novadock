@@ -98,6 +98,13 @@ class ReleaseNotesTests(unittest.TestCase):
                                  ('x@example.org', 'Contributors\nType: invalid')):
             with self.assertRaises(ValueError): n.aminet(self.root, uploader, author)
 
+    def test_explicit_empty_contact_is_rejected_with_release_environment(self):
+        from unittest.mock import patch
+        with patch.dict(n.os.environ, {'UPLOADER':'release@example.org','AUTHOR':'Contributors'}):
+            for uploader,author in (('', 'Contributors'), ('release@example.org','')):
+                with self.assertRaises(ValueError): n.aminet(self.root,uploader,author)
+            self.assertIn('Uploader:     release@example.org',n.aminet(self.root))
+
     def test_committed_notes_and_real_plugin_inventory(self):
         self.assertEqual((ROOT/'docs/RELEASE-NOTES.md').read_text(), n.markdown(ROOT))
         names = n.plugin_names(ROOT)

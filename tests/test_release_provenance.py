@@ -391,5 +391,56 @@ class TagTests(unittest.TestCase):
             self.assertEqual(r.remote_tag('unused', 'v0.1'), 'commit')
 
 
+class ReadOnlyBuildTests(unittest.TestCase):
+    def test_preflight_only_checks_and_never_refreshes_release_catalog(self):
+        commands = r.build_commands(Path('/unused/output'))
+        for command in commands[:-4]:
+            self.assertEqual(command[-1], '--check')
+        self.assertFalse(any('tools/sync_github_releases.py' in cmd for cmd in commands))
+
+    def test_preflight_failure_does_not_create_output(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)/'output'
+            args = argparse.Namespace(output=output, config=Path(temp)/'missing.json')
+            with patch.object(r, 'commit', return_value=None), \
+                 patch.object(r, 'run', side_effect=ValueError('generated input is stale')):
+                with self.assertRaisesRegex(ValueError, 'generated input is stale'):
+                    r.build(args)
+            self.assertFalse(output.exists())
+
+    def test_sdk_check_never_rewrites_missing_stale_or_matching_files(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); (root/'sdk-source.h').write_bytes(b'current')
+            target = root/'plugin-sdk/include/sdk.h'
+            with patch.object(package, 'SDK_FILES', (('include/sdk.h','sdk-source.h'),)):
+                with self.assertRaisesRegex(ValueError, 'SDK source copies out of date'):
+                    r.check_sdk_sources(root)
+                self.assertFalse((root/'plugin-sdk').exists())
+                target.parent.mkdir(parents=True); target.write_bytes(b'stale')
+                stamp = target.stat().st_mtime_ns
+                with self.assertRaises(ValueError): r.check_sdk_sources(root)
+                self.assertEqual(target.read_bytes(),b'stale')
+                self.assertEqual(target.stat().st_mtime_ns,stamp)
+                target.write_bytes(b'current'); stamp = target.stat().st_mtime_ns
+                r.check_sdk_sources(root)
+                self.assertEqual(target.stat().st_mtime_ns,stamp)
+
+    def test_icon_check_never_writes_output(self):
+        spec = importlib.util.spec_from_file_location('icons_read_only', ROOT/'tools/generate_info_icons.py')
+        icons = importlib.util.module_from_spec(spec); spec.loader.exec_module(icons)
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); path = root/'test.info'; path.write_bytes(b'old')
+            stamp = path.stat().st_mtime_ns
+            with patch.object(icons,'ROOT',root), patch.object(icons,'CHECK_ONLY',True):
+                icons.write_asset(path,b'new')
+                icons.write_asset(root/'missing.info',b'new')
+                self.assertEqual(icons.STALE,['test.info','missing.info'])
+                self.assertFalse((root/'missing.info').exists())
+                self.assertEqual(path.read_bytes(),b'old')
+                self.assertEqual(path.stat().st_mtime_ns,stamp)
+            icons.write_asset(path,b'new')
+            self.assertEqual(path.read_bytes(),b'new')
+
+
 if __name__ == '__main__':
     unittest.main()

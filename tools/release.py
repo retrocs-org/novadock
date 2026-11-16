@@ -167,10 +167,9 @@ def build_commands(out, python=None):
         (py, 'tools/update_version.py', '--check'),
         (py, 'tools/release_notes.py', '--check'),
         (py, 'tools/update_site_chrome.py', '--check'),
-        (py, 'tools/generate_catalog.py'),
-        (py, 'tools/make_amigaguide.py'),
-        (py, 'tools/sync_github_releases.py', '--upcoming'),
-        (py, 'tools/generate_info_icons.py'),
+        (py, 'tools/generate_catalog.py', '--check'),
+        (py, 'tools/make_amigaguide.py', '--check'),
+        (py, 'tools/generate_info_icons.py', '--check'),
         ('sh', 'tests/run_host_tests.sh'),
         ('sh', 'scripts/make-release.sh', str(out), '--aminet'),
         (py, 'tools/package_release.py', '--out', str(out), '--release-dir', str(out)),
@@ -231,6 +230,19 @@ def seal_assets(out):
     return {name: digest(out/name) for name in sorted(names | {'SHA256SUMS.txt'})}
 
 
+def check_sdk_sources(root=None):
+    import package_release as package
+    root = root or ROOT
+    stale = []
+    for member, source in package.SDK_FILES:
+        target = root/'plugin-sdk'/member
+        if not target.is_file() or target.read_bytes() != (root/source).read_bytes():
+            stale.append('plugin-sdk/'+member)
+    if stale:
+        raise ValueError('SDK source copies out of date: '+', '.join(stale)+
+                         '. Refresh the SDK with tools/package_release.py before committing.')
+
+
 def build(args):
     cfg = config(args.config)
     # Refuse dirty source before generators or output records can change anything.
@@ -241,7 +253,6 @@ def build(args):
         raise ValueError('Use outputs/release or a build directory outside the source tree.')
     if out.exists() and any(out.iterdir()):
         raise ValueError('Use an empty output directory; preserve failed release evidence.')
-    out.mkdir(parents=True, exist_ok=True)
     env = credentials.build_environment(cfg)
     py = env.get('NOVADOCK_RELEASE_PYTHON') or sys.executable
     if not Path(py).is_file():
@@ -256,25 +267,24 @@ def build(args):
     env['ND_DEFER_WEB_CHECKS'] = '1'
     env.pop('ND_SKIP_BUILD', None)
     commands = build_commands(out, py)
-    # Normalise generated inputs before taking the pre-build fingerprint.
+    # Validate committed generated inputs without rewriting the checkout.
+    # The website discovers published releases itself; a draft list entry is
+    # neither a build input requirement nor a reason to alter the tagged source.
     for command in commands[:-4]:
         run(*command, env=env)
-    import package_release as package
-    for member, source in package.SDK_FILES:
-        target = ROOT/'plugin-sdk'/member
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes((ROOT/source).read_bytes())
+    check_sdk_sources()
     inputs = provenance.source_inputs(ROOT)
     for name in inputs:
         payload = (ROOT/name).read_bytes()
         if credentials.contains_secret(payload, cfg):
             raise ValueError('A credential appears in a release input; remove it before building.')
     before = provenance.fingerprint(inputs)
-    write_json(out/'build-state.json', {'phase': 'building', 'source_sha256': before, 'inputs': inputs})
     sha = commit()
     if sha:
         commit(clean=True)
         provenance.tracked_inputs(inputs, ROOT)
+    out.mkdir(parents=True, exist_ok=True)
+    write_json(out/'build-state.json', {'phase': 'building', 'source_sha256': before, 'inputs': inputs})
     run(*commands[-4], env=env)
     run(*commands[-3], env=env)
     after_inputs = provenance.source_inputs(ROOT)

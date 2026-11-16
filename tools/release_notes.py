@@ -123,7 +123,9 @@ def wrap(text, indent='', bullet=False):
     return textwrap.fill(plain(text), width=76, initial_indent=indent+('- ' if bullet else ''), subsequent_indent=indent+('  ' if bullet else ''), break_long_words=False, break_on_hyphens=False)
 
 def aminet(root=ROOT, uploader=None, author=None):
-    v = version(root);uploader = uploader or os.environ.get('UPLOADER', '');author = author or os.environ.get('AUTHOR', 'NovaDock contributors')
+    v = version(root)
+    if uploader is None: uploader = os.environ.get('UPLOADER', '')
+    if author is None: author = os.environ.get('AUTHOR', 'NovaDock contributors')
     for value in (uploader, author):
         if not value or any(ord(c)<32 or ord(c)>126 for c in value): raise ValueError('Set a plain ASCII author and real uploader contact.')
     if not re.fullmatch(r'[^\s<>@()]+@[^\s<>@()]+\.[^\s<>@()]+', uploader): raise ValueError('Set UPLOADER to your real email before preparing an Aminet submission.')

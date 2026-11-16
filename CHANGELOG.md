@@ -38,6 +38,7 @@
 - Rapid network stop/start reconnects the selected interface without reloading Roadshow.
 - Release packaging requires compiled German and Swedish catalogs.
 - Planning documents stay out of the application Help guide.
+- Release builds check generated files without dirtying the committed source tree.
 
 ## NovaDock 0.2
 
