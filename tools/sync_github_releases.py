@@ -14,10 +14,10 @@ OUTPUT = ROOT/'public-web/releases.json'
 
 
 def upcoming(version, tag=None):
-    tag = 'v'+version if tag is None else tag
+    tag = version if tag is None else tag
     encoded = quote(tag, safe='')
     base = REPO+'/releases/download/'+encoded+'/'
-    return {'version': version, 'tag': tag, 'status': 'upcoming', 'prerelease': version.startswith('0.'),
+    return {'version': version, 'tag': tag, 'status': 'upcoming', 'prerelease': False,
             'date': None, 'release_url': REPO+'/releases/tag/'+encoded,
             'binary_url': base+'NovaDock-'+version+'.lha',
             'source_url': REPO+'/archive/refs/tags/'+encoded+'.zip',

@@ -72,7 +72,7 @@ static int plugin_settings_action(const struct NDDock *dock,const struct NDItem 
 static int popup_count_for(const struct NDDock *dock)
 {
     const struct NDItem *item;
-    if (dock->popup_item == -2) return 5;
+    if (dock->popup_item == -2) return 6;
     if (dock->popup_item<0 || dock->popup_item>=dock->conf.count) return 0;
     item=&dock->conf.items[dock->popup_item];
     if (item->kind==ND_ITEM_SPACER) return 2;
@@ -113,7 +113,7 @@ static const char *spacer_actions[] = {
 };
 static const char *dock_actions[] = {
     "Unlock dock", "Add item...", "Preferences...", "About NovaDock...",
-    "Quit NovaDock"
+    "Restart NovaDock", "Quit NovaDock"
 };
 static const char *popup_label_en(const struct NDDock *dock, int item)
 {
@@ -771,7 +771,8 @@ static int dock_popup_action(struct NDDock *dock, int action)
     case 3:
         open_about(dock);
         break;
-    case 4: dock->running = 0; return 1;
+    case 4: dock->restart_requested=1; dock->running=0; return 1;
+    case 5: dock->restart_requested=0; dock->running=0; return 1;
     default: break;
     }
     return 0;

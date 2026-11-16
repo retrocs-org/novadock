@@ -5,16 +5,18 @@ from pathlib import Path
 spec=importlib.util.spec_from_file_location('release_catalog',Path(__file__).resolve().parents[1]/'tools/sync_github_releases.py')
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 plan=m.upcoming('0.1')
-assert plan['status']=='upcoming' and plan['binary_url'].endswith('/v0.1/NovaDock-0.1.lha')
+assert plan['prerelease'] is False
+assert plan['status']=='upcoming' and plan['binary_url'].endswith('/0.1/NovaDock-0.1.lha')
 assert m.normalize({'tag_name':'v0.1','draft':True}) is None
 assert m.normalize({'tag_name':'not-a-version'}) is None
 record={'tag_name':'v0.1','published_at':'2026-11-11T10:00:00Z','prerelease':True,
-        'assets':[{'name':'NovaDock-0.1.lha','browser_download_url':plan['binary_url']}]}
+        'assets':[{'name':'NovaDock-0.1.lha','browser_download_url':plan['binary_url'].replace('/0.1/', '/v0.1/')}]}
 release=m.normalize(record)
+assert release['prerelease'] is True
 assert release['status']=='published' and release['date']=='2026-11-11'
-assert release['binary_url']==plan['binary_url'] and release['source_url'].endswith('/archive/refs/tags/v0.1.zip')
+assert release['binary_url']==record['assets'][0]['browser_download_url'] and release['source_url'].endswith('/archive/refs/tags/v0.1.zip')
 assert m.with_upcoming([release], '0.1')==[release]
-assert m.with_upcoming([release], '0.2')[0]['tag']=='v0.2'
+assert m.with_upcoming([release], '0.2')[0]['tag']=='0.2'
 record['assets'][0]['browser_download_url']='https://other.example/file.lha'
 assert m.normalize(record)['binary_url'] is None
 print('Planned releases, published assets and release-list synchronization passed.')

@@ -28,8 +28,8 @@
 <details><summary>Why can Network not query or control my TCP/IP stack?</summary>
 <p>Roadshow status and Online/Offline commands require a compatible socket library. Details explains unsupported queries when another TCP/IP stack is active. Use that stack's own connection controls. Packet meters require a compatible SANA-II device.</p>
 </details>
-<details><summary>Why does Network say WAIT STACK when going offline?</summary>
-<p>Roadshow may be waiting for applications to release network resources. NovaDock explains a shutdown that has not replied after 15 seconds, keeps the dock responsive and pauses network queries while it waits. Close applications using the network. It does not start overlapping shutdown jobs or forcibly kill the command.</p>
+<details><summary>What happens if I reconnect Network immediately?</summary>
+<p>Online waits for an in-progress Offline operation to finish before reconnecting the selected interface. Roadshow stays loaded. The dock remains responsive during DHCP; a command that exceeds its wait allowance gets an explanation, and no competing command is started.</p>
 </details>
 <details><summary>Do graphs represent fixed seconds?</summary>
 <p>No. Columns are received samples. Adaptive polling changes the time between samples.</p>

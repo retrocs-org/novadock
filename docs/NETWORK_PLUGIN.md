@@ -13,23 +13,36 @@ Other stack providers are not implemented yet.
 - **Online:** two separate **IN** and **OUT** packet-activity meters by default.
   Incoming traffic uses the first accent color; outgoing traffic uses the second.
   Both bars use the same configured PPS scale. The value above them is IN/OUT p/s. Click the online tile to switch between meter and graph, like CPU/RAM.
-- **Right-click → Online:** start the selected Roadshow interface with
-  `C:AddNetInterface`, including its normal DHCP configuration.
-- **Right-click → Offline:** first take the selected interface offline with
-  `C:ConfigureNetInterface <interface> OFFLINE QUIET`, then stop all Roadshow
-  interfaces through `C:NetShutdown TIMEOUT=5 QUIET`. This is a stack-wide shutdown, not merely hiding the tile.
+- **Right-click → Online:** reconnect the selected Roadshow interface with
+  `C:ConfigureNetInterface`, renewing DHCP when its profile uses DHCP. If the
+  interface has not been registered, start it using `C:AddNetInterface` and
+  its exact DEVS or Storage profile.
+- **Right-click → Offline:** take the selected interface and its driver offline
+  with `C:ConfigureNetInterface <interface> OFFLINE QUIET`. Roadshow stays
+  loaded and other interfaces are unchanged. This allows a quick reconnect.
 - **Edit settings:** choose the network interface, view, stack and meter scale. Advanced contains optional sampling overrides.
   Left-clicking an offline tile does nothing; settings remain in its right-click menu.
 
-Online means Roadshow reports operational interfaces; it does not promise
+Online means Roadshow reports the selected interface as operational; it does not promise
 Internet reachability. Status polling first checks whether bsdsocket.library is
 already resident, so it does not reopen the stack after a shutdown.
 
 Control and status commands run in a separate worker. The plugin continues
-servicing the dock while DHCP or shutdown takes time. One command runs at a
+servicing the dock while DHCP or interface control takes time. One command runs at a
 time; a later action is queued. Polling never initiates Online or Offline.
 
 ## Setup
+
+**Online at startup** defaults to **NO**. Enable it in Network settings and
+choose **Save** to bring the selected interface online whenever the plugin
+starts, including after a dock restart. The initial status check runs first:
+an already-online interface is left alone. Otherwise, one background Online
+attempt uses the selected profile and connection timeout. A failure is reported
+normally, without an automatic retry loop. Changing settings while the plugin
+is running does not trigger it again. Choosing Offline keeps it offline until
+you explicitly reconnect or restart the plugin. An explicit Online or Offline
+action takes precedence over a pending startup attempt.
+
 
 **Interface = AUTO** prefers an active, non-loopback IPv4 interface reported
 by Roadshow. When none is active, a detected A2065 board with its installed driver and
@@ -97,7 +110,7 @@ The user's saved file is not reset. The upgraded layout is persisted with the
 next ordinary settings save. The six default active tiles remain unchanged.
 
 The Roadshow commands and their arguments were checked against its installed
-GetNetStatus, AddNetInterface and NetShutdown reference manuals. No Roadshow
+ShowNetStatus, AddNetInterface and ConfigureNetInterface reference manuals. No Roadshow
 binaries are bundled with NovaDock.
 
 ## Network Details
@@ -117,7 +130,7 @@ manual. No NAMES option is used, so the query does not wait for reverse DNS.
 
 The context menu offers Online while offline, and Offline while online.
 Failed explicit state changes open an independent error requester; the dock
-continues running. On larger Workbench screens all seven normal settings are shown
+continues running. On larger Workbench screens all eight normal settings are shown
 together; Advanced adds three sampling controls, with scrolling reserved for screens too small to fit them.
 
 If ShowNetStatus reports an unsupported status-query method, Details explains
@@ -136,29 +149,28 @@ and explicitly enabled advanced sampling overrides are preserved. Active-interfa
 for 30 seconds during passive polling and refreshed for control actions,
 settings reloads and Details.
 
-## Waiting for shutdown
+## Disconnecting and reconnecting
 
-Offline closes NovaDock's sampling request before starting NetShutdown. It
-uses the last resolved interface, without new status queries. The worker first
-takes that interface offline using ConfigureNetInterface, then performs the
-full stack-wide NetShutdown. If the preparatory command fails, full shutdown
-is not started and an error explains the failed step. This sequence completed
-on the bridged A2065 test where direct NetShutdown hung even without NovaDock
-running. It does not establish a general fault in every Roadshow installation.
-A normal transition displays
-STOPPING. If the command has not replied after 15 seconds, NovaDock opens an
-explanation and displays WAIT STACK while its single background worker waits.
-A Roadshow warning that shutdown remains pending is also explained. Close
-network clients which may be holding sockets open. No second control job is
-started while one is still running; the dock and other plugins remain active.
+Offline drains and closes NovaDock's sampling request before taking the
+selected interface offline. It does not unload Roadshow or shut down other
+interfaces. Use Roadshow's own NetShutdown command separately if a complete
+TCP/IP stack shutdown is needed.
 
-During pending shutdown the sampler, periodic status queries and Details
-refresh queries are paused. NovaDock checks for the socket library to leave
-without reopening it. Once shutdown completes, the tile becomes offline.
-Commands are not forcibly killed because Roadshow shutdown cannot be cancelled.
-Online jobs have the configured connection timeout plus a 15-second allowance.
-A driver request that cannot be drained prevents shutdown from being started
-and produces a separate explanation instead of releasing live I/O memory.
+An Online click during STOPPING queues one reconnect. It starts only after
+the Offline worker replies; repeated clicks cannot create overlapping control
+commands. The temporary operation guard is cleared before the reconnect starts.
+An existing interface is brought online with ConfigureNetInterface. After
+that command succeeds, a DHCP profile requests a fresh DHCP configuration in
+a separate command; a static profile retains its configuration. AddNetInterface is reserved for interfaces not yet registered.
+
+Periodic polling reports the selected interface, so another active connection
+cannot make an explicitly disconnected interface appear online. Polling does
+not load an absent stack or initiate a connection. The dock remains responsive
+while a worker runs. Offline has a 15-second wait allowance; Online uses the
+configured timeout plus 15 seconds. A timeout opens an explanation but does not
+start a competing command or forcibly terminate a running Roadshow operation.
+A driver request that cannot be drained prevents Offline from starting and
+produces a separate explanation instead of releasing live I/O memory.
 
 For an AUTO connection, NovaDock remembers the last active interface within
 the running plugin so reconnecting targets that interface. If its file is
@@ -181,7 +193,7 @@ same build; files copied over an older resident process do not replace it.
 **Debug log** defaults to **NO**. Before an explicit Online or Offline action,
 NovaDock starts Roadshow's `C:NetLogViewer CX_POPUP=NO` if it is not already
 running. Roadshow's separate log messages are captured in the hidden viewer,
-so routine connection and shutdown notifications do not open its automatic
+so routine connection notifications do not open its automatic
 console. Command output remains quiet too. A viewer already running is reused
 without relaunching it (relaunching would bring its window forward).
 
@@ -190,13 +202,13 @@ action. Roadshow's own Shift+Alt+F8 hotkey or Commodities Exchange can also
 show the retained messages. NovaDock does not change interface debug flags or
 Roadshow startup files. An already-open log window is left available; turning
 Debug log off prevents subsequent operations from opening it automatically.
-Roadshow closes its viewer during full-stack shutdown, so the next Online
-operation starts a new hidden viewer when debug logging is off.
+The viewer remains available between interface disconnects. If Roadshow was
+fully shut down separately, Online starts a new hidden viewer when needed.
 
 `NetLogViewer` must be installed with Roadshow. If capture cannot be started,
 NovaDock reports that error and leaves the requested operation unstarted,
 rather than silently producing an unwanted console. Explicit connection or
-shutdown failures still use NovaDock's normal error requester. Passive polling
+disconnect failures still use NovaDock's normal error requester. Passive polling
 and opening Settings never start the viewer or the network stack.
 
 

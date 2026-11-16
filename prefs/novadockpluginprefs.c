@@ -5,6 +5,8 @@
 #define IntuitionBase NDPluginIntuitionBase
 #define GadToolsBase NDPluginGadToolsBase
 #define AslBase NDPluginAslBase
+#define GfxBase NDPluginGfxBase
+#define IconBase NDPluginIconBase
 #include <exec/types.h>
 #include <exec/memory.h>
 #include <dos/dos.h>
@@ -14,6 +16,7 @@
 #include <proto/gadtools.h>
 #include <proto/asl.h>
 #include <intuition/intuition.h>
+#include <intuition/gadgetclass.h>
 #include <libraries/gadtools.h>
 #include <libraries/asl.h>
 #include <stdio.h>
@@ -21,11 +24,14 @@
 #include <stdlib.h>
 #include "nd_config.h"
 #include "nd_options.h"
+#include "nd_music_formats.h"
+#include "nd_sensors.h"
 #include "nd_control_client.h"
 #include "nd_prefs_nav.h"
 #include "nd_prefs_session.h"
 #include "nd_prefs_layout.h"
 #include "nd_prefs_help.h"
+#include "nd_manifest.h"
 
 #define PP_ROWS 12
 #define PP_PAGE_ROWS 5
@@ -60,9 +66,14 @@ struct PluginPrefs {
     APTR visual;
     char title[90];
     const char *save_error;
+    unsigned short icon_preview[1024];
+    int icon_preview_kind,icon_preview_custom;
+    unsigned long sensor_available;
     char choices[PP_ROWS][96];
     STRPTR choice_labels[PP_ROWS][18];
 };
+static void collection_preview_load(struct PluginPrefs *p);
+static void collection_preview_paint(struct PluginPrefs *p);
 static int network_option_index(const struct PluginPrefs *p,const char *key)
 {
     int i;for(i=0;i<p->total_count;++i)if(!strcmp(p->definitions[i].key,key))return i;
@@ -117,8 +128,12 @@ static int network_picker(const struct PluginPrefs *p,const struct NDOptionDef *
     if(!strcmp(d->key,"DEVICE"))return 2;
     return 0;
 }
+static int whdload_settings(const struct PluginPrefs *p)
+{const char *schema=nd_option_schema_id(p->config,p->id);return !strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"ACTIONS");}
+static int music_format_checkbox(const struct PluginPrefs *p,const struct NDOptionDef *d)
+{return (!strcmp(nd_option_schema_id(p->config,p->id),"MUSICLIB") && nd_music_format_index(d->key)>=0) || (!strcmp(nd_option_schema_id(p->config,p->id),"SENSORS") && nd_sensor_index(d->key)>=0);}
 static int has_picker(const struct PluginPrefs *p,const struct NDOptionDef *d)
-{return !strcmp(d->type,"FILE") || network_picker(p,d);}
+{return !strcmp(d->type,"FILE") || network_picker(p,d) || (whdload_settings(p) && !strcmp(d->key,"ICON"));}
 static int choice_index(struct PluginPrefs *p,int row,const char *choice)
 {
     int j;
@@ -147,7 +162,8 @@ static int collect_page(struct PluginPrefs *p)
     int i,at=visible_start(p);
     for (i=0;i<page_rows(p) && at+i<p->count;++i) {
         const struct NDOptionDef *def=&p->definitions[at+i];
-        if (!strcmp(def->type,"BOOL") || !strcmp(def->type,"CHOICE")) {
+        if(music_format_checkbox(p,def))strcpy(p->edits[at+i],p->active[i] ? "YES":"NO");
+        else if (!strcmp(def->type,"BOOL") || !strcmp(def->type,"CHOICE")) {
             int ix=p->active[i];
             if (ix<0 || ix>=17 || !p->choice_labels[i][ix]) return 0;
             strcpy(p->edits[at+i],p->choice_labels[i][ix]);
@@ -177,7 +193,7 @@ static void close_ui(struct PluginPrefs *p)
 static int open_ui(struct PluginPrefs *p)
 {
     int i,at=visible_start(p),left,top,visible_rows,button_y;
-    int base_width=p->focused ? 500 : 620;
+    int base_width=p->focused ? (whdload_settings(p) ? 580:500) : 620;
     int base_height=183,width,height,font_x=8,font_y=8;
     int field_x=p->focused ? 190 : 300;
     int field_w=p->focused ? 295 : 305;
@@ -232,7 +248,13 @@ static int open_ui(struct PluginPrefs *p)
         if (has_picker(p,d))
             row_field_w=p->focused ? 400-field_x : 210;
         field(p,&ng,field_x,16+i*24,row_field_w,16,G_FIRST+i,(STRPTR)d->label);
-        if (!strcmp(d->type,"BOOL") || !strcmp(d->type,"CHOICE")) {
+        if(!p->focused && whdload_settings(p) && !strcmp(d->key,"ICON")){
+            ng.ng_LeftEdge+=nd_prefs_layout_x(&p->layout,22);ng.ng_Width-=nd_prefs_layout_w(&p->layout,22);ng.ng_GadgetText=NULL;
+        }
+        if(music_format_checkbox(p,d)){
+            p->active[i]=!strcmp(p->edits[current],"YES");
+            p->fields[i]=p->last=CreateGadget(CHECKBOX_KIND,p->last,&ng,GTCB_Checked,(ULONG)p->active[i],TAG_DONE);
+        }else if (!strcmp(d->type,"BOOL") || !strcmp(d->type,"CHOICE")) {
             open_choices(p,i,!strcmp(d->type,"BOOL") ? "NO,YES" : d->choices);
             p->active[i]=choice_index(p,i,p->edits[current]);
             p->fields[i]=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
@@ -241,7 +263,7 @@ static int open_ui(struct PluginPrefs *p)
         } else {
             p->fields[i]=p->last=CreateGadget(STRING_KIND,p->last,&ng,
                        GTST_String,(ULONG)p->edits[current],
-                       GTST_MaxChars,ND_OPT_VALUE_LEN-1,
+                       GTST_MaxChars,(whdload_settings(p) && !strcmp(d->key,"LABEL")) ? ND_LABEL_LEN-1 : ND_OPT_VALUE_LEN-1,
                        GA_Disabled,(ULONG)sampling_field_disabled(p,d),TAG_DONE);
             if (p->last && has_picker(p,d)) {
                 field(p,&ng,p->focused ? 405 : 515,16+i*24,
@@ -259,15 +281,17 @@ static int open_ui(struct PluginPrefs *p)
             ng.ng_Flags=0;
             p->scroll=p->last=CreateGadget(SCROLLER_KIND,p->last,&ng,
                 GTSC_Top,p->top,GTSC_Total,p->count,
-                GTSC_Visible,page_rows(p),GTSC_Arrows,10,
-                PGA_Freedom,FREEVERT,TAG_DONE);
+                GTSC_Visible,page_rows(p),GTSC_Arrows,nd_prefs_layout_h(&p->layout,10),
+                GA_RelVerify,TRUE,PGA_Freedom,LORIENT_VERT,TAG_DONE);
             if (!p->last) return 0;
         }
         if(!strcmp(p->id,"NET") && !button(p,20,button_y,G_ADVANCED,
             p->advanced ? "Basic":sampling_override(p) ? "Advanced *":"Advanced..."))return 0;
         if (p->count && (!button(p,315,button_y,G_USE,"Use") ||
             !button(p,405,button_y,G_SAVE,"Save"))) return 0;
-        sprintf(p->title,"%s settings",p->id);
+        {const char *name=nd_manifest_builtin_name(nd_option_schema_id(p->config,p->id));
+         sprintf(p->title,"%s settings",name ? name:p->id);}
+        if(!strcmp(nd_option_schema_id(p->config,p->id),"SENSORS") && !p->sensor_available)strcat(p->title," - no sensors detected");
     } else {
         if(!strcmp(p->id,"NET") && !button(p,319,151,G_ADVANCED,
             p->advanced ? "Basic":sampling_override(p) ? "Advanced *":"Advanced..."))return 0;
@@ -287,23 +311,36 @@ static int open_ui(struct PluginPrefs *p)
            WA_Flags,WFLG_SMART_REFRESH|WFLG_ACTIVATE,TAG_DONE);
     if (!p->win) return 0;
     GT_RefreshWindow(p->win,NULL);
+    if(whdload_settings(p)){collection_preview_load(p);collection_preview_paint(p);}
     return 1;
 }
 #include "nd_network_picker.h"
+#include "nd_icon_picker.h"
 static void choose_file(struct PluginPrefs *p,int row)
 {
     struct FileRequester *fr;
-    int at=visible_start(p)+row,kind;
+    int at=visible_start(p)+row,kind,folder_only;
     char path[ND_OPT_VALUE_LEN],drawer[ND_OPT_VALUE_LEN]="",file[ND_OPT_VALUE_LEN]="";
     const char *title="Select file",*pattern="#?";
     if(row<0 || row>=PP_ROWS || at>=p->count || !has_picker(p,&p->definitions[at]))return;
+    if(whdload_settings(p) && !strcmp(p->definitions[at].key,"ICON")){choose_collection_icon(p,row);return;}
     kind=network_picker(p,&p->definitions[at]);
+    folder_only=((whdload_settings(p) || !strcmp(p->id,"DOWNLOAD") || !strcmp(p->id,"AMINET")) && !strcmp(p->definitions[at].key,"DRAWER")) || (!strcmp(p->id,"PLACES") && !strncmp(p->definitions[at].key,"BOOKMARK",8));
     if(kind==1){choose_network_profile(p,row);return;}
     if(!AslBase){
         SetWindowTitles(p->win,(STRPTR)"ASL requester unavailable; type the path",(STRPTR)-1);
         DisplayBeep(p->screen);return;
     }
-    if(kind==2){
+    if(folder_only){title=!strcmp(p->id,"PLACES") ? "Select bookmark drawer":"Select drawer";strcpy(drawer,p->edits[at]);}
+    else if(whdload_settings(p) && !strcmp(p->definitions[at].key,"ICONFILE")){
+        const char *name=FilePart(p->edits[at]);
+        title="Select custom icon or picture";
+        strcpy(file,name);
+        if(name>p->edits[at]){
+            unsigned int n=(unsigned int)(name-p->edits[at]);
+            memcpy(drawer,p->edits[at],n);drawer[n]=0;
+        }
+    }else if(kind==2){
         const char *name=FilePart(p->edits[at]);
         title="Select sampling driver";pattern="#?.device";
         strcpy(drawer,"DEVS:Networks");strcpy(file,name);
@@ -311,17 +348,20 @@ static void choose_file(struct PluginPrefs *p,int row)
             unsigned int n=(unsigned int)(name-p->edits[at]);
             memcpy(drawer,p->edits[at],n);drawer[n]=0;
         }
-    }else if(!strcmp(p->id,"DOPUS4"))title="Select DOpus executable";
+    }else if(!strcmp(nd_option_schema_id(p->config,p->id),"WHDLOAD") && !strcmp(p->definitions[at].key,"COMMAND"))title="Select WHDLoad executable";
+    else if(!strcmp(p->id,"DOPUS4"))title="Select DOpus executable";
     else if(!strcmp(p->id,"MUSIC"))title="Select default music application";
     fr=(struct FileRequester *)AllocAslRequestTags(ASL_FileRequest,
-        ASLFR_TitleText,(ULONG)title,ASLFR_InitialDrawer,(ULONG)drawer,
+        ASLFR_TitleText,(ULONG)title,ASLFR_DrawersOnly,folder_only ? TRUE:FALSE,
+        ASLFR_RejectIcons,(whdload_settings(p) && !strcmp(p->definitions[at].key,"ICONFILE")) ? FALSE:TRUE,
+        ASLFR_InitialDrawer,(ULONG)drawer,
         ASLFR_InitialFile,(ULONG)file,ASLFR_DoPatterns,kind ? TRUE:FALSE,
         ASLFR_InitialPattern,(ULONG)pattern,
         ASLFR_Window,(ULONG)p->win,ASLFR_SleepWindow,TRUE,TAG_DONE);
     if(!fr)return;
     if(AslRequest(fr,NULL)){
         strncpy(path,fr->fr_Drawer,sizeof(path)-1);path[sizeof(path)-1]=0;
-        if(AddPart(path,fr->fr_File,sizeof(path))){
+        if(folder_only || AddPart(path,fr->fr_File,sizeof(path))){
             strcpy(p->edits[at],path);
             GT_SetGadgetAttrs(p->fields[row],p->win,NULL,GTST_String,(ULONG)path,TAG_DONE);
         }else{SetWindowTitles(p->win,(STRPTR)"Selected path is too long",(STRPTR)-1);DisplayBeep(p->screen);}
@@ -330,16 +370,20 @@ static void choose_file(struct PluginPrefs *p,int row)
 }
 static int stage_options(struct PluginPrefs *p)
 {
-    int i;
+    int result;
     if (!p->count) return 1;
     if(!strcmp(p->id,"NET") && !sampling_override(p)){
         int device=network_option_index(p,"DEVICE"),unit=network_option_index(p,"UNIT");
         if(device>=0)p->edits[device][0]=0;
         if(unit>=0)strcpy(p->edits[unit],"0");
     }
-    for (i=0;i<p->total_count;++i) {
-        if (!nd_option_set(p->config,p->id,p->definitions[i].key,p->edits[i]))
-            return 0;
+    result=nd_option_apply(p->config,p->id,p->definitions,
+                          (const char (*)[ND_OPT_VALUE_LEN])p->edits,p->total_count);
+    if(result!=1){
+        p->save_error=result==-1 ? "NovaDock - too many saved settings":
+                      result==-2 ? "NovaDock - not enough memory to apply settings":
+                                   "NovaDock - a plugin setting is invalid";
+        return 0;
     }
     ND_PREFS_MARK_DIRTY();
     return 1;
@@ -375,6 +419,14 @@ static int start(struct PluginPrefs *p,const char *id)
             !strcmp(p->config->items[i].id,id)) {found=1;break;}
     if (!found) return 0;
     p->count=nd_option_collect(p->config,id,p->definitions,PP_MAX);
+    if(!strcmp(nd_option_schema_id(p->config,id),"SENSORS")){
+        struct DateStamp stamp;unsigned long now;int kept=0,index;
+        DateStamp(&stamp);now=(unsigned long)stamp.ds_Days*86400UL+(unsigned long)stamp.ds_Minute*60UL+(unsigned long)stamp.ds_Tick/50UL;
+        p->sensor_available=nd_sensor_available_for(id,now);
+        for(i=0;i<p->count;++i){index=nd_sensor_index(p->definitions[i].key);
+            if(index<0 || (p->sensor_available&(1UL<<index)))p->definitions[kept++]=p->definitions[i];}
+        p->count=kept;
+    }
     p->total_count=p->basic_count=p->count;
     p->basic_count=nd_option_group_settings(id,p->definitions,p->total_count);
     for (i=0;i<p->total_count;++i) {
@@ -427,6 +479,7 @@ int nd_plugin_prefs_run(int argc,char **argv)
             else if (kind==IDCMP_RAWKEY && code==ND_HELP_KEY) nd_prefs_help(p->screen);
             else if (kind==IDCMP_REFRESHWINDOW) {
                 GT_BeginRefresh(p->win);GT_EndRefresh(p->win,TRUE);
+                if(whdload_settings(p))collection_preview_paint(p);
             } else if (kind==IDCMP_GADGETUP) {
                 if (id==G_CLOSE) {p->done=1;result=0;}
                 else if(id==G_ADVANCED && !strcmp(p->id,"NET")){
@@ -448,7 +501,10 @@ int nd_plugin_prefs_run(int argc,char **argv)
                 } else if (id>=G_FIRST && id<G_FIRST+PP_ROWS) {
                     int row=(int)id-G_FIRST;
                     int at=visible_start(p)+row;
-                    if (at<p->count &&
+                    if(at<p->count && music_format_checkbox(p,&p->definitions[at])){
+                        p->active[row]=(p->fields[row]->Flags&GFLG_SELECTED)!=0;
+                        strcpy(p->edits[at],p->active[row] ? "YES":"NO");
+                    }else if (at<p->count &&
                         (!strcmp(p->definitions[at].type,"BOOL") ||
                          !strcmp(p->definitions[at].type,"CHOICE")) &&
                         code<17 && p->choice_labels[row][code]) {
@@ -458,9 +514,13 @@ int nd_plugin_prefs_run(int argc,char **argv)
                             if(!collect_page(p)){DisplayBeep(p->screen);continue;}
                             close_ui(p);if(!open_ui(p))p->done=1;
                         }
+                    }else if(at<p->count && whdload_settings(p) &&
+                        (!strcmp(p->definitions[at].key,"ICON") || !strcmp(p->definitions[at].key,"ICONFILE"))){
+                        if(collect_page(p)){collection_preview_load(p);collection_preview_paint(p);}
                     }
                 } else if (id>=G_FILE_FIRST && id<G_FILE_FIRST+PP_ROWS) {
                     choose_file(p,(int)id-G_FILE_FIRST);
+                    if(whdload_settings(p)){collection_preview_load(p);collection_preview_paint(p);}
                 } else if (id==G_SCROLL && p->focused && p->scroll) {
                     ULONG new_top=(ULONG)p->top;
                     if (!collect_page(p)) {DisplayBeep(p->screen);continue;}

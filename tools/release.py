@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT/'tools'))
 import build_provenance as provenance
 import release_credentials as credentials
 import release_source
+import release_notes
 Q = lambda value: urllib.parse.quote(str(value), safe='')
 
 
@@ -164,6 +165,7 @@ def build_commands(out, python=None):
     py = python or sys.executable
     return [
         (py, 'tools/update_version.py', '--check'),
+        (py, 'tools/release_notes.py', '--check'),
         (py, 'tools/update_site_chrome.py', '--check'),
         (py, 'tools/generate_catalog.py'),
         (py, 'tools/make_amigaguide.py'),
@@ -223,9 +225,8 @@ def seal_assets(out):
     names = required_assets(version()) - {'SHA256SUMS.txt'}
     for name in names:
         payload = (out/name).read_bytes()
-        for secret in credentials.known():
-            if secret.encode() in payload:
-                raise ValueError('A credential appears in release output; remove it and build again.')
+        if credentials.contains_secret(payload):
+            raise ValueError('A credential appears in release output; remove it and build again.')
     (out/'SHA256SUMS.txt').write_text(''.join(digest(out/name)+'  '+name+'\n' for name in sorted(names)))
     return {name: digest(out/name) for name in sorted(names | {'SHA256SUMS.txt'})}
 
@@ -249,7 +250,7 @@ def build(args):
     env['PATH'] = str(Path(py).parent)+os.pathsep+env.get('PATH', '')
     if env.get('VBCC'):
         env['PATH'] = str(Path(env['VBCC'])/'bin')+os.pathsep+env.get('PATH', '')
-    env['UPLOADER'] = getattr(args, 'uploader', None) or cfg.get('uploader', 'support@retrocs.org')
+    env['UPLOADER'] = getattr(args, 'uploader', None) or cfg.get('uploader', 'frossmant@icloud.com')
     env['AUTHOR'] = cfg.get('author', 'NovaDock contributors')
     env['SANITIZE'] = '1'
     env['ND_DEFER_WEB_CHECKS'] = '1'
@@ -266,9 +267,8 @@ def build(args):
     inputs = provenance.source_inputs(ROOT)
     for name in inputs:
         payload = (ROOT/name).read_bytes()
-        for secret in credentials.known(cfg):
-            if secret.encode() in payload:
-                raise ValueError('A credential appears in a release input; remove it before building.')
+        if credentials.contains_secret(payload, cfg):
+            raise ValueError('A credential appears in a release input; remove it before building.')
     before = provenance.fingerprint(inputs)
     write_json(out/'build-state.json', {'phase': 'building', 'source_sha256': before, 'inputs': inputs})
     sha = commit()
@@ -408,7 +408,7 @@ def check(args):
 
 
 def release_tag(value=None):
-    tag = 'v'+version() if value is None else value
+    tag = version() if value is None else value
     if not isinstance(tag, str) or not tag or tag.startswith('-'):
         raise ValueError('Invalid release tag.')
     result = subprocess.run(['git', 'check-ref-format', 'refs/tags/'+tag],
@@ -435,10 +435,16 @@ def prepare(args):
     state, info = check_build(out)
     cfg = config(args.config)
     targets = destinations(cfg)
+    notes = (out/'RELEASE-NOTES.md').read_text('utf-8')
     if getattr(args, 'notes', None):
-        if (out/'manifest.json').exists():
+        if previous:
             raise ValueError('Manifest is immutable; use a fresh release directory for new notes.')
-        (out/'RELEASE-NOTES.md').write_text(args.notes.read_text())
+        notes = args.notes.read_text('utf-8')
+    elif not previous and tag != version():
+        notes = release_notes.markdown(ROOT, tag)
+    release_notes.validate_notes(notes, ROOT, tag)
+    if notes != (out/'RELEASE-NOTES.md').read_text('utf-8'):
+        (out/'RELEASE-NOTES.md').write_text(notes, encoding='utf-8')
         state['assets'] = seal_assets(out)
         write_json(out/'build-state.json', state)
     manifest = {'schema': 2, 'version': version(), 'tag': tag,
@@ -449,9 +455,8 @@ def prepare(args):
     manifest['publication_assets'] = publication_assets(manifest)
     if not manifest['tag_message'].strip() or '\0' in manifest['tag_message']:
         raise ValueError('Tag annotation must not be empty or contain NUL.')
-    for secret in credentials.known(cfg):
-        if secret in json.dumps(manifest):
-            raise ValueError('A credential appears in release metadata; remove it before preparing.')
+    if credentials.contains_secret(json.dumps(manifest).encode(), cfg):
+        raise ValueError('A credential appears in release metadata; remove it before preparing.')
     for name in ('manifest.json', 'release.json'):
         path = out/name
         if path.is_symlink():
@@ -508,16 +513,22 @@ def publish_github(api, project, directory, manifest, dry):
         return
     if not release:
         release = api.call('POST', path, {'tag_name': manifest['tag'], 'target_commitish': manifest['commit'],
-                           'name': 'NovaDock '+manifest['version'], 'body': (directory/'RELEASE-NOTES.md').read_text(),
-                           'draft': True, 'prerelease': manifest['version'].startswith('0.')})
+                           'name': manifest['tag'], 'body': (directory/'RELEASE-NOTES.md').read_text(),
+                           'draft': True, 'prerelease': False})
     uploads = API('https://uploads.github.com', getattr(api, 'token', None) or os.environ['GITHUB_TOKEN'], github=True)
     for name in files:
         if name not in existing:
             response = uploads.call('POST', path+'/'+str(release['id'])+'/assets?name='+Q(name), upload=directory/name)
             if response.get('digest') != 'sha256:'+files[name]:
                 raise ValueError('GitHub upload digest mismatch: '+name)
-    if release['draft']:
-        api.call('PATCH', path+'/'+str(release['id']), {'draft': False})
+    # Publish only after every asset verifies. Explicitly bypass GitHub's
+    # version-based latest heuristic, including for releases below 1.0.
+    api.call('PATCH', path+'/'+str(release['id']),
+             {'draft': False, 'prerelease': False, 'make_latest': 'true'})
+    latest = api.call('GET', path+'/latest')
+    if (latest.get('id') != release['id'] or latest.get('tag_name') != manifest['tag']
+            or latest.get('draft') is not False or latest.get('prerelease') is not False):
+        raise ValueError('GitHub did not confirm this normal release as Latest; preserve the receipt and inspect it.')
     print('GitHub release complete:', manifest['tag'])
 
 
@@ -526,6 +537,8 @@ def publish_gitlab(api, project, directory, manifest, dry):
     path = '/projects/'+Q(project)
     release_path = path+'/releases/'+Q(manifest['tag'])
     release = api.call('GET', release_path, missing=True)
+    if release and release.get('upcoming_release'):
+        raise ValueError('GitLab release is future-dated; review its publication date before retrying.')
     links = []
     missing = []
     for name, sha in files.items():
@@ -547,8 +560,12 @@ def publish_gitlab(api, project, directory, manifest, dry):
         if uploaded != files[name]:
             raise ValueError('GitLab upload verification failed: '+name)
     if not release:
-        api.call('POST', path+'/releases', {'tag_name': manifest['tag'], 'name': 'NovaDock '+manifest['version'],
+        api.call('POST', path+'/releases', {'tag_name': manifest['tag'], 'name': manifest['tag'],
                  'description': (directory/'RELEASE-NOTES.md').read_text(), 'assets': {'links': links}})
+    latest = api.call('GET', path+'/releases?order_by=released_at&sort=desc&per_page=1')
+    if (not isinstance(latest, list) or not latest
+            or latest[0].get('tag_name') != manifest['tag'] or latest[0].get('upcoming_release')):
+        raise ValueError('GitLab did not confirm this release as latest; preserve the receipt and inspect release dates.')
     print('GitLab release complete:', manifest['tag'])
 
 
@@ -833,7 +850,7 @@ def main():
         if name in ('build', 'prepare', 'release'):
             p.add_argument('--uploader')
         if name in ('prepare', 'publish', 'release'):
-            p.add_argument('--tag', help='Exact Git tag; default v<VERSION> when preparing a new release')
+            p.add_argument('--tag', help='Exact Git tag; default VERSION (no v prefix) when preparing a new release')
             p.add_argument('--tag-message', help='Annotation recorded during prepare; publishing only verifies it')
         if name in ('prepare', 'release'):
             p.add_argument('--notes', type=Path)

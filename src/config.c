@@ -2,6 +2,7 @@
 #include "nd_config.h"
 #include "nd_version.h"
 #include "nd_options.h"
+#include "nd_collection_icons.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -173,6 +174,7 @@ static const char *config_theme_id(int theme)
     case ND_THEME_BEOS: return "BeOS";
     case ND_THEME_NORD: return "Nord";
     case ND_THEME_VAPOR: return "Vapor";
+    case ND_THEME_CHRISTMAS: return "Christmas";
     default: return "Mocha";
     }
 }
@@ -576,15 +578,36 @@ int nd_set_item_enabled(struct NDConfig *cfg,int index,int enabled)
 }
 int nd_plugin_allows_multiple(const struct NDItem *item)
 {
-    return item && item->kind==ND_ITEM_PLUGIN && item->multiple_instances;
+    return item && item->kind==ND_ITEM_PLUGIN &&
+        (item->multiple_instances || nd_independent_plugin_path(item->command));
 }
 int nd_add_plugin_instance(struct NDConfig *cfg,int index)
 {
     struct NDItem *item;
+    int i,j,number,options=0,old_options,independent;char id[20];
     if (!cfg || index<0 || index>=cfg->count || cfg->count>=ND_MAX_ITEMS ||
         !nd_plugin_allows_multiple(&cfg->items[index])) return 0;
+    independent=nd_independent_plugin_path(cfg->items[index].command);
+    old_options=cfg->option_count;
+    if(independent){
+        for(i=0;i<old_options;++i)if(!strcmp(cfg->options[i].id,cfg->items[index].id))++options;
+        if(old_options+options>ND_MAX_OPTIONS)return 0;
+        for(number=2;number<10000;++number){
+            sprintf(id,"%s_%d",nd_independent_plugin_path(cfg->items[index].command)==4 ? "ACTIONS":nd_independent_plugin_path(cfg->items[index].command)==3 ? "SENSORS":nd_independent_plugin_path(cfg->items[index].command)==2 ? "MUSICLIB":"WHDLOAD",number);
+            for(j=0;j<cfg->count;++j)if(!strcmp(cfg->items[j].id,id))break;
+            if(j==cfg->count)break;
+        }
+        if(number==10000)return 0;
+    }
     item=&cfg->items[cfg->count];
     *item=cfg->items[index];
+    if(independent){
+        strcpy(item->id,id);item->multiple_instances=1;
+        for(i=0;i<old_options;++i)if(!strcmp(cfg->options[i].id,cfg->items[index].id)){
+            cfg->options[cfg->option_count]=cfg->options[i];
+            strcpy(cfg->options[cfg->option_count++].id,id);
+        }
+    }
     copy_string(item->caption,item->label,sizeof(item->caption));
     copy_string(item->value,"OFFLINE",sizeof(item->value));
     item->meter=65535U;
@@ -614,8 +637,22 @@ int nd_remove_visible_item(struct NDConfig *cfg, int visible)
     int row = nd_visible_to_full(cfg, visible);
     int layout_row=visible_row(cfg,visible);
     if (!cfg || row < 0) return 0;
-    /* Removing from the dock keeps the definition available in Preferences. */
-    cfg->items[row].enabled = 0;
+    /* WHDLoad instances own their settings; other catalogue entries retain theirs. */
+    if(cfg->items[row].kind==ND_ITEM_PLUGIN && nd_independent_plugin_path(cfg->items[row].command)){
+        char id[20];int i,w;
+        strcpy(id,cfg->items[row].id);
+        for(i=0,w=0;i<cfg->option_count;++i)
+            if(strcmp(cfg->options[i].id,id))cfg->options[w++]=cfg->options[i];
+        cfg->option_count=w;
+        if(strcmp(id,nd_independent_plugin_path(cfg->items[row].command)==4 ? "ACTIONS":nd_independent_plugin_path(cfg->items[row].command)==3 ? "SENSORS":nd_independent_plugin_path(cfg->items[row].command)==2 ? "MUSICLIB":"WHDLOAD")){
+            cfg->items[row].enabled=0;
+            if(!nd_remove_plugin(cfg,id))return 0;
+        }else{
+            const char *label=nd_independent_plugin_path(cfg->items[row].command)==4 ? "ACTIONS":nd_independent_plugin_path(cfg->items[row].command)==3 ? "SENSOR":nd_independent_plugin_path(cfg->items[row].command)==2 ? "MUSIC":"WHDLoad";
+            cfg->items[row].enabled=0;
+            strcpy(cfg->items[row].label,label);strcpy(cfg->items[row].caption,label);
+        }
+    }else cfg->items[row].enabled = 0;
     if (layout_row>=0 && cfg->row_counts[layout_row]>0)
         --cfg->row_counts[layout_row];
     return 1;
@@ -789,6 +826,33 @@ int nd_script_plugin_path(const char *command)
     for (p=command;*p;++p) if (*p==':' || *p=='/') base=p+1;
     return !strcmp(base,"Script");
 }
+int nd_games_plugin_path(const char *command)
+{
+    const char *base,*p;
+    if(!command)return 0;
+    base=command;for(p=command;*p;++p)if(*p==':' || *p=='/')base=p+1;
+    return !strcmp(base,"Games");
+}
+int nd_collection_plugin_path(const char *command)
+{
+    const char *base,*p;if(nd_games_plugin_path(command))return 1;
+    if(!command)return 0;base=command;for(p=command;*p;++p)if(*p==':' || *p=='/')base=p+1;
+    return !strcmp(base,"MusicLibrary") ? 2:0;
+}
+int nd_sensor_plugin_path(const char *command)
+{
+ const char *base,*p;if(!command)return 0;base=command;
+ for(p=command;*p;++p)if(*p==':' || *p=='/')base=p+1;
+ return !strcmp(base,"Sensors");
+}
+int nd_actions_plugin_path(const char *command)
+{
+ const char *base,*p;if(!command)return 0;base=command;
+ for(p=command;*p;++p)if(*p==':' || *p=='/')base=p+1;
+ return !strcmp(base,"Actions");
+}
+int nd_independent_plugin_path(const char *command)
+{int collection=nd_collection_plugin_path(command);return collection ? collection:nd_sensor_plugin_path(command) ? 3:nd_actions_plugin_path(command) ? 4:0;}
 int nd_command_plugin_path(const char *command)
 {
     const char *base,*p;
@@ -806,7 +870,11 @@ const char *nd_option_schema_id(const struct NDConfig *cfg,const char *id)
             return nd_command_plugin_path(cfg->items[i].command) ?
                    ND_COMMAND_SCHEMA :
                    nd_script_plugin_path(cfg->items[i].command) ?
-                   ND_SCRIPT_SCHEMA : id;
+                   ND_SCRIPT_SCHEMA :
+                   nd_collection_plugin_path(cfg->items[i].command)==1 ? "WHDLOAD" :
+                   nd_collection_plugin_path(cfg->items[i].command)==2 ? "MUSICLIB" :
+                   nd_sensor_plugin_path(cfg->items[i].command) ? "SENSORS":
+                   nd_actions_plugin_path(cfg->items[i].command) ? "ACTIONS":id;
     return id;
 }
 const char *nd_option_get(const struct NDConfig *cfg, const char *id, const char *key)
@@ -861,10 +929,19 @@ int nd_option_set(struct NDConfig *cfg, const char *id, const char *key,
         if (!strcmp(cfg->defs[i].id,id) && !strcmp(cfg->defs[i].key,key))
             spec=&cfg->defs[i];
     if (!spec || !nd_option_validate(spec,value)) return 0;
+    if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"ACTIONS")) && !strcmp(key,"ICON") &&
+       nd_collection_icon_index(value)<0 && strcmp(value,"Custom") && strcmp(value,"Text"))return 0;
+    if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS")) && !strcmp(key,"LABEL")){
+        if(!*value || strlen(value)>=ND_LABEL_LEN)return 0;
+    }
     for (i=0; i<cfg->option_count; ++i) {
         if (!strcmp(cfg->options[i].id,id) && !strcmp(cfg->options[i].key,key)) {
             copy_string(cfg->options[i].value,value,ND_OPT_VALUE_LEN);
             if(!strcmp(id,"NET") && !strcmp(key,"VIEW"))apply_network_view(cfg,value);
+            if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS")) && !strcmp(key,"LABEL")){
+                int j;for(j=0;j<cfg->count;++j)if(cfg->items[j].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[j].id,id))
+                    if(strcmp(cfg->items[j].label,value))copy_string(cfg->items[j].label,value,sizeof(cfg->items[j].label));
+            }
             return 1;
         }
     }
@@ -874,8 +951,34 @@ int nd_option_set(struct NDConfig *cfg, const char *id, const char *key,
     copy_string(cfg->options[i].key,key,sizeof(cfg->options[i].key));
     copy_string(cfg->options[i].value,value,sizeof(cfg->options[i].value));
     if(!strcmp(id,"NET") && !strcmp(key,"VIEW"))apply_network_view(cfg,value);
-    return 1;
+    if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS")) && !strcmp(key,"LABEL")){
+                int j;for(j=0;j<cfg->count;++j)if(cfg->items[j].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[j].id,id))
+                    if(strcmp(cfg->items[j].label,value))copy_string(cfg->items[j].label,value,sizeof(cfg->items[j].label));
+            }
+            return 1;
 }
+int nd_option_apply(struct NDConfig *cfg,const char *id,const struct NDOptionDef *defs,
+                    const char values[][ND_OPT_VALUE_LEN],int count)
+{
+ struct NDConfig *next;const char *current;int i,j,result=1,changes=0;
+ if(!cfg || !id || !defs || !values || count<0)return 0;
+ for(i=0;i<count;++i){
+  if(!nd_option_validate(&defs[i],values[i]))return 0;
+  current=nd_option_get(cfg,id,defs[i].key);if(!current || strcmp(current,values[i]))++changes;
+ }
+ if(!changes)return 1;
+ next=(struct NDConfig *)malloc(sizeof(*next));if(!next)return -2;*next=*cfg;
+ for(i=0;i<count;++i){
+  current=nd_option_get(next,id,defs[i].key);if(current && !strcmp(current,values[i]))continue;
+  if(next->option_count>=ND_MAX_OPTIONS){
+   for(j=0;j<next->option_count;++j)if(!strcmp(next->options[j].id,id)&&!strcmp(next->options[j].key,defs[i].key))break;
+   if(j==next->option_count){result=-1;break;}
+  }
+  if(!nd_option_set(next,id,defs[i].key,values[i])){result=0;break;}
+ }
+ if(result==1)*cfg=*next;free(next);return result;
+}
+
 int nd_options_changed(const struct NDConfig *old,const struct NDConfig *next,
                        const char *id)
 {
@@ -986,6 +1089,7 @@ const char *nd_theme_name(int theme)
     case ND_THEME_BEOS: return "BEOS";
     case ND_THEME_NORD: return "NORD";
     case ND_THEME_VAPOR: return "VAPOR";
+    case ND_THEME_CHRISTMAS: return "CHRISTMAS";
     default: return "MOCHA";
     }
 }
@@ -1103,6 +1207,7 @@ int nd_parse_line(struct NDConfig *cfg, const char *line)
             *sep++='\0'; parts[i]=sep;
         }
         if (strchr(parts[5],'|')) return 0;
+        if(!strcmp(trim(parts[0]),"WHDLOAD") && !strcmp(trim(parts[1]),"DRAWER"))return 1;
         return nd_option_define(cfg,trim(parts[0]),trim(parts[1]),trim(parts[2]),
                                 trim(parts[3]),trim(parts[4]),trim(parts[5]));
     }
@@ -1565,6 +1670,19 @@ int nd_load_config(struct NDConfig *cfg, const char *filename)
         const char *name=nd_plugin_label_upgrade(cfg->items[i].id,cfg->items[i].label);
         if(name)copy_string(cfg->items[i].label,name,sizeof(cfg->items[i].label));
     }}
+    {int i,j;for(i=0;i<cfg->count;++i)if(cfg->items[i].kind==ND_ITEM_PLUGIN && nd_independent_plugin_path(cfg->items[i].command)){
+        const char *icon=nd_option_get(cfg,cfg->items[i].id,"ICON");
+        cfg->items[i].multiple_instances=1;
+        if(nd_collection_plugin_path(cfg->items[i].command) && icon && (!strcmp(icon,"Text") || !strcmp(icon,"Custom")))
+            (void)nd_option_set(cfg,cfg->items[i].id,"ICON",nd_collection_plugin_path(cfg->items[i].command)==2 ? "Music":"WHDLoad");
+        if(nd_collection_plugin_path(cfg->items[i].command)==2){
+            const char *saved_label=nd_option_get(cfg,cfg->items[i].id,"LABEL");
+            const char *name=nd_plugin_label_upgrade("MUSICLIB",saved_label ? saved_label:cfg->items[i].label);
+            if(name)(void)nd_option_set(cfg,cfg->items[i].id,"LABEL",name);
+        }
+        for(j=0;j<cfg->option_count;++j)if(!strcmp(cfg->options[j].id,cfg->items[i].id) && !strcmp(cfg->options[j].key,"LABEL"))break;
+        if(j==cfg->option_count)(void)nd_option_set(cfg,cfg->items[i].id,"LABEL",cfg->items[i].label);
+    }}
     upgrade_network_tiles(cfg);
     normalize_row_counts(cfg);
     apply_saved_network_view(cfg);
@@ -2018,4 +2136,19 @@ int nd_config_low_resource(struct NDConfig *cfg)
        nd_option_set(copy,"EYES","POLL_TICKS","100");
     if(ok)memcpy(cfg,copy,sizeof(*cfg));
     free(copy);return ok;
+}
+
+int nd_games_forget_cache(const char *id)
+{
+    static const char *const suffix[]={"idx","idx.tmp","idx.bak"};
+    char path[110];const char *p;int i,j;
+    static const char *const directories[]={"WHDLoad","MusicLibrary"};
+    if(!id || !*id || strlen(id)>=20)return 0;
+    for(p=id;*p;++p)if(!isalnum((unsigned char)*p) && *p!='_' && *p!='-')return 0;
+    for(j=0;j<2;++j)for(i=0;i<3;++i){
+        sprintf(path,"ENVARC:NovaDock/Cache/%s/%s.%s",directories[j],id,suffix[i]);
+        (void)remove(path);
+    }
+    for(i=0;i<3;++i){sprintf(path,"ENV:NovaDock/Sensors/instance-%s.status%s",id,i==1 ? ".tmp":i==2 ? ".old":"");(void)remove(path);}
+    return 1;
 }

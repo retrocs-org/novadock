@@ -21,6 +21,8 @@ def validate(settings):
             if set(spec) - {'provider', 'reference', 'account', 'vault', 'item', 'field'} or not all(isinstance(v, str) for v in spec.values()):
                 raise ValueError('Invalid 1Password settings for '+service)
             if spec.get('reference'):
+                if any(key in spec for key in ('vault', 'item', 'field')):
+                    raise ValueError('Use a 1Password reference or vault/item/field, not both.')
                 if not re.fullmatch(r'op://[^\r\n]+', spec['reference']):
                     raise ValueError('Invalid 1Password secret reference for '+service)
             elif not all(spec.get(key) for key in ('vault', 'item', 'field')):
@@ -77,6 +79,19 @@ def known(cfg=None):
             names.add(spec.get('variable', service.upper()+'_TOKEN'))
     result.update(os.environ[name] for name in names if os.environ.get(name))
     return result
+
+
+def contains_secret(payload, cfg=None):
+    """Check known credentials and common private-key/repository-token formats."""
+    if any(value.encode() in payload for value in known(cfg)):
+        return True
+    patterns = (
+        rb'-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----',
+        rb'\bgh[pousr]_[A-Za-z0-9]{30,}\b',
+        rb'\bgithub_pat_[A-Za-z0-9_]{30,}\b',
+        rb'\bglpat-[A-Za-z0-9_-]{20,}\b',
+    )
+    return any(re.search(pattern, payload) for pattern in patterns)
 
 
 def build_environment(cfg):

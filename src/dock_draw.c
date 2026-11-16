@@ -1,7 +1,11 @@
+#include "nd_aquarium_art.h"
 /* NovaDock: Drawing: colours, fonts, tile geometry and every tile, badge and graph. */
 #include "dock_internal.h"
+#include "nd_whdload_status.h"
 #include "nd_screen_art.h"
+#include "nd_places_saver_art.h"
 #include "nd_weather_art.h"
+#include "nd_christmas_art.h"
 #include "nd_indicator.h"
 
 /* Defined below, private to this file. */
@@ -1237,7 +1241,9 @@ static void draw_plugin_launcher_artwork(struct NDDock *dock,int index,
     int tiny=dock->conf.item_size==ND_ITEM_SIZE_TINY;
     struct BitMap *art,*art_mask;
     int iw,ih;
-    if (tile_icon_art(dock,index,&art,&art_mask,&iw,&ih)) {
+    if (dock->brushes[index] && draw_brush(dock,index,x,y,tw,th)) {
+        /* Bundled ILBM artwork uses the same cached brush path as launchers. */
+    } else if (tile_icon_art(dock,index,&art,&art_mask,&iw,&ih)) {
         BltMaskBitMapRastPort(art,0,0,
             dock->window->RPort,x+(tw-iw)/2,
             nd_icon_art_top(y,th,ih,tiny),iw,ih,0xE0,art_mask->Planes[0]);
@@ -1272,6 +1278,43 @@ static void screen_art_box(void *data,int role,int left,int top,int width,int he
     int color=role==2 && !ctx->online ? ND_SUBTLE:colors[role];
     trash_rect(ctx->dock,ctx->x,ctx->y,ctx->size,color,left,top,width,height);
 }
+struct ChristmasArtContext {struct NDDock *dock;int x,y,size;LONG pens[8];};
+static void christmas_art_box(void *data,int color,int left,int top,int width,int height)
+{
+ struct ChristmasArtContext *ctx=data;int x1=left*ctx->size/32,y1=top*ctx->size/32;
+ int x2=(left+width)*ctx->size/32,y2=(top+height)*ctx->size/32;
+ if(x2<=x1 || y2<=y1)return;
+ SetAPen(ctx->dock->window->RPort,ctx->pens[color]);
+ RectFill(ctx->dock->window->RPort,ctx->x+x1,ctx->y+y1,ctx->x+x2-1,ctx->y+y2-1);
+}
+struct AquariumArtContext {struct NDDock *dock;int x,y,size;ULONG pens[16];};
+static void aquarium_art_box(void *context,int color,int x,int y,int w,int h)
+{
+ struct AquariumArtContext *ctx=context;int left=x*ctx->size/32,top=y*ctx->size/32;
+ int right=(x+w)*ctx->size/32-1,bottom=(y+h)*ctx->size/32-1;
+ if(right<left || bottom<top)return;SetAPen(ctx->dock->window->RPort,ctx->pens[color]);
+ RectFill(ctx->dock->window->RPort,ctx->x+left,ctx->y+top,ctx->x+right,ctx->y+bottom);
+}
+static void draw_aquarium_tile(struct NDDock *dock,const struct NDItem *item,int x,int y,int tw,int th)
+{
+ struct AquariumArtContext ctx;int i,tiny=dock->conf.item_size==ND_ITEM_SIZE_TINY;unsigned long frame=0,rgb;
+ (void)sscanf(item->value,"FISH %lu",&frame);ctx.dock=dock;ctx.size=tw-12;
+ if(ctx.size>th-(tiny ? 4:24))ctx.size=th-(tiny ? 4:24);if(ctx.size>56)ctx.size=56;
+ ctx.x=x+(tw-ctx.size)/2;ctx.y=nd_icon_art_top(y,th,ctx.size,tiny);
+ for(i=0;i<16;++i){rgb=nd_aquarium_rgb[i];ctx.pens[i]=FindColor(dock->screen->ViewPort.ColorMap,((rgb>>16)&255UL)*0x01010101UL,((rgb>>8)&255UL)*0x01010101UL,(rgb&255UL)*0x01010101UL,-1);}
+ nd_aquarium_tile(&ctx,aquarium_art_box,frame);if(!tiny)centered_text_tight(dock,ND_TEXT,"AQUARIUM",x,y+th-9,tw);
+}
+static void draw_christmas_tile(struct NDDock *dock,const struct NDItem *item,int x,int y,int tw,int th)
+{
+ static const unsigned char rgb[8][3]={{65,63,56},{51,132,78},{129,179,118},{234,197,102},{198,101,109},{124,177,211},{126,98,79},{241,241,220}};
+ struct ChristmasArtContext ctx;int tiny=dock->conf.item_size==ND_ITEM_SIZE_TINY,i;unsigned int frame=0,pattern=0,lights=1;
+ if(sscanf(item->value,"TREE %u %u %u",&frame,&pattern,&lights)!=3){frame=0;pattern=0;lights=1;}
+ ctx.dock=dock;ctx.size=tw-12;if(ctx.size>th-(tiny ? 4:24))ctx.size=th-(tiny ? 4:24);if(ctx.size>56)ctx.size=56;
+ ctx.x=x+(tw-ctx.size)/2;ctx.y=nd_icon_art_top(y,th,ctx.size,tiny);
+ for(i=0;i<8;++i)ctx.pens[i]=FindColor(dock->screen->ViewPort.ColorMap,(ULONG)rgb[i][0]*0x01010101UL,(ULONG)rgb[i][1]*0x01010101UL,(ULONG)rgb[i][2]*0x01010101UL,-1);
+ nd_christmas_art(&ctx,christmas_art_box,frame,(int)(pattern%3),lights!=0);
+ if(!tiny)centered_text_tight(dock,ND_TEXT,"XMAS",x,y+th-9,tw);
+}
 static void draw_screen_plugin_tile(struct NDDock *dock,const struct NDItem *item,
                                     int x,int y,int tw,int th,int screenshot)
 {
@@ -1284,6 +1327,14 @@ static void draw_screen_plugin_tile(struct NDDock *dock,const struct NDItem *ite
     else nd_modes_art(&ctx,screen_art_box);
     if(!tiny)centered_text_tight(dock,ND_TEXT,screenshot ? "SHOT":"SMODE",x,y+th-9,tw);
     if(screenshot)(void)draw_plugin_badge(dock,item,x,y,tw);
+}
+static void draw_utility_tile(struct NDDock *dock,const struct NDItem *item,int x,int y,int tw,int th)
+{
+ struct ScreenArtContext ctx;int tiny=dock->conf.item_size==ND_ITEM_SIZE_TINY;
+ ctx.size=tw-12;if(ctx.size>th-(tiny ? 4:24))ctx.size=th-(tiny ? 4:24);if(ctx.size>48)ctx.size=48;if(ctx.size<8)return;
+ ctx.dock=dock;ctx.online=item->online;ctx.x=x+(tw-ctx.size)/2;ctx.y=nd_icon_art_top(y,th,ctx.size,tiny);
+ if(!strcmp(item->id,"PLACES"))nd_places_art(&ctx,screen_art_box);else nd_saver_art(&ctx,screen_art_box);
+ if(!tiny)centered_text_tight(dock,ND_TEXT,item->label,x,y+th-9,tw);
 }
 static void draw_archiver_tile(struct NDDock *dock,const struct NDItem *item,
                                int x,int y,int tw,int th)
@@ -1666,6 +1717,82 @@ void draw_tile(struct NDDock *dock, int index)
                 centered_text(dock, ND_TEXT, item->label, x, y + th - 9, tw);
             draw_volume_meter(dock, item, x, y, tw, th);
             draw_running_indicator(dock,index,x,y,tw);
+            return;
+        }
+    }
+    if(item->kind==ND_ITEM_PLUGIN && (!strcmp(item->id,"PLACES") || !strcmp(item->id,"SAVER"))){
+        draw_utility_tile(dock,item,x,y,tw,th);return;
+    }
+    if(item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"AQUARIUM")){
+        draw_aquarium_tile(dock,item,x,y,tw,th);return;
+    }
+    if(item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"CHRISTMAS")){
+        draw_christmas_tile(dock,item,x,y,tw,th);return;
+    }
+    if(item->kind==ND_ITEM_PLUGIN && (!strcmp(item->id,"AMINET") || nd_actions_plugin_path(item->command))){
+        draw_plugin_launcher_artwork(dock,index,item->label,x,y,tw,th);return;
+    }
+    if(item->kind==ND_ITEM_PLUGIN && nd_sensor_plugin_path(item->command) &&
+       (!strcmp(item->value,"NO SELECTION") || !strcmp(item->value,"NO SENSORS"))){
+        int tiny=dock->conf.item_size==ND_ITEM_SIZE_TINY;
+        int size=tw-12,ix,iy,col,row;
+        if(size>th-(tiny ? 4:24))size=th-(tiny ? 4:24);if(size>48)size=48;
+        ix=x+(tw-size)/2;iy=nd_icon_art_top(y,th,size,tiny);
+        for(col=3;col<=25;col+=22)for(row=9;row<=21;row+=6)trash_rect(dock,ix,iy,size,ND_SUBTLE,col,row,4,2);
+        trash_rect(dock,ix,iy,size,ND_BG,7,5,18,22);
+        trash_rect(dock,ix,iy,size,ND_SUBTLE,8,6,16,20);
+        trash_rect(dock,ix,iy,size,ND_TEXT,9,6,14,1);
+        trash_rect(dock,ix,iy,size,ND_ACCENT,9,8,14,16);
+        trash_rect(dock,ix,iy,size,ND_BG,10,11,3,3);
+        trash_rect(dock,ix,iy,size,ND_BG,19,11,3,3);
+        trash_rect(dock,ix,iy,size,ND_BG,13,18,6,2);
+        trash_rect(dock,ix,iy,size,ND_BG,11,20,2,2);
+        trash_rect(dock,ix,iy,size,ND_BG,19,20,2,2);
+        if(!tiny)centered_text_tight(dock,ND_TEXT,item->label,x,y+th-9,tw);return;
+    }
+    if(item->kind==ND_ITEM_PLUGIN && nd_collection_plugin_path(item->command)){
+        const char *root=nd_option_get(&dock->conf,item->id,"DRAWER");
+        if(!root || !*root || nd_whd_folder_code(item->value)!=ND_WHD_FOLDER_OK){
+            int tiny=dock->conf.item_size==ND_ITEM_SIZE_TINY;
+            int size=tw-12,ix,iy;
+            if(size>th-(tiny ? 4:24))size=th-(tiny ? 4:24);
+            if(size>48)size=48;
+            ix=x+(tw-size)/2;iy=nd_icon_art_top(y,th,size,tiny);
+            if(nd_collection_plugin_path(item->command)==2){
+                trash_rect(dock,ix,iy,size,ND_BG,3,5,25,23);
+                trash_rect(dock,ix,iy,size,ND_SUBTLE,4,6,23,21);
+                trash_rect(dock,ix,iy,size,ND_TEXT,5,6,21,1);
+                trash_rect(dock,ix,iy,size,ND_ACCENT,5,8,21,17);
+                trash_rect(dock,ix,iy,size,ND_BG,8,11,3,3);
+                trash_rect(dock,ix,iy,size,ND_BG,21,11,3,3);
+                trash_rect(dock,ix,iy,size,ND_BG,12,18,8,2);
+                trash_rect(dock,ix,iy,size,ND_BG,10,20,2,2);
+                trash_rect(dock,ix,iy,size,ND_BG,20,20,2,2);
+                trash_rect(dock,ix,iy,size,ND_TEXT,18,1,3,7);
+                trash_rect(dock,ix,iy,size,ND_TEXT,20,1,6,2);
+                trash_rect(dock,ix,iy,size,ND_TEXT,15,6,6,3);
+            }else{
+            trash_rect(dock,ix,iy,size,ND_BG,4,19,25,11);
+            trash_rect(dock,ix,iy,size,ND_SUBTLE,3,18,25,11);
+            trash_rect(dock,ix,iy,size,ND_TEXT,4,19,23,1);
+            trash_rect(dock,ix,iy,size,ND_ACCENT,5,21,20,5);
+            trash_rect(dock,ix,iy,size,ND_BG,14,10,4,10);
+            trash_rect(dock,ix,iy,size,ND_TEXT,15,10,2,10);
+            trash_rect(dock,ix,iy,size,ND_BG,10,1,12,12);
+            trash_rect(dock,ix,iy,size,ND_SUBTLE,11,2,10,10);
+            trash_rect(dock,ix,iy,size,ND_TEXT,12,3,8,1);
+            trash_rect(dock,ix,iy,size,ND_BG,13,5,2,2);
+            trash_rect(dock,ix,iy,size,ND_BG,18,5,2,2);
+            trash_rect(dock,ix,iy,size,ND_BG,15,8,3,1);
+            trash_rect(dock,ix,iy,size,ND_BG,14,9,1,1);
+            trash_rect(dock,ix,iy,size,ND_BG,18,9,1,1);
+            }
+            if(!tiny)centered_text_tight(dock,ND_TEXT,item->label,x,y+th-9,tw);
+            return;
+        }
+        if(dock->brushes[index] || dock->icons[index] || dock->scaled_icon_bitmaps[index]){
+            draw_plugin_launcher_artwork(dock,index,item->label,x,y,tw,th);
+            (void)draw_plugin_badge(dock,item,x,y,tw);
             return;
         }
     }

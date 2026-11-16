@@ -202,7 +202,7 @@ static int catalog_find(const struct AddItemPage *p,const char *id)
 {
     int i;
     for (i=0;i<p->catalog_count;++i)
-        if (!strcmp(p->plugin_catalog[i].id,id)) return i;
+        if (!p->plugin_catalog[i].problem[0] && !strcmp(p->plugin_catalog[i].id,id)) return i;
     return -1;
 }
 
@@ -218,10 +218,12 @@ static int config_has_plugin(const struct NDConfig *cfg,const char *id)
 static void add_plugin_row(struct AddItemPage *p,int cfg_index,int cat_index,
                            const char *label,const char *id)
 {
+    const char *plugin=cat_index>=0 ? p->plugin_catalog[cat_index].name :
+        nd_manifest_builtin_name(nd_option_schema_id(p->cfg,id));
     int row=p->plugin_count;
     if (row>=ND_PLUGIN_CATALOG_MAX) return;
     p->plugin_row_cfg[row]=cfg_index;p->plugin_row_cat[row]=cat_index;
-    sprintf(p->plugin_names[row],"%-17.17s [%.12s]",label,id);
+    sprintf(p->plugin_names[row],"%.47s",plugin ? plugin : label);
     memset(&p->plugin_nodes[row],0,sizeof(struct Node));
     p->plugin_nodes[row].ln_Name=p->plugin_names[row];
     AddTail(&p->plugin_rows,&p->plugin_nodes[row]);
@@ -238,19 +240,25 @@ static void build_plugin_rows(struct AddItemPage *p)
     NewList(&p->plugin_rows);
     p->plugin_count=0;
     if (!p->catalog_scanned) {
-        p->catalog_count=nd_plugin_catalog_summaries(p->plugin_catalog,
+        p->catalog_count=nd_plugin_catalog_inventory(p->plugin_catalog,
                                                      ND_PLUGIN_CATALOG_MAX);
         p->catalog_scanned=1;
     }
     for (i=0;i<p->cfg->count;++i) {
         const struct NDItem *item=&p->cfg->items[i];
         int active=-1,inactive=-1,seen=0;
+        if(nd_independent_plugin_path(item->command) && strcmp(item->id,nd_actions_plugin_path(item->command) ? "ACTIONS":nd_sensor_plugin_path(item->command) ? "SENSORS":nd_collection_plugin_path(item->command)==2 ? "MUSICLIB":"WHDLOAD"))continue;
         if (item->kind!=ND_ITEM_PLUGIN || !strcmp(item->id,"ROADSHOW") || nd_command_plugin_path(item->command) || nd_script_plugin_path(item->command))
             continue;
         for (j=0;j<i;++j)
             if (p->cfg->items[j].kind==ND_ITEM_PLUGIN &&
                 !strcmp(p->cfg->items[j].id,item->id)) {seen=1;break;}
         if (seen) continue;
+        if (catalog_find(p,item->id)<0) {
+            for (j=0;j<p->catalog_count;++j)
+                if (p->plugin_catalog[j].problem[0] && !strcmp(p->plugin_catalog[j].id,item->id)) break;
+            if (j<p->catalog_count) continue;
+        }
         for (j=i;j<p->cfg->count;++j)
             if (p->cfg->items[j].kind==ND_ITEM_PLUGIN &&
                 !strcmp(p->cfg->items[j].id,item->id)) {
@@ -267,7 +275,7 @@ static void build_plugin_rows(struct AddItemPage *p)
     }
     for (i=0;i<p->catalog_count;++i) {
         const struct NDPluginSummary *e=&p->plugin_catalog[i];
-        if (!strcmp(e->id,"ROADSHOW") || nd_command_plugin_path(e->command) ||
+        if (e->problem[0] || !strcmp(e->id,"ROADSHOW") || nd_command_plugin_path(e->command) ||
             nd_script_plugin_path(e->command) ||
             config_has_plugin(p->cfg,e->id)) continue;
         add_plugin_row(p,-1,i,e->name,e->id);
@@ -301,7 +309,9 @@ static void set_plugin_details(struct AddItemPage *p)
     if (row>=0 && row<p->plugin_count) {
         if (p->plugin_row_cfg[row]>=0) {
             const struct NDItem *item=&p->cfg->items[p->plugin_row_cfg[row]];
-            name=item->label;program=item->command;
+            name=nd_manifest_builtin_name(nd_option_schema_id(p->cfg,item->id));
+            if(!name)name=p->plugin_names[row];
+            program=item->command;
         } else {
             const struct NDPluginSummary *e=
                 &p->plugin_catalog[p->plugin_row_cat[row]];
@@ -450,8 +460,11 @@ static int open_add_ui(struct AddItemPage *p)
                     p->type==ADD_SPACER)) return 0;
     if (p->type==ADD_PLUGIN) {
         build_plugin_rows(p);
-        add_ng(p,&ng,220,48,410,120,A_PLUGIN_LIST,"Installed plugins");
-        ng.ng_Flags=PLACETEXT_ABOVE;
+        add_ng(p,&ng,224,32,400,12,0,NULL);
+        p->last=CreateGadget(TEXT_KIND,p->last,&ng,GTTX_Text,(ULONG)"NovaDock Plugin",TAG_DONE);
+        if (!p->last) return 0;
+        add_ng(p,&ng,220,48,410,120,A_PLUGIN_LIST,NULL);
+        ng.ng_Flags=0;
         p->plugin_list=p->last=CreateGadget(LISTVIEW_KIND,p->last,&ng,
             GTLV_Labels,(ULONG)&p->plugin_rows,
             /* On V39+ NULL means draw the selected row with the native
@@ -696,6 +709,16 @@ static int add_selected(struct AddItemPage *p)
             }
         } else if (p->cfg->items[index].enabled) {
             ok=nd_add_plugin_instance(p->cfg,index);
+            if(ok && nd_independent_plugin_path(p->cfg->items[index].command)){
+                const char *id=p->cfg->items[p->cfg->count-1].id;
+                /* Adding a new collection starts unconfigured, even when the
+                 * catalogue template is already a configured Games tile. */
+                struct NDOptionDef *defs=AllocVec(32*sizeof(*defs),MEMF_PUBLIC|MEMF_CLEAR);
+                int count=defs ? nd_option_collect(p->cfg,id,defs,32):0,j;
+                ok=count>0;
+                for(j=0;ok && j<count;++j)ok=nd_option_set(p->cfg,id,defs[j].key,defs[j].default_value);
+                if(defs)FreeVec(defs);
+            }
             if (ok) row_counted=1;
         } else {
             ok=nd_set_item_enabled(p->cfg,index,1);
@@ -803,6 +826,7 @@ int nd_additem_prefs_run(int argc,char **argv)
         }
     strcpy(p->names[ADD_APP],"New App");strcpy(p->names[ADD_DRAWER],"New Drawer");
     strcpy(p->names[ADD_GROUP],"Applications");
+    if(!strcmp(nd_option_schema_id(p->cfg,p->preselect),"WHDLOAD"))strcpy(p->preselect,"WHDLOAD");
     strcpy(p->names[ADD_SPACER],"Spacer");strcpy(p->names[ADD_COMMAND],"Command");
     strcpy(p->command_interval,"60");strcpy(p->command_line,"1");
     strcpy(p->names[ADD_SCRIPT],"Script");

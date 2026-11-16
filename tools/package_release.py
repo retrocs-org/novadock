@@ -13,17 +13,17 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / 'public-web'
-ROOT_FILES = ('.gitignore', 'README.md', 'CHANGELOG.md', 'DEVELOPMENT.md', 'LICENSE', 'Makefile',
+ROOT_FILES = ('Aminet-parser-LICENSE.txt', '.gitignore', 'README.md', 'CHANGELOG.md', 'DEVELOPMENT.md', 'LICENSE', 'Makefile',
               'Makefile.cross', 'build.amiga', 'install.amiga', 'novadock.cfg',
               'examples.rexx', 'NovaDock.info', 'NovaDockPrefs.info',
               'Plugins/MusicPlayer.info', 'Plugins/RunningApps.info',
               'Plugins/BitSkim.ndplugin', 'Plugins/BitSkim.info', 'Plugins/AmIRC.ndplugin', 'Plugins/AmIRC.info',
               'Plugins/Clipboard.ndplugin', 'Plugins/Clipboard.info',
-              'Plugins/Network.ndplugin', 'Plugins/Network.info', 'Plugins/RunningApps.ndplugin', 'Plugins/Trash.ndplugin', 'Plugins/Games.ndplugin',
+              'Plugins/Network.ndplugin', 'Plugins/Network.info', 'Plugins/RunningApps.ndplugin', 'Plugins/Trash.ndplugin', 'Plugins/Games.ndplugin', 'Plugins/MusicLibrary.ndplugin', 'Plugins/Sensors.ndplugin', 'Plugins/Christmas.ndplugin', 'Plugins/Aquarium.ndplugin', 'Plugins/Places.ndplugin', 'Plugins/Saver.ndplugin', 'Plugins/Download.ndplugin', 'Plugins/System.ndplugin', 'Plugins/Actions.ndplugin',
               'Plugins/Mixer.ndplugin', 'Plugins/Screenshot.ndplugin', 'Plugins/ScreenMode.ndplugin', 'Install-NovaDock',
               'Install-NovaDock.info', 'NovaDock.guide', 'NovaDock.guide.info',
               'BitSkim-icon-LICENSE.txt', 'VERSION')
-SOURCE_DIRS = ('Rexx', 'src', 'prefs', 'plugin_src', 'include', 'Icons', 'Backgrounds', 'Themes',
+SOURCE_DIRS = ('Rexx', 'src', 'prefs', 'plugin_src', 'include', 'Icons', 'Backgrounds', 'Themes', 'Music',
                'docs', 'tests', 'tools', 'catalogs', 'scripts', 'plugin-sdk', 'examples')
 # The release version comes from VERSION (see tools/update_version.py).
 VERSION = next(line.split('=', 1)[1].strip()

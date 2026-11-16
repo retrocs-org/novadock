@@ -5,9 +5,9 @@
  * Overflow paging keeps all active entries reachable on smaller screens. */
 #define ND_MAX_ITEMS 48
 #define ND_MAX_DOCK_ITEMS ND_MAX_ITEMS
-/* Script and Command tiles keep several settings each; 128 leaves room for
- * a few of them beside the bundled plugins' stored values. */
-#define ND_MAX_OPTIONS 128
+/* Bounded storage for independent collections/actions and player profiles.
+ * Editors save changed values only; older explicit defaults remain readable. */
+#define ND_MAX_OPTIONS 512
 #define ND_MAX_OPTION_DEFS 32
 #define ND_OPT_VALUE_LEN 96
 #define ND_OPT_KEY_LEN 32
@@ -76,7 +76,8 @@
 #define ND_THEME_BEOS 9
 #define ND_THEME_NORD 10
 #define ND_THEME_VAPOR 11
-#define ND_THEME_COUNT 12
+#define ND_THEME_CHRISTMAS 12
+#define ND_THEME_COUNT 13
 #define ND_THEME_ID_LEN 32
 #define ND_SHAPE_ROUNDED 0
 #define ND_SHAPE_SQUARE 1

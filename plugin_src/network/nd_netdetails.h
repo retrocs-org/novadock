@@ -66,9 +66,9 @@ static void detail_load(struct NetDetails *p)
     p->lines.lh_Tail=NULL;p->lines.lh_TailPred=(struct Node *)&p->lines.lh_Head;
     load_config(&cfg);backend=backend_for(&cfg);
     if(network_stopping()){
-        detail_line(p,"Roadshow shutdown is pending.");
-        detail_line(p,"Close applications using the network and wait for shutdown to finish.");
-        detail_line(p,"Network status queries are paused during shutdown.");return;
+        detail_line(p,"A network disconnect is pending.");
+        detail_line(p,"Wait for the interface operation to finish.");
+        detail_line(p,"Network status queries are paused during disconnect.");return;
     }
     if(backend)backend->resolve(&cfg);
     sprintf(line,"Stack: %s",backend ? backend->name:"Not detected");detail_line(p,line);
@@ -193,14 +193,14 @@ static int network_error(int kind)
     memset(&easy,0,sizeof(easy));easy.es_StructSize=sizeof(easy);
     easy.es_Title="NovaDock Network";easy.es_GadgetFormat="OK";
     switch(kind){
-    case 1:easy.es_TextFormat="Could not take the Roadshow stack offline.\nCheck Network settings and the Roadshow installation.";break;
-    case 2:easy.es_TextFormat="Roadshow is still shutting down.\nApplications may be holding network resources.\nClose network applications; NovaDock will wait without querying the stack.";break;
+    case 1:easy.es_TextFormat="Could not take the selected Roadshow interface offline.\nCheck Network settings and the Roadshow installation.";break;
+    case 2:easy.es_TextFormat="The network disconnect is still running.\nNovaDock will wait before reconnecting.";break;
     case 3:easy.es_TextFormat="A network operation is still running.\nNo second operation has been started.\nClose network applications and wait for the current operation.";break;
     case 4:easy.es_TextFormat="Online did not finish within the configured wait.\nThe background command is still running.\nNovaDock will wait before accepting another network operation.";break;
-    case 5:easy.es_TextFormat="The offline operation has not replied within 15 seconds.\nThe background shutdown command is still running.\nNovaDock remains responsive and will wait for shutdown to finish.";break;
+    case 5:easy.es_TextFormat="The offline operation has not replied within 15 seconds.\nThe background disconnect command is still running.\nNovaDock remains responsive and will wait for it to finish.";break;
     case 8:easy.es_TextFormat="Could not start Roadshow log capture.\nCheck that C:NetLogViewer is installed.\nThe network operation was not started.";break;
-    case 7:easy.es_TextFormat="Could not take the selected network interface offline.\nFull stack shutdown was not started.\nCheck the interface and ConfigureNetInterface installation.";break;
-    case 6:easy.es_TextFormat="The network driver did not release its pending request.\nShutdown was not started.\nClose network applications and try again.";break;
+    case 7:easy.es_TextFormat="Could not take the selected network interface offline.\nCheck the interface and ConfigureNetInterface installation.";break;
+    case 6:easy.es_TextFormat="The network driver did not release its pending request.\nDisconnect was not started.\nClose network applications and try again.";break;
     default:easy.es_TextFormat="Could not bring the Roadshow interface online.\nCheck the selected interface, device and Roadshow installation.";break;
     }
     EasyRequestArgs(NULL,&easy,NULL,NULL);

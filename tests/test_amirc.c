@@ -6,7 +6,7 @@
 #include "nd_options.h"
 static void manifest_test(void)
 {
-    struct NDManifest m;struct NDConfig cfg;struct NDOptionDef defs[10];
+    struct NDManifest m;struct NDConfig cfg;struct NDOptionDef defs[11];
     char line[300];FILE *f=fopen("Plugins/AmIRC.ndplugin","r");int n;
     assert(f);nd_manifest_init(&m,"AmIRC");
     while(fgets(line,sizeof(line),f)) assert(nd_manifest_line(&m,line));
@@ -31,13 +31,16 @@ static void manifest_test(void)
     nd_manifest_init(&m,"Network");f=fopen("Plugins/Network.ndplugin","r");assert(f);
     while(fgets(line,sizeof(line),f))assert(nd_manifest_line(&m,line));
     fclose(f);assert(nd_manifest_package_ready(&m));
-    assert(m.option_count==10 && !strcmp(m.id,"NET"));
-    assert(nd_option_collect(&cfg,"NET",defs,10)==10);
-    assert(nd_option_group_settings("NET",defs,10)==7);
-    assert(!strcmp(defs[7].key,"SAMPLING_OVERRIDE"));
-    assert(!strcmp(defs[8].key,"DEVICE") && !strcmp(defs[9].key,"UNIT"));
+    assert(m.option_count==11 && !strcmp(m.id,"NET"));
+    assert(nd_option_collect(&cfg,"NET",defs,11)==11);
+    assert(nd_option_group_settings("NET",defs,11)==8);
+    assert(!strcmp(defs[8].key,"SAMPLING_OVERRIDE"));
+    assert(!strcmp(defs[9].key,"DEVICE") && !strcmp(defs[10].key,"UNIT"));
     assert(!strcmp(defs[0].key,"VIEW") && !strcmp(defs[2].key,"INTERFACE"));
     assert(!strcmp(nd_option_get(&cfg,"NET","SAMPLING_OVERRIDE"),"NO"));
+    assert(!strcmp(nd_option_get(&cfg,"NET","AUTO_ONLINE"),"NO"));
+    assert(nd_option_set(&cfg,"NET","AUTO_ONLINE","YES"));
+    assert(!nd_option_set(&cfg,"NET","AUTO_ONLINE","INVALID"));
     assert(!strcmp(nd_option_get(&cfg,"NET","DEBUG_LOG"),"NO"));
     assert(nd_option_set(&cfg,"NET","DEBUG_LOG","YES"));
     assert(!nd_option_set(&cfg,"NET","DEBUG_LOG","MAYBE"));

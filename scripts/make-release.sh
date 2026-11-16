@@ -44,6 +44,9 @@ if not re.search(r'[^\s<>@()]+@[^\s<>@()]+\.[^\s<>@()]+', sys.argv[1]):
     raise SystemExit('Set UPLOADER to your real email before preparing an Aminet submission.')
 CHECK
 fi
+# Standalone local packaging uses the agreed contact unless explicitly supplied.
+UPLOADER=${UPLOADER:-frossmant@icloud.com}
+export UPLOADER
 mkdir -p "$1"
 output=$(CDPATH= cd "$1" && pwd)
 
@@ -74,60 +77,10 @@ drawer="$work/NovaDock"
 rm -f "$drawer/novadock.cfg.default"
 "$PYTHON" "$project_root/tools/generate_info_icons.py" --drawer-icon "$work/NovaDock.info" >/dev/null
 
-uploader=${UPLOADER:-}
-if [ -z "$uploader" ]; then
-    uploader="(set UPLOADER before uploading)"
-fi
-
-# Aminet requires the header block; Short: is at most 40 characters.
-cat >"$drawer/NovaDock.readme" <<README
-Short:        Extensible application dock
-Author:       ${AUTHOR:-NovaDock contributors}
-Uploader:     $uploader
-Type:         util/wb
-Version:      $version
-Architecture: m68k-amigaos >= 3.0.0
-Requires:     AmigaOS 3.0 or later, any 68000 or better
-Distribution: Aminet
-URL:          https://novadock.retrocs.org
-
-NovaDock is a lightweight, extensible dock for Classic AmigaOS Workbench.
-
-FEATURES
-
-- Application, command, drawer and volume launchers; drop icons on the dock
-  to add them; application groups and drawer popups.
-- Twelve themes, importable third-party themes, normal and tiny sizes,
-  auto-hide, any screen edge and multi-row layouts.
-- Running-application indicators, tooltips and removable-media tiles.
-- Plugins include CPU, RAM, clock/calendar, network IN/OUT meters, music,
-  BitSkim transfers, AmIRC, Clippy clipboard history, running apps, mixer,
-  screenshots, Screen Mode, scripts, ZIP/LHA archiving, Timer, Notes and Directory Opus.
-- One Preferences program with a Plugin Manager that imports and removes
-  third-party plugin packages, an organizer, diagnostics and ARexx control.
-- A public plugin SDK and manifest format for third-party plugins.
-
-INSTALLATION
-
-Unpack the archive anywhere and double-click Install-NovaDock in the
-NovaDock drawer. It uses the Installer included with AmigaOS 3.1 and later
-(version 42 or newer) and can also update or remove NovaDock. For a standard-location Shell installation, run "Execute install.amiga" in the NovaDock drawer.
-
-NovaDock and Preferences are installed directly in selected drawers
-(defaults SYS:Utilities and SYS:Prefs), each with its matching .info icon.
-Choose shared data (default SYS:NovaDock, without a drawer icon).
-Help is HELP:NovaDock.guide; only three directory choices are offered. Settings live in
-ENVARC:NovaDock and are kept on updates. German and Swedish translations
-of the dock are included.
-
-SOURCE AND LICENCE
-
-Source, plugin SDK and documentation:
-  https://github.com/retrocs-org/novadock
-  https://novadock.retrocs.org
-
-MIT licence; see LICENSE in the archive.
-README
+# Generate the embedded readme before archiving, using the same changelog as
+# repository release notes. Both Aminet files are reviewed before submission.
+"$PYTHON" "$project_root/tools/release_notes.py" --format aminet \
+    --output "$drawer/NovaDock.readme"
 
 "$PYTHON" "$project_root/tools/aminet_release.py" format-readme \
     "$drawer/NovaDock.readme" --replaces "${AMINET_REPLACES:-}"

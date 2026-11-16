@@ -46,27 +46,28 @@ static int read_text_manifest(const char *path,struct NDManifest *m)
     static char line[512];
     FILE *file=fopen(path,"r");
     int ok=1,ch;
-    if (!file) return 0;
+    if (!file) {strcpy(m->error,"manifest cannot be read");return 0;}
     while (fgets(line,sizeof(line),file)) {
         if (!strchr(line,'\n') && !feof(file)) {
             while ((ch=fgetc(file))!='\n' && ch!=EOF) {}
-            continue;
+            strcpy(m->error,"manifest line too long");ok=0;break;
         }
         if (nd_manifest_line(m,line)==0) {ok=0;break;}
     }
+    if (ferror(file)) {strcpy(m->error,"manifest read failed");ok=0;}
     fclose(file);
     return ok;
 }
 
 /* Catalogue walk.  One scratch entry is parsed at a time and handed to a
  * sink; only IDs are remembered (for duplicate suppression across the
- * install drawers).  The whole walk state lives on the heap (~5 KB). */
+ * install drawers). The walk state and option scratch space live on the heap. */
 typedef int (*NDCatalogSink)(void *ctx,const struct NDPluginCatalogEntry *e);
 struct CatalogWalk {
     struct NDPluginCatalogEntry scratch;
     char ids[ND_PLUGIN_CATALOG_MAX][20];
     char seen[6][256];   /* one per install drawer; they may coincide */
-    int count,maximum,stop;
+    int count,maximum,stop,diagnostics;
     NDCatalogSink sink;
     void *ctx;
 };
@@ -88,7 +89,6 @@ static void catalog_consider(struct CatalogWalk *w,const char *dir,
     if (w->stop || w->count>=w->maximum ||
         strlen(dir)+strlen(exe)+12>=sizeof(path)) return;
     sprintf(path,"%s/%s",dir,exe);
-    if (!is_file(path)) return;
     memset(e,0,sizeof(*e));
     nd_manifest_init(m,exe);
     manifest_path[0]='\0';
@@ -96,11 +96,23 @@ static void catalog_consider(struct CatalogWalk *w,const char *dir,
         sprintf(manifest_path,"%s%s",path,ND_MANIFEST_SUFFIX);
         r=read_text_manifest(manifest_path,m);
     } else r=read_icon_manifest(path,m);
-    if (r<=0 || !nd_manifest_finish(m) || walk_has(w,m->id)) return;
+    /* A normal application icon is not a plugin manifest. */
+    if (r<0) return;
+    if (!r || !nd_manifest_finish(m)) {
+        if (!w->diagnostics) return;
+        strncpy(e->problem,m->error[0] ? m->error : "invalid manifest",sizeof(e->problem)-1);
+    } else if (!is_file(path)) {
+        if (!w->diagnostics) return;
+        strcpy(e->problem,"plugin program is missing");
+    }
+    /* Invalid metadata is shown by file, even when an ID is absent or
+     * duplicates another plugin. It cannot suppress a healthy plugin. */
+    if (!e->problem[0] && walk_has(w,m->id)) return;
     strncpy(e->command,path,sizeof(e->command)-1);
     strncpy(e->manifest_path,manifest_path,sizeof(e->manifest_path)-1);
     e->bundled=nd_manifest_bundled_id(m->id);
-    strcpy(w->ids[w->count++],m->id);
+    if (!e->problem[0]) strcpy(w->ids[w->count],m->id);
+    ++w->count;
     if (!w->sink(w->ctx,e)) w->stop=1;
 }
 
@@ -132,7 +144,7 @@ static void catalog_drawer(struct CatalogWalk *w,const char *dir)
 }
 
 /* Returns the number of plugins handed to SINK, or -1 without memory. */
-static int catalog_walk(int maximum,NDCatalogSink sink,void *ctx)
+static int catalog_walk_mode(int maximum,NDCatalogSink sink,void *ctx,int diagnostics)
 {
     static const char *drawers[]={"PROGDIR:Plugins",
                                   "NovaDock:Plugins",
@@ -149,7 +161,7 @@ static int catalog_walk(int maximum,NDCatalogSink sink,void *ctx)
     if (maximum>ND_PLUGIN_CATALOG_MAX) maximum=ND_PLUGIN_CATALOG_MAX;
     w=(struct CatalogWalk *)AllocVec(sizeof(*w),MEMF_PUBLIC|MEMF_CLEAR);
     if (!w) return -1;
-    w->maximum=maximum;w->sink=sink;w->ctx=ctx;
+    w->maximum=maximum;w->sink=sink;w->ctx=ctx;w->diagnostics=diagnostics;
     if (!IconBase) {
         IconBase=OpenLibrary("icon.library",36);
         opened_icon=IconBase!=NULL;
@@ -180,6 +192,9 @@ static int catalog_walk(int maximum,NDCatalogSink sink,void *ctx)
     return count;
 }
 
+static int catalog_walk(int maximum,NDCatalogSink sink,void *ctx)
+{ return catalog_walk_mode(maximum,sink,ctx,0); }
+
 struct ArraySink { struct NDPluginCatalogEntry *entries; int count; };
 static int array_sink(void *ctx,const struct NDPluginCatalogEntry *e)
 {
@@ -207,6 +222,7 @@ static int summary_sink(void *ctx,const struct NDPluginCatalogEntry *e)
     strncpy(s->command,e->command,sizeof(s->command)-1);
     strncpy(s->version,e->manifest.version,sizeof(s->version)-1);
     s->multiple_instances=e->manifest.multiple_instances;
+    strcpy(s->problem,e->problem);
     return 1;
 }
 int nd_plugin_catalog_summaries(struct NDPluginSummary *out,int maximum)
@@ -215,6 +231,15 @@ int nd_plugin_catalog_summaries(struct NDPluginSummary *out,int maximum)
     if (!out || maximum<=0) return 0;
     a.out=out;a.count=0;
     (void)catalog_walk(maximum,summary_sink,&a);
+    return a.count;
+}
+
+int nd_plugin_catalog_inventory(struct NDPluginSummary *out,int maximum)
+{
+    struct SummarySink a;
+    if (!out || maximum<=0) return 0;
+    a.out=out;a.count=0;
+    (void)catalog_walk_mode(maximum,summary_sink,&a,1);
     return a.count;
 }
 
@@ -264,7 +289,9 @@ static int merge_sink(void *ctx,const struct NDPluginCatalogEntry *e)
 {
     struct MergeSink *a=(struct MergeSink *)ctx;
     struct NDDiscovery *out=a->out;
-    int r=nd_manifest_merge(a->cfg,&e->manifest,e->command);
+    int r;
+    if (e->problem[0]) {note_problem(out,e->manifest.name,e->problem);return 1;}
+    r=nd_manifest_merge(a->cfg,&e->manifest,e->command);
     if (r==ND_MANIFEST_ADDED) {
         if (out->added<ND_DISCOVERY_MAX) {
             strcpy(out->added_ids[out->added],e->manifest.id);
@@ -285,7 +312,7 @@ int nd_discover_plugins(struct NDConfig *cfg,struct NDDiscovery *out)
     if (!cfg || !out) return 0;
     memset(out,0,sizeof(*out));
     a.cfg=cfg;a.out=out;
-    (void)catalog_walk(ND_PLUGIN_CATALOG_MAX,merge_sink,&a);
+    (void)catalog_walk_mode(ND_PLUGIN_CATALOG_MAX,merge_sink,&a,1);
     return out->added;
 }
 int nd_discovery_is_new(const char *id)

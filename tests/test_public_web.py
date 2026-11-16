@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Static legacy-browser website checks; host-side test only."""
+import sys
+SOURCE_ONLY = "--source-only" in sys.argv
 import hashlib
 from html.parser import HTMLParser
 from pathlib import Path
@@ -52,7 +54,7 @@ for file in pages:
     assert not render.stderr, render.stderr.decode()
     contents = render.stdout
     contents.decode('ascii')
-    assert len(contents) < (22000 if file == 'features.php' else (16000 if file == 'marketplace.php' else 13000)), f'{file} is too large'
+    assert len(contents) < (22000 if file == 'features.php' else (20000 if file == 'marketplace.php' else 13000)), f'{file} is too large'
     parser = Links()
     parser.feed(contents.decode('ascii'))
     assert parser.doctype, f'{file} lacks an HTML DOCTYPE'
@@ -94,59 +96,60 @@ for name in ('workbench', 'drawer', 'games', 'internet', 'tools'):
 VERSION = next(line.split('=', 1)[1].strip()
                for line in (root / 'VERSION').read_text('ascii').splitlines()
                if line.startswith('VERSION='))
-download = web/'downloads'/f'NovaDock-{VERSION}-source.zip'
-sdk_download = web/'downloads'/f'NovaDock-{VERSION}-plugin-sdk.zip'
-with ZipFile(download) as z:
-    assert z.testzip() is None
-    contents = z.namelist()
-    assert 'NovaDock/src/novadock.c' in contents
-    assert 'NovaDock/plugin_src/eyes/eyes.c' in contents
-    assert 'NovaDock/README.md' in contents
-    assert 'NovaDock/NovaDock.info' in contents
-    assert 'NovaDock/NovaDockPrefs.info' in contents
-    assert 'NovaDock/Plugins/MusicPlayer.info' in contents
-    assert 'NovaDock/Plugins/RunningApps.info' in contents
-    assert 'NovaDock/Plugins/RunningApps.ndplugin' in contents
-    assert 'NovaDock/Makefile.cross' in contents
-    assert 'NovaDock/scripts/build-amiga.sh' in contents
-    assert 'NovaDock/scripts/build-and-stage-amiga.sh' in contents
-    assert z.read('NovaDock/README.md') == (root / 'README.md').read_bytes()
-    assert z.read('NovaDock/NovaDock.info') == (root / 'NovaDock.info').read_bytes()
-    assert z.read('NovaDock/NovaDockPrefs.info') == (root / 'NovaDockPrefs.info').read_bytes()
-    assert z.read('NovaDock/Plugins/MusicPlayer.info') == \
-        (root / 'Plugins' / 'MusicPlayer.info').read_bytes()
-    assert z.read('NovaDock/Plugins/RunningApps.info') == \
-        (root / 'Plugins' / 'RunningApps.info').read_bytes()
-    assert z.read('NovaDock/Plugins/RunningApps.ndplugin') == \
-        (root / 'Plugins' / 'RunningApps.ndplugin').read_bytes()
-    assert z.read('NovaDock/CHANGELOG.md') == (root / 'CHANGELOG.md').read_bytes()
-    assert z.read('NovaDock/tools/package_release.py') == (root / 'tools/package_release.py').read_bytes()
-    assert z.read('NovaDock/scripts/build-and-stage-amiga.sh') == \
-        (root / 'scripts' / 'build-and-stage-amiga.sh').read_bytes()
-    assert not any('/public-web/' in item for item in contents)
-with ZipFile(sdk_download) as z:
-    assert z.testzip() is None
-    sdk_contents = z.namelist()
-    sdk_root = 'NovaDock-PluginSDK/'
-    for item in ('README.md', 'Makefile', 'include/nd_protocol.h',
-                 'include/nd_client.h', 'include/nd_reply.h', 'src/nd_client.c', 'examples/hello.c',
-                 'include/nd_option_runtime.h', 'src/nd_option_runtime.c',
-                 'examples/Hello.ndplugin'):
-        assert sdk_root + item in sdk_contents
-    assert z.read(sdk_root+'include/nd_protocol.h') == (root/'include'/'nd_protocol.h').read_bytes()
-    assert z.read(sdk_root+'src/nd_client.c') == (root/'plugin_src'/'common'/'nd_client.c').read_bytes()
-    assert z.read(sdk_root+'src/nd_option_runtime.c') == \
-        (root/'plugin_src'/'common'/'nd_option_runtime.c').read_bytes()
-    assert z.read(sdk_root+'examples/hello.c') == (root/'plugin_src'/'template'/'hello.c').read_bytes()
-# Release archives must never nest earlier releases inside the website.
-assert sorted(p.name for p in (web / 'downloads').iterdir()) == sorted([
-    f'NovaDock-{VERSION}-plugin-sdk.zip', f'NovaDock-{VERSION}-source.zip',
-    f'NovaDock-{VERSION}.lha', f'NovaDock-{VERSION}.readme', 'SHA256SUMS.txt'])
-checksum_lines = (web / 'downloads' / 'SHA256SUMS.txt').read_text('ascii').splitlines()
-checksums = dict(line.split('  ', 1)[::-1] for line in checksum_lines)
-assert checksums[download.name] == hashlib.sha256(download.read_bytes()).hexdigest()
-assert checksums[sdk_download.name] == hashlib.sha256(sdk_download.read_bytes()).hexdigest()
-print(f'Public website checks: OK ({len(pages)} PHP pages, stylesheet, GIFs, links, source and Plugin SDK ZIPs)')
+if not SOURCE_ONLY:
+    download = web/'downloads'/f'NovaDock-{VERSION}-source.zip'
+    sdk_download = web/'downloads'/f'NovaDock-{VERSION}-plugin-sdk.zip'
+    with ZipFile(download) as z:
+        assert z.testzip() is None
+        contents = z.namelist()
+        assert 'NovaDock/src/novadock.c' in contents
+        assert 'NovaDock/plugin_src/eyes/eyes.c' in contents
+        assert 'NovaDock/README.md' in contents
+        assert 'NovaDock/NovaDock.info' in contents
+        assert 'NovaDock/NovaDockPrefs.info' in contents
+        assert 'NovaDock/Plugins/MusicPlayer.info' in contents
+        assert 'NovaDock/Plugins/RunningApps.info' in contents
+        assert 'NovaDock/Plugins/RunningApps.ndplugin' in contents
+        assert 'NovaDock/Makefile.cross' in contents
+        assert 'NovaDock/scripts/build-amiga.sh' in contents
+        assert 'NovaDock/scripts/build-and-stage-amiga.sh' in contents
+        assert z.read('NovaDock/README.md') == (root / 'README.md').read_bytes()
+        assert z.read('NovaDock/NovaDock.info') == (root / 'NovaDock.info').read_bytes()
+        assert z.read('NovaDock/NovaDockPrefs.info') == (root / 'NovaDockPrefs.info').read_bytes()
+        assert z.read('NovaDock/Plugins/MusicPlayer.info') == \
+            (root / 'Plugins' / 'MusicPlayer.info').read_bytes()
+        assert z.read('NovaDock/Plugins/RunningApps.info') == \
+            (root / 'Plugins' / 'RunningApps.info').read_bytes()
+        assert z.read('NovaDock/Plugins/RunningApps.ndplugin') == \
+            (root / 'Plugins' / 'RunningApps.ndplugin').read_bytes()
+        assert z.read('NovaDock/CHANGELOG.md') == (root / 'CHANGELOG.md').read_bytes()
+        assert z.read('NovaDock/tools/package_release.py') == (root / 'tools/package_release.py').read_bytes()
+        assert z.read('NovaDock/scripts/build-and-stage-amiga.sh') == \
+            (root / 'scripts' / 'build-and-stage-amiga.sh').read_bytes()
+        assert not any('/public-web/' in item for item in contents)
+    with ZipFile(sdk_download) as z:
+        assert z.testzip() is None
+        sdk_contents = z.namelist()
+        sdk_root = 'NovaDock-PluginSDK/'
+        for item in ('README.md', 'Makefile', 'include/nd_protocol.h',
+                     'include/nd_client.h', 'include/nd_reply.h', 'src/nd_client.c', 'examples/hello.c',
+                     'include/nd_option_runtime.h', 'src/nd_option_runtime.c',
+                     'examples/Hello.ndplugin'):
+            assert sdk_root + item in sdk_contents
+        assert z.read(sdk_root+'include/nd_protocol.h') == (root/'include'/'nd_protocol.h').read_bytes()
+        assert z.read(sdk_root+'src/nd_client.c') == (root/'plugin_src'/'common'/'nd_client.c').read_bytes()
+        assert z.read(sdk_root+'src/nd_option_runtime.c') == \
+            (root/'plugin_src'/'common'/'nd_option_runtime.c').read_bytes()
+        assert z.read(sdk_root+'examples/hello.c') == (root/'plugin_src'/'template'/'hello.c').read_bytes()
+    # Release archives must never nest earlier releases inside the website.
+    assert sorted(p.name for p in (web / 'downloads').iterdir()) == sorted([
+        f'NovaDock-{VERSION}-plugin-sdk.zip', f'NovaDock-{VERSION}-source.zip',
+        f'NovaDock-{VERSION}.lha', f'NovaDock-{VERSION}.readme', 'SHA256SUMS.txt'])
+    checksum_lines = (web / 'downloads' / 'SHA256SUMS.txt').read_text('ascii').splitlines()
+    checksums = dict(line.split('  ', 1)[::-1] for line in checksum_lines)
+    assert checksums[download.name] == hashlib.sha256(download.read_bytes()).hexdigest()
+    assert checksums[sdk_download.name] == hashlib.sha256(sdk_download.read_bytes()).hexdigest()
+    print(f'Public website checks: OK ({len(pages)} PHP pages, stylesheet, GIFs, links, source and Plugin SDK ZIPs)')
 
 # Real screenshot references, small previews and binary checksum coverage.
 import json
@@ -159,25 +162,26 @@ for item in manifest['images']:
         assert len(raw)<65536
         expected=(item['width'],item['height']) if not suffix else (item['thumb_width'],item['thumb_height'])
         assert (int.from_bytes(raw[6:8],'little'),int.from_bytes(raw[8:10],'little'))==expected
-for name in (f'NovaDock-{VERSION}.lha',f'NovaDock-{VERSION}.readme'):
-    assert checksums[name]==hashlib.sha256((web/'downloads'/name).read_bytes()).hexdigest()
+if not SOURCE_ONLY:
+    for name in (f'NovaDock-{VERSION}.lha',f'NovaDock-{VERSION}.readme'):
+        assert checksums[name]==hashlib.sha256((web/'downloads'/name).read_bytes()).hexdigest()
 assert 'fifteen-second' in (web/'plugin-sdk.php').read_text('ascii')
 assert 'five-second' not in (web/'plugin-sdk.php').read_text('ascii')
-print('Screenshot gallery, binary downloads and current protocol information passed.')
+print('Screenshot gallery and current protocol information passed.' if SOURCE_ONLY else 'Screenshot gallery, binary downloads and current protocol information passed.')
 
-# Marketplace must list every bundled plugin program exactly once.
+# Marketplace lists public plugins; seasonal surprises remain unlisted.
 catalog = json.loads(subprocess.check_output([php, '-r',
     'echo json_encode(require $argv[1]);', str((web/'includes/plugin_catalog.php').resolve())]))
 import re
 programs = re.search(r'^all:(.*)$', (root/'Makefile').read_text(), re.M).group(1).split()
-expected = {name.split('/', 1)[1] for name in programs if name.startswith('Plugins/')}
+expected = {name.split('/', 1)[1] for name in programs if name.startswith('Plugins/')} - {'Christmas'}
 actual = [item['executable'] for item in catalog]
 assert len(actual) == len(set(actual)) and set(actual) == expected
 marketplace = subprocess.check_output([php, str((web/'marketplace.php').resolve())]).decode('ascii')
 assert set(re.findall(r'data-executable="([^"]+)"', marketplace)) == expected
 assert 'No community plugins are listed yet.' in marketplace
 assert "header('Location: marketplace.php', true, 301)" in (web/'plugins.php').read_text()
-print('Marketplace covers every bundled plugin; future community listings are clearly separated.')
+print('Marketplace covers public plugins; seasonal surprises stay unlisted.')
 
 # Theme listings and palette dots must agree with the actual bundled presets.
 themes = json.loads(subprocess.check_output([php, '-r',
@@ -195,11 +199,12 @@ assert 'No community themes are listed yet.' in marketplace
 print('Marketplace themes match all bundled presets and their real colour palettes.')
 
 # Git source tree SDK must match the standalone SDK and upstream helpers.
-for member in sdk_contents:
-    name = member.removeprefix(sdk_root)
-    if name and not name.endswith('/'):
-        with ZipFile(sdk_download) as sdk_archive:
-            assert (root/'plugin-sdk'/name).read_bytes() == sdk_archive.read(member)
+if not SOURCE_ONLY:
+    for member in sdk_contents:
+        name = member.removeprefix(sdk_root)
+        if name and not name.endswith('/'):
+            with ZipFile(sdk_download) as sdk_archive:
+                assert (root/'plugin-sdk'/name).read_bytes() == sdk_archive.read(member)
 release_entries = json.loads((web/'releases.json').read_text())
 assert release_entries and all(e['release_url'].startswith('https://github.com/retrocs-org/novadock/releases/tag/') for e in release_entries)
 for e in release_entries:
@@ -241,9 +246,10 @@ print('Support FAQ is collapsible and excludes the removed entries.')
 assert '<details class="home-faq" id="faq">' in home
 assert '<summary class="faq-heading">Frequently asked questions</summary>' in home
 
-assert sdk_root+'PLUGIN_SDK_SETTINGS.md' in sdk_contents
+if not SOURCE_ONLY:
+    assert sdk_root+'PLUGIN_SDK_SETTINGS.md' in sdk_contents
 assert (root/'plugin-sdk/PLUGIN_SDK_SETTINGS.md').read_bytes() == (root/'docs/PLUGIN_SDK_SETTINGS.md').read_bytes()
-print('Settings-window guide is included in both SDK distributions.')
+print('SDK settings-window guide matches its source.' if SOURCE_ONLY else 'Settings-window guide is included in both SDK distributions.')
 
 assert "header('Location: theme-development.php', true, 301)" in (web/'themes.php').read_text()
 assert 'href="plugin-sdk.php"' in developer_page and 'href="theme-development.php"' in developer_page
@@ -258,3 +264,5 @@ subprocess.run([php, str(root/"tests/test_web_releases.php")], check=True)
 assert 'VERSION 0.1' not in rendered_download
 assert 'class="nav-cta"' in rendered_download and 'Main navigation' in rendered_download
 assert '<table class="gallery"' in (web/'features.php').read_text()
+
+if SOURCE_ONLY: print("Website source checks passed; generated release archive checks were not requested.")

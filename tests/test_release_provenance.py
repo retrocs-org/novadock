@@ -36,6 +36,7 @@ class IntegrityTests(unittest.TestCase):
         for name in package.SOURCE_DIRS:
             (self.root/name).mkdir(exist_ok=True)
         (self.root/'VERSION').write_text('VERSION=0.1\n')
+        (self.root/'CHANGELOG.md').write_text('## NovaDock 0.1\n\n- Initial features.\n')
         (self.root/'Makefile').write_text('all: NovaDock Plugins/Clock\n')
         (self.root/'public-web').mkdir()
         (self.root/'public-web/index.php').write_text('website caption')
@@ -55,7 +56,7 @@ class IntegrityTests(unittest.TestCase):
         for name in r.required_assets('0.1'):
             (self.out/name).write_bytes(b'asset')
         r.write_json(self.out/'BUILD-INFO.json', self.info)
-        (self.out/'RELEASE-NOTES.md').write_text('notes')
+        (self.out/'RELEASE-NOTES.md').write_text(r.release_notes.markdown(self.root))
         # Use real icon bytes; the rest of this source tree is an isolated fixture.
         import shutil
         (self.root/'Icons').mkdir(exist_ok=True)
@@ -279,10 +280,27 @@ class IntegrityTests(unittest.TestCase):
                 r.prepare(self.args)
 
     def test_notes_are_explicitly_sealed(self):
-        notes = Path(self.tmp.name)/'notes.md'; notes.write_text('Reviewed notes')
+        notes = Path(self.tmp.name)/'notes.md'
+        reviewed = r.release_notes.markdown(self.root).replace('## Features', 'Reviewed overview.\n\n## Features', 1)
+        notes.write_text(reviewed)
         self.args.notes = notes
         r.prepare(self.args)
-        self.assertEqual(r.bundle(self.out)['notes'], 'Reviewed notes')
+        self.assertEqual(r.bundle(self.out)['notes'], reviewed)
+
+    def test_incomplete_notes_cannot_change_prepared_bytes(self):
+        notes = Path(self.tmp.name)/'notes.md'; notes.write_text('Reviewed notes')
+        self.args.notes = notes
+        original = (self.out/'RELEASE-NOTES.md').read_bytes()
+        with self.assertRaisesRegex(ValueError, 'Release notes need'):
+            r.prepare(self.args)
+        self.assertEqual((self.out/'RELEASE-NOTES.md').read_bytes(), original)
+        self.assertFalse((self.out/'manifest.json').exists())
+
+    def test_default_bare_tag_and_custom_tag_links(self):
+        self.assertEqual(r.release_tag(), '0.1')
+        self.args.tag = 'review/0.1'
+        r.prepare(self.args)
+        self.assertIn('/releases/tag/review%2F0.1', r.bundle(self.out)['notes'])
 
     def test_receipt_cannot_be_reused_for_another_manifest(self):
         r.prepare(self.args)

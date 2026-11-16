@@ -34,7 +34,7 @@
  * compatibility; lines without the NOVADOCK_ prefix are ignored too. */
 #include "nd_config.h"
 
-#define ND_MANIFEST_MAX_OPTIONS 12
+#define ND_MANIFEST_MAX_OPTIONS 32
 #define ND_MANIFEST_SUFFIX ".ndplugin"
 #define ND_MANIFEST_DOCK_ABI 5 /* highest IPC ABI this dock understands */
 #define ND_MANIFEST_VERSION_LEN 16
@@ -92,6 +92,7 @@ int nd_manifest_bundled_id(const char *id);
  * metadata (name, version, author, description, features, instance policy).
  * Returns 0 for any other ID. */
 int nd_manifest_builtin(const char *id,struct NDManifest *m);
+const char *nd_manifest_builtin_name(const char *id);
 /* Rules for importing a third-party package from its manifest file
  * MANIFEST_FILE (name only, e.g. "Hello.ndplugin"): complete metadata
  * (nd_manifest_package_ready), NOVADOCK_PROGRAM equal to the manifest's

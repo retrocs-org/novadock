@@ -2,7 +2,7 @@
 ; Do not use +kick13; this program needs OS 3.0 and newer.
 FailAt 21
 vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o NovaDock src/novadock.c src/dock_save.c src/save_policy.c src/indicator.c src/dock_arexx.c src/dock_draw.c src/dock_events.c src/dock_icons.c src/dock_input.c src/dock_launch.c src/dock_menu.c src/dock_plugins.c src/dock_popups.c src/dock_reload.c src/dock_timers.c src/dock_window.c src/config.c src/theme.c src/nd_options.c src/layout.c src/graph.c src/ilbm.c src/icon_mask.c src/interaction.c src/autohide.c src/eyes.c src/watchdog.c src/control_client.c src/nd_locale.c src/nd_media.c src/nd_tasks.c src/nd_folder.c plugin_src/archive/nd_archive.c -lamiga
-vc -O -Iinclude -Iplugin_src/common -DND_PREFS_EMBEDDED -o NovaDockPrefs prefs/novadockprefs.c prefs/nd_prefs_help.c prefs/novadockappearanceprefs.c prefs/novadockitemprefs.c prefs/novadocklauncherprefs.c prefs/novadockadditemprefs.c prefs/novadockpluginprefs.c prefs/novadockmanagerprefs.c prefs/novadockdiagnosticsprefs.c prefs/novadockaboutprefs.c prefs/novadocklayoutprefs.c prefs/novadockdiscovery.c prefs/nd_package_install.c src/config.c src/theme.c src/nd_options.c src/layout.c src/layout_profiles.c src/prefs_layout.c src/control_client.c src/nd_manifest.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -DND_PREFS_EMBEDDED -o NovaDockPrefs prefs/novadockprefs.c prefs/nd_prefs_help.c prefs/novadockappearanceprefs.c prefs/novadockitemprefs.c prefs/novadocklauncherprefs.c prefs/novadockadditemprefs.c prefs/novadockpluginprefs.c src/nd_music_formats.c src/nd_sensors.c prefs/novadockmanagerprefs.c prefs/novadockdiagnosticsprefs.c prefs/novadockaboutprefs.c prefs/novadocklayoutprefs.c prefs/novadockdiscovery.c prefs/nd_package_install.c src/config.c src/theme.c src/nd_options.c src/layout.c src/layout_profiles.c src/prefs_layout.c src/control_client.c src/nd_manifest.c src/ilbm.c -lamiga
 vc -O -Iinclude -Iplugin_src/common -o Plugins/Clock plugin_src/clock/clock.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 vc -O -Iinclude -Iplugin_src/common -o Plugins/Eyes plugin_src/eyes/eyes.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 vc -O -Iinclude -Iplugin_src/common -o Plugins/Activity plugin_src/activity/activity.c plugin_src/activity/cpu_idle_hooks.asm src/metrics.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
@@ -14,7 +14,8 @@ vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/ArchiveExtra
 vc -O -Iinclude -Iplugin_src/common -Iplugin_src/command -o Plugins/Command plugin_src/command/command.c plugin_src/command/nd_command.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 vc -O -Iinclude -Iplugin_src/common -o Plugins/RunningApps plugin_src/runningapps/runningapps.c plugin_src/common/nd_client.c
 vc -O -Iinclude -Iplugin_src/common -o Plugins/Trash plugin_src/trash/trash.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
-vc -O -Iinclude -Iplugin_src/common -o Plugins/Games plugin_src/games/games.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -o Plugins/Games plugin_src/games/games.c plugin_src/games/nd_games_scan.c plugin_src/games/nd_games_cache.c src/nd_music_formats.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -DND_MUSIC_LIBRARY -o Plugins/MusicLibrary plugin_src/games/games.c plugin_src/games/nd_games_scan.c plugin_src/games/nd_games_cache.c src/nd_music_formats.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
 vc -O -Iinclude -Iplugin_src/common -o MakeIcon tools/makeicon.c
 vc -O -Iinclude -Iplugin_src/common -o SetupStartup tools/setupstartup.c
 vc -O -Iinclude -Iplugin_src/common -o StartInstaller tools/startinstaller.c
@@ -31,7 +32,23 @@ vc -O -Iinclude -Iplugin_src/common -o Plugins/Timer plugin_src/timer/timer.c pl
 vc -O -Iinclude -Iplugin_src/common -o Plugins/Notes plugin_src/notes/notes.c plugin_src/notes/nd_notes.c plugin_src/notes/nd_markdown.c plugin_src/notes/nd_note_editor.c plugin_src/clipboard/nd_clipboard_popup.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 
 vc -O -Iinclude -Iplugin_src/common -o Plugins/ScreenSwitcher plugin_src/screenswitcher/screenswitcher.c plugin_src/clipboard/nd_clipboard_popup.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
-vc -O -Iinclude -Iplugin_src/common -o Plugins/Weather plugin_src/weather/weather.c plugin_src/weather/nd_weather.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/interaction.c
+vc -O -Iinclude -Iplugin_src/common -o Plugins/Weather plugin_src/weather/weather.c plugin_src/weather/nd_weather.c plugin_src/weather/nd_weather_window.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/interaction.c
 MakeIcon
 Echo "Built NovaDock, unified preferences, the plugins, utilities, and Workbench icons."
 Echo "Optional installation: Execute install.amiga"
+
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/sensors -o Plugins/Sensors plugin_src/sensors/sensors.c plugin_src/sensors/nd_sensor_native.c src/nd_sensors.c src/interaction.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+
+vc -O -Iinclude -Iplugin_src/common -o Plugins/Christmas plugin_src/christmas/christmas.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+
+vc -O -Iinclude -Iplugin_src/common -o Plugins/Actions plugin_src/actions/actions.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+
+vc -O -Iinclude -Iplugin_src/common -o Plugins/Aquarium plugin_src/aquarium/aquarium.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+
+vc -O -Iinclude -Iplugin_src/common -o Plugins/Download plugin_src/download/download.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c src/interaction.c -lamiga
+
+vc -O -Iinclude -Iplugin_src/common -o Plugins/System plugin_src/system/system.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -o Plugins/Places plugin_src/places/places.c plugin_src/clipboard/nd_clipboard_popup.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/interaction.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -o Plugins/Saver plugin_src/saver/saver.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/aminet -Iplugin_src/aminet/compat -o Plugins/Aminet plugin_src/aminet/aminet.c plugin_src/aminet/nd_aminet.c plugin_src/aminet/nd_aminet_http.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/interaction.c -lamiga

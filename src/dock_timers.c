@@ -1,6 +1,8 @@
 /* NovaDock: Timer-driven work: auto-hide, hover, tooltips, feedback, media and task scans. */
 #include "dock_internal.h"
+#include "nd_whdload_status.h"
 #include "nd_weather_codes.h"
+#include "nd_cpu_info.h"
 
 /* Defined below, private to this file. */
 static void arm_timer(struct NDDock *dock);
@@ -532,7 +534,12 @@ static void show_tooltip_window(struct NDDock *dock, int index)
         dock->popup || index < 0 || index >= dock->conf.count) return;
     it = &dock->conf.items[index];
     name = it->label;
-    if (!strcmp(it->id,"RAM")) {
+    if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"CPU")){
+        sprintf(volume_name,"CPU %s",nd_system_cpu(SysBase->AttnFlags));name=volume_name;
+        if(it->online && it->meter<=100U)sprintf(plugin_detail,"%u%% CPU used",(unsigned int)it->meter);
+        else strcpy(plugin_detail,"CPU usage unavailable");
+        second_line=plugin_detail;h=35;
+    } else if (!strcmp(it->id,"RAM")) {
         if (format_ram_tooltip(it->value,ram_chip,sizeof(ram_chip),
                                ram_fast,sizeof(ram_fast))) {
             name=ram_chip;
@@ -567,6 +574,19 @@ static void show_tooltip_window(struct NDDock *dock, int index)
         name=city && city[1] ? city+1:"Weather";
         sprintf(plugin_detail,"%.20s  %.20s%s",it->value,code>=0 ? nd_weather_condition(code):"",it->badge[0] ? " (cached)":"");
         second_line=plugin_detail;h=35;
+    } else if(it->kind==ND_ITEM_PLUGIN && nd_collection_plugin_path(it->command)){
+        const char *root=nd_option_get(&dock->conf,it->id,"DRAWER");
+        int reason=(!root || !*root) ? ND_WHD_FOLDER_UNSET:nd_whd_folder_code(it->value);
+        switch(reason){
+        case ND_WHD_FOLDER_UNSET: second_line=nd_tr("No drawer selected. Open Edit settings.");break;
+        case ND_WHD_FOLDER_MISSING: second_line=nd_tr("The selected drawer does not exist.");break;
+        case ND_WHD_FOLDER_NOT_DRAWER: second_line=nd_tr("The selected path is a file, not a drawer.");break;
+        case ND_WHD_FOLDER_UNREADABLE: second_line=nd_tr("Cannot read the selected drawer.");break;
+        case ND_WHD_FOLDER_MEMORY: second_line=nd_tr("Not enough memory to check the drawer.");break;
+        case ND_WHD_FOLDER_UNAVAILABLE: second_line=nd_tr("The selected drawer's volume is unavailable.");break;
+        default: second_line=!strcmp(it->value,"INDEX INCOMPLETE") ? nd_tr("Index incomplete. Use Rescan to try again."):it->value;break;
+        }
+        h=35;
     } else if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"NOTES")){
         name="Notes";second_line=it->value;h=35;
     } else if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"TIMER")){

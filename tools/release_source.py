@@ -19,7 +19,8 @@ def private_file(name):
     return (path.parts[0] in ('work', 'outputs', 'dist', 'private-review')
             or path.parts[:2] == ('build', 'provenance')
             or any(p == '.env' or p.startswith('.env.') or p.endswith('.local.json') for p in path.parts)
-            or path.name == 'release-targets.local.json'
+            or path.name in ('release-targets.local.json', '.netrc', 'id_rsa', 'id_ed25519')
+            or path.suffix.lower() in ('.p12', '.pfx')
             or (path.name == 'release-config.json' and path.parts[0] != 'examples'))
 
 
@@ -32,7 +33,7 @@ def validate_tracked(root):
     provenance.tracked_inputs(inputs, root)
     for name in inputs:
         payload = (root/name).read_bytes()
-        if any(secret.encode() in payload for secret in credentials.known()):
+        if credentials.contains_secret(payload):
             raise ValueError('Credential found in a source input; remove it before publishing.')
 
 
@@ -66,7 +67,7 @@ def initialize(root, cfg, targets, message=None):
     for name in inputs:
         if private_file(name):
             raise ValueError('Private file selected for source initialization: '+name)
-        if any(secret.encode() in (root/name).read_bytes() for secret in credentials.known()):
+        if credentials.contains_secret((root/name).read_bytes()):
             raise ValueError('Credential found in source; nothing staged.')
     if not (root/'.git').exists():
         run(root, 'git', 'init', '--initial-branch', branch)

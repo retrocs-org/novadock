@@ -33,17 +33,18 @@
     },
     {
       "file": "appearance.gif",
-      "capture": "03-appearance.png",
+      "capture": "appearance-current.png",
+      "captured": "2026-11-16",
       "crop": [
-        404,
-        244,
-        1644,
-        780
+        68,
+        36,
+        1308,
+        570
       ],
       "width": 620,
-      "height": 268,
+      "height": 267,
       "thumb_width": 268,
-      "thumb_height": 116
+      "thumb_height": 115
     },
     {
       "file": "diagnostics.gif",
@@ -89,31 +90,33 @@
     },
     {
       "file": "organize.gif",
-      "capture": "07-organize.png",
+      "capture": "organize-current.png",
+      "captured": "2026-11-16",
       "crop": [
-        404,
-        244,
-        1644,
-        684
+        36,
+        30,
+        1276,
+        468
       ],
       "width": 620,
-      "height": 220,
+      "height": 219,
       "thumb_width": 268,
       "thumb_height": 95
     },
     {
       "file": "clippy-picker.gif",
-      "capture": "08-clippy-picker.png",
+      "capture": "clippy-picker-current.png",
+      "captured": "2026-11-16",
       "crop": [
-        744,
-        706,
-        1304,
-        960
+        538,
+        144,
+        866,
+        398
       ],
-      "width": 280,
+      "width": 164,
       "height": 127,
-      "thumb_width": 268,
-      "thumb_height": 122
+      "thumb_width": 164,
+      "thumb_height": 127
     },
     {
       "file": "calendar.gif",
@@ -162,54 +165,48 @@
     },
     {
       "file": "notes-editor.gif",
-      "capture": "notes-native.png",
-      "captured": "2026-11-15",
-      "version": "0.2",
+      "capture": "notes-editor-current.png",
+      "captured": "2026-11-16",
       "crop": [
-        202,
-        18,
-        822,
-        418
+        440,
+        66,
+        1680,
+        866
       ],
       "width": 620,
       "height": 400,
       "thumb_width": 268,
-      "thumb_height": 173,
-      "capture_sha256": "f4dc6b68c562ff1f34d203e9f7729fbd18cfae41063222f20d13e720e2c5eee1"
+      "thumb_height": 173
     },
     {
       "file": "weather-forecast.gif",
-      "capture": "weather-native.png",
-      "captured": "2026-11-15",
-      "version": "0.2",
+      "capture": "weather-current.png",
+      "captured": "2026-11-16",
       "crop": [
-        232,
-        18,
-        792,
-        238
+        394,
+        256,
+        1654,
+        760
       ],
-      "width": 560,
-      "height": 220,
+      "width": 630,
+      "height": 252,
       "thumb_width": 268,
-      "thumb_height": 105,
-      "capture_sha256": "696918e91e6d3e1983b8d7a090da35c84ea67b9d8cfec761fd491d2049005579"
+      "thumb_height": 107
     },
     {
       "file": "archive-create.gif",
-      "capture": "archive-native.png",
-      "captured": "2026-11-15",
-      "version": "0.2",
+      "capture": "archive-create-current.png",
+      "captured": "2026-11-16",
       "crop": [
-        232,
-        24,
-        792,
-        232
+        46,
+        14,
+        1166,
+        426
       ],
       "width": 560,
-      "height": 208,
+      "height": 206,
       "thumb_width": 268,
-      "thumb_height": 100,
-      "capture_sha256": "9502a76ca6830f40424e4125b5d5d3e2b34772c933fbc6e16a2793cc1f57af13"
+      "thumb_height": 99
     },
     {
       "file": "archive-extract.gif",
@@ -278,6 +275,157 @@
       "thumb_width": 268,
       "thumb_height": 92,
       "capture_sha256": "f7e9097dc010bd9f3a4ce8c5fdae143bf653b4517954b38d5782ed2f90939087"
+    },
+    {
+      "file": "dock-03.gif",
+      "capture": "dock-03-current.png",
+      "captured": "2026-11-16",
+      "crop": [
+        72,
+        40,
+        1910,
+        220
+      ],
+      "width": 919,
+      "height": 90,
+      "thumb_width": 268,
+      "thumb_height": 26
+    },
+    {
+      "file": "aminet-download.gif",
+      "capture": "aminet-download-current.png",
+      "captured": "2026-11-16",
+      "crop": [
+        286,
+        33,
+        1766,
+        953
+      ],
+      "width": 740,
+      "height": 460,
+      "thumb_width": 268,
+      "thumb_height": 167
+    },
+    {
+      "file": "dock-graphs.gif",
+      "capture": "dock-graphs-current.png",
+      "captured": "2026-11-16",
+      "crop": [
+        58,
+        40,
+        1896,
+        220
+      ],
+      "width": 919,
+      "height": 90,
+      "thumb_width": 268,
+      "thumb_height": 26
+    },
+    {
+      "file": "plugins-manager.gif",
+      "capture": "plugins-manager-current.png",
+      "captured": "2026-11-16",
+      "crop": [
+        44,
+        30,
+        1284,
+        510
+      ],
+      "width": 620,
+      "height": 240,
+      "thumb_width": 268,
+      "thumb_height": 104
+    },
+    {
+      "file": "dock-menu-03.gif",
+      "capture": "dock-menu-03-current.png",
+      "captured": "2026-11-16",
+      "crop": [
+        122,
+        96,
+        1578,
+        440
+      ],
+      "width": 728,
+      "height": 172,
+      "thumb_width": 268,
+      "thumb_height": 63
+    },
+    {
+      "file": "notes-browser.gif",
+      "capture": "notes-browser-current.png",
+      "captured": "2026-11-16",
+      "crop": [
+        896,
+        514,
+        1224,
+        768
+      ],
+      "width": 164,
+      "height": 127,
+      "thumb_width": 164,
+      "thumb_height": 127
+    },
+    {
+      "file": "dock-two-rows.gif",
+      "capture": "dock-two-rows-current.png",
+      "captured": "2026-11-16",
+      "crop": [
+        136,
+        74,
+        1246,
+        418
+      ],
+      "width": 555,
+      "height": 172,
+      "thumb_width": 268,
+      "thumb_height": 83
+    },
+    {
+      "file": "icon-picker.gif",
+      "capture": "icon-picker-current.png",
+      "captured": "2026-11-16",
+      "crop": [
+        144,
+        84,
+        1144,
+        636
+      ],
+      "width": 500,
+      "height": 276,
+      "thumb_width": 268,
+      "thumb_height": 148
+    },
+    {
+      "file": "music-collection.gif",
+      "capture": "music-collection-current.png",
+      "captured": "2026-11-16",
+      "crop": [
+        698,
+        478,
+        1498,
+        858
+      ],
+      "width": 400,
+      "height": 190,
+      "thumb_width": 268,
+      "thumb_height": 127
+    },
+    {
+      "file": "dock-vapor.gif",
+      "capture": "dock-vapor-current.png",
+      "captured": "2026-11-16",
+      "crop": [
+        452,
+        918,
+        1744,
+        1260
+      ],
+      "width": 646,
+      "height": 171,
+      "thumb_width": 268,
+      "thumb_height": 71
     }
-  ]
+  ],
+  "updated": "2026-11-16"
 }

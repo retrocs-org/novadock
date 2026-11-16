@@ -410,3 +410,30 @@ Browse notes
 MSG_0165
 Add new note...
 ; Add new note...
+MSG_0166
+NovaDock stopped, but could not restart.\nStart NovaDock again from its application icon.
+; NovaDock stopped, but could not restart.\nStart NovaDock again from its application icon.
+MSG_0167
+NovaDock neu starten
+; Restart NovaDock
+MSG_0168
+No drawer selected. Open Edit settings.
+; No drawer selected. Open Edit settings.
+MSG_0169
+The selected drawer does not exist.
+; The selected drawer does not exist.
+MSG_0170
+The selected path is a file, not a drawer.
+; The selected path is a file, not a drawer.
+MSG_0171
+Cannot read the selected drawer.
+; Cannot read the selected drawer.
+MSG_0172
+Not enough memory to check the drawer.
+; Not enough memory to check the drawer.
+MSG_0173
+The selected drawer's volume is unavailable.
+; The selected drawer's volume is unavailable.
+MSG_0174
+Index incomplete. Use Rescan to try again.
+; Index incomplete. Use Rescan to try again.

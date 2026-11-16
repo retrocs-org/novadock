@@ -24,6 +24,7 @@
 #define ND_RX_SETBADGE 20 /* SETBADGE id ["text"]: tile badge; none clears */
 #define ND_RX_SUSPEND 21   /* SUSPEND: close the dock's windows (Workbench reset) */
 #define ND_RX_RESUME 22    /* RESUME: reopen them */
+#define ND_RX_RESTART 23   /* RESTART: normal shutdown and relaunch */
 #define ND_RX_BADGE_LEN 8  /* as ND_BADGE_LEN in nd_protocol.h */
 #define ND_RX_TEXT_LEN 240
 #define ND_RX_ID_LEN 20

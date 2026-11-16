@@ -1,6 +1,6 @@
-; $VER: Install-NovaDock 0.2 (14.11.2026)
+; $VER: Install-NovaDock 0.3 (15.11.2026)
 ;
-; GUI installer for NovaDock 0.2, for the Commodore Installer (V42 and
+; GUI installer for NovaDock 0.3, for the Commodore Installer (V42 and
 ; later, as shipped with AmigaOS 3.x).  Double-click the Install-NovaDock
 ; icon, or from a Shell:  Installer Install-NovaDock APPNAME NovaDock
 ;
@@ -11,7 +11,7 @@
 ; Binary and shared-data assignments persist in S:User-Startup.
 
 (set @app-name "NovaDock")
-(set #version "0.2")
+(set #version "0.3")
 (set #standard-dest "SYS:NovaDock")
 (set #appdir "SYS:Utilities")
 (set #app "SYS:Utilities/NovaDock")
@@ -294,6 +294,7 @@
     (makedir (tackon #dest "Plugins"))
     (makedir (tackon #dest "Icons"))
     (makedir (tackon #dest "Themes"))
+    (makedir (tackon #dest "Music"))
     (makedir (tackon #dest "Tools"))
     ; Shared data has no Workbench icon, including after an upgrade.
     (set #del (cat #dest ".info")) (P_DELETE)
@@ -325,6 +326,11 @@
                 (prompt "Preserving imported Icons") (help @copyfiles-help)
                 (source (tackon #current "Icons"))
                 (dest (tackon #dest "Icons")) (all) (optional "force")))
+        (if (= (exists (tackon #current "Music") (noreq)) 2)
+            (copyfiles
+                (prompt "Preserving music resources") (help @copyfiles-help)
+                (source (tackon #current "Music"))
+                (dest (tackon #dest "Music")) (all) (optional "force")))
         (if (= (exists (tackon #current "Rexx") (noreq)) 2)
             (copyfiles
                 (prompt "Preserving imported Rexx") (help @copyfiles-help)
@@ -346,6 +352,7 @@
     (set #del (tackon #dest "SaveConfig")) (P_DELETE)
 
 
+    ; Every mode installs all bundled plugins; dock selection belongs in Preferences.
     ; Bundled plugins, their icons and manifests.  Third-party plugins
     ; already installed are left alone.
     (complete 30)
@@ -364,6 +371,11 @@
         (dest (tackon #dest "Rexx"))
         (all)
         (optional "force"))
+
+    (copyfiles
+        (prompt "Copying music resources") (help @copyfiles-help)
+        (source (tackon #src "Music")) (dest (tackon #dest "Music"))
+        (all) (optional "force"))
 
     ; Launcher artwork
     (complete 45)
@@ -443,6 +455,15 @@
         (source (tackon #src "BitSkim-icon-LICENSE.txt"))
         (dest #dest)
         (optional "force"))
+
+    (copyfiles
+        (prompt "Copying licence notices") (help @copyfiles-help)
+        (source (tackon #src "Aminet-parser-LICENSE.txt"))
+        (dest #dest) (optional "force"))
+    (copyfiles
+        (prompt "Copying NovaDock licence") (help @copyfiles-help)
+        (source (tackon #src "LICENSE"))
+        (dest #dest) (optional "force"))
 
     ; The AmigaGuide manual (Help in Preferences opens it from here)
     (complete 80)
@@ -699,10 +720,11 @@
 
 (message "NovaDock " #version "\n\n"
          "A dock for Workbench 3.x.\n\n"
-         "Novice: automatic setup.\n"
+         "Novice: automatic setup for a new installation.\n"
          "Intermediate: choose app and Preferences locations.\n"
          "Expert: also choose the shared-data location.\n\n"
-         "Existing settings are kept.")
+         "Already installed: choose Update or Uninstall.\n"
+         "Updates keep existing settings.")
 
 (if #installed
     (

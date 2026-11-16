@@ -39,6 +39,8 @@ int main(void)
     assert(nd_parse_rexx("PREFS",&c) && c.action==ND_RX_PREFS);
     assert(nd_parse_rexx("STATUS",&c) && c.action==ND_RX_STATUS);
     assert(nd_parse_rexx("QUIT",&c) && c.action==ND_RX_QUIT);
+    assert(nd_parse_rexx("restart",&c) && c.action==ND_RX_RESTART);
+    assert(!nd_parse_rexx("RESTART now",&c));
     assert(!nd_parse_rexx("OPEN 0",&c));
     assert(!nd_parse_rexx("OPEN -4",&c));
     assert(!nd_parse_rexx("OPEN 4 ;delete",&c));

@@ -6,32 +6,52 @@
 #include <string.h>
 static struct NDConfig cfg,previous;
 static int calls,fail_at;
-static int execute_shutdown(void *context,const char *command)
+static int execute_disconnect(void *context,const char *command)
 {
     (void)context;
     ++calls;
-    assert(!strcmp(command,calls==1 ? "C:ConfigureNetInterface A2065 OFFLINE QUIET":
-                                    "C:NetShutdown TIMEOUT=5 QUIET"));
+    assert(!strcmp(command,"C:ConfigureNetInterface A2065 OFFLINE QUIET"));
     return calls==fail_at ? 5:0;
 }
 int main(void)
 {
-    struct NCConfig c;char command[256];FILE *f;int i,net=-1,enabled=0;
+    struct NCConfig c;char command[256];FILE *f;int i,net=-1,enabled=0,startup;
     struct NCInterfaces interfaces;
     struct NCDeviceStatus status;
+    assert(nc_control_request(1,NC_OFFLINE,0,1,NC_ONLINE)==NC_REQUEST_RESTART);
+    assert(nc_control_request(0,NC_OFFLINE,0,1,NC_ONLINE)==NC_REQUEST_RESTART);
+    assert(nc_control_request(1,NC_OFFLINE,1,1,NC_ONLINE)==NC_REQUEST_RESTART);
+    assert(nc_control_request(0,NC_OFFLINE,0,0,NC_ONLINE)==NC_REQUEST_QUEUE);
+    assert(nc_control_request(1,NC_ONLINE,0,0,NC_ONLINE)==NC_REQUEST_BUSY);
+    assert(nc_control_request(1,NC_PROBE,0,0,NC_ONLINE)==NC_REQUEST_QUEUE);
+    assert(nc_control_request(1,NC_PROBE,1,0,NC_ONLINE)==NC_REQUEST_BUSY);
+    assert(nc_control_request(0,NC_OFFLINE,0,1,NC_OFFLINE)==NC_REQUEST_BUSY);
     nc_defaults(&c);
+    assert(!c.auto_online);startup=1;
+    assert(!nc_startup_online(&startup,&c,1,0) && !startup);
+    assert(nc_option(&c,"AUTO_ONLINE","YES") && c.auto_online);
+    assert(!nc_option(&c,"AUTO_ONLINE","INVALID") && c.auto_online);
+    startup=1;assert(nc_startup_online(&startup,&c,1,0) && !startup);
+    assert(!nc_startup_online(&startup,&c,1,0)); /* No polling retry after failure. */
+    startup=1;assert(!nc_startup_online(&startup,&c,1,1) && !startup);
+    startup=1;assert(!nc_startup_online(&startup,&c,0,0) && !startup);
+    startup=0;assert(!nc_startup_online(&startup,&c,1,0)); /* User chose Offline. */
+    assert(nc_option(&c,"AUTO_ONLINE","NO") && !c.auto_online);
     strcpy(c.traffic.device,"wrong.device");c.traffic.unit=7;
     nc_sampling_mode(&c,1);assert(!strcmp(c.traffic.device,"wrong.device") && c.traffic.unit==7);
     nc_sampling_mode(&c,0);assert(!c.traffic.device[0] && c.traffic.unit==0);
     assert(!nc_quiesce_command(&c,command,sizeof(command)));
-    assert(nc_shutdown(&c,execute_shutdown,NULL)==NC_QUIESCE_FAILED && calls==0);
+    assert(nc_disconnect(&c,execute_disconnect,NULL)==NC_QUIESCE_FAILED && calls==0);
     strcpy(c.interface_name,"A2065");
     assert(!nc_quiesce_command(&c,command,8));
-    calls=0;fail_at=0;assert(nc_shutdown(&c,execute_shutdown,NULL)==0 && calls==2);
-    calls=0;fail_at=1;assert(nc_shutdown(&c,execute_shutdown,NULL)==NC_QUIESCE_FAILED && calls==1);
-    calls=0;fail_at=2;assert(nc_shutdown(&c,execute_shutdown,NULL)==5 && calls==2);
+    calls=0;fail_at=0;assert(nc_disconnect(&c,execute_disconnect,NULL)==0 && calls==1);
+    calls=0;fail_at=1;assert(nc_disconnect(&c,execute_disconnect,NULL)==NC_QUIESCE_FAILED && calls==1);
     strcpy(c.interface_name,"bad;cmd");calls=0;
-    assert(nc_shutdown(&c,execute_shutdown,NULL)==NC_QUIESCE_FAILED && calls==0);
+    assert(nc_disconnect(&c,execute_disconnect,NULL)==NC_QUIESCE_FAILED && calls==0);
+    strcpy(c.interface_name,"A2065");
+    assert(nc_reconnect_command(&c,command,sizeof(command)) && !strcmp(command,"C:ConfigureNetInterface A2065 ONLINE QUIET"));
+    assert(!nc_reconnect_command(&c,command,8));
+    strcpy(c.interface_name,"AUTO");assert(!nc_reconnect_command(&c,command,sizeof(command)));
     memset(&status,0,sizeof(status));nc_defaults(&c);
     assert(nc_job_deadline(&c,NC_OFFLINE)==750 && nc_job_deadline(&c,NC_PROBE)==750);
     assert(nc_job_deadline(&c,NC_ONLINE)==3750);
@@ -67,21 +87,27 @@ int main(void)
     nc_status_line(&interfaces,"negative -1 Ethernet 10.0.2.15 2 Up");
     nc_status_line(&interfaces,"verylonginterfacename 1500 Ethernet 10.0.2.15 2 Up");
     assert(!interfaces.active[0]);
+    memset(&interfaces,0,sizeof(interfaces));strcpy(interfaces.selected,"ZZ9000Net");
+    nc_status_line(&interfaces,"A2065 1500 Ethernet 10.0.2.15 0 Up");
+    nc_status_line(&interfaces,"ZZ9000Net 1500 Ethernet 10.0.2.20 0 Down");
+    assert(!interfaces.active[0]);
+    nc_status_line(&interfaces,"ZZ9000Net 1500 Ethernet 10.0.2.20 0 Up");
+    assert(!strcmp(interfaces.active,"ZZ9000Net"));
     nc_defaults(&c);assert(!strcmp(c.interface_name,"AUTO"));assert(!nc_command(&c,NC_ONLINE,command,sizeof(command)));
     assert(nc_option(&c,"DEBUG_LOG","YES"));assert(nc_option(&c,"DEBUG_LOG","NO"));
     assert(!nc_option(&c,"DEBUG_LOG","MAYBE"));
     assert(nc_option(&c,"STACK","ROADSHOW"));assert(!nc_option(&c,"STACK","MIAMI"));
     assert(nc_option(&c,"INTERFACE","ZZ9000Net"));assert(!nc_option(&c,"INTERFACE","eth0;delete"));
     assert(nc_command(&c,NC_ONLINE,command,sizeof(command)) && !strcmp(command,"C:AddNetInterface ZZ9000Net QUIET TIMEOUT=60"));
-    assert(nc_command(&c,NC_OFFLINE,command,sizeof(command)) && !strcmp(command,"C:NetShutdown TIMEOUT=5 QUIET"));
+    assert(nc_command(&c,NC_OFFLINE,command,sizeof(command)) && !strcmp(command,"C:ConfigureNetInterface ZZ9000Net OFFLINE QUIET"));
     assert(nc_command(&c,NC_PROBE,command,sizeof(command)) && !strcmp(command,"C:GetNetStatus CHECK=INTERFACES QUIET"));
     /* A preferences save after a prior ZZ9000 connection must replace the
      * cached choice, including when sampling options precede INTERFACE. */
     f=fopen("tests/net-interface.tmp","w");assert(f);
-    fputs("OPTION.NET.DEVICE=\nOPTION.NET.UNIT=0\nOPTION.NET.STACK=ROADSHOW\nOPTION.NET.INTERFACE=A2065\nOPTION.NET.DEBUG_LOG=YES\nOPTION.NET.VIEW=METER\nOPTION.NET.SAMPLING_OVERRIDE=NO\n",f);fclose(f);
+    fputs("OPTION.NET.DEVICE=\nOPTION.NET.UNIT=0\nOPTION.NET.STACK=ROADSHOW\nOPTION.NET.INTERFACE=A2065\nOPTION.NET.DEBUG_LOG=YES\nOPTION.NET.AUTO_ONLINE=YES\nOPTION.NET.VIEW=METER\nOPTION.NET.SAMPLING_OVERRIDE=NO\n",f);fclose(f);
     nc_defaults(&c);
     assert(nd_plugin_options_read("tests/net-interface.tmp","NET",nc_option,&c)==1);
-    assert(!strcmp(c.interface_name,"A2065") && !c.traffic.device[0]);
+    assert(!strcmp(c.interface_name,"A2065") && !c.traffic.device[0] && c.auto_online);
     assert(nc_command(&c,NC_ONLINE,command,sizeof(command)) && !strcmp(command,"C:AddNetInterface A2065 QUIET TIMEOUT=60"));
     remove("tests/net-interface.tmp");
     assert(!nc_option(&c,"DHCP_TIMEOUT","999"));assert(!nc_command(&c,NC_ONLINE,command,8));

@@ -3,7 +3,7 @@
   "github_git": "git@github.com:retrocs-org/novadock.git",
   "gitlab": "https://gitlab.example.org/group/novadock",
   "gitlab_git": "git@gitlab.example.org:group/novadock.git",
-  "uploader": "support@retrocs.org",
+  "uploader": "frossmant@icloud.com",
   "author": "NovaDock contributors",
   "env": {},
   "source_branch": "main",

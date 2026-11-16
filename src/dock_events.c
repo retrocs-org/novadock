@@ -313,7 +313,9 @@ static void click_tile(struct NDDock *dock,int index,int mx,int my,
             if(!launch_plugin_helper(dock,index,"OPEN",NULL))
                 show_feedback(dock,"Could not open Running Apps",1);
         } else if (!strcmp(it->id,"SCREENSHOT") || !strcmp(it->id,"SCREENMODE") ||
-                   !strcmp(it->id,"SCREENSWITCHER") || !strcmp(it->id,"WEATHER")) {
+                   !strcmp(it->id,"SCREENSWITCHER") || !strcmp(it->id,"WEATHER") ||
+                   !strcmp(it->id,"CHRISTMAS") || !strcmp(it->id,"AQUARIUM") ||
+                   !strcmp(it->id,"DOWNLOAD") || !strcmp(it->id,"SYSTEM") || !strcmp(it->id,"PLACES") || !strcmp(it->id,"SAVER") || !strcmp(it->id,"AMINET") || nd_independent_plugin_path(it->command)) {
             /* These tiles perform actions, even if a Shift qualifier is
              * present. A stale graph flag must not turn them into monitors. */
             if(it->graph){it->graph=0;draw_tile(dock,index);}

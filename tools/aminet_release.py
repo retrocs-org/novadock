@@ -77,15 +77,17 @@ def format_readme(path, replaces=''):
         lines = paragraph.splitlines()
         if any(line.startswith('- ') for line in lines):
             items = re.split(r'(?m)^- ', paragraph)
-            wrapped = [textwrap.fill(' '.join(item.split()), width=78,
+            wrapped = [textwrap.fill(' '.join(item.split()), width=76,
                                      initial_indent='- ', subsequent_indent='  ')
                        for item in items if item.strip()]
             paragraphs.append('\n'.join(wrapped))
-        elif all(len(line) <= 78 for line in lines):
+        elif all(len(line) <= 76 for line in lines):
             paragraphs.append(paragraph)
         else:
-            paragraphs.append(textwrap.fill(' '.join(paragraph.split()), width=78))
+            paragraphs.append(textwrap.fill(' '.join(paragraph.split()), width=76))
     result = header + '\n\n' + '\n\n'.join(paragraphs) + '\n'
+    if any(len(line) > 76 for line in result.splitlines()):
+        raise ValueError('Formatted readme lines must be at most 76 columns.')
     # Write through a temporary file so invalid metadata leaves the original intact.
     with tempfile.TemporaryDirectory(dir=path.parent) as tmp:
         candidate = Path(tmp) / path.name
@@ -186,7 +188,7 @@ def save_receipt(folder, receipt):
 
 
 def upload(folder, manifest, fields, ftp_factory=ftplib.FTP):
-    """Transfer only the checked pair, with readme last; never list/delete files."""
+    """Transfer only the checked pair, with readme last; refuse pending names."""
     # Snapshot bytes and verify them before connecting: publishing never races
     # a simultaneous rebuild or an edit to the external readme.
     payloads = []
@@ -200,7 +202,6 @@ def upload(folder, manifest, fields, ftp_factory=ftplib.FTP):
         return
     receipt = {'submission_sha256': hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest(),
                'status': 'in_progress', 'completed_files': []}
-    save_receipt(folder, receipt)
     import io
     email = re.search(r'[^\s<>@()]+@[^\s<>@()]+\.[^\s<>@()]+', fields['Uploader']).group()
     with ftp_factory(timeout=60) as ftp:
@@ -208,6 +209,14 @@ def upload(folder, manifest, fields, ftp_factory=ftplib.FTP):
         ftp.login('anonymous', email)
         ftp.cwd(DIRECTORY)
         ftp.set_pasv(True)
+        try:
+            pending = {name.rsplit('/', 1)[-1] for name in ftp.nlst()}
+        except ftplib.all_errors:
+            raise ValueError('Cannot inspect Aminet incoming files; nothing sent. Review the server before submitting.') from None
+        if pending & {name for name, _ in payloads}:
+            raise ValueError('Aminet incoming filenames already exist; nothing sent. Inspect the pending submission before retrying.')
+        # A transfer might succeed even when its acknowledgement is lost.
+        save_receipt(folder, receipt)
         for name, data in payloads:
             ftp.storbinary('STOR '+name, io.BytesIO(data))
             receipt['completed_files'].append(name)

@@ -138,5 +138,14 @@ static const struct { long id; const char *text; } nd_strings[] = {
     {163, "Archiver opened for %d items"},
     {164, "Browse notes"},
     {165, "Add new note..."},
+    {166, "NovaDock stopped, but could not restart.\nStart NovaDock again from its application icon."},
+    {167, "Restart NovaDock"},
+    {168, "No drawer selected. Open Edit settings."},
+    {169, "The selected drawer does not exist."},
+    {170, "The selected path is a file, not a drawer."},
+    {171, "Cannot read the selected drawer."},
+    {172, "Not enough memory to check the drawer."},
+    {173, "The selected drawer's volume is unavailable."},
+    {174, "Index incomplete. Use Rescan to try again."},
 };
 #endif

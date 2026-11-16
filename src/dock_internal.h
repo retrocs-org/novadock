@@ -1,6 +1,7 @@
 #ifndef ND_DOCK_INTERNAL_H
 #define ND_DOCK_INTERNAL_H
 #include "nd_save.h"
+#include "nd_options.h"
 /* NovaDock dock internals shared by src/novadock.c and src/dock_*.c.
  * Not a public interface: plugins use include/nd_protocol.h. */
 #include <graphics/gfxmacros.h>
@@ -264,6 +265,7 @@ struct NDDock {
     ULONG watchdog_restarts[ND_MAX_ITEMS];
     ULONG watchdog_total_restarts;
     int running;
+    int restart_requested;
     int is_public;
     /* Asynchronous ARexx Launcher Actions: replies arrive on this port. */
     struct MsgPort *rexx_reply;
@@ -442,6 +444,8 @@ int launch_plugin_helper(struct NDDock *dock,int index,const char *verb,
 int is_trash_tile(const struct NDDock *dock,int index);
 void open_trash(struct NDDock *dock);
 void start_plugins(struct NDDock *dock, const struct NDConfig *previous);
+void remember_christmas(const struct NDConfig *cfg);
+void christmas_startup(struct NDDock *dock);
 void plugin_watchdog_tick(struct NDDock *dock,int quantum);
 struct NDItem *item_by_id(struct NDDock *dock, const char *id);
 void process_ipc(struct NDDock *dock, int quitting);

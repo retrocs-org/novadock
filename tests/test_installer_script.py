@@ -455,6 +455,18 @@ def main():
     check_fresh_path_guards(nodes)
     check_startup_label_collisions(nodes)
     check_maintenance_levels(nodes)
+    # Every mode installs the complete bundled library. Dock membership is
+    # configured later in Preferences, never through installer plugin choices.
+    install = next(n for n in nodes if head(n) == 'procedure' and n['items'][1][2] == 'P_INSTALL')
+    for question in (n for n in walk([install]) if head(n) in ('askchoice', 'askoptions', 'askbool')):
+        choices = next((n for n in question['items'] if isinstance(n, dict) and head(n) == 'choices'), None)
+        if choices:
+            assert all('plugin' not in n[2].lower() for n in choices['items'][1:] if isinstance(n, tuple)), 'installer must not select plugins'
+    copies = [n for n in walk([install]) if head(n) == 'copyfiles']
+    plugin_copy = next(n for n in copies if any(head(a) == 'source' and any(isinstance(t, tuple) and t[0] == 'str' and t[2] == 'Plugins' for expr in walk([a]) for t in expr['items']) for a in n['items'] if isinstance(a, dict)))
+    assert any(head(a) == 'all' for a in plugin_copy['items'] if isinstance(a, dict))
+    print('All installer modes install every bundled plugin; no plugin selection questions.')
+
     procedures = {head_node['items'][1][2] for head_node in walk(nodes)
                   if head(head_node) == 'procedure'}
     for proc in walk(nodes):

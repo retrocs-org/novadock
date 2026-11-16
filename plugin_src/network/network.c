@@ -1,5 +1,5 @@
 /* Unified Network tile. Provider control runs in an independent process;
- * the sampler keeps answering dock IPC during DHCP and shutdown waits. */
+ * the sampler keeps answering dock IPC during DHCP and interface-control waits. */
 #include <exec/types.h>
 #include <exec/memory.h>
 #include <exec/execbase.h>
@@ -23,7 +23,7 @@ const char nd_version[]=ND_PLUGIN_VER_STRING(NET,"Network");
 long __stack=16384;
 struct ExpansionBase *ExpansionBase=NULL;
 #define NC_MAGIC 0x4e434e54UL
-#define NC_WORKER_ABI "2"
+#define NC_WORKER_ABI "4"
 #define NC_NOTICE_PENDING 3
 #define NC_NOTICE_BUSY 4
 #define NC_NOTICE_ONLINE_TIMEOUT 5
@@ -46,7 +46,7 @@ static int stack_resident(void)
 #endif
 }
 static int roadshow_available(void)
-{return exists("C:RoadshowControl") && exists("C:GetNetStatus") && exists("C:AddNetInterface") && exists("C:NetShutdown");}
+{return exists("C:RoadshowControl") && exists("C:GetNetStatus") && exists("C:AddNetInterface") && exists("C:ConfigureNetInterface") && exists("C:ShowNetStatus");}
 static int network_stopping(void)
 {struct MsgPort *p;Forbid();p=FindPort("NovaDock.NetworkShutdown");Permit();return p!=NULL;}
 static void shutdown_guard(struct MsgPort *guard,int active)
@@ -124,11 +124,12 @@ static int prepare_network_log(void)
 }
 static int send_to(const char *name,struct NCMessage *m)
 {struct MsgPort *p;Forbid();p=FindPort((STRPTR)name);if(p)PutMsg(p,(struct Message *)m);Permit();return p!=NULL;}
-static int active_interface(char *name)
+static int selected_interface(char *name,const char *selected)
 {
     struct NCInterfaces interfaces;char path[80],line[512];BPTR in,out;FILE *file;LONG rc=20;
     if(network_stopping() || !stack_resident() || !exists("C:ShowNetStatus"))return 0;
     memset(&interfaces,0,sizeof(interfaces));
+    if(selected && rd_valid_interface(selected))strcpy(interfaces.selected,selected);
     sprintf(path,"T:NovaDockNetInterfaces-%08lx",(ULONG)FindTask(NULL));
     in=Open("NIL:",MODE_OLDFILE);out=Open(path,MODE_NEWFILE);
     if(in && out)rc=SystemTags("C:ShowNetStatus INTERFACES",SYS_Input,in,SYS_Output,out,TAG_DONE);
@@ -139,6 +140,8 @@ static int active_interface(char *name)
     if(rc!=0 || !interfaces.active[0])return 0;
     strcpy(name,interfaces.active);return 1;
 }
+static int active_interface(char *name)
+{return selected_interface(name,NULL);}
 static void runtime_device(struct NCConfig *cfg)
 {
     struct NCDeviceStatus status;char path[80],cmd[128],line[384];BPTR in,out;FILE *file;LONG rc=20;
@@ -163,23 +166,40 @@ static void resolve_metadata(struct NCConfig *cfg)
         sprintf(path,"SYS:Storage/NetInterfaces/%s",cfg->interface_name);(void)nc_interface_file(&cfg->traffic,path);
     }
 }
-static int roadshow_command(const struct NCConfig *cfg,int action,char *out,unsigned int size)
+static int roadshow_profile(const struct NCConfig *cfg,char *path)
 {
-    char path[96],cmd[256];
-    if(!nc_command(cfg,action,out,size))return 0;
-    if(action!=NC_ONLINE)return 1;
+    if(!rd_valid_interface(cfg->interface_name) || !strcmp(cfg->interface_name,"AUTO"))return 0;
     sprintf(path,"DEVS:NetInterfaces/%s",cfg->interface_name);
     if(!exists(path)){
         sprintf(path,"SYS:Storage/NetInterfaces/%s",cfg->interface_name);
         if(!exists(path))return 0;
     }
+    return 1;
+}
+static int roadshow_command(const struct NCConfig *cfg,int action,char *out,unsigned int size)
+{
+    char path[96],cmd[256];
+    if(!nc_command(cfg,action,out,size))return 0;
+    if(action!=NC_ONLINE)return 1;
+    if(!roadshow_profile(cfg,path))return 0;
     sprintf(cmd,"C:AddNetInterface %s QUIET TIMEOUT=%u",path,cfg->timeout);
     if(strlen(cmd)>=size)return 0;strcpy(out,cmd);return 1;
 }
 static int control_execute(void *context,const char *text)
 {(void)context;return (int)command(text);}
+static int roadshow_online(const struct NCConfig *cfg)
+{
+    char path[96],cmd[256];
+    if(!roadshow_profile(cfg,path))return 20;
+    if(stack_resident()){
+        sprintf(cmd,"C:ShowNetStatus INTERFACE=\"%s\" QUIET",cfg->interface_name);
+        if(command(cmd)==0)return nc_reconnect(cfg,rd_interface_uses_dhcp(path),control_execute,NULL);
+    }
+    if(!roadshow_command(cfg,NC_ONLINE,cmd,sizeof(cmd)))return 20;
+    return (int)command(cmd);
+}
 static int roadshow_offline(const struct NCConfig *cfg)
-{return nc_shutdown(cfg,control_execute,NULL);}
+{return nc_disconnect(cfg,control_execute,NULL);}
 static int a2065_present(void)
 {
     int found=0;
@@ -220,11 +240,11 @@ static void resolve_interface(struct NCConfig *cfg)
 struct StackBackend {
     const char *name;int (*available)(void);int (*resident)(void);
     void (*resolve)(struct NCConfig *);int (*command)(const struct NCConfig *,int,char *,unsigned int);
-    int (*offline)(const struct NCConfig *);
+    int (*online)(const struct NCConfig *);int (*offline)(const struct NCConfig *);
 };
 static const struct StackBackend backends[]={
-    {"ROADSHOW",roadshow_available,stack_resident,resolve_interface,roadshow_command,roadshow_offline},
-    {NULL,NULL,NULL,NULL,NULL,NULL}
+    {"ROADSHOW",roadshow_available,stack_resident,resolve_interface,roadshow_command,roadshow_online,roadshow_offline},
+    {NULL,NULL,NULL,NULL,NULL,NULL,NULL}
 };
 static const struct StackBackend *backend_for(const struct NCConfig *cfg)
 {
@@ -251,15 +271,18 @@ static int worker(const char *port,ULONG job)
         if(m->action && !prepare_network_log()){
             m->result=NC_LOG_FAILED;m->ok=0;goto completed;
         }
-        /* Shutdown does not need interface discovery, and querying a stack
-         * during shutdown can acquire the very resources it is draining. */
-        if(m->action!=NC_OFFLINE)backend->resolve(&m->config);
+        /* Offline already has the last resolved interface. */
+        if(m->action!=NC_OFFLINE || !strcmp(m->config.interface_name,"AUTO"))backend->resolve(&m->config);
         if(m->action){
             m->result=m->action==NC_OFFLINE && backend->offline ? backend->offline(&m->config):
+                m->action==NC_ONLINE && backend->online ? backend->online(&m->config):
                 backend->command(&m->config,m->action,cmd,sizeof(cmd)) ? (int)command(cmd):20;
             m->ok=m->result==0;
         }
-        if(m->action!=NC_OFFLINE && backend->resident() && backend->command(&m->config,NC_PROBE,cmd,sizeof(cmd)))m->online=command(cmd)==0;
+        if(m->action!=NC_OFFLINE && backend->resident()){
+            char selected[16];
+            m->online=selected_interface(selected,strcmp(m->config.interface_name,"AUTO") ? m->config.interface_name:NULL);
+        }
     }else {m->ok=m->action==NC_PROBE;m->result=20;}
 completed:
     m->kind=2;if(!send_to(port,m))FreeVec(m);return 0;
@@ -371,7 +394,7 @@ int main(int argc,char **argv)
     struct MsgPort *port,*guard;struct NCMessage *m;char portname[64],value[32]="CHECKING",traffic[32]="SAMPLING";
     unsigned int event,elapsed=0,meter=ND_NO_METER,a=ND_GRAPH_NO_SAMPLE,b=ND_GRAPH_NO_SAMPLE;
     ULONG poll=250,busy_age=0,busy_started=0,job=0,discovery_age=1500,drain_age=0;
-    int installed=0,online=0,busy=0,claimed=0,action=0,queued=0,reload=1,quit=0,notice=0,timed_out=0,shutdown_pending=0;
+    int installed=0,online=0,busy=0,claimed=0,action=0,queued=0,reload=1,quit=0,notice=0,timed_out=0,shutdown_pending=0,startup_pending=1;
     if(argc==2 && (!strcmp(argv[1],"ONLINE_ERROR") || !strcmp(argv[1],"OFFLINE_ERROR")))return network_error(!strcmp(argv[1],"OFFLINE_ERROR"));
     if(argc==2 && !strcmp(argv[1],"SHUTDOWN_PENDING"))return network_error(2);
     if(argc==2 && !strcmp(argv[1],"NETWORK_BUSY"))return network_error(3);
@@ -422,14 +445,13 @@ int main(int argc,char **argv)
                 if(m->job!=job || !busy || !claimed){FreeVec(m);continue;}
                 if(strcmp(active.traffic.device,m->config.traffic.device) || active.traffic.unit!=m->config.traffic.unit)close_sampler(sampler);
                 if(m->action==NC_OFFLINE){
-                    if(m->ok){shutdown_pending=0;online=0;}
-                    else if(m->result==5){
-                        shutdown_pending=1;
-                        if(!timed_out)(void)launch_worker(NULL,argv[0],NC_NOTICE_PENDING);
-                    }else shutdown_pending=0;
+                    shutdown_pending=0;shutdown_guard(guard,0);discovery_age=1500;
+                    if(m->ok)online=0;
                 }else {if(online!=m->online)discovery_age=1500;online=m->online;if(m->online)last_online=m->config;}
                 installed=m->installed;active=m->config;busy=0;claimed=0;poll=0;
-                if(!m->ok && m->action && !(m->action==NC_OFFLINE && m->result==5)){
+                if(m->action==NC_PROBE && nc_startup_online(&startup_pending,&cfg,m->installed,m->online) && !queued)
+                    queued=NC_ONLINE+1;
+                if(!m->ok && m->action){
                     notice=250;strcpy(value,"ACTION FAILED");
                     if(!timed_out)(void)launch_worker(NULL,argv[0],m->result==NC_QUIESCE_FAILED ? NC_NOTICE_QUIESCE_FAILED:
                         m->result==NC_LOG_FAILED ? NC_NOTICE_LOG_FAILED:(ULONG)m->action);
@@ -438,9 +460,6 @@ int main(int argc,char **argv)
                 if(!online){close_sampler(sampler);meter=ND_NO_METER;a=b=ND_GRAPH_NO_SAMPLE;strcpy(traffic,"SAMPLING");}
                 FreeVec(m);
             }
-        }
-        if(shutdown_pending && !stack_resident()){
-            online=0;if(!busy){shutdown_pending=0;poll=0;discovery_age=1500;}
         }
         if(queued==NC_OFFLINE+1){
             close_sampler(sampler);
@@ -460,7 +479,7 @@ int main(int argc,char **argv)
             if(!claimed){busy=0;shutdown_pending=0;notice=250;strcpy(value,"WORKER FAILED");poll=0;if(action)(void)launch_worker(NULL,argv[0],(ULONG)action);}
             else if(action)(void)launch_worker(NULL,argv[0],action==NC_OFFLINE ? NC_NOTICE_OFFLINE_TIMEOUT:NC_NOTICE_ONLINE_TIMEOUT);
             else if(queued)(void)launch_worker(NULL,argv[0],NC_NOTICE_BUSY);
-            queued=0;
+            if(action!=NC_OFFLINE)queued=0;
         }
         shutdown_guard(guard,shutdown_pending);
         if(online && !busy && !shutdown_pending && !sampler->opened && !sampler->pending){
@@ -482,9 +501,11 @@ int main(int argc,char **argv)
         if(event&ND_EVENT_QUIT)quit=1;
         if(event&ND_EVENT_SETTINGS)reload=1;
         if(event&(ND_EVENT_NETWORK_ONLINE|ND_EVENT_NETWORK_OFFLINE)){
-            if(shutdown_pending || (busy && (action!=NC_PROBE || timed_out)))
+            int requested=(event&ND_EVENT_NETWORK_OFFLINE) ? NC_OFFLINE:NC_ONLINE;
+            startup_pending=0; /* An explicit action overrides the startup policy. */
+            if(nc_control_request(busy,action,timed_out,shutdown_pending,requested)==NC_REQUEST_BUSY)
                 (void)launch_worker(NULL,argv[0],NC_NOTICE_BUSY);
-            else {queued=(event&ND_EVENT_NETWORK_OFFLINE) ? NC_OFFLINE+1:NC_ONLINE+1;reload=1;}
+            else {queued=requested+1;reload=1;}
         }
         if(!quit)elapsed=nd_client_wait(&client,sampler->pending || busy ? 5:nd_client_delay_ticks(&client,(unsigned int)cfg.traffic.poll_ticks));
     }

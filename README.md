@@ -50,7 +50,7 @@ Configure `VBCC` for your vbcc installation and `LHA` for **LHa for UNIX** (the 
 sh scripts/make-release.sh /path/to/releases
 ```
 
-The script regenerates the manual/catalog definitions, rebuilds all Amiga programs, stages a clean installer package and creates `NovaDock-0.2.lha`, its SHA-256 checksum and an accompanying readme. The archive contains the `NovaDock` installation drawer and its outer `NovaDock.info`, including the installer and prebuilt icons. It uses LH5 compression with level-1 headers, tests CRCs, extracts the archive and compares every file before replacing a previous release.
+The script regenerates the manual/catalog definitions, rebuilds all Amiga programs, stages a clean installer package and creates `NovaDock-0.3.lha`, its SHA-256 checksum and an accompanying readme. The archive contains the `NovaDock` installation drawer and its outer `NovaDock.info`, including the installer and prebuilt icons. It uses LH5 compression with level-1 headers, tests CRCs, extracts the archive and compares every file before replacing a previous release.
 
 `VC` can override the compiler command for a custom vbcc configuration. `ND_SKIP_BUILD=1` packages existing binaries when a rebuild has already completed. `UPLOADER` optionally fills the readme's uploader field. Normal builds never upload anything.
 
@@ -71,7 +71,7 @@ python3 tools/aminet_release.py check /path/to/releases/aminet
 
 Only when ready to submit, run the same command with `--upload`. Alternatively, `make-release.sh /path/to/releases --upload-aminet` explicitly builds, prepares and submits in one invocation (with `UPLOADER` set). Upload transfers only the archive and matching readme, with the readme last. The manifest and checksums stay local. Submission goes to Aminet incoming; publication depends on Aminet processing. No upload is performed by the default build or by double-clicking the local Mac launcher.
 
-Aminet recommends a stable filename, so its copy is `novadock.lha` with the version in the readme; local releases remain versioned. For replacing older differently named releases, set `AMINET_REPLACES` to full Aminet paths separated by semicolons, for example `util/wb/NovaDock-0.2.lha`. Omit it for the first release or updates to the same `novadock.lha` filename. Edited or rebuilt prepared files fail the hash check; prepare the submission again before uploading.
+Aminet recommends a stable filename, so its copy is `novadock.lha` with the version in the readme; local releases remain versioned. For replacing older differently named releases, set `AMINET_REPLACES` to full Aminet paths separated by semicolons, for example `util/wb/NovaDock-0.3.lha`. Omit it for the first release or updates to the same `novadock.lha` filename. Edited or rebuilt prepared files fail the hash check; prepare the submission again before uploading.
 
 See [Aminet's upload instructions](https://wiki.aminet.net/Uploading_instructions) and [readme format](https://wiki.aminet.net/The_Readme_file). The default target is anonymous FTP at `main.aminet.net/new`, as documented there. Recheck their instructions before a future public release.
 
@@ -170,3 +170,23 @@ Timer and Notes (0.2): countdown reminders and a permanent collection of titled 
 Screen Switcher (plugin 0.1): pick a public screen and bring it forward. See [Screen Switcher](docs/SCREEN_SWITCHER_PLUGIN.md).
 
 Weather (plugin 0.1): current conditions and a cached five-day forecast. See [Weather](docs/WEATHER_PLUGIN.md).
+
+MUSIC provides independent cached music collections with format selection
+(including SID), filtering and a configurable player. See
+[MUSIC](docs/MUSIC_LIBRARY_PLUGIN.md) for setup.
+
+[SENSOR](docs/SENSORS_PLUGIN.md) displays detected hardware readings from
+ZZ9000 telemetry, AK_Sensors and WarpTool, with selectable channels.
+
+[ACTIONS](docs/ACTIONS_PLUGIN.md) adds independent system action tiles, with
+custom icons and optional confirmation before running.
+
+[AQUARIUM](docs/AQUARIUM_PLUGIN.md) opens a fullscreen fish tank.
+[DOWNLOAD](docs/DOWNLOAD_PLUGIN.md) queues HTTP(S) files using curl.
+[SYSTEM](docs/SYSTEM_PLUGIN.md) shows CPU, Workbench and boot uptime.
+
+[PLACES](docs/PLACES_PLUGIN.md) opens saved drawers and mounted volumes.
+[SAVER](docs/SAVER_PLUGIN.md) offers Boing Ball, copper waves, vectors, fireworks,
+a solving maze and a configurable scene shuffle.
+[AMINET](docs/AMINET_PLUGIN.md) browses recent uploads, categories, readmes and downloads.
+The included icon library has 30 selectable images, including 12 new utility icons.

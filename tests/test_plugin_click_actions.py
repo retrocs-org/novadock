@@ -13,6 +13,7 @@ typedef unsigned short UWORD;
 #define IEQUALIFIER_RSHIFT 2
 struct NDDock {struct NDConfig conf;void *screen;};
 static int toggles,draws;
+static int nd_independent_plugin_path(const char *s){return !strcmp(s,"Plugins/Games")||!strcmp(s,"Plugins/MusicLibrary")||!strcmp(s,"Plugins/Sensors")||!strcmp(s,"Plugins/Actions");}
 static int queue_music_control(struct NDDock *d,int i,int x,int y){(void)d;(void)i;(void)x;(void)y;return 0;}
 static int launch_default_music_application(struct NDDock *d){(void)d;return 1;}
 static void open_trash(struct NDDock *d){(void)d;}
@@ -26,11 +27,11 @@ static void draw_tile(struct NDDock *d,int i){(void)d;(void)i;++draws;}
 static void open_popup(struct NDDock *d,int i,int x,int y){(void)d;(void)i;(void)x;(void)y;}
 static void launch_item(struct NDDock *d,int i){(void)d;(void)i;}
 '''+s[a:b]+r'''
-int main(void){static struct NDDock dock;const char *ids[]={"SCREENSHOT","SCREENMODE","SCREENSWITCHER"};int i,shift;
+int main(void){static struct NDDock dock;const char *ids[]={"SCREENSHOT","SCREENMODE","SCREENSWITCHER","WEATHER","CHRISTMAS","AQUARIUM","DOWNLOAD","SYSTEM","PLACES","SAVER","WHDLOAD_2","MUSICLIB_2","SENSORS_2","ACTIONS_2"};int i,shift;
 dock.conf.items[0].kind=ND_ITEM_PLUGIN;
-for(i=0;i<3;++i)for(shift=0;shift<4;++shift){strcpy(dock.conf.items[0].id,ids[i]);dock.conf.items[0].graph=1;dock.conf.items[0].clicks=0;click_tile(&dock,0,0,0,(UWORD)shift);assert(dock.conf.items[0].clicks==1&&!dock.conf.items[0].graph&&!toggles);}
+for(i=0;i<14;++i)for(shift=0;shift<4;++shift){strcpy(dock.conf.items[0].id,ids[i]);strcpy(dock.conf.items[0].command,i==10 ? "Plugins/Games":i==11 ? "Plugins/MusicLibrary":i==12 ? "Plugins/Sensors":i==13 ? "Plugins/Actions":"");dock.conf.items[0].graph=1;dock.conf.items[0].clicks=0;click_tile(&dock,0,0,0,(UWORD)shift);assert(dock.conf.items[0].clicks==1&&!dock.conf.items[0].graph&&!toggles);}
 dock.conf.items[0].clicks=3;click_tile(&dock,0,0,0,0);assert(dock.conf.items[0].clicks==3);
-strcpy(dock.conf.items[0].id,"CPU");click_tile(&dock,0,0,0,0);assert(toggles==1);
+dock.conf.items[0].command[0]=0;strcpy(dock.conf.items[0].id,"CPU");click_tile(&dock,0,0,0,0);assert(toggles==1);
 strcpy(dock.conf.items[0].id,"OTHER");dock.conf.items[0].graph=0;dock.conf.items[0].clicks=0;click_tile(&dock,0,0,0,1);assert(dock.conf.items[0].graph&&!dock.conf.items[0].clicks);
 puts("Screenshot, Mode and Screen Switcher clicks queue actions with any Shift state; monitor toggles remain separate.");return 0;}
 '''

@@ -41,7 +41,7 @@ NOVADOCK_OPTION=POLL_TICKS|Refresh ticks|UINT|250,30000|3000
 | `NOVADOCK_WEBSITE` | Optional project page. |
 | `NOVADOCK_FEATURES` | Comma-separated capabilities, from: `meter` (shows a value or bar), `graph` (history graph), `click` (reacts to clicks), `popup` (opens a popup or window), `drop` (accepts dropped Workbench icons), `media` (player transport controls), `badge` (a label on the tile's corner). Unknown words are displayed as written. Do not list settings or several tiles: the Plugin Manager reports those from `NOVADOCK_OPTION` and `NOVADOCK_MULTIPLE`. |
 | `NOVADOCK_PROGRAM` | Installed executable file name, when it differs from the manifest's name. |
-| `NOVADOCK_OPTION` | `KEY|Label|TYPE|choices|default`, up to twelve. TYPE is `BOOL`, `CHOICE` (comma-separated choices), `UINT` (`min,max`), `TEXT`, or `FILE` (text plus an ASL file chooser). The default must be valid for its type. |
+| `NOVADOCK_OPTION` | `KEY|Label|TYPE|choices|default`, up to 32. TYPE is `BOOL`, `CHOICE` (comma-separated choices), `UINT` (`min,max`), `TEXT`, or `FILE` (text plus an ASL file chooser). The default must be valid for its type. |
 
 Lines that do not start with `NOVADOCK_` are ignored (comments, `DONOTWAIT`
 and other tool types). Unknown `NOVADOCK_` keys are ignored so newer

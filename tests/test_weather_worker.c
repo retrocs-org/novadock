@@ -47,6 +47,12 @@ static BPTR Open(STRPTR name,int mode){(void)name;(void)mode;return 1;}
 static int DeleteFile(STRPTR path){assert(!strncmp(path,"T:NovaDockWeather-",18));++deletes;return 1;}
 static int Close(BPTR n){(void)n;return 1;}
 static LONG SystemTags(STRPTR command,...);
+#ifdef TEST_FETCH_PROGRESS
+#define FETCH_PROGRESS_FILE "progress"
+#define CLEAN_FILES 4
+#else
+#define CLEAN_FILES 3
+#endif
 #include "../plugin_src/weather/nd_fetch_worker.h"
 static void PutMsg(struct MsgPort *p,struct Message *message)
 {
@@ -64,13 +70,13 @@ int main(void)
     struct FetchMessage *m;struct MsgPort *reply;
     assert(weather_ticks()==10);
     make_parent();assert(fetch_worker("PARENT")==0 && commands==1 && blocked_second && deletes==0);
-    m=(struct FetchMessage *)GetMsg(parent);assert(m && m->kind==2 && m->result==0);fetch_clean(m->directory);FreeVec(m);assert(deletes==3);
-    command_result=20;assert(fetch_worker("PARENT")==0);m=(struct FetchMessage *)GetMsg(parent);assert(m->result==20);fetch_clean(m->directory);FreeVec(m);assert(deletes==6);
-    disappear=1;assert(fetch_worker("PARENT")==0 && !parent && allocations==0 && deletes==9);
+    m=(struct FetchMessage *)GetMsg(parent);assert(m && m->kind==2 && m->result==0);fetch_clean(m->directory);FreeVec(m);assert(deletes==CLEAN_FILES);
+    command_result=20;assert(fetch_worker("PARENT")==0);m=(struct FetchMessage *)GetMsg(parent);assert(m->result==20);fetch_clean(m->directory);FreeVec(m);assert(deletes==2*CLEAN_FILES);
+    disappear=1;assert(fetch_worker("PARENT")==0 && !parent && allocations==0 && deletes==3*CLEAN_FILES);
     assert(fetch_worker("MISSING")==0 && allocations==0);
     make_parent();refuse_reply=1;assert(fetch_worker("PARENT")==20);assert(!FindPort(FETCH_GUARD));
     m=(struct FetchMessage *)parent->head;assert(m);reply=m->msg.mn_ReplyPort;assert(reply->mp_Flags==PA_IGNORE&&!reply->mp_SigTask);
     fetch_close_port(parent);parent=NULL;assert(GetMsg(reply)==(struct Message *)m&&m->kind==-1);FreeVec(m);DeleteMsgPort(reply);assert(allocations==0);
-    fetch_clean("Work:Keep");assert(deletes==9);
+    fetch_clean("Work:Keep");assert(deletes==3*CLEAN_FILES);
     puts("Weather worker: success, failure, missing parent, late replies, single worker and owned cleanup passed.");return 0;
 }

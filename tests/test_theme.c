@@ -84,6 +84,9 @@ int main(void)
     assert(nd_theme_load(".",ND_THEME_NORD,&spec)==1);
     assert(!strcmp(spec.name,"Nord") && spec.shape==ND_SHAPE_ROUNDED);
     assert(spec.rgb[7][1]==190);
+    assert(nd_theme_load(".",ND_THEME_CHRISTMAS,&spec)==1);
+    assert(!strcmp(spec.name,"Christmas") && spec.shape==ND_SHAPE_CHAMFER);
+    assert(spec.rgb[5][0]==220 && spec.rgb[7][0]==232);
     assert(nd_theme_load(".",ND_THEME_VAPOR,&spec)==1);
     assert(!strcmp(spec.name,"Vapor") && spec.shape==ND_SHAPE_MINIMAL);
     assert(spec.spacer_line_width==2 && spec.font_mode==ND_FONT_BOLD);

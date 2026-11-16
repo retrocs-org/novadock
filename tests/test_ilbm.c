@@ -2,16 +2,13 @@
 #include <stdio.h>
 #include <string.h>
 #include "nd_ilbm.h"
-static const char *files[] = {
-    "Icons/Workbench.iff", "Icons/Drawer.iff", "Icons/Games.iff",
-    "Icons/Internet.iff", "Icons/Tools.iff"
-};
+#include "nd_collection_icons.h"
 int main(void)
 {
     struct NDILBM bm;
     unsigned int i,j,painted;
-    for (i=0;i<5;++i) {
-        assert(nd_ilbm_load(files[i],&bm)==1);
+    for (i=0;i<ND_COLLECTION_ICON_COUNT;++i) {
+        assert(nd_ilbm_load(nd_collection_icons[i].path,&bm)==1);
         assert(bm.width==32 && bm.height==32);
         assert(bm.colors==16);
         assert(bm.transparent==0);
@@ -21,6 +18,8 @@ int main(void)
         }
         assert(painted>75);
     }
+    assert(nd_collection_icon_index("Demos")>=0);
+    assert(nd_collection_icon_index("invalid")<0);
     assert(nd_ilbm_load("Icons/Workbench.iff",&bm));
     {
         struct NDILBM packed;

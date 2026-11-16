@@ -1,0 +1,15 @@
+NOVADOCK_ID=ACTIONS
+NOVADOCK_PROGRAM=Actions
+NOVADOCK_NAME=ACTIONS
+NOVADOCK_VERSION=0.1
+NOVADOCK_AUTHOR=NovaDock
+NOVADOCK_DESCRIPTION=Independent system action tiles with icons and optional confirmation.
+NOVADOCK_LICENSE=MIT
+NOVADOCK_FEATURES=click,popup
+NOVADOCK_ABI=1
+NOVADOCK_MULTIPLE=YES
+NOVADOCK_OPTION=LABEL|Tile label|TEXT||ACTIONS
+NOVADOCK_OPTION=ACTION|System action|CHOICE|Restart Amiga,Restart Workbench,Restart NovaDock,Open Shell,Workbench front,Workbench back|Restart Workbench
+NOVADOCK_OPTION=CONFIRM|Confirm before running|BOOL||YES
+NOVADOCK_OPTION=ICON|Tile icon|TEXT||Utilities
+NOVADOCK_OPTION=ICONFILE|Custom icon or picture|FILE||

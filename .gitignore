@@ -99,6 +99,8 @@ __pycache__/
 /plugin_src/dopus4/dopus4.asm
 /plugin_src/eyes/eyes.asm
 /plugin_src/games/games.asm
+/plugin_src/games/nd_games_scan.asm
+/plugin_src/games/nd_games_cache.asm
 /plugin_src/memory/memory.asm
 /plugin_src/mixer/mixer.asm
 /plugin_src/mixer/nd_ahiprefs.asm
@@ -149,3 +151,23 @@ __pycache__/
 
 /Plugins/Weather
 /plugin_src/weather/*.asm
+
+/Plugins/MusicLibrary
+/src/nd_music_formats.asm
+
+/Plugins/Sensors
+/plugin_src/sensors/*.asm
+/src/nd_sensors.asm
+
+/Plugins/Christmas
+/plugin_src/christmas/*.asm
+
+/Plugins/Actions
+/Plugins/Aquarium
+/Plugins/Download
+/Plugins/System
+
+/Plugins/Places
+/Plugins/Saver
+
+/Plugins/Aminet

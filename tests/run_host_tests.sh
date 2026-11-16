@@ -20,6 +20,54 @@ fi
 # Lifecycle and fallback regressions run in a private temporary directory.
 REGRESSION_TMP=$(mktemp -d "${TMPDIR:-/tmp}/nd-regressions.XXXXXX")
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_reply.c -o "$REGRESSION_TMP/reply"
+$CC -std=c89 -Wall -Wextra -pedantic -Iplugin_src/games tests/test_games_scan.c plugin_src/games/nd_games_scan.c -o "$REGRESSION_TMP/games_scan"
+$CC -std=c89 -Wall -Wextra -pedantic -Iplugin_src/games tests/test_games_cache.c plugin_src/games/nd_games_cache.c -o "$REGRESSION_TMP/games_cache"
+(cd "$REGRESSION_TMP" && ./games_cache)
+$CC -std=c89 -Wall -Wextra -pedantic -DTEST_AMIGA_RENAME -Drename=qa_rename -Iplugin_src/games tests/test_games_cache.c plugin_src/games/nd_games_cache.c -o "$REGRESSION_TMP/games_cache_amiga"
+(cd "$REGRESSION_TMP" && ./games_cache_amiga)
+"$REGRESSION_TMP/games_scan"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_places.c src/config.c src/nd_options.c -o "$REGRESSION_TMP/places"
+(cd "$REGRESSION_TMP" && ./places)
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_saver.c -o "$REGRESSION_TMP/saver"
+"$REGRESSION_TMP/saver"
+python3 tests/test_saver_window.py
+python3 tests/test_cpu_tooltip.py
+$CC -std=c89 -Wall -Wextra -pedantic -Iplugin_src/aminet tests/test_aminet.c plugin_src/aminet/nd_aminet.c -o "$REGRESSION_TMP/aminet"
+"$REGRESSION_TMP/aminet"
+$CC -std=c99 -Wall -Wextra -pedantic -Iplugin_src/aminet tests/test_aminet_progress.c plugin_src/aminet/nd_aminet.c -o "$REGRESSION_TMP/aminet_progress"
+"$REGRESSION_TMP/aminet_progress"
+python3 tests/test_aminet_progress_ui.py
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_seasonal.c src/config.c src/nd_options.c -o "$REGRESSION_TMP/seasonal"
+(cd "$REGRESSION_TMP" && ./seasonal)
+python3 tests/test_seasonal_startup.py
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_option_batch.c src/config.c src/nd_options.c -o "$REGRESSION_TMP/option_batch"
+(cd "$REGRESSION_TMP" && ./option_batch)
+$CC -std=c99 -Wall -Wextra -pedantic -Iinclude tests/test_system_info.c -o "$REGRESSION_TMP/system_info"
+"$REGRESSION_TMP/system_info"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_download.c -o "$REGRESSION_TMP/download"
+python3 tests/test_download_jobs.py
+"$REGRESSION_TMP/download"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_aquarium.c -o "$REGRESSION_TMP/aquarium"
+"$REGRESSION_TMP/aquarium"
+python3 tests/test_aquarium_window.py
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_christmas.c -o "$REGRESSION_TMP/christmas"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_christmas_scene.c -o "$REGRESSION_TMP/christmas_scene"
+"$REGRESSION_TMP/christmas"
+"$REGRESSION_TMP/christmas_scene"
+python3 tests/test_christmas_window.py
+python3 tests/test_christmas_audio.py
+python3 tests/test_wintery_module.py
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_sensors.c src/nd_sensors.c -o "$REGRESSION_TMP/sensors"
+"$REGRESSION_TMP/sensors"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude -Iplugin_src/games tests/test_music_formats.c src/nd_music_formats.c -o "$REGRESSION_TMP/music_formats"
+"$REGRESSION_TMP/music_formats"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_actions_instances.c src/config.c src/nd_options.c src/nd_manifest.c -o "$REGRESSION_TMP/actions_instances"
+(cd "$REGRESSION_TMP" && ./actions_instances)
+python3 tests/test_actions_native.py
+python3 tests/test_actions_confirmation.py
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_games_instances.c src/config.c src/nd_options.c src/nd_manifest.c -o "$REGRESSION_TMP/games_instances"
+mkdir -p "$REGRESSION_TMP/ENVARC:NovaDock/Cache/WHDLoad"
+(cd "$REGRESSION_TMP" && ./games_instances)
 "$REGRESSION_TMP/reply"
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_calendar.c -o "$REGRESSION_TMP/calendar"
 "$REGRESSION_TMP/calendar"
@@ -33,8 +81,11 @@ $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_plugin_labels.c -o "$R
 "$REGRESSION_TMP/plugin_labels"
 "$REGRESSION_TMP/weather_art"
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude -Iplugin_src/weather tests/test_weather.c plugin_src/weather/nd_weather.c -o "$REGRESSION_TMP/weather"
+python3 tests/test_weather_window.py
 $CC -std=c89 -Wall -Wextra -pedantic tests/test_weather_worker.c -o "$REGRESSION_TMP/weather_worker"
 "$REGRESSION_TMP/weather_worker"
+$CC -std=c89 -Wall -Wextra -pedantic -DTEST_FETCH_PROGRESS tests/test_weather_worker.c -o "$REGRESSION_TMP/progress_worker"
+"$REGRESSION_TMP/progress_worker"
 "$REGRESSION_TMP/weather"
 "$REGRESSION_TMP/screen_art"
 $CC -std=c89 -Wall -Wextra -pedantic -Iplugin_src/notes tests/test_markdown.c plugin_src/notes/nd_markdown.c plugin_src/notes/nd_notes.c -o "$REGRESSION_TMP/markdown"
@@ -97,14 +148,19 @@ $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_startinstaller.c -o te
 ./tests/nd_startinstaller_test
 if [ -f NovaDock ]; then
   "$PYTHON" tests/test_installer_script.py
+  "$PYTHON" tests/test_collection_icons.py
+  "$PYTHON" tests/test_whdload_art_state.py
 else
   "$PYTHON" tests/test_installer_script.py --source-only
 fi
 "$PYTHON" tests/test_amigaguide.py
+"$PYTHON" tests/test_unlisted_plugins.py
 "$PYTHON" tests/test_catalogs.py
+"$PYTHON" tests/test_restart_menu.py
 "$PYTHON" tests/test_build_scripts.py
 "$PYTHON" tools/make_deps.py
 "$PYTHON" tests/test_aminet_release.py
+"$PYTHON" tests/test_release_notes.py
 "$PYTHON" tests/test_release_tool.py
 "$PYTHON" tests/test_release_provenance.py
 "$PYTHON" tests/test_release_integration.py
@@ -219,6 +275,8 @@ $CC -std=c89 -Wall -Wextra -pedantic -Iinclude \
   src/config.c src/nd_options.c src/nd_manifest.c tests/test_manifest.c \
   -o tests/nd_manifest_test
 ./tests/nd_manifest_test
+python3 tests/test_plugin_inventory.py
+python3 tests/test_collection_launch.py
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude -Iplugin_src/amirc \
   src/config.c src/nd_options.c src/nd_manifest.c plugin_src/amirc/nd_amirc.c \
   tests/test_amirc.c -o tests/nd_amirc_test
@@ -483,7 +541,7 @@ focused_plugin_editor=$(sed -n '/if (p->focused) {$/,/^    } else {$/p' \
   prefs/novadockpluginprefs.c)
 if printf '%s\n' "$focused_plugin_editor" | grep -q '"Previous"\|"Next"' ||
    ! grep -q 'SCROLLER_KIND' prefs/novadockpluginprefs.c ||
-   ! grep -q 'sprintf(p->title,"%s settings",p->id)' prefs/novadockpluginprefs.c; then
+   ! grep -q 'sprintf(p->title,"%s settings",name ? name:p->id)' prefs/novadockpluginprefs.c; then
   echo "Focused item editor test failed: plugin settings must be item-specific without paging buttons." >&2
   exit 1
 fi
@@ -742,13 +800,14 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
 "$PYTHON" tests/test_notes_render.py
 "$PYTHON" tests/test_add_plugin_picker.py
 "$PYTHON" tests/test_plugin_shutdown.py
+"$PYTHON" tests/test_network_restart.py
 "$PYTHON" tests/test_archiver_batch.py
 "$PYTHON" tests/test_trash_notifications.py
 "$PYTHON" tests/test_drop_preview.py
   "$PYTHON" tests/test_plugin_menu.py
   "$PYTHON" tests/test_info_icons.py
   if [ "${ND_DEFER_WEB_CHECKS:-0}" = 1 ]; then
-    echo "Website package checks deferred until release packaging completes."
+    "$PYTHON" tests/test_public_web.py --source-only
   elif [ -f public-web/index.php ]; then
     "$PYTHON" tests/test_public_web.py
   else

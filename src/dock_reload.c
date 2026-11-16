@@ -62,6 +62,7 @@ static LONG apply_configuration(struct NDDock *dock,const struct NDConfig *provi
     }
     new_action_items=copy_background_actions(next,&new_action_count);
     if (new_action_count<0) { result=ND_CONTROL_NOMEM;goto finish; }
+    remember_christmas(next);
     if (!nd_compact_enabled(next)) { result = ND_CONTROL_NOFIT; goto finish; }
     base_count=next->count;
     (void)nd_media_append(next,dock->media,dock->media_count,
@@ -258,6 +259,11 @@ static LONG apply_configuration(struct NDDock *dock,const struct NDConfig *provi
         attach_appwindow(dock);
         rebuild_hotkeys(dock);
         start_plugins(dock, old);
+    }
+    if(result==ND_CONTROL_OK)for(i=0;i<old->count;++i){
+        if(old->items[i].kind!=ND_ITEM_PLUGIN || !nd_independent_plugin_path(old->items[i].command))continue;
+        for(j=0;j<next->count;++j)if(next->items[j].kind==ND_ITEM_PLUGIN && !strcmp(next->items[j].id,old->items[i].id))break;
+        if(j==next->count)(void)nd_games_forget_cache(old->items[i].id);
     }
     /* The shared low-rate timer also coalesces plugin paints. Runtime
      * preferences therefore keep it alive even without auto-hide or Eyes. */

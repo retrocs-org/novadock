@@ -1,9 +1,70 @@
 #include "nd_options.h"
+#include "nd_collection_icons.h"
+#include "nd_music_formats.h"
+#include "nd_sensors.h"
+#define ND_SAVER_METADATA_ONLY
+#include "nd_saver_modes.h"
 #include <ctype.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 /* Built-in schemas are static metadata, not additional configuration files. */
+#define MUSIC_OPTION(key,label,bit,value) {"MUSICLIB",#key,label,"BOOL","",value},
+#define SAVER_SHUFFLE(key,label,mode,value) {"SAVER","SHUFFLE_" #key,"Shuffle: " label,"BOOL","",value},
+#define SENSOR_OPTION(key,label,short_label,unit,minimum,maximum) {"SENSORS",#key,label,"BOOL","","YES"},
 static const struct NDOptionDef builtin[] = {
+ {"AMINET","DRAWER","Default download drawer","FILE","","RAM:"},
+ {"SAVER","SCENE","Screen saver","CHOICE",ND_SAVER_CHOICES,"Starfield"},
+ {"SAVER","SPEED","Animation speed","CHOICE","Slow,Normal,Fast","Normal"},
+ {"SAVER","SHUFFLE_SECONDS","Shuffle seconds per scene","UINT","10,300","40"},
+ ND_SAVER_SHUFFLE_OPTIONS(SAVER_SHUFFLE)
+
+ {"PLACES","SYSTEM","System drawers","BOOL","","YES"},
+ {"PLACES","VOLUMES","Mounted volumes","BOOL","","YES"},
+ {"PLACES","NAME1","Bookmark 1 label","TEXT","",""},
+ {"PLACES","BOOKMARK1","Bookmark 1 drawer","FILE","",""},
+ {"PLACES","NAME2","Bookmark 2 label","TEXT","",""},
+ {"PLACES","BOOKMARK2","Bookmark 2 drawer","FILE","",""},
+ {"PLACES","NAME3","Bookmark 3 label","TEXT","",""},
+ {"PLACES","BOOKMARK3","Bookmark 3 drawer","FILE","",""},
+ {"PLACES","NAME4","Bookmark 4 label","TEXT","",""},
+ {"PLACES","BOOKMARK4","Bookmark 4 drawer","FILE","",""},
+ {"PLACES","NAME5","Bookmark 5 label","TEXT","",""},
+ {"PLACES","BOOKMARK5","Bookmark 5 drawer","FILE","",""},
+
+ {"SYSTEM","DISPLAY","Tile display","CHOICE","Rotate,CPU,Workbench,Uptime","Rotate"},
+ {"DOWNLOAD","PROGRAM","curl executable","FILE","","C:curl"},
+ {"DOWNLOAD","DRAWER","Default save drawer","FILE","","RAM:"},
+ {"AQUARIUM","FISH","Number of fish","UINT","1,8","5"},
+ {"AQUARIUM","BUBBLES","Bubbles","BOOL","","YES"},
+ {"AQUARIUM","SPEED","Animation speed","CHOICE","Slow,Normal,Fast","Normal"},
+ {"ACTIONS","LABEL","Tile label","TEXT","","ACTIONS"},
+ {"ACTIONS","ACTION","System action","CHOICE","Restart Amiga,Restart Workbench,Restart NovaDock,Open Shell,Workbench front,Workbench back","Restart Workbench"},
+ {"ACTIONS","CONFIRM","Confirm before running","BOOL","","YES"},
+ {"ACTIONS","ICON","Tile icon","TEXT","","Utilities"},
+ {"ACTIONS","ICONFILE","Custom icon or picture","FILE","",""},
+ {"CHRISTMAS","ANIMATE","Animate lights","BOOL","","YES"},
+ {"CHRISTMAS","MUSIC","Christmas tune","BOOL","","YES"},
+ {"CHRISTMAS","VOLUME","Music volume (%)","UINT","0,100","30"},
+ {"CHRISTMAS","LIGHTS","Tree lights","BOOL","","YES"},
+ {"CHRISTMAS","PATTERN","Light pattern","CHOICE","Twinkle,Chase,Steady","Twinkle"},
+ {"CHRISTMAS","SPEED","Animation speed","CHOICE","Slow,Normal,Fast","Normal"},
+ {"SENSORS","LABEL","Tile label","TEXT","","SENSOR"},
+ {"SENSORS","INTERVAL","Refresh seconds","UINT","2,60","5"},
+ {"SENSORS","WARPTOOL","Warp diagnostic tool","FILE","","C:WarpTool"},
+ {"SENSORS","RTC_MAX_AGE","RTC max age seconds","UINT","30,86400","120"},
+ ND_SENSOR_CHANNELS(SENSOR_OPTION)
+ {"MUSICLIB","LABEL","Tile label","TEXT","","MUSIC"},
+ {"MUSICLIB","DRAWER","Scan folder (recursive)","FILE","",""},
+ {"MUSICLIB","ICON","Tile icon","TEXT","","Music"},
+ {"MUSICLIB","ICONFILE","Custom icon or picture","FILE","",""},
+ {"MUSICLIB","PLAYER","Player (blank = Music default)","FILE","",""},
+ ND_MUSIC_FORMATS(MUSIC_OPTION)
+ {"WHDLOAD","LABEL","Tile label","TEXT","","WHDLoad"},
+ {"WHDLOAD","DRAWER","Scan folder (recursive)","FILE","",""},
+ {"WHDLOAD","ICON","Tile icon","TEXT","","WHDLoad"},
+ {"WHDLOAD","ICONFILE","Custom icon or picture","FILE","",""},
+ {"WHDLOAD","COMMAND","WHDLoad command","FILE","","WHDLoad"},
  {"WEATHER","LOCATION","Location (city, country)","TEXT","",""},
  {"WEATHER","UNITS","Temperature units","CHOICE","C,F","C"},
  {"WEATHER","PROGRAM","HTTPS downloader","FILE","","C:curl"},
@@ -44,6 +105,7 @@ static const struct NDOptionDef builtin[] = {
  {"NET","STACK","Network stack","CHOICE","AUTO,ROADSHOW","AUTO"},
  {"NET","INTERFACE","Network interface","TEXT","","AUTO"},
  {"NET","DHCP_TIMEOUT","Connection timeout","UINT","10,300","60"},
+ {"NET","AUTO_ONLINE","Online at startup","BOOL","","NO"},
  {"NET","SAMPLING_OVERRIDE","Override sampling driver","BOOL","","NO"},
  {"NET","DEVICE","Sampling driver","TEXT","",""},
  {"NET","UNIT","Sampling unit","UINT","0,255","0"},
@@ -231,4 +293,45 @@ int nd_option_group_settings(const char *id,struct NDOptionDef *defs,int count)
         defs[basic++]=temp;
     }
     return basic;
+}
+
+/* The same resolved artwork is used by loading and reload fingerprints. */
+const char *nd_games_icon_path(const struct NDConfig *cfg,const char *id)
+{
+    const char *choice=nd_option_get(cfg,id,"ICON"),*custom=nd_option_get(cfg,id,"ICONFILE");
+    int i=nd_collection_icon_index(choice);
+    return custom && *custom ? custom:nd_collection_icons[i>=0 ? i:0].path;
+}
+static int collection_art_join(const char *base,const char *name,char *out,unsigned int size)
+{
+    unsigned int n=(unsigned int)strlen(base);int slash=n && base[n-1]!=':' && base[n-1]!='/';
+    if(strchr(name,':')){if(strlen(name)>=size)return 0;strcpy(out,name);return 1;}
+    if(n+slash+strlen(name)>=size)return 0;
+    strcpy(out,base);if(slash)strcat(out,"/");strcat(out,name);return 1;
+}
+static int collection_art_exists(const char *path)
+{
+    FILE *file=fopen(path,"rb");int ok;if(!file)return 0;
+    (void)fgetc(file);ok=!ferror(file);fclose(file);return ok;
+}
+/* Only called while loading/reloading artwork, never in the paint loop.
+ * A valid custom file overrides the library selection. Callers suppress
+ * missing-volume requesters while probing native paths. */
+int nd_collection_art_path(const char *base,const char *choice,const char *custom,
+                            char *out,unsigned int size)
+{
+    char candidate[520];int i=nd_collection_icon_index(choice);size_t n;
+    if(!base || !out || !size)return 0;
+    if(custom && *custom && collection_art_join(base,custom,candidate,sizeof(candidate))){
+        if(collection_art_exists(candidate)){
+            if(strlen(candidate)<size){strcpy(out,candidate);return 2;}
+        }else{
+            n=strlen(candidate);
+            if(n+5<sizeof(candidate)){
+                strcat(candidate,".info");
+                if(collection_art_exists(candidate) && strlen(candidate)<size){strcpy(out,candidate);return 2;}
+            }
+        }
+    }
+    return collection_art_join(base,nd_collection_icons[i>=0 ? i:0].path,out,size);
 }

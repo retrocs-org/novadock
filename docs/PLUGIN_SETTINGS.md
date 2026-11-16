@@ -51,7 +51,7 @@ this editor supports the five schema types above. The manifest has no hook to
 replace Edit settings with an external preferences executable.
 
 The focused editor adapts to the Workbench screen height and scrolls when
-its fields cannot fit. The manifest supports up to 12 option definitions.
+its fields cannot fit. The manifest supports up to 32 option definitions.
 
 **Use** writes the session copy and **Save** writes both session and permanent
 copies, closes the editor, then asks the running dock and plugins to reload.
@@ -87,3 +87,9 @@ override controls. Taller screens fit these together without a scrollbar;
 smaller screens keep scrolling so all options remain reachable.
 
 For a complete SDK walkthrough, see [Creating your plugin settings window](PLUGIN_SDK_SETTINGS.md).
+
+In Preferences > Plugins, installed manifests that cannot be used remain listed
+with a Needs repair status. Select the entry to see the reason and its program
+path, for example missing program, invalid option definition or a newer dock
+requirement. These entries are excluded from Add Item and automatic discovery
+merges. Repair or reinstall the plugin, then reopen Preferences to rescan.

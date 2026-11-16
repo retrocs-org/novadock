@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'NovaDock.guide'
 WIDTH = 76
 # Curated user and SDK topics. Repository/operator documents stay source-only.
-SOURCE_ONLY_DOCS = {"README.md", "docs/RELEASING.md", "docs/RELEASE_CHECKLIST.md"}
+SOURCE_ONLY_DOCS = {"README.md", "docs/RELEASING.md", "docs/RELEASE_CHECKLIST.md", "docs/RELEASE-NOTES.md"}
 GROUPS = (
     ('Using NovaDock', (
         ('docs/USING_NOVADOCK.md', 'Getting started and installation'),
@@ -51,7 +51,16 @@ GROUPS = (
         ('docs/SCREENMODE_PLUGIN.md', 'Screen Mode'),
         ('docs/SCREEN_SWITCHER_PLUGIN.md', 'Screen Switcher'),
         ('docs/TRASH_PLUGIN.md', 'Trash'),
-        ('docs/GAMES_PLUGIN.md', 'WHDLoad games'))),
+        ('docs/GAMES_PLUGIN.md', 'WHDLoad games'),
+        ('docs/MUSIC_LIBRARY_PLUGIN.md', 'MUSIC'),
+        ('docs/SENSORS_PLUGIN.md', 'Hardware sensors'),
+        ('docs/ACTIONS_PLUGIN.md', 'ACTIONS'),
+        ('docs/AQUARIUM_PLUGIN.md', 'AQUARIUM'),
+        ('docs/DOWNLOAD_PLUGIN.md', 'DOWNLOAD'),
+        ('docs/SYSTEM_PLUGIN.md', 'SYSTEM'),
+        ('docs/PLACES_PLUGIN.md', 'PLACES'),
+        ('docs/AMINET_PLUGIN.md', 'AMINET'),
+        ('docs/SAVER_PLUGIN.md', 'SAVER'))),
     ('Writing plugins', (
         ('docs/PLUGIN_SDK_QUICKSTART.md', 'Plugin SDK quick start'),
         ('docs/PLUGIN_SDK_SETTINGS.md', 'Creating plugin settings windows'),

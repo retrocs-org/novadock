@@ -204,7 +204,7 @@ void process_rexx(struct NDDock *dock)
             strcpy(result,"PING VERSION STATUS LIST [STEM var] OPEN n|label MOVE a b "
                    "CLICK n REMOVE n ADD path SETVALUE id caption value [meter] "
                    "SETBADGE id [text] "
-                   "SHOW HIDE TOGGLE LOCK UNLOCK SUSPEND RESUME RELOAD PREFS QUIT"); break;
+                   "SHOW HIDE TOGGLE LOCK UNLOCK SUSPEND RESUME RELOAD PREFS RESTART QUIT"); break;
         case ND_RX_LIST:
             if (cmd.text[0]) {
                 if (rexx_list_stem(dock,m,cmd.text))
@@ -239,6 +239,8 @@ void process_rexx(struct NDDock *dock)
                 strcpy(result,"REQUESTED");
             else { m->rm_Result1=10; strcpy(result,"NOT FOUND"); }
             break;
+        case ND_RX_RESTART:
+            dock->restart_requested=1;dock->running=0;strcpy(result,"OK");break;
         case ND_RX_QUIT:
             dock->running=0; strcpy(result,"OK"); break;
         case ND_RX_SHOW: show_dock(dock); strcpy(result,"OK"); break;

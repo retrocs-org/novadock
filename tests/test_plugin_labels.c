@@ -14,5 +14,7 @@ int main(void)
     assert(!nd_plugin_label_upgrade("ARCHIVE","My backups"));
     assert(!nd_plugin_label_upgrade("THIRDPARTY","Extract"));
     assert(!nd_plugin_label_upgrade("ARCHIVE","ARCHIVE"));
+    assert(!strcmp(nd_plugin_label_upgrade("MUSICLIB","Music Library"),"MUSIC"));
+    assert(!nd_plugin_label_upgrade("MUSICLIB","SID tunes"));
     puts("Plugin labels migrate old defaults and preserve custom names and IDs.");return 0;
 }

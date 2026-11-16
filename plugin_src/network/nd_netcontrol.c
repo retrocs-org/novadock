@@ -3,6 +3,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+/* Consume the startup policy once, after initial status discovery. Reloads
+ * and later Offline actions must never turn this into an auto-reconnect loop. */
+int nc_startup_online(int *pending,const struct NCConfig *c,int installed,int online)
+{
+    if(!*pending)return 0;
+    *pending=0;return c->auto_online && installed && !online;
+}
+/* Serialize an Online request behind an in-flight Offline command. */
+int nc_control_request(int busy,int action,int timed_out,int stopping,int requested)
+{
+    if(requested==NC_ONLINE && (stopping || (busy && action==NC_OFFLINE)))return NC_REQUEST_RESTART;
+    if(stopping || (busy && (action!=NC_PROBE || timed_out)))return NC_REQUEST_BUSY;
+    return NC_REQUEST_QUEUE;
+}
 unsigned long nc_job_deadline(const struct NCConfig *config,int action)
 {return action==NC_ONLINE ? ((unsigned long)config->timeout+15UL)*50UL:750UL;}
 void nc_device_status_line(struct NCDeviceStatus *status,const char *line)
@@ -52,7 +66,8 @@ void nc_status_line(struct NCInterfaces *interfaces,const char *line)
            sscanf(tokens[3],"%u.%u.%u.%u%c",&a,&b,&c,&d,&extra)==4 &&
            a<=255 && b<=255 && c<=255 && d<=255){
             interfaces->pending[0]=0;
-            if(a!=127 && a!=0 && strcmp(tokens[2],"Loopback") && rd_valid_interface(tokens[0]))
+            if(a!=127 && a!=0 && strcmp(tokens[2],"Loopback") && rd_valid_interface(tokens[0]) &&
+               (!interfaces->selected[0] || !strcmp(tokens[0],interfaces->selected)))
                 strcpy(interfaces->pending,tokens[0]);
         }
     }
@@ -74,6 +89,10 @@ int nc_option(void *context,const char *key,const char *value)
     struct NCConfig *c=context;char *end;unsigned long n;
     if(!strcmp(key,"VIEW"))return !strcmp(value,"METER") || !strcmp(value,"GRAPH");
     if(!strcmp(key,"SAMPLING_OVERRIDE"))return !strcmp(value,"YES") || !strcmp(value,"NO");
+    if(!strcmp(key,"AUTO_ONLINE")){
+        if(strcmp(value,"YES") && strcmp(value,"NO"))return 0;
+        c->auto_online=!strcmp(value,"YES");return 1;
+    }
     if(!strcmp(key,"DEBUG_LOG"))return !strcmp(value,"YES") || !strcmp(value,"NO");
     if(!strcmp(key,"STACK")){
         if(strcmp(value,"AUTO") && strcmp(value,"ROADSHOW"))return 0;strcpy(c->stack,value);return 1;
@@ -116,16 +135,15 @@ int nc_command(const struct NCConfig *c,int action,char *out,unsigned int size)
 {
     struct RDRoadshowConfig rd;
     if(!c || action<NC_PROBE || action>NC_OFFLINE || (strcmp(c->stack,"AUTO") && strcmp(c->stack,"ROADSHOW")))return 0;
-    rd_config_defaults(&rd);rd.allow_shutdown=1;rd.dhcp_timeout=c->timeout;
+    rd_config_defaults(&rd);rd.dhcp_timeout=c->timeout;
     if(strlen(c->interface_name)>RD_INTERFACE_MAX)return 0;
     strcpy(rd.interface_name,c->interface_name);
+    if(action==NC_OFFLINE)return nc_quiesce_command(c,out,size);
     if(action==NC_ONLINE && !strcmp(c->interface_name,"AUTO"))return 0;
-    return rd_command(&rd,action==NC_ONLINE ? RD_CMD_CONNECT:action==NC_OFFLINE ? RD_CMD_SHUTDOWN:RD_CMD_STATUS,out,size);
+    return rd_command(&rd,action==NC_ONLINE ? RD_CMD_CONNECT:RD_CMD_STATUS,out,size);
 }
 
-/* Quiesce the selected device before the stack-wide shutdown. Some SANA-II
- * drivers leave Roadshow waiting if shutdown starts with the device online.
- * Do not begin irreversible shutdown when the preparatory step failed. */
+/* Disconnect only this interface. Keep Roadshow loaded for a safe reconnect. */
 int nc_quiesce_command(const struct NCConfig *c,char *out,unsigned int size)
 {
     char command[128];
@@ -136,11 +154,34 @@ int nc_quiesce_command(const struct NCConfig *c,char *out,unsigned int size)
     if(strlen(command)>=size)return 0;
     strcpy(out,command);return 1;
 }
-int nc_shutdown(const struct NCConfig *c,NCExecute execute,void *context)
+int nc_disconnect(const struct NCConfig *c,NCExecute execute,void *context)
 {
     char command[256];
     if(!execute || !nc_quiesce_command(c,command,sizeof(command)))return NC_QUIESCE_FAILED;
     if(execute(context,command)!=0)return NC_QUIESCE_FAILED;
-    if(!nc_command(c,NC_OFFLINE,command,sizeof(command)))return 20;
+    return 0;
+}
+
+/* An existing interface keeps its profile; renew DHCP when reconnecting. */
+int nc_reconnect_command(const struct NCConfig *c,char *out,unsigned int size)
+{
+    char command[160];
+    if(!c || !out || !rd_valid_interface(c->interface_name) ||
+       !strcmp(c->interface_name,"AUTO") ||
+       (strcmp(c->stack,"AUTO") && strcmp(c->stack,"ROADSHOW")))return 0;
+    sprintf(command,"C:ConfigureNetInterface %s ONLINE QUIET",c->interface_name);
+    if(strlen(command)>=size)return 0;
+    strcpy(out,command);return 1;
+}
+
+/* Roadshow must finish the line-state change before DHCP reconfiguration.
+ * Combining ONLINE and CONFIGURE can report success while leaving it Down. */
+int nc_reconnect(const struct NCConfig *c,int dhcp,NCExecute execute,void *context)
+{
+    char command[256];int result;struct RDRoadshowConfig rd;
+    if(!execute || !nc_reconnect_command(c,command,sizeof(command)))return 20;
+    result=execute(context,command);if(result || !dhcp)return result;
+    rd_config_defaults(&rd);strcpy(rd.interface_name,c->interface_name);rd.dhcp_timeout=c->timeout;
+    if(!rd_command(&rd,RD_CMD_DHCP,command,sizeof(command)))return 20;
     return execute(context,command);
 }

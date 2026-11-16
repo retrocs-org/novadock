@@ -69,3 +69,13 @@ used to request a forecast. No precise device-location detection is used.
 
 The weather test fixture in the source tree is an Open-Meteo Stockholm
 response and retains this attribution.
+
+The forecast window separates the weekday, condition, low/high temperatures,
+precipitation chance and a combined rain/snow amount column. Rain (including
+showers) is shown in millimetres, snowfall in centimetres, and mixed days show
+both amounts. Dry days show `None`, rather than an irrelevant zero snowfall.
+The chance percentage covers rain or snow and is separate from the amount.
+Snow and snow showers have their own condition icons. `--` means an older
+cached forecast lacks the amounts; Refresh obtains the newer format.
+On narrow screens unusually large mixed amounts are rounded to whole units
+so both rain and snow remain visible.

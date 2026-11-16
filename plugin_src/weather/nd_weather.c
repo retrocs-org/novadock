@@ -39,7 +39,7 @@ const char *nd_weather_weekday(const char *ymd)
 }
 int nd_weather_parse(const char *csv,struct NDWeather *weather)
 {
-    struct NDWeather parsed;char line[512],*fields[6],*p,*comma;const char *end,*next;unsigned int n,i;int phase=0,current=0;
+    struct NDWeather parsed;char line[512],*fields[8],*p,*comma;const char *end,*next;unsigned int n,i;int phase=0,current=0;
     if(!csv || !weather || strlen(csv)>ND_WEATHER_RESPONSE)return 0;memset(&parsed,0,sizeof(parsed));
     while(*csv){end=strchr(csv,'\n');n=(unsigned int)(end ? end-csv:strlen(csv));if(n>=sizeof(line))return 0;
         next=end ? end+1:csv+n;
@@ -48,11 +48,17 @@ int nd_weather_parse(const char *csv,struct NDWeather *weather)
         if(!strncmp(line,"time,temperature_2m (",21)){phase=1;continue;}
         if(!strncmp(line,"time,weather_code (",19)){phase=2;continue;}
         if(!phase)continue;
-        p=line;i=0;do{if(i>=6)return 0;fields[i++]=p;comma=strchr(p,',');if(comma){*comma=0;p=comma+1;}}while(comma);
+        p=line;i=0;do{if(i>=8)return 0;fields[i++]=p;comma=strchr(p,',');if(comma){*comma=0;p=comma+1;}}while(comma);
         if(phase==1){if(i!=3 || !date(fields[0],1) || !integer(fields[1],&parsed.temperature,1) || !integer(fields[2],&parsed.code,0) || parsed.code<0 || parsed.code>99)return 0;
             strcpy(parsed.updated,fields[0]);current=1;phase=0;}
-        else{struct NDWeatherDay *day;if(i!=5 || parsed.count>=ND_WEATHER_DAYS)return 0;day=&parsed.days[parsed.count];
+        else{struct NDWeatherDay *day;if((i!=5 && i!=6 && i!=8) || parsed.count>=ND_WEATHER_DAYS)return 0;day=&parsed.days[parsed.count];
             if(!date(fields[0],0) || !integer(fields[1],&day->code,0) || !integer(fields[2],&day->high,1) || !integer(fields[3],&day->low,1) || !integer(fields[4],&day->rain,0) || day->code<0 || day->code>99 || day->rain<0 || day->rain>100 || day->low>day->high)return 0;
+            day->snow=day->rain_amount=-1;
+            if(i>=6 && (!integer(fields[5],&day->snow,1) || day->snow<0))return 0;
+            if(i==8){int showers;
+                if(!integer(fields[6],&day->rain_amount,1) || day->rain_amount<0 || !integer(fields[7],&showers,1) || showers<0)return 0;
+                day->rain_amount+=showers;
+            }
             if(parsed.count && strcmp(fields[0],parsed.days[parsed.count-1].date)<=0)return 0;
             strcpy(day->date,fields[0]);++parsed.count;}
     }
@@ -122,8 +128,22 @@ int nd_weather_forecast_url(const char *latitude,const char *longitude,int fahre
 {
     char a[20],b[20],built[1000];
     if(!latitude || !longitude || !coordinate(latitude,a,sizeof(a),90) || !coordinate(longitude,b,sizeof(b),180))return 0;
-    sprintf(built,"https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=5&format=csv&temperature_unit=%s",a,b,fahrenheit ? "fahrenheit":"celsius");
+    sprintf(built,"https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,snowfall_sum,rain_sum,showers_sum&precipitation_unit=mm&timezone=auto&forecast_days=5&format=csv&temperature_unit=%s",a,b,fahrenheit ? "fahrenheit":"celsius");
     if(strlen(built)>=size)return 0;strcpy(url,built);return 1;
+}
+/* One amount cell avoids showing irrelevant zero snowfall on rainy days. */
+void nd_weather_amount(const struct NDWeatherDay *day,char *out)
+{
+    int rain=day->rain_amount,snow=day->snow;char r[16],s[16];
+    if(rain>0 && snow>0){
+        if(rain%10)sprintf(r,"%d.%d",rain/10,rain%10);else sprintf(r,"%d",rain/10);
+        if(snow%10)sprintf(s,"%d.%d",snow/10,snow%10);else sprintf(s,"%d",snow/10);
+        sprintf(out,"%smm+%scm",r,s);
+        /* Keep both units visible even on the narrowest supported screen. */
+        if(strlen(out)>13)sprintf(out,"%dmm+%dcm",(rain+5)/10,(snow+5)/10);
+    }else if(rain>0)sprintf(out,"%d.%d mm rain",rain/10,rain%10);
+    else if(snow>0)sprintf(out,"%d.%d cm snow",snow/10,snow%10);
+    else strcpy(out,rain<0 || snow<0 ? "--":"None");
 }
 void nd_weather_temperature(int tenths,int fahrenheit,char *out)
 {unsigned int v=(unsigned int)(tenths<0 ? -tenths:tenths);sprintf(out,"%s%u.%u %c",tenths<0 ? "-":"",v/10,v%10,fahrenheit ? 'F':'C');}

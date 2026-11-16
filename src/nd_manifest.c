@@ -175,7 +175,7 @@ int nd_manifest_bundled_id(const char *id)
 {
     static const char *bundled[]={"CLOCK","CPU","RAM","CHIPRAM","FASTRAM",
         "NET","ROADSHOW","MUSIC","EYES","DOPUS4","ARCHIVE","RUNNINGAPPS",
-        "COMMAND","TRASH","WHDLOAD","AMIRC","CLIPBOARD","BITSKIM",
+        "COMMAND","TRASH","WHDLOAD","MUSICLIB","SENSORS","CHRISTMAS","AQUARIUM","PLACES","SAVER","AMINET","DOWNLOAD","SYSTEM","ACTIONS","AMIRC","CLIPBOARD","BITSKIM",
         "MIXER","SCREENSHOT","SCREENMODE","TIMER","NOTES","SCREENSWITCHER","WEATHER",
         NULL};
     int i;
@@ -223,7 +223,8 @@ int nd_manifest_merge(struct NDConfig *cfg,const struct NDManifest *m,
                       const char *command)
 {
     char line[ND_COMMAND_LEN+ND_LABEL_LEN+48];
-    int i,w,present=-1,others=0,capability_changed=0;
+    int i,j,w,present=-1,others=0,needed=0,builtin_count=0,capability_changed=0;
+    const struct NDOptionDef *builtin=nd_builtin_options(&builtin_count);
     if (!cfg || !m || !m->id[0] || m->error[0]) return ND_MANIFEST_REJECTED;
     for (i=0;i<cfg->count;++i)
         if (cfg->items[i].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[i].id,m->id))
@@ -234,7 +235,13 @@ int nd_manifest_merge(struct NDConfig *cfg,const struct NDManifest *m,
         return ND_MANIFEST_UNCHANGED;
     for (i=0;i<cfg->def_count;++i)
         if (strcmp(cfg->defs[i].id,m->id)) ++others;
-    if (others+m->option_count>ND_MAX_OPTION_DEFS) return ND_MANIFEST_REJECTED;
+    for(i=0;i<m->option_count;++i){
+        for(j=0;j<builtin_count;++j)
+            if(nd_manifest_bundled_id(m->id) && !strcmp(builtin[j].id,m->id) &&
+               !strcmp(builtin[j].key,m->options[i].key))break;
+        if(j==builtin_count)++needed;
+    }
+    if (others+needed>ND_MAX_OPTION_DEFS) return ND_MANIFEST_REJECTED;
     if (present>=0) {
         capability_changed=cfg->items[present].multiple_instances!=
                            m->multiple_instances;
@@ -300,8 +307,25 @@ static const struct BuiltinPlugin builtin_plugins[]={
      "Starts Directory Opus 4, restores its iconified screen or brings it forward.",ND_PLUGIN_VERSION_DOPUS4,0},
     {"ARCHIVE","ARCHIVE","meter,drop,badge",
      "Drop archives to unpack them, or files and drawers to create ZIP or LHA archives.",ND_PLUGIN_VERSION_ARCHIVE,0},
-    {"WHDLOAD","WHDLoad","meter,click,popup",
-     "Lists the WHDLoad games in a drawer and starts them as Workbench does.",ND_PLUGIN_VERSION_WHDLOAD,0},
+    {"PLACES","PLACES","click,popup","System drawers, mounted volumes and saved folder bookmarks.",ND_PLUGIN_VERSION_PLACES,0},
+    {"AMINET","AMINET","click,popup","Aminet categories, recent uploads, package readmes and downloads.",ND_PLUGIN_VERSION_AMINET,0},
+    {"SAVER","SAVER","click,popup","Fullscreen retro scenes and a configurable demo shuffle.",ND_PLUGIN_VERSION_SAVER,0},
+    {"AQUARIUM","AQUARIUM","meter,click,popup",
+     "Animated fish tank and a fullscreen underwater scene.",ND_PLUGIN_VERSION_AQUARIUM,0},
+    {"DOWNLOAD","DOWNLOAD","meter,click,popup",
+     "HTTP(S) downloads with a queue, progress and safe save paths.",ND_PLUGIN_VERSION_DOWNLOAD,0},
+    {"SYSTEM","SYSTEM","meter,click,popup",
+     "Detected CPU, Workbench library version and system uptime.",ND_PLUGIN_VERSION_SYSTEM,0},
+    {"ACTIONS","ACTIONS","click,popup",
+     "Independent system actions with custom icons and optional confirmation.",ND_PLUGIN_VERSION_ACTIONS,1},
+    {"CHRISTMAS","Christmas","click,popup",
+     "Twinkling Christmas tree; click for a fullscreen snowy night with Santa and reindeer.",ND_PLUGIN_VERSION_CHRISTMAS,0},
+    {"SENSORS","SENSOR","meter,click,popup",
+     "Detected ZZ9000, RTC module and Warp readings with selectable channels.",ND_PLUGIN_VERSION_SENSORS,1},
+    {"MUSICLIB","MUSIC","meter,click,popup,badge",
+     "Cached music collections with format selection, title filters and a configurable player.",ND_PLUGIN_VERSION_MUSICLIB,1},
+    {"WHDLOAD","WHDLoad","meter,click,popup,badge",
+     "Recursively indexes WHDLoad installs; each tile has its own label and folder.",ND_PLUGIN_VERSION_WHDLOAD,1},
     {"TRASH","Trash","meter,click,drop,badge",
      "Drop files and drawers to move them to the Trashcan; empty it from the tile's menu.",ND_PLUGIN_VERSION_TRASH,0},
     {"RUNNINGAPPS","APPS","meter,click,popup,badge",
@@ -322,6 +346,14 @@ static const struct BuiltinPlugin builtin_plugins[]={
      "Current conditions and a five-day forecast, with an offline cache.",ND_PLUGIN_VERSION_WEATHER,0},
     {NULL,NULL,NULL,NULL,NULL,0}
 };
+const char *nd_manifest_builtin_name(const char *id)
+{
+    int i;
+    if (!id) return NULL;
+    for (i=0;builtin_plugins[i].id;++i)
+        if (!strcmp(builtin_plugins[i].id,id)) return builtin_plugins[i].name;
+    return NULL;
+}
 int nd_manifest_builtin(const char *id,struct NDManifest *m)
 {
     int i;
@@ -412,8 +444,8 @@ int nd_package_check(struct NDManifest *m,const char *manifest_file,
     {
         static const char *programs[]={"Clock","Eyes","Activity","Memory",
             "Network","Roadshow","MusicPlayer","DOpus4","ArchiveExtractor",
-            "Command","RunningApps","Trash","Games","AmIRC","BitSkim",
-            "Clipboard","Mixer","SHOT","ScreenMode","Script","Timer","Notes","ScreenSwitcher","Weather",NULL};
+            "Command","RunningApps","Trash","Games","MusicLibrary","Sensors","Christmas","Aquarium","Places","Saver","Aminet","Download","System","Actions","AmIRC","BitSkim",
+            "Clipboard","Mixer","Screenshot","SHOT","ScreenMode","Script","Timer","Notes","ScreenSwitcher","Weather",NULL};
         const char *dot=strrchr(m->program,'.');
         int k;
         /* Also reserve icons/manifests and transaction suffixes. */

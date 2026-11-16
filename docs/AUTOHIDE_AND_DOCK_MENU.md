@@ -39,6 +39,7 @@ Right-click the background/gap of the dock to open the compact dock menu:
 - Add item... (Application, Drawer / disk, installed Plugin, Spacer, or Command tile)
 - Preferences…
 - About NovaDock…
+- Restart NovaDock
 - Quit NovaDock
 
 Click outside any dock popup to dismiss it; a separate Cancel row is not
@@ -183,3 +184,7 @@ auto-hide.
 
 **Keep front** now skips the layer operation when nothing overlaps the dock,
 so it no longer redraws needlessly five times a second.
+
+**Restart NovaDock** saves pending dock changes, closes the dock and its plugin
+windows, then starts the same NovaDock program again. Saved settings are kept.
+If saving fails, the dock remains open and the restart request is cancelled.

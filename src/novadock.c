@@ -375,6 +375,8 @@ int main(int argc, char **argv)
                   "left untouched until you save from Preferences.",
                   "Use defaults|Quit")) goto cleanup;
     (void)nd_publish_config_source(ND_CONFIG_SOURCE_FILE);
+    get_program_dir(dock);
+    if(parsing<=0)christmas_startup(dock);
     dock->action_items=copy_background_actions(&dock->conf,
                                                &dock->action_count);
     if (dock->action_count<0) {
@@ -391,7 +393,6 @@ int main(int argc, char **argv)
     (void)nd_media_append(&dock->conf, dock->media, dock->media_count,
                           dock->system_volume);
     dock->media_scan_ticks = ND_MEDIA_SCAN_TICKS;
-    get_program_dir(dock);
     nd_theme_load_config(dock->directory,&dock->conf,&dock->theme_spec);
     /* Artwork is read after the window opens (load_pending_icons), so the
      * dock appears at once even on a 7 MHz machine reading from floppy. */
@@ -424,7 +425,13 @@ int main(int argc, char **argv)
     }
     (void)init_settings_writer(dock);
     fire_hook(dock,"STARTUP",ND_VERSION);
-    do {run_loop(dock);} while(!finish_settings_saves(dock));
+    for (;;) {
+        run_loop(dock);
+        if (finish_settings_saves(dock)) break;
+        /* A failed save cancelled this exit. A later Quit must not inherit
+         * a previously requested restart. */
+        dock->restart_requested=0;
+    }
     fire_hook(dock,"QUIT","");
     result = 0;
 cleanup:
@@ -455,6 +462,13 @@ cleanup:
     release_icons(dock);
     free_colors(dock);
     dock->screen = NULL;
+    /* Plugins, public ports, hotkeys and windows are gone before the new
+     * process starts. PROGDIR selects the same installed/development copy. */
+    if (dock->restart_requested && !nd_control_launch_dock()) {
+        report_problem("NovaDock stopped, but could not restart.\n"
+                       "Start NovaDock again from its application icon.");
+        result=10;
+    }
     if (RexxSysBase) CloseLibrary((struct Library *)RexxSysBase);
     if (CxBase) CloseLibrary(CxBase);
     nd_locale_close();

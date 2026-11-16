@@ -79,6 +79,7 @@ struct ManagerPage {
     char text[ND_MAX_ITEMS][64];
     struct NDPluginSummary installed[ND_PLUGIN_CATALOG_MAX];
     int installed_count;
+    int row_installed[ND_MAX_ITEMS];
     struct NDPluginCatalogEntry entry;   /* full manifest of the selection */
     struct NDPluginCatalogEntry other;   /* import: installed plugin with the same ID */
     struct NDPackageFile files[PACKAGE_FILES];
@@ -146,7 +147,7 @@ static const char *plugin_version(struct ManagerPage *p,const char *id)
 {
     static struct NDManifest builtin;
     const struct NDPluginSummary *s;
-    if (nd_manifest_builtin(id,&builtin)) return builtin.version;
+    if (nd_manifest_builtin(nd_option_schema_id(p->cfg,id),&builtin)) return builtin.version;
     s=installed_summary(p,id);
     return s && s->version[0] ? s->version : "-";
 }
@@ -163,13 +164,15 @@ static void add_row(struct ManagerPage *p,const char *id,const char *name,
                     int tiles)
 {
     char status[16];
+    const struct NDPluginSummary *s=installed_summary(p,nd_option_schema_id(p->cfg,id));
     int r=p->count;
     if (r>=ND_MAX_ITEMS) return;
     strncpy(p->ids[r],id,sizeof(p->ids[r])-1);p->ids[r][sizeof(p->ids[r])-1]=0;
     strncpy(p->names[r],name,sizeof(p->names[r])-1);
     p->names[r][sizeof(p->names[r])-1]=0;
+    p->row_installed[r]=s ? (int)(s-p->installed) : -1;
     sprintf(p->text[r],"%-20.20s %-8.8s %s",name,plugin_version(p,id),
-            tile_status(tiles,status));
+            s && s->problem[0] ? "Needs repair" : tile_status(tiles,status));
     memset(&p->nodes[r],0,sizeof(p->nodes[r]));
     p->nodes[r].ln_Name=p->text[r];
     AddTail(&p->rows,&p->nodes[r]);++p->count;
@@ -198,7 +201,16 @@ static void build_rows(struct ManagerPage *p)
             nd_script_plugin_path(s->command)) continue;
         for (seen=0,j=0;j<p->count;++j)
             if (!strcmp(p->ids[j],s->id)) {seen=1;break;}
-        if (!seen) add_row(p,s->id,s->name,-1);
+        if (s->problem[0]) {
+            for (seen=0,j=0;j<p->count;++j)
+                if (p->row_installed[j]==i) {seen=1;break;}
+        }
+        if (!seen && p->count<ND_MAX_ITEMS) {
+            int row=p->count;
+            add_row(p,s->id,s->name,-1);
+            p->row_installed[row]=i;
+            if (s->problem[0]) sprintf(p->text[row],"%-20.20s %-8.8s Needs repair",s->name,s->version);
+        }
     }
     if (p->selected>=p->count) p->selected=p->count-1;
     if (p->selected<0 && p->count) p->selected=0;
@@ -228,9 +240,18 @@ static void show_details(struct ManagerPage *p)
     p->can_add=0;p->can_remove=0;p->has_settings=0;
     if (p->selected>=0 && p->selected<p->count) {
         id=p->ids[p->selected];
+        i=p->row_installed[p->selected];
+        if (i>=0 && p->installed[i].problem[0]) {
+            const struct NDPluginSummary *s=&p->installed[i];
+            strcpy(p->detail_text[D_VERSION],"Needs repair");
+            strcpy(p->detail_text[D_PROVIDES],"Unavailable until repaired or updated");
+            strncpy(p->detail_text[D_PROGRAM],s->command,D_TEXT-1);
+            wrap_two(s->problem,p->detail_text[D_ABOUT],p->detail_text[D_ABOUT2],46);
+            goto render_details;
+        }
         /* Bundled plugins describe themselves from the built-in table;
          * third-party ones from their installed manifest. */
-        if (nd_manifest_builtin(id,m)) have=1;
+        if (nd_manifest_builtin(nd_option_schema_id(p->cfg,id),m)) have=1;
         else if (nd_plugin_catalog_lookup(id,&p->entry)) {
             have=1;command=p->entry.command;
         } else nd_manifest_init(m,p->names[p->selected]);
@@ -241,7 +262,7 @@ static void show_details(struct ManagerPage *p)
         p->can_add=tiles<=0 || multiple;
         /* Bundled plugins are part of NovaDock; a plugin with tiles in the
          * dock must lose them first. */
-        p->can_remove=!nd_manifest_bundled_id(id) && tiles<=0;
+        p->can_remove=!nd_manifest_bundled_id(nd_option_schema_id(p->cfg,id)) && tiles<=0;
         if (have) {
             sprintf(p->detail_text[D_VERSION],"%.15s%s%.23s%s",
                     m->version[0] ? m->version : "unknown",
@@ -261,6 +282,7 @@ static void show_details(struct ManagerPage *p)
         wrap_two(m->description[0] ? m->description : "No description.",
                  p->detail_text[D_ABOUT],p->detail_text[D_ABOUT2],46);
     }
+render_details:
     if (!p->win) return;
     for (i=0;i<D_LINES;++i)
         GT_SetGadgetAttrs(p->detail[i],p->win,NULL,
@@ -282,7 +304,7 @@ static void say(struct ManagerPage *p,const char *text,int beep)
 static void rescan(struct ManagerPage *p,const char *select_id)
 {
     int i;
-    p->installed_count=nd_plugin_catalog_summaries(p->installed,
+    p->installed_count=nd_plugin_catalog_inventory(p->installed,
                                                    ND_PLUGIN_CATALOG_MAX);
     GT_SetGadgetAttrs(p->list,p->win,NULL,GTLV_Labels,(ULONG)~0,TAG_DONE);
     build_rows(p);
@@ -565,7 +587,7 @@ int nd_pluginmanager_prefs_run(int argc,char **argv,char *plugin,int plugin_size
         if (!p->owned || nd_load_effective(p->owned)>0) goto done;
         p->cfg=p->owned;
     }
-    p->installed_count=nd_plugin_catalog_summaries(p->installed,
+    p->installed_count=nd_plugin_catalog_inventory(p->installed,
                                                    ND_PLUGIN_CATALOG_MAX);
     p->selected=-1;p->output=plugin;p->output_size=plugin_size;
     /* Return to the plugin that was being looked at. */

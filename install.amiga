@@ -102,6 +102,10 @@ IF NOT EXISTS SYS:NovaDock/Icons
   MakeDir SYS:NovaDock/Icons
 ENDIF
 Copy Icons/#?.iff TO SYS:NovaDock/Icons ALL
+IF NOT EXISTS SYS:NovaDock/Music
+  MakeDir SYS:NovaDock/Music
+ENDIF
+Copy Music TO SYS:NovaDock/Music ALL
 IF NOT EXISTS SYS:NovaDock/Themes
   MakeDir SYS:NovaDock/Themes
 ENDIF
@@ -153,6 +157,10 @@ Copy Themes/NeXTSTEP/theme.cfg TO SYS:NovaDock/Themes/NeXTSTEP/theme.cfg
 Copy Themes/BeOS/theme.cfg TO SYS:NovaDock/Themes/BeOS/theme.cfg
 Copy Themes/Nord/theme.cfg TO SYS:NovaDock/Themes/Nord/theme.cfg
 Copy Themes/Vapor/theme.cfg TO SYS:NovaDock/Themes/Vapor/theme.cfg
+IF NOT EXISTS SYS:NovaDock/Themes/Christmas
+  MakeDir SYS:NovaDock/Themes/Christmas
+ENDIF
+Copy Themes/Christmas/theme.cfg TO SYS:NovaDock/Themes/Christmas/theme.cfg
 ; Copy the complete plugin payload, including new programs and manifests.
 Copy Plugins TO SYS:NovaDock/Plugins ALL
 ; Network replaces the retired standalone Roadshow program.
@@ -171,6 +179,8 @@ IF NOT EXISTS SYS:NovaDock/Rexx
 ENDIF
 Copy Rexx/#?.amirx TO SYS:NovaDock/Rexx
 Copy Rexx/#?.rexx TO SYS:NovaDock/Rexx
+Copy LICENSE TO SYS:NovaDock/LICENSE
+Copy Aminet-parser-LICENSE.txt TO SYS:NovaDock/Aminet-parser-LICENSE.txt
 Copy BitSkim-icon-LICENSE.txt TO SYS:NovaDock/BitSkim-icon-LICENSE.txt
 Copy NovaDockPrefs TO SYS:Prefs/NovaDockPrefs
 Copy NovaDockPrefs.info TO SYS:Prefs/NovaDockPrefs.info

@@ -129,6 +129,7 @@ class AminetTests(unittest.TestCase):
             def login(self, *args): events.append(('login',)+args)
             def cwd(self, path): events.append(('cwd', path))
             def set_pasv(self, value): events.append(('passive', value))
+            def nlst(self): return []
             def storbinary(self, command, data): events.append((command, data.read()))
         am.upload(self.output, manifest, fields, FTP)
         self.assertIn(('connect', 'main.aminet.net', 21), events)
@@ -154,6 +155,27 @@ class AminetTests(unittest.TestCase):
             am.upload(self.output, manifest, fields, FTP)
         with self.assertRaisesRegex(ValueError, 'receipt'):
             am.prepare(self.archive, self.output, 'lha')
+
+    def test_pending_names_or_unreadable_listing_never_upload(self):
+        for listing in (['/new/novadock.lha'], ['novadock.readme'], None):
+            with self.subTest(listing=listing):
+                folder = self.root/('blocked-'+str(len(list(listing or [])))+str(listing is None))
+                manifest, fields = am.prepare(self.archive, folder, 'lha')
+                class FTP:
+                    def __init__(self, timeout): pass
+                    def __enter__(self): return self
+                    def __exit__(self, *args): pass
+                    def connect(self, *args): pass
+                    def login(self, *args): pass
+                    def cwd(self, *args): pass
+                    def set_pasv(self, *args): pass
+                    def nlst(self):
+                        if listing is None: raise am.ftplib.error_perm('550 denied')
+                        return listing
+                    def storbinary(inner, *args): self.fail('Pending files overwritten')
+                with self.assertRaisesRegex(ValueError, 'nothing sent'):
+                    am.upload(folder, manifest, fields, FTP)
+                self.assertFalse((folder/'upload-receipt.json').exists())
 
     def test_changed_archive_never_connects(self):
         manifest, fields=am.prepare(self.archive, self.output, 'lha')

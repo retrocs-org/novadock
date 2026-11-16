@@ -331,12 +331,14 @@ int main(void)
     assert(nd_parse_line(&cfg, "Side=Left") == 1 && cfg.side == ND_SIDE_LEFT);
     assert(nd_parse_line(&cfg, "TOOLTIPS=no") == 1 && cfg.tooltips == 0);
     assert(nd_load_config(&cfg, "novadock.cfg") == 0);
-    assert(cfg.count == 19); /* six active tiles plus optional definitions */
+    assert(cfg.count == 29); /* six active tiles plus optional definitions */
     assert(!cfg.items[17].enabled && !strcmp(cfg.items[17].id,"TIMER"));
     assert(!cfg.items[18].enabled && !strcmp(cfg.items[18].id,"NOTES"));
     assert(!cfg.items[16].enabled && !strcmp(cfg.items[16].id,"BITSKIM"));
     assert(!cfg.items[14].enabled && !strcmp(cfg.items[14].id,"AMIRC"));
     assert(!cfg.items[15].enabled && !strcmp(cfg.items[15].id,"CLIPBOARD"));
+    assert(!cfg.items[19].enabled && !strcmp(cfg.items[19].id,"MUSICLIB"));
+    assert(!cfg.items[20].enabled && !strcmp(cfg.items[20].id,"SENSORS"));
     for (i=0;i<cfg.count;++i) assert(cfg.items[i].enabled==(i<6));
     assert(cfg.theme==ND_THEME_NORD && cfg.shape==ND_SHAPE_ROUNDED);
     assert(!strcmp(cfg.items[0].command,"SYS:"));

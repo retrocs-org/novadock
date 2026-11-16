@@ -9,27 +9,27 @@ $themes = require __DIR__ . '/includes/theme_catalog.php';
 ?>
 <p class="eyebrow">The NovaDock marketplace</p>
 <h1>Make room for<br>something you like.</h1>
-<p class="lead">Everyday tools and twelve ways to make the dock yours. All included. Selected community additions will follow.</p>
+<p class="lead">Everyday tools, useful extras and thirteen theme palettes. Explore the current lineup and what is coming in 0.3.</p>
 <p class="market-sections"><a href="#plugins">Plugins <small><?= count($catalog) ?></small></a> <a href="#themes">Themes <small><?= count($themes) ?></small></a></p>
-<section class="market-highlights"><p class="eyebrow">Fresh in NovaDock 0.2</p><p><a href="#plugin-weather">Weather</a><a href="#plugin-notes">Notes</a><a href="#plugin-timer">Timer</a><a href="#plugin-screenswitcher">SCREENS</a></p><small>Also improved: ARCHIVE, LumiAMP controls, SHOT, SMODE and Trash.</small></section>
+<section class="market-highlights"><p class="eyebrow">Coming in NovaDock 0.3</p><p><a href="#plugin-aminet">AMINET</a><a href="#plugin-saver">SAVER</a><a href="#plugin-places">PLACES</a><a href="#plugin-musiclibrary">MUSIC</a><a href="#plugin-sensors">SENSOR</a><a href="#plugin-actions">ACTIONS</a><a href="#plugin-aquarium">AQUARIUM</a><a href="#plugin-download">DOWNLOAD</a><a href="#plugin-system">SYSTEM</a></p><small>Also improved: WHDLoad collections, Network reconnects and plugin settings.</small></section>
 <h2 id="plugins">Plugins</h2>
-<p class="catalog-note">All <?= count($catalog) ?> built-in plugins are included in the <a href="get.php">NovaDock download</a>. Add them from Preferences &gt; Organize &gt; Add Item &gt; Plugins.</p>
+<p class="catalog-note">This catalog includes previews of the plugins coming in 0.3. The <a href="get.php">download page</a> lists the latest published release. Add them from Preferences &gt; Organize &gt; Add Item &gt; Plugins.</p>
 <p class="category-links"><a href="#everyday">Everyday</a> &middot; <a href="#system">System</a> &middot; <a href="#media-apps">Media &amp; apps</a> &middot; <a href="#tools-fun">Tools &amp; fun</a></p>
 <?php foreach (['Everyday' => 'everyday', 'System' => 'system', 'Media & apps' => 'media-apps', 'Tools & fun' => 'tools-fun'] as $group => $anchor): ?>
 <h2 id="<?= site_escape($anchor) ?>"><?= site_escape($group) ?></h2>
 <div class="plugin-list">
 <?php foreach ($catalog as $plugin): if ($plugin['group'] !== $group) continue; ?>
-<div class="plugin-entry" id="plugin-<?= strtolower(site_escape($plugin['executable'])) ?>" data-executable="<?= site_escape($plugin['executable']) ?>"><h3><?= site_escape($plugin['name']) ?> <small><?= isset($plugin['added']) ? 'New in NovaDock '.site_escape($plugin['added']) : 'Built-in' ?></small></h3><p><?= site_escape($plugin['description']) ?></p><?php if (isset($plugin['website'])): ?><p><a href="<?= site_escape($plugin['website']) ?>">BitSkim website &rarr;</a></p><?php endif; ?><?php if ($plugin['requires'] !== ''): ?><small><?= site_escape($plugin['requires']) ?></small><?php endif; ?></div>
+<div class="plugin-entry" id="plugin-<?= strtolower(site_escape($plugin['executable'])) ?>" data-executable="<?= site_escape($plugin['executable']) ?>"><h3><?= site_escape($plugin['name']) ?> <small><?= isset($plugin['added']) ? ($plugin['added'] === '0.3' ? 'Coming in 0.3' : 'Since '.site_escape($plugin['added'])) : 'Built-in' ?></small></h3><p><?= site_escape($plugin['description']) ?></p><?php if (isset($plugin['website'])): ?><p><a href="<?= site_escape($plugin['website']) ?>">BitSkim website &rarr;</a></p><?php endif; ?><?php if ($plugin['requires'] !== ''): ?><small><?= site_escape($plugin['requires']) ?></small><?php endif; ?></div>
 <?php endforeach; ?>
 </div>
 <?php endforeach; ?>
 <p class="note">No community plugins are listed yet. We plan to add third-party plugins we have reviewed and like.</p>
 <h2 id="themes" class="section-heading">Themes</h2>
-<p class="lead">Twelve different starting points for your dock. All are included with NovaDock.</p>
+<p class="lead">Thirteen different starting points for your dock, including the Christmas palette coming in 0.3.</p>
 <p class="catalog-note">Choose a theme in Preferences &gt; Appearance, then Test or Save. The colours below come from each theme's actual palette.</p>
 <div class="theme-list">
 <?php foreach ($themes as $theme): ?>
-<div class="theme-entry" data-theme-id="<?= site_escape($theme['id']) ?>"><div class="palette" aria-label="<?= site_escape($theme['name']) ?> palette"><?php foreach ($theme['palette'] as $colour): ?><span style="background-color:<?= site_escape($colour) ?>"></span><?php endforeach; ?></div><h3><?= site_escape($theme['name']) ?> <small>Bundled</small></h3><p><?= site_escape($theme['description']) ?></p><small><?= site_escape(ucfirst($theme['shape'])) ?> tiles</small></div>
+<div class="theme-entry" data-theme-id="<?= site_escape($theme['id']) ?>"><div class="palette" aria-label="<?= site_escape($theme['name']) ?> palette"><?php foreach ($theme['palette'] as $colour): ?><span style="background-color:<?= site_escape($colour) ?>"></span><?php endforeach; ?></div><h3><?= site_escape($theme['name']) ?> <small><?= $theme['id'] === 'Christmas' ? 'Coming in 0.3' : 'Bundled' ?></small></h3><p><?= site_escape($theme['description']) ?></p><small><?= site_escape(ucfirst($theme['shape'])) ?> tiles</small></div>
 <?php endforeach; ?>
 </div>
 <p class="note">No community themes are listed yet. Reviewed third-party themes will appear in this section.</p>

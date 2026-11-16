@@ -11,7 +11,8 @@ static const char *nd_plugin_label_upgrade(const char *id,const char *label)
         {"SCREENSHOT","Screenshot","SHOT"},{"SCREENSHOT","SCREENSHOW","SHOT"},
         {"SCREENSWITCHER","Screen Switcher","SCREENS"},
         {"WHDLOAD","WHDLoad Games","WHDLoad"},{"DOPUS4","DOpus 4","DOpus4"},
-        {"RUNNINGAPPS","Running Apps","APPS"}
+        {"RUNNINGAPPS","Running Apps","APPS"},
+        {"MUSICLIB","Music Library","MUSIC"}
     };
     unsigned int i;const char *a,*b;
     for(i=0;i<sizeof(aliases)/sizeof(aliases[0]);++i){

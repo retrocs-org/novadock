@@ -1,10 +1,10 @@
 @database NovaDock.guide
-@$VER: NovaDock.guide 0.2 (14.11.2026)
+@$VER: NovaDock.guide 0.3 (15.11.2026)
 @author "NovaDock contributors"
 @(c) "Copyright 2026 NovaDock contributors, MIT licence"
-@node Main "NovaDock 0.2 manual"
+@node Main "NovaDock 0.3 manual"
 
-@{b}NovaDock 0.2@{ub}
+@{b}NovaDock 0.3@{ub}
 A lightweight, extensible dock for Classic AmigaOS Workbench.
 
 Select a topic. Press Help in any NovaDock Preferences window to
@@ -43,6 +43,15 @@ return to this manual.
   @{" Screen Switcher " link SCREEN_SWITCHER_PLUGIN}
   @{" Trash " link TRASH_PLUGIN}
   @{" WHDLoad games " link GAMES_PLUGIN}
+  @{" MUSIC " link MUSIC_LIBRARY_PLUGIN}
+  @{" Hardware sensors " link SENSORS_PLUGIN}
+  @{" ACTIONS " link ACTIONS_PLUGIN}
+  @{" AQUARIUM " link AQUARIUM_PLUGIN}
+  @{" DOWNLOAD " link DOWNLOAD_PLUGIN}
+  @{" SYSTEM " link SYSTEM_PLUGIN}
+  @{" PLACES " link PLACES_PLUGIN}
+  @{" AMINET " link AMINET_PLUGIN}
+  @{" SAVER " link SAVER_PLUGIN}
 
 @{b}Writing plugins@{ub}
 
@@ -178,6 +187,11 @@ The Plugin SDK chapters cover writing a plugin, its protocol, manifest and
 settings window. The Themes chapter explains creating and importing themes.
 ARexx and event-hook chapters describe automating the dock and integrating
 applications.
+
+The CPU tile tooltip shows the detected 68000-family processor and the
+latest measured usage percentage, in both meter and graph views. The
+percentage is a sampled estimate of activity, rather than a per-task CPU
+accounting figure.
 @endnode
 
 @node LAUNCHERS_AND_ICONS "Launchers and icons"
@@ -589,10 +603,10 @@ on the target Workbench setup.
 @{b}Sections@{ub}
   @{" Auto-hide " link AUTOHIDE_AND_DOCK_MENU 14}
   @{" Dock-wide menu " link AUTOHIDE_AND_DOCK_MENU 42}
-  @{" Highlighting " link AUTOHIDE_AND_DOCK_MENU 107}
-  @{" Keyboard control " link AUTOHIDE_AND_DOCK_MENU 121}
-  @{" Workbench smoke checklist " link AUTOHIDE_AND_DOCK_MENU 147}
-  @{" Showing and hiding on demand " link AUTOHIDE_AND_DOCK_MENU 184}
+  @{" Highlighting " link AUTOHIDE_AND_DOCK_MENU 108}
+  @{" Keyboard control " link AUTOHIDE_AND_DOCK_MENU 122}
+  @{" Workbench smoke checklist " link AUTOHIDE_AND_DOCK_MENU 148}
+  @{" Showing and hiding on demand " link AUTOHIDE_AND_DOCK_MENU 185}
 
 This is a @{b}source prototype@{ub}. Portable tests and native 68k compilation pass;
 the dock has also been exercised on Workbench.
@@ -635,6 +649,7 @@ Right-click the background/gap of the dock to open the compact dock menu:
     Command tile)
   * Preferences...
   * About NovaDock...
+  * Restart NovaDock
   * Quit NovaDock
 
 Click outside any dock popup to dismiss it; a separate Cancel row is not
@@ -784,6 +799,11 @@ auto-hide.
 
 @{b}Keep front@{ub} now skips the layer operation when nothing overlaps the dock, so
 it no longer redraws needlessly five times a second.
+
+@{b}Restart NovaDock@{ub} saves pending dock changes, closes the dock and its plugin
+windows, then starts the same NovaDock program again. Saved settings are
+kept. If saving fails, the dock remains open and the restart request is
+cancelled.
 @endnode
 
 @node DRAWER_POPUPS "Drawer popups"
@@ -1553,6 +1573,16 @@ used to request a forecast. No precise device-location detection is used.
 
 The weather test fixture in the source tree is an Open-Meteo Stockholm
 response and retains this attribution.
+
+The forecast window separates the weekday, condition, low/high temperatures,
+precipitation chance and a combined rain/snow amount column. Rain (including
+showers) is shown in millimetres, snowfall in centimetres, and mixed days
+show both amounts. Dry days show None, rather than an irrelevant zero
+snowfall. The chance percentage covers rain or snow and is separate from the
+amount. Snow and snow showers have their own condition icons. -- means an
+older cached forecast lacks the amounts; Refresh obtains the newer format.
+On narrow screens unusually large mixed amounts are rounded to whole units
+so both rain and snow remain visible.
 @endnode
 
 @node AMIRC_PLUGIN "AmIRC"
@@ -1800,13 +1830,13 @@ not trigger reconnection.
 
 @{b}Sections@{ub}
   @{" Tile and controls " link NETWORK_PLUGIN 20}
-  @{" Setup " link NETWORK_PLUGIN 48}
-  @{" Existing installations " link NETWORK_PLUGIN 106}
-  @{" Network Details " link NETWORK_PLUGIN 123}
-  @{" Waiting for shutdown " link NETWORK_PLUGIN 164}
-  @{" Quiet operation and debug logging " link NETWORK_PLUGIN 206}
-  @{" Saved display view " link NETWORK_PLUGIN 230}
-  @{" Tile layout " link NETWORK_PLUGIN 243}
+  @{" Setup " link NETWORK_PLUGIN 52}
+  @{" Existing installations " link NETWORK_PLUGIN 120}
+  @{" Network Details " link NETWORK_PLUGIN 137}
+  @{" Disconnecting and reconnecting " link NETWORK_PLUGIN 178}
+  @{" Quiet operation and debug logging " link NETWORK_PLUGIN 221}
+  @{" Saved display view " link NETWORK_PLUGIN 246}
+  @{" Tile layout " link NETWORK_PLUGIN 259}
 
 Network combines Roadshow control and the packet-activity sampler in one
 tile. It is optional; add @{b}Network@{ub} from the dock's Add menu. The first
@@ -1825,26 +1855,40 @@ yet.
     second. Both bars use the same configured PPS scale. The value above
     them is IN/OUT p/s. Click the online tile to switch between meter and
     graph, like CPU/RAM.
-  * @{b}Right-click -> Online:@{ub} start the selected Roadshow interface with
-    C:AddNetInterface, including its normal DHCP configuration.
-  * @{b}Right-click -> Offline:@{ub} first take the selected interface offline with
-    C:ConfigureNetInterface <interface> OFFLINE QUIET, then stop all
-    Roadshow interfaces through C:NetShutdown TIMEOUT=5 QUIET. This is a
-    stack-wide shutdown, not merely hiding the tile.
+  * @{b}Right-click -> Online:@{ub} reconnect the selected Roadshow interface with
+    C:ConfigureNetInterface, renewing DHCP when its profile uses DHCP. If
+    the interface has not been registered, start it using C:AddNetInterface
+    and its exact DEVS or Storage profile.
+  * @{b}Right-click -> Offline:@{ub} take the selected interface and its driver
+    offline with C:ConfigureNetInterface <interface> OFFLINE QUIET. Roadshow
+    stays loaded and other interfaces are unchanged. This allows a quick
+    reconnect.
   * @{b}Edit settings:@{ub} choose the network interface, view, stack and meter
     scale. Advanced contains optional sampling overrides. Left-clicking an
     offline tile does nothing; settings remain in its right-click menu.
 
-Online means Roadshow reports operational interfaces; it does not promise
-Internet reachability. Status polling first checks whether bsdsocket.library
-is already resident, so it does not reopen the stack after a shutdown.
+Online means Roadshow reports the selected interface as operational; it does
+not promise Internet reachability. Status polling first checks whether
+bsdsocket.library is already resident, so it does not reopen the stack after
+a shutdown.
 
 Control and status commands run in a separate worker. The plugin continues
-servicing the dock while DHCP or shutdown takes time. One command runs at a
-time; a later action is queued. Polling never initiates Online or Offline.
+servicing the dock while DHCP or interface control takes time. One command
+runs at a time; a later action is queued. Polling never initiates Online or
+Offline.
 
 @{b}Setup@{ub}
 -----
+
+@{b}Online at startup@{ub} defaults to @{b}NO@{ub}. Enable it in Network settings and choose
+@{b}Save@{ub} to bring the selected interface online whenever the plugin starts,
+including after a dock restart. The initial status check runs first: an
+already-online interface is left alone. Otherwise, one background Online
+attempt uses the selected profile and connection timeout. A failure is
+reported normally, without an automatic retry loop. Changing settings while
+the plugin is running does not trigger it again. Choosing Offline keeps it
+offline until you explicitly reconnect or restart the plugin. An explicit
+Online or Offline action takes precedence over a pending startup attempt.
 
 @{b}Interface = AUTO@{ub} prefers an active, non-loopback IPv4 interface reported by
 Roadshow. When none is active, a detected A2065 board with its installed
@@ -1915,8 +1959,8 @@ the next ordinary settings save. The six default active tiles remain
 unchanged.
 
 The Roadshow commands and their arguments were checked against its installed
-GetNetStatus, AddNetInterface and NetShutdown reference manuals. No Roadshow
-binaries are bundled with NovaDock.
+ShowNetStatus, AddNetInterface and ConfigureNetInterface reference manuals.
+No Roadshow binaries are bundled with NovaDock.
 
 @{b}Network Details@{ub}
 ---------------
@@ -1938,7 +1982,7 @@ reverse DNS.
 
 The context menu offers Online while offline, and Offline while online.
 Failed explicit state changes open an independent error requester; the dock
-continues running. On larger Workbench screens all seven normal settings are
+continues running. On larger Workbench screens all eight normal settings are
 shown together; Advanced adds three sampling controls, with scrolling
 reserved for screens too small to fit them.
 
@@ -1959,31 +2003,32 @@ advanced sampling overrides are preserved. Active-interface discovery is
 cached for 30 seconds during passive polling and refreshed for control
 actions, settings reloads and Details.
 
-@{b}Waiting for shutdown@{ub}
---------------------
+@{b}Disconnecting and reconnecting@{ub}
+------------------------------
 
-Offline closes NovaDock's sampling request before starting NetShutdown. It
-uses the last resolved interface, without new status queries. The worker
-first takes that interface offline using ConfigureNetInterface, then
-performs the full stack-wide NetShutdown. If the preparatory command fails,
-full shutdown is not started and an error explains the failed step. This
-sequence completed on the bridged A2065 test where direct NetShutdown hung
-even without NovaDock running. It does not establish a general fault in
-every Roadshow installation. A normal transition displays STOPPING. If the
-command has not replied after 15 seconds, NovaDock opens an explanation and
-displays WAIT STACK while its single background worker waits. A Roadshow
-warning that shutdown remains pending is also explained. Close network
-clients which may be holding sockets open. No second control job is started
-while one is still running; the dock and other plugins remain active.
+Offline drains and closes NovaDock's sampling request before taking the
+selected interface offline. It does not unload Roadshow or shut down other
+interfaces. Use Roadshow's own NetShutdown command separately if a complete
+TCP/IP stack shutdown is needed.
 
-During pending shutdown the sampler, periodic status queries and Details
-refresh queries are paused. NovaDock checks for the socket library to leave
-without reopening it. Once shutdown completes, the tile becomes offline.
-Commands are not forcibly killed because Roadshow shutdown cannot be
-cancelled. Online jobs have the configured connection timeout plus a
-15-second allowance. A driver request that cannot be drained prevents
-shutdown from being started and produces a separate explanation instead of
-releasing live I/O memory.
+An Online click during STOPPING queues one reconnect. It starts only after
+the Offline worker replies; repeated clicks cannot create overlapping
+control commands. The temporary operation guard is cleared before the
+reconnect starts. An existing interface is brought online with
+ConfigureNetInterface. After that command succeeds, a DHCP profile requests
+a fresh DHCP configuration in a separate command; a static profile retains
+its configuration. AddNetInterface is reserved for interfaces not yet
+registered.
+
+Periodic polling reports the selected interface, so another active
+connection cannot make an explicitly disconnected interface appear online.
+Polling does not load an absent stack or initiate a connection. The dock
+remains responsive while a worker runs. Offline has a 15-second wait
+allowance; Online uses the configured timeout plus 15 seconds. A timeout
+opens an explanation but does not start a competing command or forcibly
+terminate a running Roadshow operation. A driver request that cannot be
+drained prevents Offline from starting and produces a separate explanation
+instead of releasing live I/O memory.
 
 For an AUTO connection, NovaDock remembers the last active interface within
 the running plugin so reconnecting targets that interface. If its file is
@@ -2007,22 +2052,23 @@ same build; files copied over an older resident process do not replace it.
 @{b}Debug log@{ub} defaults to @{b}NO@{ub}. Before an explicit Online or Offline action,
 NovaDock starts Roadshow's C:NetLogViewer CX_POPUP=NO if it is not already
 running. Roadshow's separate log messages are captured in the hidden viewer,
-so routine connection and shutdown notifications do not open its automatic
-console. Command output remains quiet too. A viewer already running is
-reused without relaunching it (relaunching would bring its window forward).
+so routine connection notifications do not open its automatic console.
+Command output remains quiet too. A viewer already running is reused without
+relaunching it (relaunching would bring its window forward).
 
 Choose @{b}Debug log = YES@{ub} to show the viewer for the next Online/Offline
 action. Roadshow's own Shift+Alt+F8 hotkey or Commodities Exchange can also
 show the retained messages. NovaDock does not change interface debug flags
 or Roadshow startup files. An already-open log window is left available;
 turning Debug log off prevents subsequent operations from opening it
-automatically. Roadshow closes its viewer during full-stack shutdown, so the
-next Online operation starts a new hidden viewer when debug logging is off.
+automatically. The viewer remains available between interface disconnects.
+If Roadshow was fully shut down separately, Online starts a new hidden
+viewer when needed.
 
 NetLogViewer must be installed with Roadshow. If capture cannot be started,
 NovaDock reports that error and leaves the requested operation unstarted,
 rather than silently producing an unwanted console. Explicit connection or
-shutdown failures still use NovaDock's normal error requester. Passive
+disconnect failures still use NovaDock's normal error requester. Passive
 polling and opening Settings never start the viewer or the network stack.
 
 @{b}Saved display view@{ub}
@@ -3074,47 +3120,554 @@ windows; on 3.0 and 3.1, use @{b}Window > Update@{ub} in Workbench.
 @{b}WHDLoad games@{ub}
 =============
 
-The Games tile lists the WHDLoad games installed in a drawer and starts
-them. Add it with @{b}Add item > Plugins > WHDLoad Games@{ub} in NovaDock
-Preferences, and set @{b}Games drawer@{ub} in its settings (default Games:).
+@{b}Sections@{ub}
+  @{" Using it " link GAMES_PLUGIN 39}
+  @{" Persistent index cache " link GAMES_PLUGIN 69}
+  @{" Which installs it finds " link GAMES_PLUGIN 84}
+  @{" How installs start " link GAMES_PLUGIN 100}
+  @{" Removing a tile " link GAMES_PLUGIN 120}
+
+Each WHDLoad tile has its own label and one folder to index. Add it using
+@{b}Add item > Plugins > WHDLoad@{ub}. You can add it more than once, for example
+@{b}Games@{ub} and @{b}Demos@{ub}, without sharing their settings or game lists.
+
+Right-click a tile and choose @{b}Edit settings@{ub}:
+
+  * @{b}Tile label@{ub}: the name displayed on this tile, up to 31 characters.
+  * @{b}Scan folder (recursive)@{ub}: the root folder for this instance. Choose
+    @{b}Select@{ub} to browse drawers, or type an Amiga path such as Work:Games. New
+    tiles have no folder selected. All real subdirectories are searched.
+  * @{b}Tile icon@{ub}: new instances select the dedicated WHDLoad icon by default.
+    The settings preview shows the selected artwork. Choose @{b}Select@{ub} to open a
+    gallery of illustrated icons. Click a thumbnail then @{b}Choose@{ub}, or
+    double-click it. Arrow keys move the selection; Return chooses and Esc
+    cancels. Small screens have Previous/Next pages; paging buttons are
+    hidden when all icons fit. The library includes WHDLoad, Games, Demos,
+    Apps, Arcade, Music, Graphics, Code, Movies, Books, Disks, Network,
+    Utilities, Favourites, Drawer, Workbench, Tools and Internet.
+  * @{b}Custom icon or picture@{ub}: choose @{b}Select@{ub} and browse to a game's .info file
+    or another icon/picture. An existing custom file takes priority over the
+    library selection automatically; clear the field to use the library
+    icon. A missing custom file falls back to the selected library icon. The
+    original file and its ToolTypes are not changed.
+
+Choose @{b}Use@{ub} for this session or @{b}Save@{ub} to keep the settings after restart.
+Changing the folder invalidates that instance's previous index and starts a
+new background scan. Other WHDLoad tiles keep their own lists and settings.
+Old OPTION.WHDLOAD.DRAWER settings and existing custom labels are retained.
 
 @{b}Using it@{ub}
 --------
 
-Click the tile to open the games list. Then:
+Click a tile to open its list. Its corner badge shows the indexed count,
+including @{b}0@{ub}, or @{b}...@{ub} while indexing. Saved counts load after the tile
+connects; a missing cache starts a scan in small batches, keeping the dock
+usable. A zero-count tile does not open an empty browser. Clicking it
+rescans and opens the browser only if installs are found. Progress appears
+in its tooltip.
 
-  @{b}Type the first letters@{ub}
-      Jump to the first game with that name
-  @{b}Cursor up and down@{ub}
-      Move through the list
-  @{b}Return, Play, or a double-click@{ub}
-      Start the game
-  @{b}Rescan@{ub}
-      Read the games drawer again, after installing games
-  @{b}Esc or the close gadget@{ub}
-      Close the list
+The @{b}Filter@{ub} field narrows the list as you type. Words match anywhere in a
+title, ignoring case; all entered words must match. @{b}Clear@{ub} restores the full
+list. The window title shows the filtered and total counts.
 
-The tile shows the number of games once the list has been read.
+An unconfigured or invalid folder shows a sad WHDLoad icon. Hover over it to
+see whether a drawer is unset, missing, a file, unreadable or on an
+unavailable volume. Choose a valid folder in Edit settings to restore the
+selected artwork.
 
-@{b}Which games it finds@{ub}
---------------------
+  @{b}Key or action                    Result@{ub}
+  ----------------------------------------------------------------
+  Type the first letters           Jump to the first matching name
+  Cursor up and down               Move through the list
+  Return, Play, or a double-click  Start the selected install
+  Rescan                           Rebuild this tile's index
+  Esc or the close gadget          Close the list
 
-A game is a drawer containing a WHDLoad .slave file, either directly in the
-games drawer (Games:Turrican) or one level down, as in collections sorted by
-letter (Games:T/Turrican). Its icon is <drawer>.info or <slave name>.info.
-The drawer is read when the list is first opened, never when NovaDock
-starts.
+An invalid root shows the reason in its tooltip. An incomplete scan is
+identified in the window title rather than presented as a complete list.
 
-@{b}How games start@{ub}
+@{b}Persistent index cache@{ub}
+----------------------
+
+Each instance saves a separate, checksum-validated index under
+ENVARC:NovaDock/Cache/WHDLoad/<instance-id>.idx. It is reused across plugin,
+dock and Workbench restarts. Opening a cached list does not walk the folders
+again. The window identifies it as a cached index.
+
+Use @{b}Rescan@{ub} after adding, moving or removing games/demos. Changing only the
+tile label or artwork keeps its index. Changing the scan folder invalidates
+the old index. A missing, corrupt or incompatible cache automatically
+triggers a new scan. Incomplete scans never replace a successful cached
+index. Cache write failures leave the current list usable and are reported
+in its window title.
+
+@{b}Which installs it finds@{ub}
+-----------------------
+
+An install is a drawer containing a WHDLoad .slave file and a usable icon.
+The scanner searches the root itself and every normal subdirectory,
+including collections nested by category, letter and game/demo name.
+Directory links and soft links are skipped to prevent cycles or indexing
+outside the selected root.
+
+The icon can be named after the drawer or slave inside the install, or be
+the .info icon beside the drawer. Installs without an icon are not
+launchable and are omitted. Each drawer contributes one entry. Paths are
+limited to 299 characters and the list to 10,000 entries; allocation/read
+errors or those limits mark the index incomplete. No files in the collection
+are changed.
+
+@{b}How installs start@{ub}
+------------------
+
+@{b}WHDLoad command@{ub} defaults to WHDLoad. Enter an executable name or full Amiga
+path, or use @{b}Select@{ub} to choose a particular WHDLoad executable. Each instance
+saves its own command, so games and demos can use different versions. An
+empty value falls back to WHDLoad. Changing it reuses the index.
+
+The plugin looks for a bare executable name beside the install and in C:,
+SYS:C, SYS:Utilities, SYS:System and SYS:Tools. A full path selects that
+file. It runs the configured executable as a Workbench program with the
+original icon as its argument, retaining the icon's ToolTypes, including
+PRELOAD and the quit key. This works on AmigaOS 3.0 and later. If NovaDock
+quits while an install runs, its plugin waits for it to finish before
+exiting.
+
+Additional tiles receive unique IDs such as WHDLOAD_2. Their labels, roots
+and commands are stored separately in the normal novadock.cfg; they do not
+need duplicate executables or a separate plugin configuration file.
+
+@{b}Removing a tile@{ub}
 ---------------
 
-The plugin starts a game exactly as a double-click on its icon would: it
-loads the icon's default tool (normally WHDLoad, looked for beside the game
-and in C:, SYS:C, SYS:Utilities, SYS:System and SYS:Tools) and runs it as a
-Workbench program with the icon as its argument, so WHDLoad reads the icon's
-tool types (PRELOAD, Quit key and so on). This works on AmigaOS 3.0 and
-later. If NovaDock is quit while a game runs, the plugin waits for the game
-to end before it exits.
+Removing a WHDLoad tile clears that instance's label, folder, command and
+artwork settings, along with its saved index and any temporary/backup index
+files. Other WHDLoad instances and the actual games/demos are untouched. The
+bundled WHDLoad entry remains available in Add item with fresh default
+settings.
+@endnode
+
+@node MUSIC_LIBRARY_PLUGIN "MUSIC"
+@toc Main
+@{b}MUSIC@{ub}
+========
+
+Add @{b}MUSIC@{ub} from @{b}Add item > Plugins@{ub}. Add it more than once to keep separate
+collections, such as Modules, MP3s and SID tunes. This is a collection
+browser; the MusicPlayer plugin remains available for playback controls.
+
+@{b}Settings@{ub}
+--------
+
+Right-click the tile and choose @{b}Edit settings@{ub}:
+
+  * @{b}Tile label@{ub}: your collection name, up to 31 characters.
+  * @{b}Scan folder (recursive)@{ub}: one folder per tile. Every real subdirectory is
+    searched. New tiles have no folder selected.
+  * @{b}Tile icon@{ub}: choose from the illustrated library. Music is the default.
+  * @{b}Custom icon or picture@{ub}: an existing file overrides the library choice.
+    Clear this field to use the library icon. Missing files fall back to it.
+  * @{b}Player@{ub}: choose a Workbench-compatible music player. Leave blank to use
+    the MusicPlayer plugin's Default app, or the file icon's default tool.
+  * @{b}Format checkboxes@{ub}: MP3, MOD, XM, S3M, IT, MED/OctaMED, SID, WAV, AIFF,
+    Ogg and FLAC. Only checked formats enter this collection. MP3 and
+    tracker modules are enabled initially; enable SID or other formats as
+    needed.
+
+Choose @{b}Use@{ub} for the current session or @{b}Save@{ub} to retain settings after restart.
+Your chosen player must support the formats you enable. Indexing SID files
+does not itself add SID playback to a player.
+
+@{b}Browsing and playback@{ub}
+---------------------
+
+A sad music icon means the folder is unset, missing or unreadable. Its
+tooltip explains the reason. With a valid folder, the tile shows your chosen
+icon and a corner count, including @{b}0@{ub}. @{b}...@{ub} indicates an index in progress.
+
+Click a nonempty collection to open its browser. Type in @{b}Filter@{ub} to narrow
+titles immediately; matching ignores case and accepts multiple words in any
+order. @{b}Clear@{ub} restores the full list. Select a track and press @{b}Play@{ub}, Return,
+or double-click it. The file is passed to the configured player as a
+Workbench argument. Source files and their icons are not changed.
+
+A zero-count collection stays closed. Click it to rescan; a browser opens
+only if matching files are found. @{b}Rescan@{ub} in an open browser refreshes the
+index after adding or removing music. No selected formats means a zero-item
+index.
+
+@{b}Saved indexes@{ub}
+-------------
+
+Every tile has its own index under
+ENVARC:NovaDock/Cache/MusicLibrary/<instance-id>.idx. Restarting reuses it;
+changing the folder or format checkboxes rebuilds it. Changing just the
+label, player or icon reuses the same index. An incomplete scan does not
+replace the last complete saved index. Removing a tile removes its settings
+and index only.
+
+Up to 10,000 tracks and paths up to 299 characters are supported. Directory
+and soft links are skipped. Module names support both mod.tune and tune.mod;
+SID tunes accept .sid, .psid, .rsid and the sid. prefix. Format detection
+uses filenames. Files do not need a Workbench icon to be indexed.
+
+New instances select all eleven supported formats by default. Existing saved
+format choices are retained when updating.
+@endnode
+
+@node SENSORS_PLUGIN "Hardware sensors"
+@toc Main
+@{b}Hardware sensors@{ub}
+================
+
+Add @{b}SENSOR@{ub} from @{b}Add item > Plugins@{ub}. Add multiple independent tiles, such as
+Temperatures and Voltages, each with its own label and selected channels. It
+detects supported readings and rotates selected channels in the dock every
+five seconds. Click for a live, paged list with @{b}Previous@{ub}, @{b}Next@{ub}, @{b}Refresh@{ub} and
+@{b}Close@{ub}.
+
+Right-click and choose @{b}Edit settings@{ub}. Freshly detected channels appear as
+checkboxes, checked initially. Untick readings you do not want displayed.
+@{b}Tile label@{ub} names each instance. A sad chip icon appears when no available
+readings are selected, or no sensors are detected. @{b}Use@{ub} applies for the
+current session; @{b}Save@{ub} keeps the selection after restart. Missing channels
+are hidden without erasing their saved choices. Open settings again after
+connecting hardware or starting a sensor driver. The title says @{b}no sensors
+detected@{ub} when no supported readings are available.
+
+@{b}Supported sources@{ub}
+-----------------
+
+@{b}MNT ZZ9000@{ub}
+
+Reads FPGA temperature, core voltage and auxiliary voltage directly from a
+ZZ9000 found through expansion.library. Firmware must expose the telemetry
+registers (1.7 or later). It does not probe arbitrary addresses, write board
+registers, or change firmware, video modes or clock settings. Temperature is
+shown in Celsius and voltage in volts. Invalid register values are omitted.
+
+The register identities, firmware version field and engineering units are
+verified against the public ZZTop board code
+(https://github.com/BlitterStudio/zz9000-drivers) and its register
+definitions (ZZTop/Core/board.c and include/zz9000_hw.h; reviewed commit
+f60eafa28f36e64cee052c5c02d22a097a3553f9).
+
+@{b}AmigaKit clockport RTC and Sensors module@{ub}
+
+Install and start @{b}AK_Sensors@{ub} using its Workbench icon, as described in its
+readme. NovaDock reads the published ENV values:
+
+  @{b}Value                   Display@{ub}
+  -----------------------------------------------------
+  AK_Internal_temp_C      Module temperature
+  AK_CPU_temp_C           Optional external CPU probe
+  AK_5V_supply_V          5 V supply
+  AK_RTC_battery_percent  RTC battery charge percentage
+
+The optional probe appears only when the driver publishes it. A CPU probe
+can monitor a TF1260 CPU when connected through this module; it remains
+labelled as an external probe rather than a built-in TF1260 sensor.
+
+NovaDock does not start the driver, change its clockport address or set the
+clock. AK_Sensors 1.3 supports a CLOCKPORT_ADDRESS icon ToolType for
+compatible third-party ports. Leave hardware access and calibration to that
+driver. Its readme specifies temperature accuracy of +/-2.5 C and voltage
+accuracy of +/-2%; displayed precision does not improve that accuracy.
+
+Driver announcement and documentation archive
+(https://forum.amiga.org/index.php?topic=75107.0) (AK_Sensors 1.3
+(http://amiga.serveftp.net/temp/AK_Sensors_v1.3.lha)). The third-party
+driver is not bundled with NovaDock.
+
+@{b}CS-Lab Warp accelerators@{ub}
+
+Install the official Warp software. Set @{b}Warp diagnostic tool@{ub} if WarpTool is
+not at C:WarpTool. NovaDock runs only @{b}WarpTool Diag@{ub}, in a separate
+background process. Automatic polling uses a 30-second interval, with recent
+results shared across instances and only one active diagnostic at a time. It
+reads temperatures, supply/battery voltages and fan output when those rows
+are reported. Available channels depend on the board and firmware. Fan
+output is a percentage, not RPM. No board settings, fan controls,
+overclocking or WiFi settings are changed. Other diagnostic fields are
+ignored; temporary output is removed after reading. A stalled diagnostic
+cannot block dock input or start overlapping hardware jobs.
+
+Official Warp firmware and guide
+(https://amigawarp.eu/download/download-warp-firmware/). The vendor tools
+are not bundled with NovaDock.
+
+@{b}Refresh and stale data@{ub}
+----------------------
+
+@{b}Refresh seconds@{ub} controls local sampling (2-60 seconds, default 5),
+independently of the dock's Smooth/Low mem redraw preference. Warp commands
+remain limited to one per 30 seconds. @{b}RTC max age seconds@{ub} defaults to 120;
+increase it if your AK_Sensors POLL_INTERVAL exceeds this. Only ENV values
+within that age are used. Warp values expire after 90 seconds without a
+successful update. Missing data shows @{b}NO SENSORS@{ub}, never a fabricated zero.
+With every available channel unchecked, the tile shows @{b}NO SELECTION@{ub}.
+
+Runtime snapshots are kept under ENV:NovaDock/Sensors/ for each instance and
+removed when that instance exits. Removing a tile clears only its own
+settings and runtime state. A shared, timestamped Warp readout avoids
+repeated diagnostic runs across tiles; selecting channels on one does not
+affect another. It is not a permanent sensor log.
+
+@{b}Hardware validation and TF1260@{ub}
+------------------------------
+
+The plugin compiles for classic AmigaOS; conversion, parsing, firmware
+gates, selection, snapshot and stale-data checks have portable regression
+tests. Readings still need comparison with ZZTop, AK_Sensors and WarpDiag on
+physical boards before treating this as hardware-validated support.
+
+The TF1260 manual identifies FAN/THERM connectors but does not document a
+software-readable sensor interface. Direct TF1260 sensor support is pending
+a verified controller/API and calibration details. A connector alone is not
+reported as a detected sensor. The board designer recommends a Solas
+controller for temperature monitoring in this hardware discussion
+(https://www.exxosforum.co.uk/forum/viewtopic.php?start=30&t=4947).
+
+Next hardware work: compare readings on real boards, verify older WarpTool
+output formats, and add a documented Solas/TF1260 provider when available.
+@endnode
+
+@node ACTIONS_PLUGIN "ACTIONS"
+@toc Main
+@{b}ACTIONS@{ub}
+========
+
+Add @{b}ACTIONS@{ub} from @{b}Add item > Plugins@{ub}. Each tile has its own action, label,
+icon and confirmation setting. Add more tiles for different actions.
+
+Right-click a tile and choose @{b}Edit settings@{ub}:
+
+  * @{b}Tile label@{ub}: the name to show on the dock, up to 31 characters.
+  * @{b}System action@{ub}: select a predefined action from the list below.
+  * @{b}Confirm before running@{ub}: enabled by default. Clicking opens a window
+    describing the selected action, with @{b}Run action@{ub} and @{b}Cancel@{ub}.
+  * @{b}Tile icon@{ub}: choose a bundled icon from the gallery, with a live preview.
+    New tiles use Utilities.
+  * @{b}Custom icon or picture@{ub}: an existing custom file overrides the gallery
+    choice. Clear the field to return to the selected bundled icon.
+
+Choose @{b}Use@{ub} for the current session or @{b}Save@{ub} for permanent settings. Changing
+settings never runs an action. Actions run only after a tile click and, when
+enabled, explicit confirmation. A failed confirmation window does not run
+the action. Closing it or pressing Esc cancels.
+
+@{b}Available actions@{ub}
+-----------------
+
+  * @{b}Restart Amiga@{ub}: reboot the whole machine. Save your work first.
+  * @{b}Restart Workbench@{ub}: close and reopen the Workbench screen. Applications
+    remain running. NovaDock temporarily closes its own dock window and then
+    restores it. Other windows or applications holding the screen can
+    prevent reopening; close those windows and retry. This does not
+    terminate programs or force a busy screen to close.
+  * @{b}Restart NovaDock@{ub}: use the normal dock shutdown and relaunch sequence.
+  * @{b}Open Shell@{ub}: open a new AmigaDOS Shell.
+  * @{b}Workbench front@{ub}: bring Workbench in front of other screens.
+  * @{b}Workbench back@{ub}: send Workbench behind other screens.
+
+The Workbench and NovaDock restart actions need NovaDock's ARexx host and
+rexxsyslib.library. The plugin reports a failed action in its tooltip. No
+shell command is accepted from configuration: only the predefined actions
+can run. Multiple tiles use unique IDs, such as ACTIONS_2, in novadock.cfg.
+Removing a tile removes only that instance's settings; the default template
+remains available for adding a fresh ACTIONS tile.
+@endnode
+
+@node AQUARIUM_PLUGIN "AQUARIUM"
+@toc Main
+@{b}AQUARIUM@{ub}
+========
+
+Add @{b}AQUARIUM@{ub} from Add item > Plugins for an animated fish tank. Click its
+tile for a fullscreen aquarium with swimming fish, plants and rising
+bubbles. Any key or mouse click closes it. The opening click's release is
+ignored.
+
+Edit settings selects one to eight fish, bubbles and Slow/Normal/Fast
+animation. Use applies settings for the session; Save keeps them after
+restart. The fullscreen scene keeps its proportions, reuses one bitmap,
+pauses when another window is active and closes when NovaDock exits. The
+dock animation slows when hidden. No network connection, external player or
+sound is used.
+@endnode
+
+@node DOWNLOAD_PLUGIN "DOWNLOAD"
+@toc Main
+@{b}DOWNLOAD@{ub}
+========
+
+Add @{b}DOWNLOAD@{ub} from Add item > Plugins, then click the tile. Enter an HTTP or
+HTTPS URL and a full @{b}Save as@{ub} filename, such as Work:Downloads/manual.pdf.
+Choose @{b}Queue URL@{ub} to download. Up to eight files can be queued; one runs at a
+time. The tile shows received bytes and a queue badge. Percentage progress
+appears when curl reports it. Closing the window keeps the queue running.
+@{b}Clear waiting@{ub} removes waiting entries and leaves the active transfer alone.
+
+Edit settings selects an HTTPS-capable curl executable (default C:curl) and
+a default save drawer (default RAM:). curl, its required libraries and a
+working TCP/IP stack must be installed separately. URLs with embedded
+credentials are not accepted. Certificate verification stays enabled.
+
+Each file is downloaded into a uniquely named temporary drawer on the chosen
+destination volume, then moved to the requested filename after success.
+Existing files are never intentionally overwritten; choose another name. A
+failed transfer removes its partial file. Redirects are restricted to
+HTTP(S). Connection setup is limited to 30 seconds and each transfer to ten
+minutes.
+
+The queue belongs to the current plugin session. Quitting or restarting
+NovaDock discards waiting entries; an outstanding helper may finish its
+transfer and clean up its temporary file, without publishing a completed
+file. Use a dedicated download manager for persistent queues or resumable
+transfers.
+@endnode
+
+@node SYSTEM_PLUGIN "SYSTEM"
+@toc Main
+@{b}SYSTEM@{ub}
+========
+
+Add @{b}SYSTEM@{ub} from Add item > Plugins to see CPU, Workbench and uptime. The
+tile rotates between them every five seconds. Edit settings can keep one
+field visible instead. Click the tile to see all three together.
+
+CPU identifies the processor reported by Exec: 68000, 68010, 68020, 68030,
+68040 or 68060. Workbench displays the installed workbench.library version
+and revision. This is the library version, rather than a guessed OS edition.
+Uptime is measured from the system timer's E-clock initialization,
+independently of calendar-clock adjustments. The detailed view includes
+seconds.
+
+Readings refresh once per second. SYSTEM does not change hardware, scan
+disks or contact the network. It requires the standard timer device; the
+Workbench version is shown as unavailable if its library cannot be opened.
+@endnode
+
+@node PLACES_PLUGIN "PLACES"
+@toc Main
+@{b}PLACES@{ub}
+========
+
+Click @{b}PLACES@{ub} for a quick picker of system drawers, mounted volumes and five
+personal bookmarks. Choose a place with the mouse or arrow keys and Return.
+Escape closes the picker. The list refreshes whenever you open it.
+
+Edit settings can hide system shortcuts or mounted volumes. Each bookmark
+has an optional label and a drawer selector; leave its path blank to omit
+it. Save keeps the bookmarks permanently. Missing drawers fail quietly when
+opened. The plugin does no volume scanning while idle, and does not track
+recent files.
+
+Opening uses workbench.library version 44 or newer when available. Earlier
+Workbench versions require the optional C:WBRUN command, like dock drawers.
+The native design is inspired by the folder/bookmark/volume menu in Xfce
+Places: https://docs.xfce.org/panel-plugins/xfce4-places-plugin/start
+@endnode
+
+@node AMINET_PLUGIN "AMINET"
+@toc Main
+@{b}AMINET@{ub}
+========
+
+Click @{b}AMINET@{ub} to open its native browser window. It needs a running TCP/IP
+stack with bsdsocket.library; no external downloader or web browser is
+needed. The first opening loads recent uploads. Networking runs in separate
+processes, so the dock and browser controls remain responsive during a
+transfer.
+
+@{b}Browse and search@{ub}
+-----------------
+
+  * @{b}Recent@{ub} lists recent uploads. Previous and Next move through result
+    pages.
+  * @{b}Categories@{ub} lists Aminet's main sections. Select one and press @{b}Open@{ub}, then
+    select a subcategory and press Open again to list its packages.
+  * Enter at least two characters in the search field and press Return or
+    Search.
+  * Select a package and press @{b}Open@{ub} for its summary, version, architecture,
+    author and requirements. Check these before using a package.
+  * @{b}Readme@{ub} displays its text in a scrollable list. @{b}Back@{ub} returns to packages.
+  * @{b}Get@{ub} opens a Save dialog. Choose the drawer and filename to download it.
+    A progress bar shows the received percentage and downloaded/total size.
+    It clears when the transfer finishes or fails; closing and reopening the
+    browser keeps the current progress.
+
+Existing destination files are never overwritten. A transfer is staged
+beside its destination and committed by rename only after the declared size
+is received. A Workbench project icon is added when icon.library is
+available. Downloaded archives and installers are never executed
+automatically.
+
+@{b}Settings and limits@{ub}
+-------------------
+
+Right-click AMINET and choose Edit settings to set its default download
+drawer. The default is RAM:; choose a disk drawer to retain packages after a
+reboot. One transfer runs at a time. Closing the browser does not cancel an
+active transfer; it can finish while the dock is running. If NovaDock quits,
+its worker finishes independently and removes the unclaimed temporary
+download.
+
+The browser retains its current result page for the running session, without
+background polling. Metadata is limited to 256 KB and a readme to 512
+displayed lines; packages are limited to 64 MB. A listing contains at most
+50 packages. No result page is presented as current when its request fails.
+
+The transport contacts only m68k.aminet.net over HTTP. HTTP does not
+authenticate package contents. Redirects, compressed/chunked responses,
+malformed headers, oversized and incomplete downloads are rejected. DNS
+timing depends on the installed TCP/IP stack. Aminet's HTML layout can
+change and require a parser update. The plugin is not affiliated with
+Aminet.
+
+Parsing and transport were adapted from Beam68 under its MIT licence. The
+package includes Aminet-parser-LICENSE.txt with the original notice.
+@endnode
+
+@node SAVER_PLUGIN "SAVER"
+@toc Main
+@{b}SAVER@{ub}
+========
+
+Click @{b}SAVER@{ub} to open a fullscreen scene. Any key or mouse click returns to
+Workbench. The release of the opening click is ignored. There are no input
+hooks or password locks, and scenes start only when clicked.
+
+@{b}Scenes@{ub}
+------
+
+  * @{b}Boing ball@{ub}: a rotating red-and-white sphere bouncing over the classic
+    grid.
+  * @{b}Copper waves@{ub}: colourful raster bars, sine waves and scrolling stars.
+  * @{b}Vector show@{ub}: rotating wireframe cubes, pyramids and an Amiga-style
+    checkmark.
+  * @{b}Fireworks@{ub}: colourful bursts above a night skyline.
+  * @{b}Maze@{ub}: a Workbench-style maze builds its passages, then a character walks
+    the route to the exit. It repeats after the character arrives.
+  * @{b}Starfield@{ub}: stars fly towards the viewer.
+  * @{b}Bouncing ball@{ub}: a simple bouncing ball.
+  * @{b}Blank@{ub}: a black screen with no animation updates.
+  * @{b}Demo shuffle@{ub}: cycles through your selected scenes automatically.
+
+@{b}Settings@{ub}
+--------
+
+Right-click the tile and choose @{b}Edit settings@{ub}. Select a scene and a Slow,
+Normal or Fast animation speed. For Demo shuffle, tick the scenes to include
+and set @{b}Shuffle seconds per scene@{ub} (10-300, default 40). Blank is excluded by
+default. If every scene is unticked, shuffle uses Starfield.
+
+The shuffle duration uses elapsed time independently of animation speed.
+Switching scenes resets their animation; changing settings restarts shuffle.
+Animation and the shuffle clock pause when another window takes focus.
+Closing the scene or quitting NovaDock frees its window and bitmap. The dock
+tile does not animate. Artwork and trigonometry are precomputed where
+useful; the animation loop uses integer arithmetic and does not need an FPU.
 @endnode
 
 @node PLUGIN_SDK_QUICKSTART "Plugin SDK quick start"
@@ -4072,9 +4625,9 @@ suffix .ndplugin, or as tool types in the program's own icon:
       : Label
       : TYPE
       : choices
-      : default, up to twelve. TYPE is BOOL, CHOICE (comma-separated
-      choices), UINT (min,max), TEXT, or FILE (text plus an ASL file
-      chooser). The default must be valid for its type.
+      : default, up to 32. TYPE is BOOL, CHOICE (comma-separated choices),
+      UINT (min,max), TEXT, or FILE (text plus an ASL file chooser). The
+      default must be valid for its type.
 
 Lines that do not start with NOVADOCK_ are ignored (comments, DONOTWAIT and
 other tool types). Unknown NOVADOCK_ keys are ignored so newer manifests
@@ -4190,7 +4743,7 @@ this editor supports the five schema types above. The manifest has no hook
 to replace Edit settings with an external preferences executable.
 
 The focused editor adapts to the Workbench screen height and scrolls when
-its fields cannot fit. The manifest supports up to 12 option definitions.
+its fields cannot fit. The manifest supports up to 32 option definitions.
 
 @{b}Use@{ub} writes the session copy and @{b}Save@{ub} writes both session and permanent
 copies, closes the editor, then asks the running dock and plugins to reload.
@@ -4229,6 +4782,13 @@ three sampling override controls. Taller screens fit these together without
 a scrollbar; smaller screens keep scrolling so all options remain reachable.
 
 For a complete SDK walkthrough, see @{"Creating your plugin settings window" link PLUGIN_SDK_SETTINGS}.
+
+In Preferences > Plugins, installed manifests that cannot be used remain
+listed with a Needs repair status. Select the entry to see the reason and
+its program path, for example missing program, invalid option definition or
+a newer dock requirement. These entries are excluded from Add Item and
+automatic discovery merges. Repair or reinstall the plugin, then reopen
+Preferences to rescan.
 @endnode
 
 @node NETWORK_MIGRATION "Upgrading Network settings"

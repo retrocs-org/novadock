@@ -56,6 +56,16 @@ Plugins/Command
 Plugins/RunningApps
 Plugins/Trash
 Plugins/Games
+Plugins/MusicLibrary
+Plugins/Sensors
+Plugins/Christmas
+Plugins/Aquarium
+Plugins/Places
+Plugins/Saver
+Plugins/Aminet
+Plugins/Download
+Plugins/System
+Plugins/Actions
 Plugins/AmIRC
 Plugins/BitSkim
 Plugins/Clipboard
@@ -76,7 +86,8 @@ for relative_path in $required_binaries; do
     fi
 done
 
-mkdir -p "$destination/Plugins" "$destination/Icons" "$destination/Themes"
+mkdir -p "$destination/Plugins" "$destination/Icons" "$destination/Themes" "$destination/Music"
+cp -p "$project_root"/Music/* "$destination/Music/"
 "$PYTHON" "$project_root/tools/generate_info_icons.py" --drawer-icon "$destination.info"
 
 for relative_path in $required_binaries; do
@@ -108,6 +119,12 @@ cp -p "$project_root/Plugins/Trash.ndplugin" \
     "$destination/Plugins/Trash.ndplugin"
 cp -p "$project_root/Plugins/Games.ndplugin" \
     "$destination/Plugins/Games.ndplugin"
+cp -p "$project_root/Plugins/MusicLibrary.ndplugin" \
+    "$destination/Plugins/MusicLibrary.ndplugin"
+cp -p "$project_root/Plugins/Sensors.ndplugin" \
+    "$destination/Plugins/Sensors.ndplugin"
+cp -p "$project_root/Plugins/Christmas.ndplugin" \
+    "$destination/Plugins/Christmas.ndplugin"
 cp -p "$project_root/install.amiga" "$destination/install.amiga"
 # The GUI installer (double-click Install-NovaDock) and the AmigaGuide
 # manual that Help in Preferences opens (PROGDIR:NovaDock.guide here).
@@ -116,7 +133,7 @@ cp -p "$project_root/Install-NovaDock.info" "$destination/Install-NovaDock.info"
 cp -p "$project_root/Icons/SoftwarePackage.info" "$destination/Icons/SoftwarePackage.info"
 cp -p "$project_root/NovaDock.guide" "$destination/NovaDock.guide"
 cp -p "$project_root/NovaDock.guide.info" "$destination/NovaDock.guide.info"
-for extra in README.md LICENSE BitSkim-icon-LICENSE.txt CHANGELOG.md examples.rexx; do
+for extra in Aminet-parser-LICENSE.txt README.md LICENSE BitSkim-icon-LICENSE.txt CHANGELOG.md examples.rexx; do
     cp -p "$project_root/$extra" "$destination/$extra"
 done
 

@@ -1,6 +1,7 @@
 <?php
 // Palette values are copied from the bundled theme.cfg files.
 return [
+    ['id' => 'Christmas', 'name' => 'Christmas', 'description' => 'Evergreen tiles with warm cream text, festive red and gold accents.', 'shape' => 'chamfer', 'palette' => ['#0a1b18','#16382b','#fff0d0','#dc564d','#e8be5f']],
     ['id' => 'BeOS', 'name' => 'BeOS', 'description' => 'Warm grey with a bright yellow accent and chamfered tiles.', 'shape' => 'chamfer', 'palette' => ['#9c9c94', '#d6d4c8', '#161614', '#facd28', '#488a97']],
     ['id' => 'Copper', 'name' => 'Copper', 'description' => 'Dark copper tones with orange highlights.', 'shape' => 'chamfer', 'palette' => ['#2b160f', '#4c2619', '#ffe6c7', '#e17038', '#36b0a5']],
     ['id' => 'Emerald', 'name' => 'Emerald', 'description' => 'Deep green with vivid green accents.', 'shape' => 'chamfer', 'palette' => ['#032b18', '#08462a', '#ddffe2', '#38e277', '#f0b837']],

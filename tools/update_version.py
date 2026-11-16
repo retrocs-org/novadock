@@ -4,6 +4,7 @@
     python3 tools/update_version.py          apply VERSION everywhere (also
                                              refreshes the website chrome and
                                              its download archives)
+    python3 tools/update_version.py --no-package  update metadata without archives
     python3 tools/update_version.py --check  exit 1 if anything disagrees
 
 include/nd_version.h is generated (dock programs build their $VER strings and
@@ -101,12 +102,14 @@ def main():
             sys.exit(1)
         # The website chrome and its download archives carry the version too.
         import subprocess
-        for tool in (['tools/make_amigaguide.py'], ['tools/update_site_chrome.py'],
-                     ['tools/package_release.py', '--out', str(ROOT.parent / 'dist')]):
+        commands = [['tools/make_amigaguide.py'], ['tools/update_site_chrome.py']]
+        if '--no-package' not in sys.argv[1:]:
+            commands.append(['tools/package_release.py', '--out', str(ROOT.parent / 'dist')])
+        for tool in commands:
             subprocess.run([sys.executable, str(ROOT / tool[0])] + tool[1:],
                            check=True, stdout=subprocess.DEVNULL)
         print(f'Version {version} ({date}) applied: programs, installer, '
-              'website and downloads.')
+              + ('website.' if '--no-package' in sys.argv[1:] else 'website and downloads.'))
 
 
 if __name__ == '__main__':

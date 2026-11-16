@@ -13,7 +13,7 @@
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 #include "nd_interaction.h"
-#include "nd_panel.h"
+#include "nd_weather_window.h"
 #include "nd_weather.h"
 #include "nd_weather_codes.h"
 #include "nd_fetch_worker.h"
@@ -135,38 +135,13 @@ static int job_events(void)
     if(!result && (ULONG)(weather_ticks()-job.started)>=7500UL){strcpy(status,"Weather download timed out");result=-1;}
     return result;
 }
-static void panel_text(const struct WeatherSettings *s,char text[8][160],char labels[8][20])
-{
-    unsigned int i;char low[24],high[24],now[24];int fahrenheit=!strcmp(s->units,"F");
-    strcpy(labels[0],"Now");strcpy(labels[6],"Status");strcpy(labels[7],"Source");
-    if(have){nd_weather_temperature(forecast.temperature,fahrenheit,now);sprintf(text[0],"%s  %s",now,nd_weather_condition(forecast.code));}
-    else strcpy(text[0],s->location[0] ? "Forecast not available":"Set a location in Weather settings");
-    for(i=0;i<ND_WEATHER_DAYS;++i){
-        if(have && i<forecast.count){strcpy(labels[i+1],nd_weather_weekday(forecast.days[i].date));
-            nd_weather_temperature(forecast.days[i].low,fahrenheit,low);nd_weather_temperature(forecast.days[i].high,fahrenheit,high);
-            sprintf(text[i+1],"%s / %s  %s  Rain %d%%",low,high,nd_weather_condition(forecast.days[i].code),forecast.days[i].rain);
-        }else{strcpy(labels[i+1],"--");strcpy(text[i+1],"--");}
-    }
-    sprintf(text[6],"%.19s%s%.75s",have && !stale ? forecast.updated:"",have && !stale ? "  ":"",status);
-    strcpy(text[7],"Open-Meteo.com / CC BY 4.0");
-}
-static struct NDPanel *panel_open(const struct WeatherSettings *s)
-{
-    struct NDPanelField fields[8];char text[8][160],labels[8][20],title[128];unsigned int i;
-    static const char *buttons[]={"Refresh","Close"};
-    panel_text(s,text,labels);
-    for(i=0;i<8;++i){fields[i].label=labels[i];fields[i].value=text[i];fields[i].limit=0;}
-    sprintf(title,"%.85s - Weather (low / high)",s->location[0] ? s->location:"Weather");
-    return nd_panel_open(title,fields,8,buttons,2);
-}
-static void panel_update(struct NDPanel *panel,const struct WeatherSettings *s)
-{
-    char text[8][160],labels[8][20];unsigned int i;panel_text(s,text,labels);
-    for(i=0;i<8;++i){nd_panel_set_label(panel,i,labels[i]);nd_panel_set(panel,i,text[i]);}
-}
+static struct NDWeatherView *panel_open(const struct WeatherSettings *s)
+{return nd_weather_view_open(s->location,!strcmp(s->units,"F"),&forecast,have,stale,status);}
+static void panel_update(struct NDWeatherView *panel,const struct WeatherSettings *s)
+{nd_weather_view_update(panel,!strcmp(s->units,"F"),&forecast,have,stale,status);}
 int main(int argc,char **argv)
 {
-    struct NDClient client;struct NDPanel *panel=NULL;struct WeatherSettings settings,next;
+    struct NDClient client;struct NDWeatherView *panel=NULL;struct WeatherSettings settings,next;
     unsigned int event,elapsed=0;unsigned long key=0,until=0,last_attempt=0,interval,extra;
     char url[1000],caption[32],value[32],badge[2];int reread=1,pending=0,result,phase,action,changed;
     if(argc==3 && !strcmp(argv[1],"WORK"))return fetch_worker(argv[2]);
@@ -179,7 +154,7 @@ int main(int argc,char **argv)
             interval=(unsigned long)settings.minutes*3000UL;
             if(have && (ULONG)(weather_ticks()-received)>=interval)stale=1;
             if(have && !stale && (ULONG)(weather_ticks()-received)<interval){until=interval-(ULONG)(weather_ticks()-received);pending=0;strcpy(status,"Cached forecast");}
-            if(panel){nd_panel_close(panel);panel=panel_open(&settings);}
+            if(panel){nd_weather_view_close(panel);panel=panel_open(&settings);}
         }
         until=until>elapsed ? until-elapsed:0;
         if(settings.location[0] && !until && !job.port)pending=1;
@@ -204,12 +179,12 @@ int main(int argc,char **argv)
         event=nd_client_update_quiet(&client,caption,value,ND_NO_METER,elapsed,500U);
         badge[0]=stale ? '*':0;badge[1]=0;if(!(event&ND_EVENT_QUIT))event|=nd_client_set_badge(&client,badge);
         if(event&ND_EVENT_QUIT)break;if(event&ND_EVENT_SETTINGS)reread=1;
-        if(event&ND_EVENT_CLICK){if(panel)nd_panel_raise(panel);else panel=panel_open(&settings);}
-        action=nd_panel_event(panel);
-        if(action==-1 || action==101){nd_panel_close(panel);panel=NULL;}
+        if(event&ND_EVENT_CLICK){if(panel)nd_weather_view_raise(panel);else panel=panel_open(&settings);}
+        action=nd_weather_view_event(panel);
+        if(action==-1 || action==101){nd_weather_view_close(panel);panel=NULL;}
         else if(action==100 && !job.port && (ULONG)(weather_ticks()-last_attempt)>=3000UL){until=0;pending=settings.location[0]!=0;}
-        extra=nd_panel_signals(panel)|(job.port ? 1UL<<job.port->mp_SigBit:0);
+        extra=nd_weather_view_signals(panel)|(job.port ? 1UL<<job.port->mp_SigBit:0);
         elapsed=nd_client_wait_signals(&client,500U,extra);
     }
-    job_close();nd_panel_close(panel);nd_client_close(&client);return 0;
+    job_close();nd_weather_view_close(panel);nd_client_close(&client);return 0;
 }

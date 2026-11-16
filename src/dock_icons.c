@@ -27,18 +27,27 @@ static int icon_source(const struct NDDock *dock,const struct NDConfig *cfg,
     size_t len;
     int dopus_icon=item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"DOPUS4");
     int music_icon=item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"MUSIC");
+    int games_icon=item->kind==ND_ITEM_PLUGIN && (nd_collection_plugin_path(item->command) || nd_actions_plugin_path(item->command));
     int running_apps_icon=item->kind==ND_ITEM_PLUGIN &&
                           (!strcmp(item->id,"SCREENSWITCHER") || !strcmp(item->id,"BITSKIM") || !strcmp(item->id,"RUNNINGAPPS") || !strcmp(item->id,"CLIPBOARD") || !strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW"));
     path[0]='\0';
+    if(item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"AMINET"))
+        return nd_collection_art_path(dock->directory,"Aminet",NULL,path,ND_ICON_PATH_LEN) ? 1:0;
     /* DOpus is deliberately drawn like a launcher. Use the icon beside its
      * configured executable, so changing Program path in the plugin
      * settings also changes the artwork without another icon setting. */
     if (dopus_icon) p=nd_option_get(cfg,"DOPUS4","PROGRAM");
+    else if (games_icon) {
+        APTR old=quiet_requesters();
+        int result=nd_collection_art_path(dock->directory,nd_option_get(cfg,item->id,"ICON"),
+                            nd_option_get(cfg,item->id,"ICONFILE"),path,ND_ICON_PATH_LEN);
+        restore_requesters(old);return result ? 1:0;
+    }
     else if (music_icon || running_apps_icon) p=item->command;
     if (item->transient==ND_TRANSIENT_TASK) return 2;
     if (((item->kind != ND_ITEM_LAUNCH && item->kind != ND_ITEM_DRAWER &&
           item->kind != ND_ITEM_GROUP) &&
-         !dopus_icon && !music_icon && !running_apps_icon) || !p || !*p)
+         !dopus_icon && !music_icon && !running_apps_icon && !games_icon) || !p || !*p)
         return 0;
     if (strchr(p, ':')) {
         strncpy(path, p, ND_ICON_PATH_LEN - 1);
@@ -629,7 +638,7 @@ static void build_one_brush(struct NDDock *dock,int i,int max_width,
             sx=(x*brush->width)/fitted_width;
             color=brush->pixels[sy*ND_ICON_MAX_DIM+sx];
             if (color == brush->transparent ||
-                dock->brush_pens[i][color] < 0) return;
+                dock->brush_pens[i][color] < 0) continue;
             if (color != last_color) {
                 SetAPen(&image_rp, (ULONG)dock->brush_pens[i][color]);
                 last_color = color;

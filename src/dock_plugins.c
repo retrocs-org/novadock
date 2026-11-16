@@ -63,6 +63,55 @@ static int resolve_plugin_executable(struct NDDock *dock,const char *configured,
     return ok;
 }
 
+/* Seasonal history is written only on a startup or settings change, never
+ * in the animation loop. Keep settings on uninstall preserves this record. */
+#include "nd_seasonal.h"
+#include "nd_calendar.h"
+void remember_christmas(const struct NDConfig *cfg)
+{
+ int i=nd_christmas_index(cfg),year,month,day;BPTR lock;
+ struct DateStamp stamp;char history[80];
+ if(i<0 || !cfg->items[i].enabled)return;
+ lock=CreateDir("ENVARC:NovaDock");if(lock)UnLock(lock);
+ (void)nd_christmas_remember("ENVARC:NovaDock/Christmas.history");
+ DateStamp(&stamp);calendar_date_from_days(stamp.ds_Days,&year,&month,&day);
+ if(month==11 && day>=10 && day<=25){
+  sprintf(history,"ENVARC:NovaDock/Christmas-%d.history",year);
+  (void)nd_christmas_remember(history);
+ }
+}
+void christmas_startup(struct NDDock *dock)
+{
+ struct DateStamp stamp;int year,month,day,index,status;BPTR lock;
+ struct NDConfig *next,*permanent;char executable[520];
+ char history[80];
+ remember_christmas(&dock->conf);
+ DateStamp(&stamp);calendar_date_from_days(stamp.ds_Days,&year,&month,&day);
+ sprintf(history,"ENVARC:NovaDock/Christmas-%d.history",year);
+ if(!nd_christmas_eligible(&dock->conf,month+1,day,1,history))return;
+ index=nd_christmas_index(&dock->conf);
+ if(!resolve_plugin_executable(dock,index>=0 ? dock->conf.items[index].command:
+                  "Plugins/Christmas",executable,sizeof(executable)))return;
+ next=(struct NDConfig *)alloc_data(sizeof(*next));
+ permanent=(struct NDConfig *)alloc_data(sizeof(*permanent));
+ if(!next || !permanent)goto done;
+ *next=dock->conf;
+ status=nd_load_config(permanent,"ENVARC:NovaDock/novadock.cfg");
+ if(status>0)goto done; /* Never replace a damaged permanent profile. */
+ if(status<0)*permanent=dock->conf;
+ if(!nd_christmas_enable(next) || !nd_christmas_enable(permanent))goto done;
+ lock=CreateDir("ENVARC:NovaDock");if(lock)UnLock(lock);
+ /* Apply only this addition to the permanent profile; unrelated Use-only
+  * changes remain session-only. Write complete configurations with backups. */
+ if(!nd_write_config(permanent,"ENVARC:NovaDock/novadock.cfg"))goto done;
+ lock=CreateDir("ENV:NovaDock");if(lock)UnLock(lock);
+ (void)nd_write_config(next,"ENV:NovaDock/novadock.cfg");
+ (void)nd_christmas_remember(history);
+ dock->conf=*next;
+done:
+ if(next)FreeVec(next);if(permanent)FreeVec(permanent);
+}
+
 static int launch_plugin(struct NDDock *dock,int index,int restarted)
 {
     char cmd[1100], path[520];
@@ -297,6 +346,9 @@ void process_ipc(struct NDDock *dock, int quitting)
             m->caption[ND_TEXT_LEN - 1] = '\0';
             m->value[ND_TEXT_LEN - 1] = '\0';
             item = item_by_id(dock, m->id);
+            if(!item && m->command==ND_MSG_UPDATE &&
+               (!strcmp(m->id,"WHDLOAD") || !strncmp(m->id,"WHDLOAD_",8) || !strcmp(m->id,"MUSICLIB") || !strncmp(m->id,"MUSICLIB_",9) || !strcmp(m->id,"SENSORS") || !strncmp(m->id,"SENSORS_",8)))
+                (void)nd_games_forget_cache(m->id);
             ext = m->version==ND_EXT_ABI_VERSION ? (struct NDExtMessage *)m : NULL;
             if (ext) ext->event2=0;
             has_graph = m->version==ND_GRAPH_ABI_VERSION ||
@@ -461,7 +513,7 @@ void process_ipc(struct NDDock *dock, int quitting)
                     if(changed && (!strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW")) &&
                        (!strcmp(item->value,"ACTION FAILED") || !strcmp(item->value,"WORKER FAILED")))
                         show_feedback(dock,"Could not change network state - check Network settings",1);
-                    if(changed && !strcmp(item->id,"ARCHIVE") && dock->tip_item==index)
+                    if((!strcmp(item->id,"CPU") || (changed && (!strcmp(item->id,"ARCHIVE") || nd_collection_plugin_path(item->command)))) && dock->tip_item==index)
                         close_tooltip(dock);
                     if (changed) {
                         if (dock->dirty_tiles[index])

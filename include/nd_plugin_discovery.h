@@ -12,6 +12,7 @@ struct NDPluginCatalogEntry {
     char command[ND_COMMAND_LEN];
     char manifest_path[ND_COMMAND_LEN];
     int bundled;
+    char problem[96]; /* nonempty only in diagnostic scans */
 };
 struct NDDiscovery {
     int added;
@@ -23,19 +24,22 @@ struct NDDiscovery {
 };
 extern struct NDDiscovery nd_prefs_discovery;
 int nd_discover_plugins(struct NDConfig *cfg,struct NDDiscovery *out);
-/* What a plugin list needs from each installed plugin: ~300 bytes instead
- * of a full 3.5 KB catalogue entry. */
+/* Plugin lists retain small summaries instead of full option schemas. */
 struct NDPluginSummary {
     char id[20];
     char name[ND_LABEL_LEN];
     char command[ND_COMMAND_LEN];
     char version[ND_MANIFEST_VERSION_LEN];
     int multiple_instances;
+    char problem[96];
 };
 /* All scans read the drawers one plugin at a time and never hold more than
  * one full manifest.  Nothing here changes the configuration. */
 int nd_plugin_catalog_scan(struct NDPluginCatalogEntry *entries,int maximum);
 int nd_plugin_catalog_summaries(struct NDPluginSummary *out,int maximum);
+/* Manager-only inventory, including unusable manifests and missing programs.
+ * Invalid entries must never be merged, launched or offered by Add Item. */
+int nd_plugin_catalog_inventory(struct NDPluginSummary *out,int maximum);
 /* 1 and the full entry (manifest included) if plugin ID is installed. */
 int nd_plugin_catalog_lookup(const char *id,struct NDPluginCatalogEntry *out);
 /* Read a text manifest (Plugins/<name>.ndplugin): 1 read, 0 invalid. */

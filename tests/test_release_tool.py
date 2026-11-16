@@ -62,12 +62,33 @@ class ReleaseTests(unittest.TestCase):
         class Mock:
             def call(inner, method, path, payload=None, **kwargs):
                 calls.append((method, path, payload))
+                if path.endswith('/latest'):
+                    return {'id': 7, 'tag_name': self.m['tag'], 'draft': False, 'prerelease': False}
                 if path.endswith('?per_page=100') and '/assets?' not in path:
                     return [{'tag_name': self.m['tag'], 'id': 7, 'draft': draft, 'body': 'Release notes'}]
                 if method == 'GET' and '/assets?' in path:
                     return assets
                 return {}
         return Mock(), calls, assets
+
+    def test_completed_public_release_is_explicitly_normal_and_latest(self):
+        api, calls, _ = self.github_api(draft=False)
+        with patch.dict(r.os.environ, {'GITHUB_TOKEN': 'test'}):
+            r.publish_github(api, 'a/b', self.out, self.m, False)
+        self.assertEqual([call for call in calls if call[0] == 'PATCH'][-1][2],
+                         {'draft': False, 'prerelease': False, 'make_latest': 'true'})
+
+    def test_latest_status_must_be_confirmed_before_success(self):
+        original, _, _ = self.github_api(draft=False)
+        for wrong in ({'id': 99}, {'id': 7, 'tag_name': self.m['tag'],
+                                    'draft': False, 'prerelease': True}):
+            class Mock:
+                def call(inner, method, path, payload=None, **kwargs):
+                    if path.endswith('/latest'): return wrong
+                    return original.call(method, path, payload, **kwargs)
+            with patch.dict(r.os.environ, {'GITHUB_TOKEN': 'test'}):
+                with self.assertRaisesRegex(ValueError, 'did not confirm'):
+                    r.publish_github(Mock(), 'a/b', self.out, self.m, False)
 
     def test_github_preview_never_writes(self):
         api, calls, _ = self.github_api()
@@ -83,7 +104,7 @@ class ReleaseTests(unittest.TestCase):
         api, calls, _ = self.github_api()
         with patch.dict(r.os.environ, {'GITHUB_TOKEN': 'test'}):
             r.publish_github(api, 'a/b', self.out, self.m, False)
-        self.assertEqual(calls[-1], ('PATCH', '/repos/a/b/releases/7', {'draft': False}))
+        self.assertEqual([call for call in calls if call[0] == 'PATCH'][-1], ('PATCH', '/repos/a/b/releases/7', {'draft': False, 'prerelease': False, 'make_latest': 'true'}))
         self.assertFalse(any(x[0] == 'POST' for x in calls))
 
     def test_github_published_release_missing_asset_is_not_modified(self):
@@ -101,9 +122,14 @@ class ReleaseTests(unittest.TestCase):
                 return hashlib.sha256(files[path]).hexdigest() if path in files else None
             def call(inner, method, path, payload=None, **kwargs):
                 calls.append((method, path))
+                if method == 'GET' and '/releases?' in path:
+                    return [{'tag_name': self.m['tag']}]
                 if method == 'PUT':
                     files[path] = kwargs['upload'].read_bytes(); return {}
                 if method == 'POST':
+                    self.assertEqual(payload['name'], self.m['tag'])
+                    self.assertNotIn('released_at', payload)
+                    self.assertNotIn('prerelease', payload)
                     self.assertEqual(len(files), len(r.publication_assets(self.m)))
                     return {}
                 return files.get(path)
@@ -111,13 +137,31 @@ class ReleaseTests(unittest.TestCase):
         r.publish_gitlab(api, 'group/project', self.out, self.m, True)
         self.assertFalse(files)
         r.publish_gitlab(api, 'group/project', self.out, self.m, False)
-        self.assertEqual(calls[-1][0], 'POST')
+        self.assertEqual([call[0] for call in calls if call[0] != 'GET'][-1], 'POST')
         calls.clear()
         r.publish_gitlab(api, 'group/project', self.out, self.m, False)
         self.assertFalse(any(x[0] == 'PUT' for x in calls))
         files[next(iter(files))] = b'wrong'
         with self.assertRaisesRegex(ValueError, 'different asset'):
             r.publish_gitlab(api, 'group/project', self.out, self.m, True)
+
+    def test_gitlab_future_release_cannot_be_reported_as_normal(self):
+        class Mock:
+            def call(inner, *args, **kwargs): return {'upcoming_release': True}
+            def file_digest(inner, *args, **kwargs): self.fail('Future release processed')
+        with self.assertRaisesRegex(ValueError, 'future-dated'):
+            r.publish_gitlab(Mock(), 'group/project', self.out, self.m, True)
+
+    def test_gitlab_latest_status_must_be_confirmed(self):
+        class Mock:
+            base = 'https://gitlab.example.org/api/v4'
+            def file_digest(inner, path, **kwargs):
+                return r.publication_assets(self.m)[path.rsplit('/', 1)[-1]]
+            def call(inner, method, path, payload=None, **kwargs):
+                if '/releases?' in path: return [{'tag_name': 'older-release'}]
+                return None
+        with self.assertRaisesRegex(ValueError, 'did not confirm'):
+            r.publish_gitlab(Mock(), 'group/project', self.out, self.m, False)
 
     def test_real_git_clean_checkout_required(self):
         repo = self.out/'repo'
@@ -176,9 +220,13 @@ class ReleaseTests(unittest.TestCase):
                 calls.append((method, path, payload))
                 if method == 'GET' and path.endswith('?per_page=100'):
                     return list(stored.values()) if '/assets?' in path else []
+                if method == 'GET' and path.endswith('/latest'):
+                    return {'id': 8, 'tag_name': self.m['tag'], 'draft': False, 'prerelease': False}
                 if method == 'GET': return None
                 if method == 'POST':
                     self.assertTrue(payload['draft'])
+                    self.assertFalse(payload['prerelease'])
+                    self.assertEqual(payload['name'], self.m['tag'])
                     return {'id': 8, 'draft': True}
                 if method == 'PATCH':
                     self.assertEqual(len(stored), len(r.publication_assets(self.m)))
@@ -190,7 +238,7 @@ class ReleaseTests(unittest.TestCase):
                 return result
         with patch.object(r, 'API', return_value=Uploads()), patch.dict(r.os.environ, {'GITHUB_TOKEN': 'test'}):
             r.publish_github(Mock(), 'a/b', self.out, self.m, False)
-        self.assertEqual(calls[-1][0], 'PATCH')
+        self.assertEqual([call[0] for call in calls if call[0] != 'GET'][-1], 'PATCH')
         self.assertEqual(len(stored), len(r.publication_assets(self.m)))
 
     def test_github_bad_upload_digest_never_publishes_draft(self):

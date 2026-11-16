@@ -1,7 +1,18 @@
 #ifndef ND_FETCH_WORKER_H
 #define ND_FETCH_WORKER_H
 #define FETCH_MAGIC 0x4e445746UL
+#ifndef FETCH_GUARD
 #define FETCH_GUARD "NovaDock.Weather.Fetch"
+#endif
+#ifndef FETCH_PREFIX
+#define FETCH_PREFIX "T:NovaDockWeather-"
+#endif
+#ifndef FETCH_DIR_VALID
+#define FETCH_DIR_VALID(path) (!strncmp((path),FETCH_PREFIX,sizeof(FETCH_PREFIX)-1))
+#endif
+#ifndef FETCH_STACK_SIZE
+#define FETCH_STACK_SIZE 131072UL
+#endif
 struct FetchMessage {struct Message msg;ULONG magic;int kind;LONG result;char command[1800],directory[160];};
 static ULONG weather_ticks(void)
 {struct DateStamp d;DateStamp(&d);return ((ULONG)d.ds_Days*1440UL+(ULONG)d.ds_Minute)*3000UL+(ULONG)d.ds_Tick;}
@@ -9,8 +20,12 @@ static int fetch_send(const char *name,struct FetchMessage *m)
 {struct MsgPort *p;int sent=0;Forbid();p=FindPort((STRPTR)name);if(p){PutMsg(p,(struct Message *)m);sent=1;}Permit();return sent;}
 static void fetch_clean(const char *directory)
 {
-    char path[200];if(!directory || strncmp(directory,"T:NovaDockWeather-",18) || strlen(directory)>150)return;
-    sprintf(path,"%s/response",directory);DeleteFile(path);sprintf(path,"%s/fetch.log",directory);DeleteFile(path);DeleteFile((STRPTR)directory);
+    char path[200];if(!directory || !FETCH_DIR_VALID(directory) || strlen(directory)>150)return;
+    sprintf(path,"%s/response",directory);DeleteFile(path);sprintf(path,"%s/fetch.log",directory);DeleteFile(path);
+#ifdef FETCH_PROGRESS_FILE
+    sprintf(path,"%s/%s",directory,FETCH_PROGRESS_FILE);DeleteFile(path);
+#endif
+    DeleteFile((STRPTR)directory);
 }
 static void fetch_close_port(struct MsgPort *port)
 {
@@ -43,7 +58,7 @@ static int fetch_worker(const char *parent)
         if(m->kind==1 && m->command[0]){
             sprintf(log,"%s/fetch.log",m->directory);input=Open("NIL:",MODE_OLDFILE);output=Open(log,MODE_NEWFILE);
             m->result=-1;
-            if(input && output)m->result=SystemTags(m->command,SYS_Input,input,SYS_Output,output,NP_Error,output,NP_CloseError,FALSE,NP_Priority,-1L,NP_StackSize,131072UL,TAG_DONE);
+            if(input && output)m->result=SystemTags(m->command,SYS_Input,input,SYS_Output,output,NP_Error,output,NP_CloseError,FALSE,NP_Priority,-1L,NP_StackSize,FETCH_STACK_SIZE,TAG_DONE);
             if(input)Close(input);if(output)Close(output);
             Forbid();RemPort(guard);Permit();DeleteMsgPort(guard);guard=NULL;
             m->kind=2;m->msg.mn_ReplyPort=NULL;

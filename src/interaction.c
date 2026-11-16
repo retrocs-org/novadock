@@ -173,6 +173,7 @@ int nd_parse_rexx(const char *text, struct NDRexxCommand *cmd)
     else if (!strcmp(verb,"RELOAD")) cmd->action=ND_RX_RELOAD;
     else if (!strcmp(verb,"PREFS")) cmd->action=ND_RX_PREFS;
     else if (!strcmp(verb,"QUIT")) cmd->action=ND_RX_QUIT;
+    else if (!strcmp(verb,"RESTART")) cmd->action=ND_RX_RESTART;
     else if (!strcmp(verb,"HELP")) cmd->action=ND_RX_HELP;
     else if (!strcmp(verb,"SHOW")) cmd->action=ND_RX_SHOW;
     else if (!strcmp(verb,"HIDE")) cmd->action=ND_RX_HIDE;

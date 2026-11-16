@@ -3,7 +3,7 @@
 from pathlib import Path
 import os, subprocess, tempfile
 ROOT=Path(__file__).resolve().parents[1]
-s=(ROOT/'src/dock_plugins.c').read_text();a=s.index('static int resolve_plugin_executable(');b=s.index('\nstatic int launch_plugin(',a);resolver=s[a:b]
+s=(ROOT/'src/dock_plugins.c').read_text();a=s.index('static int resolve_plugin_executable(');b=s.index('\n}',a)+2;resolver=s[a:b]
 harness=r'''#include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -33,7 +33,7 @@ with tempfile.TemporaryDirectory() as tmp:
 # Exercise the real discovery walk too: process-local aliases must never be
 # stored as commands, and several aliases of one drawer are scanned once.
 s=(ROOT/'prefs/novadockdiscovery.c').read_text()
-a=s.index('static int catalog_walk(');b=s.index('\nstruct ArraySink',a)
+a=s.index('static int catalog_walk_mode(');b=s.index('\nstruct ArraySink',a)
 harness=r'''#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,7 +46,7 @@ typedef long BPTR;typedef char *STRPTR;typedef void *APTR;
 struct Process {APTR pr_WindowPtr;};static struct Process self;
 static int scan_count,resolve_failure;static void *IconBase;
 typedef int (*NDCatalogSink)(void *,void *);
-struct CatalogWalk {int maximum,stop,count;NDCatalogSink sink;void *ctx;char seen[6][256];};
+struct CatalogWalk {int maximum,stop,count,diagnostics;NDCatalogSink sink;void *ctx;char seen[6][256];};
 static void *FindTask(void *name){(void)name;return &self;}
 static void *AllocVec(unsigned long size,int flags){(void)flags;return calloc(1,size);}
 static void FreeVec(void *p){free(p);}

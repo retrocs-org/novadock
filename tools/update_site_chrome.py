@@ -104,7 +104,7 @@ def page(label, title, description, content):
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="site.css" type="text/css">
 </head>
-<body bgcolor="#1E1E2E" text="#CDD6F4" link="#89B4FA" vlink="#CBA6F7" alink="#F9E2AF">
+<body bgcolor="#0B0E14" text="#E7EDF6" link="#B4BCFB" vlink="#B4BCFB" alink="#F3C492">
 <center>
 <table class="site-shell" width="600" border="0" cellpadding="0" cellspacing="0"><tr><td>
 <table class="site-header" width="100%" border="0" cellpadding="0" cellspacing="0"><tr>

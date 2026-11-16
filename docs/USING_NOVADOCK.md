@@ -98,3 +98,7 @@ The Plugin SDK chapters cover writing a plugin, its protocol, manifest and
 settings window. The Themes chapter explains creating and importing themes.
 ARexx and event-hook chapters describe automating the dock and integrating
 applications.
+
+The CPU tile tooltip shows the detected 68000-family processor and the latest
+measured usage percentage, in both meter and graph views. The percentage is
+a sampled estimate of activity, rather than a per-task CPU accounting figure.

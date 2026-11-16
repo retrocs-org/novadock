@@ -2,8 +2,11 @@
 #define ND_WEATHER_H
 #define ND_WEATHER_DAYS 5
 #define ND_WEATHER_RESPONSE 16384
-struct NDWeatherDay {char date[11];int code,high,low,rain;};
+struct NDWeatherDay {char date[11];int code,high,low,rain,snow,rain_amount;};
 struct NDWeather {char updated[20];int temperature,code;unsigned int count;struct NDWeatherDay days[ND_WEATHER_DAYS];};
+/* rain is chance (%); snow is tenths of cm; rain_amount includes showers
+ * in tenths of mm. An amount of -1 means unavailable in an older cache. */
+void nd_weather_amount(const struct NDWeatherDay *day,char *out);
 /* Temperatures are tenths of C or F, according to the requested units. */
 const char *nd_weather_weekday(const char *date);
 int nd_weather_parse(const char *csv,struct NDWeather *weather);
