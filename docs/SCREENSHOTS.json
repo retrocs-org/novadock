@@ -281,15 +281,15 @@
       "capture": "dock-03-current.png",
       "captured": "2026-11-16",
       "crop": [
-        72,
-        40,
-        1910,
-        220
+        16,
+        24,
+        2026,
+        204
       ],
-      "width": 919,
+      "width": 1005,
       "height": 90,
       "thumb_width": 268,
-      "thumb_height": 26
+      "thumb_height": 24
     },
     {
       "file": "aminet-download.gif",

@@ -12,7 +12,7 @@ site_header('Home', 'Home', 'NovaDock 0.3 - a Classic AmigaOS Workbench dock wit
 <p class="compatibility">AmigaOS 3.0+ &middot; 68000 or better &middot; No RTG or MUI required</p></div>
 <figure class="hero-scene"><a href="features.php#saver"><picture><source media="(prefers-reduced-motion: reduce)" srcset="screenshots/saver-boing-still.gif"><img src="screenshots/saver-boing.gif" width="320" height="160" alt="The rotating red-and-white Boing Ball bouncing over a grid"></picture></a><figcaption>Coming in 0.3 &middot; A little demo-scene spirit, with SAVER.</figcaption></figure>
 </section>
-<figure class="hero-capture"><a href="features.php#screenshots"><img src="screenshots/dock-03.gif" width="919" height="90" alt="Dock in the upcoming release with music controls, AMINET, Weather, ARCHIVE and system meters"></a><figcaption>A look at 0.3 on Workbench. Add just what you need, in the order you like.</figcaption></figure>
+<figure class="hero-capture"><a href="features.php#screenshots"><img src="screenshots/dock-03.gif" width="1005" height="90" alt="NovaDock with Music, ARCHIVE, Weather, AMINET, CPU, RAM, Clock, Network and SAVER"></a><figcaption>A look at 0.3 on Workbench. Add just what you need, in the order you like.</figcaption></figure>
 <section class="release-intro" aria-labelledby="new-release">
 <div><p class="eyebrow">Coming in NovaDock 0.3</p><h2 id="new-release">More to explore.<br>Still your Workbench.</h2></div>
 <div><p>Browse Aminet in a native window. Build your own music and WHDLoad collections. Try a classic screen saver, or add hardware sensors and quick system actions.</p><a class="text-link" href="https://github.com/retrocs-org/novadock/releases/tag/0.2">Read the latest release notes &rarr;</a></div>
