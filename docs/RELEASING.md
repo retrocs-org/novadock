@@ -460,8 +460,10 @@ Deploy the PHP website manually from `public-web/`. After publication,
 `python3 tools/sync_github_releases.py` can refresh its fallback release list;
 the live download page discovers stable GitHub releases automatically.
 Package download counts come from GitHub release assets and share the 15-minute
-release cache. Unknown counts are omitted; source archive counts are unavailable. Updating
-website inputs affects future build fingerprints, not already prepared packages.
+release cache. Cache format updates trigger one full refresh, so existing server
+caches do not hide newly added information. Unknown counts are omitted; source
+archive counts are unavailable. Updating website inputs affects future build
+fingerprints, not already prepared packages.
 
 ## GitHub App installation credentials
 

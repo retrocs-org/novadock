@@ -55,6 +55,25 @@ try {
     unset($oldCache['binary_download_count'], $oldCache['sdk_download_count']);
     $restored = nd_release_saved_entries([$oldCache])[0];
     check($restored['binary_download_count']===null && $restored['sdk_download_count']===null, 'Older cache must not invent zero downloads');
+    $legacy = $root.'/legacy'; mkdir($legacy,0700);
+    $legacyCache = ['ok'=>true,'retry_at'=>$now+800,'etag'=>'"old-without-counts"','releases'=>[$oldCache]];
+    file_put_contents($legacy.'/catalog.json',json_encode($legacyCache));
+    $migrate = static function ($etag) {
+        check($etag==='', 'Old schema must request a full response, not reuse its ETag');
+        return ['status'=>200,'etag'=>'"with-counts"','records'=>[record('0.5','2027-02-01T12:00:00Z')]];
+    };
+    $migrated = nd_release_catalog($migrate,$legacy,$now,$fallback);
+    check($migrated['releases'][0]['binary_download_count']===1234, 'Deployment must refresh fresh legacy caches immediately');
+    check(nd_release_catalog($never,$legacy,$now+1,$fallback)['releases'][0]['sdk_download_count']===0, 'Upgraded cache must preserve zero counts without another request');
+    file_put_contents($legacy.'/catalog.json',json_encode($legacyCache));
+    $failedMigration = nd_release_catalog(static function ($etag) { return null; },$legacy,$now,$fallback);
+    check($failedMigration['stale'] && $failedMigration['releases'][0]['version']==='0.5', 'Failed migration retains previous releases');
+    check(nd_release_catalog($never,$legacy,$now+1,$fallback)['stale'], 'Migration failures are still throttled');
+    $recovered = nd_release_catalog($migrate,$legacy,$now+61,$fallback);
+    check($recovered['releases'][0]['binary_download_count']===1234, 'Failed migration must not mark its old data as upgraded');
+    file_put_contents($legacy.'/catalog.json',json_encode($legacyCache));
+    $bad304 = nd_release_catalog(static function ($etag) { return ['status'=>304,'etag'=>'"old-without-counts"']; },$legacy,$now,$fallback);
+    check($bad304['stale'], '304 cannot certify an old schema without counters');
     foreach ([-1, '12', 2.5, true, null, '<script>'] as $invalid) {
         $invalidRecord = record('0.5','2027-02-01T12:00:00Z');
         $invalidRecord['assets'][0]['download_count']=$invalid;

@@ -1,6 +1,7 @@
 <?php
 /** Public GitHub release catalogue, with a bounded anonymous request and disk cache. */
 const ND_RELEASE_REPO = 'https://github.com/retrocs-org/novadock';
+const ND_RELEASE_CACHE_SCHEMA = 2;
 const ND_RELEASE_API = 'https://api.github.com/repos/retrocs-org/novadock/releases?per_page=20';
 
 function nd_release_entry(string $tag, string $version): array {
@@ -113,6 +114,12 @@ function nd_release_fetch(string $etag): ?array {
 
 function nd_release_is_list(array $items): bool { return $items === [] || array_keys($items) === range(0, count($items)-1); }
 
+function nd_release_cache_fresh($cache, int $now): bool {
+    // New fields need one unconditional fetch; failed upgrades retain their retry delay.
+    return is_array($cache) && ($cache['retry_at'] ?? 0) > $now
+        && (($cache['schema'] ?? null) === ND_RELEASE_CACHE_SCHEMA || empty($cache['ok']));
+}
+
 function nd_release_catalog(?callable $fetch = null, ?string $cacheDir = null, ?int $now = null, ?string $fallbackFile = null): array {
     $now = $now ?? time();
     $fallbackFile = $fallbackFile ?? __DIR__.'/../releases.json';
@@ -128,28 +135,30 @@ function nd_release_catalog(?callable $fetch = null, ?string $cacheDir = null, ?
     $saved = is_array($cache) ? nd_release_saved_entries($cache['releases'] ?? null) : [];
     $hasCache = is_array($cache) && is_array($cache['releases'] ?? null) && count($saved) === count($cache['releases']);
     if ($hasCache) $result = ['releases'=>$saved, 'source'=>'cache', 'stale'=>empty($cache['ok'])];
-    if (is_array($cache) && ($cache['retry_at'] ?? 0) > $now) return $result;
+    if (nd_release_cache_fresh($cache, $now)) return $result;
     $lock = @fopen($cacheDir.'/refresh.lock', 'c');
     if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) { if ($lock) fclose($lock); return $result; }
     try {
         // Recheck after acquiring the lock; another request may have refreshed it.
         $current = json_decode((string) @file_get_contents($path), true);
-        if (is_array($current) && ($current['retry_at'] ?? 0) > $now) {
+        if (nd_release_cache_fresh($current, $now)) {
             $entries = nd_release_saved_entries($current['releases'] ?? []);
             $valid = is_array($current['releases'] ?? null) && count($entries) === count($current['releases']);
             return ['releases'=>$valid ? $entries : $fallback, 'source'=>$valid ? 'cache' : 'bundled', 'stale'=>empty($current['ok'])];
         }
         $fetch = $fetch ?? 'nd_release_fetch';
-        try { $response = $fetch(is_string($cache['etag'] ?? null) ? $cache['etag'] : ''); } catch (Throwable $error) { $response = null; }
+        $currentSchema = ($cache['schema'] ?? null) === ND_RELEASE_CACHE_SCHEMA;
+        try { $response = $fetch($currentSchema && is_string($cache['etag'] ?? null) ? $cache['etag'] : ''); } catch (Throwable $error) { $response = null; }
         $entries = null;
-        if (($response['status'] ?? null) === 304 && $hasCache) $entries = $saved;
+        if (($response['status'] ?? null) === 304 && $hasCache && $currentSchema) $entries = $saved;
         elseif (($response['status'] ?? null) === 200 && is_array($response['records'] ?? null)) {
             $entries = [];
             foreach ($response['records'] as $record) if (is_array($record) && ($entry = nd_release_normalize($record))) $entries[] = $entry;
             usort($entries, static function ($a, $b) { return strcmp($b['published_at'], $a['published_at']); });
         }
         $success = $entries !== null;
-        $payload = ['ok'=>$success, 'retry_at'=>$now+($success ? 900 : 60), 'etag'=>$success ? (string) ($response['etag'] ?? '') : (string) ($cache['etag'] ?? ''),
+        $payload = ['schema'=>($success || $currentSchema) ? ND_RELEASE_CACHE_SCHEMA : 0,
+                    'ok'=>$success, 'retry_at'=>$now+($success ? 900 : 60), 'etag'=>$success ? (string) ($response['etag'] ?? '') : (string) ($cache['etag'] ?? ''),
                     'releases'=>$success ? $entries : ($hasCache ? $saved : $fallback)];
         $temporary = @tempnam($cacheDir, 'catalog-');
         if ($temporary !== false) {
