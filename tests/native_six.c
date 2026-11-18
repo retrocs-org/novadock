@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "nd_control_client.h"
+#include "nd_protocol.h"
 #include "nd_panel.h"
 #include "nd_list.h"
 #include "nd_task.h"
