@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run actual Christmas window events and cleanup with native calls stubbed."""
+"""Run actual SAVER window events and cleanup with native calls stubbed."""
 from pathlib import Path
 import os, subprocess, tempfile
 ROOT=Path(__file__).resolve().parents[1]
@@ -18,11 +18,14 @@ typedef unsigned long ULONG;typedef unsigned short UWORD;
 #define TRUE 1
 struct Window {void *UserPort;};struct Message {int unused;};
 struct IntuiMessage {ULONG Class;UWORD Code;};
-struct NDSaverWindow {void *screen;struct Window *window;void *bitmap;unsigned long ticks;};
+struct NDSaverWindow {void *screen;struct Window *window;void *bitmap;unsigned long ticks;struct {unsigned long last,frames;}stats;};
 static int freed,closed,replied,queued,refreshes;static struct IntuiMessage message;
 static struct Message *GetMsg(void *port){assert(port);if(!queued)return 0;queued=0;return (struct Message *)&message;}
 static void ReplyMsg(struct Message *m){assert(m==(struct Message *)&message);++replied;}
 static void CloseWindow(struct Window *w){assert(w&&replied);++closed;}
+static void saver_report(struct NDSaverWindow *s){(void)s;}
+static void saver_free_cache(struct NDSaverWindow *s){(void)s;}
+static void WaitBlit(void){}
 static void FreeBitMap(void *b){assert(b);++freed;}
 static void UnlockPubScreen(void *n,void *s){assert(!n&&s);++freed;}
 static void BeginRefresh(struct Window *w){assert(w);}

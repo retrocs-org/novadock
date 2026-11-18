@@ -1,0 +1,7 @@
+{
+  "name": "NovaDock HASS client interoperates with AmiHASSService without device actions",
+  "application": "QATests:NovaDockHASSBridgeCheck",
+  "arguments": [],
+  "timeoutSeconds": 180,
+  "expectedReturnCode": 0
+}

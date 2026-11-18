@@ -147,5 +147,18 @@ static const struct { long id; const char *text; } nd_strings[] = {
     {172, "Not enough memory to check the drawer."},
     {173, "The selected drawer's volume is unavailable."},
     {174, "Index incomplete. Use Rescan to try again."},
+    {175, "Could not open Warp Wi-Fi settings"},
+    {176, "Could not open Prism Wi-Fi settings"},
+    {177, "Could not open Warp turbo settings"},
+    {178, "Configure Wi-Fi Network..."},
+    {179, "Set Turbo Level..."},
+    {180, "Configure Prism Wi-Fi..."},
+    {181, "The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Diagnostics shows the recovery source;\nSave from Preferences repairs the current settings."},
+    {182, "Use recovered|Quit"},
+    {183, "Adding shelf shortcuts"},
+    {184, "Could not add shelf shortcuts"},
+    {185, "Volume overview..."},
+    {186, "Opening icon ToolTypes"},
+    {187, "Drop one Workbench icon at a time"},
 };
 #endif

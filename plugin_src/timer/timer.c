@@ -50,9 +50,9 @@ int main(int argc,char **argv)
             if(!timer.started)nd_countdown_reset(&timer,seconds);
             reread=0;
         }
-        ReadEClock(&now);delta=(unsigned long)(now.ev_lo-previous);previous=now.ev_lo;
+        event=0;ReadEClock(&now);delta=(unsigned long)(now.ev_lo-previous);previous=now.ev_lo;
         if(nd_countdown_advance(&timer,delta,rate)){
-            strcpy(status,message);panel=show_timer(panel,timer.duration,status);
+            event|=nd_client_notify(&client,"Timer finished",message,0);strcpy(status,message);panel=show_timer(panel,timer.duration,status);
             if(!strcmp(beep,"YES"))nd_panel_beep(panel);
         }
         if(timer.expired)strcpy(value,"TIME IS UP");
@@ -61,7 +61,7 @@ int main(int argc,char **argv)
         else if(!timer.expired)strcpy(status,timer.started ? "Paused":"Ready");
         nd_panel_set(panel,1,status);
         meter=(unsigned int)((timer.duration-timer.remaining)*100UL/timer.duration);
-        event=nd_client_update_quiet(&client,timer.running ? "TIMER":timer.expired ? "ALARM":timer.started ? "PAUSED":"TIMER",value,meter,elapsed,500U);
+        event|=nd_client_update_art_quiet(&client,timer.running ? "TIMER":timer.expired ? "ALARM":timer.started ? "PAUSED":"TIMER",timer.expired && client.host_artwork_meta ? "DONE":value,"timer",timer.expired ? 2U:timer.started && !timer.running ? 1U:0U,elapsed,500U);
         if(event&ND_EVENT_QUIT)break;
         if(event&ND_EVENT_SETTINGS)reread=1;
         if(event&ND_EVENT_CLICK)panel=show_timer(panel,timer.started ? timer.duration:seconds,status);

@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "nd_sensors.h"
-struct Registers {unsigned int version;int reads;};
+struct Registers {unsigned int version,temperature;int reads;};
 static unsigned int read16(void *context,unsigned int offset)
-{struct Registers *r=context;++r->reads;switch(offset){case 0xc0:return r->version;case 0xe0:return 0xfff4;case 0xe2:return 180;case 0xe4:return 100;default:assert(0);return 0;}}
+{struct Registers *r=context;++r->reads;switch(offset){case 0xc0:return r->version;case 0xe0:return r->temperature;case 0xe2:return 180;case 0xe4:return 100;default:assert(0);return 0;}}
 int main(void)
 {
  struct NDSensors set,copy;struct Registers regs;long value;char text[100],other[100];FILE *f;int i;
@@ -25,10 +25,33 @@ int main(void)
  assert(!nd_sensor_warp_line(&set,"ARM STM32H7 temp.: N/A",100));
  assert(!nd_sensor_warp_line(&set,"MC680x0 int. temp.extra: 54 C",100));
  assert(!nd_sensor_warp_line(&set,"5V supply: 99.1 V",100));
+ /* Real Warp1260 diagnostic rows use dot leaders and colour controls. */
+ assert(nd_sensor_warp_line(&set," MC680x0 int. temp....... : 38.4 \23333m\260C\2330m\n",100));
+ assert(set.value[nd_sensor_index("WARP_CPU")]==38400);
+ assert(nd_sensor_warp_line(&set," MC680x0 ext. temp....... : 35.3 \260 C",100));
+ assert(nd_sensor_warp_line(&set," ARM STM32H7 temp........ : \033[34m56.6 \260C\033[0m",100));
+ assert(nd_sensor_warp_line(&set," Artix FPGA temp......... : 75 \260C",100));
+ assert(nd_sensor_warp_line(&set," 5V supply............... : 4.82 V",100));
+ assert(nd_sensor_warp_line(&set," Backup batt. voltage.... : 3.27 V",100));
+ assert(nd_sensor_warp_line(&set," Fan current output...... : 8 %",100));
+ assert((set.available&0x3f80UL)==0x3f80UL);
+ assert(set.value[nd_sensor_index("WARP_ARM")]==56600);
+ assert(set.value[nd_sensor_index("WARP_FAN")]==8000);
+ assert(!nd_sensor_warp_line(&set,"WiFi password........... : 1234",100));
+ assert(!nd_sensor_warp_line(&set,"MC680x0 int. temp.extra : 54 C",100));
+ assert(!nd_sensor_warp_line(&set,"5V supply........ : \033[34",100));
+ assert(!nd_sensor_warp_line(&set,"5V supply........ : 4.8 V garbage",100));
+ assert(!nd_sensor_warp_line(&set,"5V supply........ 4.8 V",100));
+ regs.temperature=0xfff4;
  regs.version=0x0106;regs.reads=0;assert(!nd_sensor_zz_sample(&set,read16,&regs,100) && regs.reads==1);
  regs.version=0xffff;regs.reads=0;assert(!nd_sensor_zz_sample(&set,read16,&regs,100) && regs.reads==1);
  regs.version=0x0107;regs.reads=0;assert(nd_sensor_zz_sample(&set,read16,&regs,100) && regs.reads==4);
  assert(set.value[0]==-1200 && set.value[1]==1000 && set.value[2]==1800);
+ /* Official 1.13 encodes decimal minor 13 as 0x0d, not BCD 0x13. */
+ regs.version=0x010d;regs.temperature=523;regs.reads=0;
+ assert(nd_sensor_zz_sample(&set,read16,&regs,100) && regs.reads==4);
+ assert(set.value[0]==52300 && set.value[1]==1000 && set.value[2]==1800);
+ assert(!strcmp(nd_sensor_defs[0].label,"ZZ9000 Zynq temperature"));
  f=tmpfile();assert(f && nd_sensor_snapshot_write(f,&set,100));rewind(f);assert(nd_sensor_snapshot_read(f,&copy,110,120) && copy.available==set.available);fclose(f);
  for(i=0;i<ND_SENSOR_COUNT;++i)if(set.available&(1UL<<i))assert(copy.value[i]==set.value[i] && copy.stamp[i]==set.stamp[i]);
  nd_sensor_expire(&copy,221,120);assert(!copy.available);

@@ -6,7 +6,7 @@ site_header('Features', 'Features', 'A short guide to NovaDock launchers, themes
 <p class="eyebrow">Made for your daily Workbench</p>
 <h1>Useful by nature.<br>Yours by design.</h1>
 <p class="lead">Shortcuts where you want them. Tools when you need them.</p>
-<p class="category-links"><a href="#features">Features</a> &middot; <a href="#screenshots">Screenshots</a> &middot; <a href="marketplace.php#plugins">All plugins</a></p>
+<p class="category-links"><a href="#features">Features</a> &middot; <a href="#next">NovaDock 0.4</a> &middot; <a href="#screenshots">Screenshots</a> &middot; <a href="marketplace.php#plugins">All plugins</a></p>
 <div class="feature-list" id="features">
 <div><h2>Drag it into place</h2><p>Drop apps and drawers onto the dock. An insertion line shows where they will land.</p></div>
 <div><h2>Keep it out of the way</h2><p>Choose a screen edge, use up to three horizontal rows, or turn on auto-hide.</p></div>
@@ -18,7 +18,22 @@ site_header('Features', 'Features', 'A short guide to NovaDock launchers, themes
 <div><h2>Make room for more</h2><p>System meters, Trash, Clippy, screenshots and more. Explore every bundled tool in the <a href="marketplace.php">marketplace</a>.</p></div>
 </div>
 <p class="note">AmigaOS 3.0 or later, with a 68000 or better. Some plugins need additional software or hardware; each marketplace listing explains what is needed.</p>
-<section id="screenshots" class="section-heading"><p class="eyebrow">See it on Workbench</p><h2>A closer look.</h2><p>Real application windows and dock views. Select an image to see it at full size.</p>
+<section id="next" class="section-heading"><p class="eyebrow"><?= site_is_development() ? 'In development for' : 'New in' ?> NovaDock 0.4</p><h2>A more useful dock.</h2><p>More small tools, clearer status and a bridge to your Home Assistant devices. <?php if (site_is_development()): ?>These changes are in the development build and are not included in the 0.3 download.<?php endif; ?></p>
+<div class="feature-list">
+<div><h3>Find the right light</h3><p>HASS offers a paged room chooser with combined room, type and search filters through the separate AmiHASS service. Add a light, scene, sensor or other supported entity; icons follow its reported state.</p></div>
+<div><h3>Control what is supported</h3><p>Light brightness and RGB, thermostat targets, fan speed and cover movement appear when the device advertises them. Read-only tiles keep readings without controls.</p></div>
+<div><h3>Keep an eye on changes</h3><p>WATCH filters drawer changes and batches notifications. LOGS follows text files with pause, severity filters, copy and export. ALERTS collects session notifications.</p></div>
+<div><h3>Keep tools close</h3><p>CALC evaluates expressions with decimal, hex and binary output. TOOLTYPES edits icon metadata with original-file backups. SHELF keeps shortcut collections.</p></div>
+<div><h3>Stay informed</h3><p>AmiRocket shows unread chat counts and connection status. Optional update checks have startup and 2/4/6-hour settings, Check now and last-check status.</p></div>
+<div><h3>Fit your Workbench</h3><p>Compact settings and pickers fit 640&times;256 and 640&times;480 screens. Plugins carry their own artwork. Drawer and volume tiles show capacity and low-space warnings.</p></div>
+</div>
+<p>SAVER caches Boing frames and reduces raster drawing work, with optional FPS measurements. SENSOR adds an optional i2csensors.library v2 provider. Supported Warp1260 controls and Prism Wi-Fi setup are implemented; physical-card validation is still pending.</p>
+</section>
+<section id="home-assistant" class="section-heading"><p class="eyebrow">HASS &middot; NovaDock 0.4</p><h2>Your rooms, on Workbench.</h2><p>Install <a href="https://github.com/retrocs-org/amihass">AmiHASS</a> separately and save the server and token in AmiHASSPrefs. HASS tiles share that connection through AmiHASS; each tile keeps its own device and click action.</p>
+<ol><li>Add HASS, choose a Type and use Rooms to select a room, or leave Room blank for all rooms.</li><li>Select a matching device and entity, or browse matching entities without a physical device. Scenes and scripts open directly.</li><li>Choose the click action, refresh preference and display. Enable Read only for a status tile.</li></ol>
+<p>The detail window identifies sample/server data, shows available controls and reports Sending, Waiting for confirmation, Confirmed or failure. Readings and artwork come from confirmed state. Selected-entity subscriptions share polling and are released when tiles close or change target.</p>
+<p class="catalog-note">Room, control, subscription-cleanup and reconnect checks passed in Workbench using sample devices. Real-device behaviour and physical Amiga performance remain separate checks. No connection token is stored in NovaDock.</p></section>
+<section id="screenshots" class="section-heading"><p class="eyebrow">See it on Workbench</p><h2>A closer look.</h2><p>Real application windows and dock views from NovaDock 0.3. Select an image to see it at full size.</p>
 <?php $shots = require __DIR__.'/includes/screenshot_catalog.php'; ?>
 <table class="gallery" width="100%" border="0" cellpadding="10" cellspacing="4"><tbody>
 <?php foreach (array_chunk($shots, 2) as $row): ?><tr>

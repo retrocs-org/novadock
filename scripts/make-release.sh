@@ -119,6 +119,7 @@ mkdir -p "$check"
 (cd "$check" && "$lha" -x "$archive" >/dev/null)
 diff -r "$drawer" "$check/NovaDock" >/dev/null
 cmp -s "$work/NovaDock.info" "$check/NovaDock.info"
+"$PYTHON" "$project_root/tools/check_package_assets.py" --runtime-drawer "$check/NovaDock"
 
 "$PYTHON" - "$archive" <<'CHECK'
 from pathlib import Path

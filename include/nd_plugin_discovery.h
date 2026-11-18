@@ -37,7 +37,7 @@ struct NDPluginSummary {
  * one full manifest.  Nothing here changes the configuration. */
 int nd_plugin_catalog_scan(struct NDPluginCatalogEntry *entries,int maximum);
 int nd_plugin_catalog_summaries(struct NDPluginSummary *out,int maximum);
-/* Manager-only inventory, including unusable manifests and missing programs.
+/* Manager-only inventory, including unusable manifests, missing programs and damaged artwork.
  * Invalid entries must never be merged, launched or offered by Add Item. */
 int nd_plugin_catalog_inventory(struct NDPluginSummary *out,int maximum);
 /* 1 and the full entry (manifest included) if plugin ID is installed. */

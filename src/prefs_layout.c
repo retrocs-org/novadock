@@ -51,7 +51,7 @@ int nd_prefs_layout_w(const struct NDPrefsLayout *layout,int value)
 int nd_prefs_layout_h(const struct NDPrefsLayout *layout,int value)
 {
     int height=nd_prefs_layout_y(layout,value);
-    int minimum=layout->font_y+6;
+    int minimum=layout->font_y+(value<14 ? 2:6);
     return height<minimum ? minimum : height;
 }
 

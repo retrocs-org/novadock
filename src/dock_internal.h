@@ -59,6 +59,7 @@
 
 #include "nd_version.h"
 #include "nd_config.h"
+#include "nd_update.h"
 #include "nd_layout.h"
 #include "nd_graph.h"
 #include "nd_protocol.h"
@@ -134,8 +135,13 @@ struct NDGraphView {
     ULONG painted;            /* graph_samples[] value at that paint */
 };
 
+struct NDArtwork;
 struct NDDock {
+    struct NDUpdateSchedule updates;
+    unsigned long alerts_started,alerts_update_tick,alerts_update_checked;
+    int alerts_update_waiting;
     struct NDConfig conf;
+    struct NDAlerts alerts;
     /* Only launchers that actually need a background action are retained.
      * Keeping a second complete NDConfig resident cost about 52 KB on a
      * classic machine and could leave DOpus 4 without enough contiguous Fast
@@ -143,6 +149,9 @@ struct NDDock {
     struct NDItem *action_items;
     int action_count;
     struct NDThemeSpec theme_spec;
+    struct NDArtwork *plugin_artwork[ND_MAX_ITEMS];
+    ULONG plugin_art_key[ND_MAX_ITEMS];
+    UWORD plugin_art_state[ND_MAX_ITEMS];
     struct DiskObject *icons[ND_MAX_ITEMS];
     struct BitMap *scaled_icon_bitmaps[ND_MAX_ITEMS];
     struct BitMap *scaled_icon_masks[ND_MAX_ITEMS];
@@ -199,7 +208,7 @@ struct NDDock {
     int rexx_public;
     int hover_ticks;
     int tip_item;
-    int popup_item, popup_hot, popup_network_online;
+    int popup_item, popup_hot, popup_network_online, popup_warp_present, popup_prism_present;
     int activate_popup_pending;
     int press_item, press_x, press_y, drag_to, drag_after, is_drag;
     int drop_preview, drop_preview_item, drop_preview_after;
@@ -348,6 +357,7 @@ void reset_diagnostic_counters(struct NDDock *dock);
 int reopen_dock_ui(struct NDDock *dock);
 void close_dock_ui(struct NDDock *dock);
 /* Run the configured HOOK commands for EVENT (dock_launch.c). */
+void dock_alert(struct NDDock *dock,const char *source,const char *title,const char *text,unsigned int severity);
 void fire_hook(struct NDDock *dock,const char *event,const char *detail);
 /* dock_draw.c */
 void alloc_colors(struct NDDock *dock);
@@ -415,6 +425,7 @@ void stash_icon_sources(struct NDDock *dock,struct NDIconStash *stash);
 void free_icon_stash(struct NDIconStash *stash);
 void load_icons_reusing(struct NDDock *dock,struct NDIconStash *stash, const struct NDConfig *previous);
 void load_icons(struct NDDock *dock);
+void load_plugin_artwork(struct NDDock *dock,int index);
 /* Cached artwork for a tile; pointer hover only shows a tooltip. */
 int tile_icon_art(const struct NDDock *dock,int index,struct BitMap **bitmap,
                   struct BitMap **mask,int *width,int *height);

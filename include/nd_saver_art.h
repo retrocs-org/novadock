@@ -8,17 +8,19 @@ typedef void (*NDSaverRect)(void *,int,int,int,int,int);
 static const unsigned long nd_saver_rgb[ND_SAVER_COLORS]={0x000000UL,0x304661UL,0xe5eff7UL,0x85b7c7UL,0xb1c78bUL,0xaaaaaaUL,0x7d527fUL,0x44404bUL,0xf03535UL,0xcc2026UL,0x861a24UL,0xc7c8cbUL,0x888b91UL,0xff4655UL,0xf58b46UL,0xffdb72UL,0x9ed96bUL,0x48c8a6UL,0x56cce5UL,0x598be5UL,0x9069dfUL,0xe16fa8UL,0xe7a6c9UL,0x879ed9UL,0x6c9f94UL,0xffcb91UL,0xd8d9eeUL,0xc16190UL,0x586c9bUL};
 static void nd_saver_box(void *ctx,NDSaverRect box,int c,int x,int y,int w,int h)
 {if(x<0){w+=x;x=0;}if(y<0){h+=y;y=0;}if(x+w>320)w=320-x;if(y+h>160)h=160-y;if(w>0&&h>0)box(ctx,c,x,y,w,h);}
-/* Precomputed sphere runs keep the frame loop integer-only and bounded. */
+/* Geometry is shared by the portable fallback and cached native renderer. */
+static void nd_saver_boing_position(unsigned long frame,int *x,int *y)
+{int phase=(int)(frame%40UL),t=(int)(frame%120UL);if(t>60)t=120-t;*x=52+t*216/60;*y=44+56*(phase-20)*(phase-20)/400;}
+static void nd_saver_boing_background(void *ctx,NDSaverRect box)
+{int i;box(ctx,5,0,0,320,160);for(i=0;i<320;i+=20)box(ctx,6,i,0,1,160);for(i=8;i<160;i+=20)box(ctx,6,0,i,320,1);}
+static void nd_saver_boing_shadow(void *ctx,NDSaverRect box,int x,int y)
+{int i,t,shadow=24+(y-44)/4;for(i=-5;i<=5;++i){t=shadow*(25-i*i)/25;nd_saver_box(ctx,box,7,x+12-t,144+i,t*2+1,1);}}
+/* Precomputed sphere runs keep the fallback integer-only and bounded. */
 static void nd_saver_boing(void *ctx,NDSaverRect box,unsigned long frame)
 {
- unsigned int at,end;int i,phase=(int)(frame%40UL),t=(int)(frame%120UL),x,y,shadow;
- if(t>60)t=120-t;x=52+t*216/60;
- y=44+56*(phase-20)*(phase-20)/400;
- box(ctx,5,0,0,320,160);
- for(i=0;i<320;i+=20)box(ctx,6,i,0,1,160);
- for(i=8;i<160;i+=20)box(ctx,6,0,i,320,1);
- shadow=24+(y-44)/4;
- for(i=-5;i<=5;++i){t=shadow*(25-i*i)/25;nd_saver_box(ctx,box,7,x+12-t,144+i,t*2+1,1);}
+ unsigned int at,end;int x,y;
+ nd_saver_boing_position(frame,&x,&y);nd_saver_boing_background(ctx,box);
+ nd_saver_boing_shadow(ctx,box,x,y);
  at=nd_boing_offsets[frame%ND_BOING_FRAMES];end=nd_boing_offsets[frame%ND_BOING_FRAMES+1];
  for(;at<end;at+=4)nd_saver_box(ctx,box,nd_boing_runs[at+3],x-40+nd_boing_runs[at]*2,y-40+nd_boing_runs[at+1]*2,nd_boing_runs[at+2]*2,2);
 }

@@ -55,3 +55,11 @@ uses filenames. Files do not need a Workbench icon to be indexed.
 
 New instances select all eleven supported formats by default. Existing saved
 format choices are retained when updating.
+
+## Plugin-owned status artwork
+
+In NovaDock 0.4, the sad status icon ships in
+`Plugins/MusicLibrary.assets/Artwork.ndart`, beside the plugin executable.
+Update the artwork and executable together, then reload or restart NovaDock.
+Missing or damaged artwork falls back to status text.
+A valid scan folder continues to use your selected collection or custom icon.

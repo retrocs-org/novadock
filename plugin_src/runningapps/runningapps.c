@@ -67,6 +67,7 @@ struct AppPanel {
     struct AppEntry apps[APP_MAX];
     struct PopupTheme theme;
     int count;
+    int first,per_page;
     int columns;
     int rows;
     int tile_width;
@@ -269,6 +270,7 @@ static void draw_app_glyph(struct AppPanel *panel,int x,int y,int width)
 
 static void tile_origin(const struct AppPanel *panel,int index,int *x,int *y)
 {
+    index-=panel->first;
     *x=APP_PADDING+(index%panel->columns)*(panel->tile_width+APP_GAP);
     *y=APP_HEADER+(index/panel->columns)*(panel->tile_height+APP_GAP);
 }
@@ -280,7 +282,7 @@ static int panel_hit(const struct AppPanel *panel,int mouse_x,int mouse_y)
     col=(mouse_x-APP_PADDING)/(panel->tile_width+APP_GAP);
     row=(mouse_y-APP_HEADER)/(panel->tile_height+APP_GAP);
     if (col<0 || col>=panel->columns || row<0 || row>=panel->rows) return -1;
-    index=row*panel->columns+col;
+    index=panel->first+row*panel->columns+col;
     if (index>=panel->count) return -1;
     tile_origin(panel,index,&x,&y);
     if (mouse_x>=x+panel->tile_width || mouse_y>=y+panel->tile_height)
@@ -308,7 +310,7 @@ static void draw_panel(struct AppPanel *panel)
                       0,panel->window->Width);
         return;
     }
-    for (i=0;i<panel->count;++i) {
+    for (i=panel->first;i<panel->count && i<panel->first+panel->per_page;++i) {
         tile_origin(panel,i,&x,&y);
         fill_tile(panel,i==panel->hover ? PT_HOVER : PT_TILE,
                   x,y,panel->tile_width,panel->tile_height);
@@ -318,6 +320,13 @@ static void draw_panel(struct AppPanel *panel)
         centered_text(panel,panel->apps[i].label,
                       y+panel->tile_height-7,x,panel->tile_width);
     }
+    if(panel->count>panel->per_page){
+        char page[64];sprintf(page,"< Previous     Page %d/%d     Next >",
+            panel->first/panel->per_page+1,(panel->count+panel->per_page-1)/panel->per_page);
+        SetAPen(rp,panel->theme.pens[PT_TEXT]);
+        centered_text(panel,page,panel->window->Height-6,0,panel->window->Width);
+    }
+
 }
 
 static void close_panel(struct AppPanel *panel)
@@ -336,26 +345,23 @@ static void choose_grid(struct AppPanel *panel,struct Screen *screen,
 {
     int count=panel->count ? panel->count : 1;
     int max_columns=(screen->Width-APP_PADDING*2)/(APP_TILE_W+APP_GAP);
-    int max_rows=(screen->Height-screen->BarHeight-APP_HEADER-
-                  APP_PADDING)/(APP_TILE_H+APP_GAP);
-    if (max_columns<1) max_columns=1;
-    if (max_rows<1) max_rows=1;
-    panel->columns=count<max_columns ? count : max_columns;
+    int available=screen->Height-screen->BarHeight;
+    int max_rows=(available-APP_HEADER-APP_PADDING+APP_GAP)/(APP_TILE_H+APP_GAP);
+    int footer=0;
+    if(max_columns<1)max_columns=1;if(max_rows<1)max_rows=1;
+    if(count>max_columns*max_rows){footer=18;
+        max_rows=(available-APP_HEADER-APP_PADDING-footer+APP_GAP)/(APP_TILE_H+APP_GAP);
+        if(max_rows<1)max_rows=1;}
+    panel->columns=count<max_columns ? count:max_columns;
     panel->rows=(count+panel->columns-1)/panel->columns;
-    panel->tile_width=APP_TILE_W;
-    panel->tile_height=APP_TILE_H;
-    if (panel->rows>max_rows) {
-        panel->rows=max_rows;
-        panel->columns=(count+panel->rows-1)/panel->rows;
-        panel->tile_width=(screen->Width-APP_PADDING*2-
-            (panel->columns-1)*APP_GAP)/panel->columns;
-        if (panel->tile_width<54) panel->tile_width=54;
-        panel->rows=(count+panel->columns-1)/panel->columns;
-    }
+    if(panel->rows>max_rows)panel->rows=max_rows;
+    panel->tile_width=APP_TILE_W;panel->tile_height=APP_TILE_H;
+    panel->first=0;panel->per_page=panel->columns*panel->rows;
+
     *width=APP_PADDING*2+panel->columns*panel->tile_width+
            (panel->columns-1)*APP_GAP;
     *height=APP_HEADER+panel->rows*panel->tile_height+
-            (panel->rows-1)*APP_GAP+APP_PADDING;
+            (panel->rows-1)*APP_GAP+APP_PADDING+footer;
     if(!panel->count){
         int empty_width=28*screen->RastPort.Font->tf_XSize+APP_PADDING*2;
         if(*width<empty_width)*width=empty_width;
@@ -433,6 +439,7 @@ static void panel_events(struct AppPanel *panel)
             } else continue;
             for(i=0;i<panel->count;++i)if(nd_search_contains(panel->apps[i].label,panel->query))break;
             panel->hover=i<panel->count ? i : -1;
+            if(panel->hover>=0)panel->first=panel->hover/panel->per_page*panel->per_page;
             draw_panel(panel);
         } else if (cls==IDCMP_RAWKEY && panel->count>0) {
             next=panel->hover<0 ? 0 : panel->hover;
@@ -448,8 +455,13 @@ static void panel_events(struct AppPanel *panel)
                 close_panel(panel);(void)raise_app(&selected);
                 continue;
             } else continue;
-            if (next!=panel->hover) {panel->hover=next;draw_panel(panel);}
+            if (next!=panel->hover) {panel->hover=next;panel->first=next/panel->per_page*panel->per_page;draw_panel(panel);}
         } else if (cls==IDCMP_MOUSEBUTTONS && code==SELECTDOWN) {
+            if(panel->count>panel->per_page && mouse_y>=panel->window->Height-18){
+                if(mouse_x<panel->window->Width/2 && panel->first>=panel->per_page)panel->first-=panel->per_page;
+                else if(mouse_x>=panel->window->Width/2 && panel->first+panel->per_page<panel->count)panel->first+=panel->per_page;
+                panel->hover=panel->first;draw_panel(panel);continue;
+            }
             hit=panel_hit(panel,mouse_x,mouse_y);
             if (hit>=0) {
                 selected=panel->apps[hit];

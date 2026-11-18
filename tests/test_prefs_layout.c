@@ -9,6 +9,7 @@ int main(void)
     assert(layout.window_width==620 && layout.window_height==184);
     assert(nd_prefs_layout_x(&layout,270)==270);
     assert(nd_prefs_layout_h(&layout,16)==16);
+    assert(nd_prefs_layout_h(&layout,11)==11); /* 12-pixel detail rows do not overlap. */
     assert(nd_prefs_layout_button_width(&layout,40,"Diagnostics")==104);
     assert(nd_prefs_layout_fits(&layout,10,12));
     assert(nd_prefs_layout_left(&layout)==10);

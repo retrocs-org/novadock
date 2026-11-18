@@ -443,6 +443,30 @@ void process_control(struct NDDock *dock, int quitting)
                     m->result=ND_CONTROL_OK;
                 } else m->result=ND_CONTROL_PENDING;
             }
+            else if(m->action==ND_CONTROL_ALERTS && m->msg.mn_Length>=sizeof(struct NDControlAlertsMessage)){
+                struct NDControlAlertsMessage *r=(struct NDControlAlertsMessage *)m;unsigned int i,n;
+                if(r->operation<=2){
+                    if(r->operation==1)nd_alerts_ack(&dock->alerts,r->through);
+                    if(r->operation==2)nd_alerts_clear(&dock->alerts);
+                    r->through=dock->alerts.sequence;r->total=(UWORD)dock->alerts.count;r->unread=(UWORD)dock->alerts.unread;r->count=0;if(r->offset>=r->total)r->offset=0;
+                    for(i=r->offset;i<dock->alerts.count && r->count<ND_ALERT_PAGE;++i){n=r->count++;r->entries[n]=dock->alerts.entries[i];}
+                    m->result=ND_CONTROL_OK;
+                }
+            }
+            else if(m->action==ND_CONTROL_PLUGIN_HEALTH &&
+                    m->msg.mn_Length>=sizeof(struct NDControlPluginHealthMessage)){
+                struct NDControlPluginHealthMessage *health=(struct NDControlPluginHealthMessage *)m;
+                int index;health->id[sizeof(health->id)-1]=0;health->online=health->stale=0;health->value[0]=0;
+                for(index=0;index<dock->conf.count;++index){
+                    const struct NDItem *item=&dock->conf.items[index];
+                    if(item->kind==ND_ITEM_PLUGIN && item->enabled && !strcmp(item->id,health->id)){
+                        health->online=(UWORD)(item->online!=0);
+                        health->stale=(UWORD)!strcmp(item->value,"NOT RESPONDING");
+                        strncpy(health->value,item->value,sizeof(health->value)-1);health->value[sizeof(health->value)-1]=0;
+                        m->result=ND_CONTROL_OK;break;
+                    }
+                }
+            }
             else if (m->action == ND_CONTROL_QUIT) {
                 dock->running = 0;
                 m->result = ND_CONTROL_OK;

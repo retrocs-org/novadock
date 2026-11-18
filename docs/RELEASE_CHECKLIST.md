@@ -1,8 +1,10 @@
 # Release checklist
 
-## Prepare the 0.3 candidate
+## Prepare the 0.4 candidate
 
-- Keep VERSION, the application, current changelog and release notes at 0.3.
+- Keep VERSION, the application, current changelog and release notes at 0.4.
+- Check the AmiHASS STATUS feature declarations against the bundled HASS SDK;
+  verify that an older service offers an explicit upgrade message.
 - Check independent plugin versions and the bundled manifest inventory.
 - Regenerate the user/SDK guide; keep planning and publishing material source-only.
 - Compile German and Swedish catalogs with FlexCat and include them in the LHA.
@@ -13,14 +15,16 @@
 ## Test on Workbench
 
 - Fresh install: check every bundled plugin, Help, artwork, themes and catalogs.
-- Upgrade from published 0.2 with custom paths, Notes, imported plugins/themes
+- Upgrade from published 0.3 with custom paths, Notes, imported plugins/themes
   and several WHDLoad/MUSIC/SENSOR instances. Check preservation and new plugins.
 - Uninstall keeping settings, reinstall and verify restoration; then uninstall
   removing settings. Unrelated files and explicitly external Notes must survive.
 - Check Novice always offers Update/Uninstall; verify Average/Expert path choices.
 - Test Save versus Use, recovery, restart, low-resource settings and small screens.
 - Check large collection scans, cached startup, filtering and instance removal.
-- Measure startup, idle CPU and memory on representative slower configurations.
+- Exercise startup, reload, plugin removal and shutdown in the disposable 68000,
+  8 MiB Fast RAM profile at 640×256; repeat native controls at 640×480.
+- Measure startup, idle CPU and memory on representative physical configurations.
 - Test AMINET downloads, Weather, DOWNLOAD and rapid network reconnects on a working LAN.
 - Compare SENSOR readings with the matching utilities on physical hardware;
   retain the documented validation limitation for boards that cannot be tested.
@@ -32,7 +36,7 @@
   unpublished package as available.
 - Review source for sensitive files and commit the exact release inputs.
 - Build and prepare in a fresh output directory from the clean committed checkout.
-- Review the manifest, exact tag 0.3 and destinations before explicitly publishing.
+- Review the manifest, exact tag 0.4 and destinations before explicitly publishing.
 - Publish a normal latest release with the same four assets on both repositories.
 - Verify the public downloads; submit the same LHA and matching readme to Aminet.
 

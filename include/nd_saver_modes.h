@@ -14,6 +14,19 @@
  X(FIREWORKS,"Fireworks",6,"YES") \
  X(MAZE,"Workbench maze",7,"YES")
 #ifndef ND_SAVER_METADATA_ONLY
+static int nd_saver_dimensions(int screen_w,int screen_h,unsigned long depth,
+ const char *render,int *width,int *height)
+{
+ int limit;if(screen_w<160 || screen_h<80)return 0;
+ *width=screen_w;*height=screen_w/2;
+ if(*height>screen_h){*height=screen_h;*width=screen_h*2;}
+ if(!render)render="Full";
+ limit=!strcmp(render,"Full") ? 0:!strcmp(render,"640 x 320") ? 640:!strcmp(render,"320 x 160") ? 320:depth>8 ? 320:640;
+ if(limit){if(limit>=640 && *width>=640 && *height>=320){*width=640;*height=320;}
+  else if(*width>=320 && *height>=160){*width=320;*height=160;}
+  else{*width=160;*height=80;}}
+ return *width>=160 && *height>=80;
+}
 static const char *nd_saver_name(int mode)
 {static const char *names[]={"Starfield","Bouncing ball","Blank","Boing ball","Copper waves","Vector show","Fireworks","Workbench maze","Demo shuffle"};return mode>=0&&mode<=8 ? names[mode]:names[0];}
 static int nd_saver_mode(const char *text)

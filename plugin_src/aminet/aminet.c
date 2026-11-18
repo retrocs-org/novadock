@@ -158,8 +158,8 @@ int main(int argc,char **argv)
  IntuitionBase=(struct IntuitionBase *)OpenLibrary("intuition.library",39);GfxBase=(struct GfxBase *)OpenLibrary("graphics.library",39);GadToolsBase=OpenLibrary("gadtools.library",39);AslBase=OpenLibrary("asl.library",39);
  IconBase=OpenLibrary("icon.library",39);
  if(!IntuitionBase||!GfxBase||!GadToolsBase||!AslBase||!nd_client_init(&client,argv[1]))goto done;
- for(;;){if(reread){nd_plugin_option_string(argv[1],"DRAWER","RAM:",drawer,sizeof(drawer));reread=0;}am_job_events();am_progress();sprintf(value,"%.31s",job.port&&job.kind!=4 ? "Transferring...":status);
-  event=nd_client_update_quiet(&client,"AMINET",value,ND_NO_METER,elapsed,500U);if(event&ND_EVENT_QUIT)break;if(event&ND_EVENT_SETTINGS)reread=1;
+ for(;;){int downloading=job.port && job.kind==4;event=0;if(reread){nd_plugin_option_string(argv[1],"DRAWER","RAM:",drawer,sizeof(drawer));reread=0;}am_job_events();if(downloading && !job.port)event|=nd_client_notify(&client,!strncmp(status,"Saved:",6) ? "Aminet download saved":"Aminet download failed",status,!strncmp(status,"Saved:",6) ? 0:2);am_progress();sprintf(value,"%.31s",job.port&&job.kind!=4 ? "Transferring...":status);
+  event|=nd_client_update_quiet(&client,"AMINET",value,ND_NO_METER,elapsed,500U);if(event&ND_EVENT_QUIT)break;if(event&ND_EVENT_SETTINGS)reread=1;
   if(event&ND_EVENT_CLICK){int new_window=!ui;if(am_open()){if(new_window){if(results.count)am_packages();else if(!job.port){listing=0;page=1;am_listing();}}am_download_state(job.port&&job.kind==4,job.received,job.total);am_status(status);}}
   am_action(am_event());elapsed=nd_client_wait_signals(&client,job.port ? 25U:500U,(ui ? 1UL<<ui->window->UserPort->mp_SigBit:0)|(job.port ? 1UL<<job.port->mp_SigBit:0));
  }am_job_close();nd_client_close(&client);result=0;

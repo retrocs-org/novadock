@@ -437,3 +437,42 @@ The selected drawer's volume is unavailable.
 MSG_0174
 Index incomplete. Use Rescan to try again.
 ; Index incomplete. Use Rescan to try again.
+MSG_0175
+Could not open Warp Wi-Fi settings
+; Could not open Warp Wi-Fi settings
+MSG_0176
+Could not open Prism Wi-Fi settings
+; Could not open Prism Wi-Fi settings
+MSG_0177
+Could not open Warp turbo settings
+; Could not open Warp turbo settings
+MSG_0178
+Configure Wi-Fi Network...
+; Configure Wi-Fi Network...
+MSG_0179
+Set Turbo Level...
+; Set Turbo Level...
+MSG_0180
+Configure Prism Wi-Fi...
+; Configure Prism Wi-Fi...
+MSG_0181
+The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Diagnostics shows the recovery source;\nSave from Preferences repairs the current settings.
+; The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Diagnostics shows the recovery source;\nSave from Preferences repairs the current settings.
+MSG_0182
+Use recovered|Quit
+; Use recovered|Quit
+MSG_0183
+Adding shelf shortcuts
+; Adding shelf shortcuts
+MSG_0184
+Could not add shelf shortcuts
+; Could not add shelf shortcuts
+MSG_0185
+Volume overview...
+; Volume overview...
+MSG_0186
+Opening icon ToolTypes
+; Opening icon ToolTypes
+MSG_0187
+Drop one Workbench icon at a time
+; Drop one Workbench icon at a time

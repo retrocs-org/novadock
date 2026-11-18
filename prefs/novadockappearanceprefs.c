@@ -2,6 +2,7 @@
  * Native GadTools/Intuition, OS 3.0+, baseline 68000.  Editing updates only
  * the local sample; Test is the explicit reversible live-preview action.
  */
+#define A_UPDATES 950
 #define IntuitionBase NDAppearanceIntuitionBase
 #define GadToolsBase NDAppearanceGadToolsBase
 #define GfxBase NDAppearanceGfxBase
@@ -67,6 +68,7 @@ struct AppearanceTheme {
 };
 
 struct AppearancePrefs {
+    int compact;
     struct NDConfig *cfg;
     struct NDConfig *baseline;
     struct Screen *screen;
@@ -248,6 +250,7 @@ static void free_theme_catalogue(struct AppearancePrefs *p)
 static void setup_gadget(struct AppearancePrefs *p, struct NewGadget *ng,
                          int x, int y, int w, int h, UWORD id, STRPTR name)
 {
+    if(p->compact && x>=130 && y>=121)y-=28;
     memset(ng,0,sizeof(*ng));
     ng->ng_LeftEdge=nd_prefs_layout_x(&p->layout,x);
     ng->ng_TopEdge=nd_prefs_layout_y(&p->layout,y);
@@ -530,12 +533,12 @@ static void draw_preview(struct AppearancePrefs *p)
     preview_background(p,nd_prefs_layout_x(&p->layout,140),
         nd_prefs_layout_y(&p->layout,46),
         nd_prefs_layout_w(&p->layout,468),
-        nd_prefs_layout_y(&p->layout,68));
+        nd_prefs_layout_y(&p->layout,p->compact ? 40:68));
     SetAPen(rp,preview_pen(p,4));
     Move(rp,nd_prefs_layout_x(&p->layout,140),nd_prefs_layout_y(&p->layout,46));
     Draw(rp,nd_prefs_layout_x(&p->layout,608),nd_prefs_layout_y(&p->layout,46));
-    Draw(rp,nd_prefs_layout_x(&p->layout,608),nd_prefs_layout_y(&p->layout,114));
-    Draw(rp,nd_prefs_layout_x(&p->layout,140),nd_prefs_layout_y(&p->layout,114));
+    Draw(rp,nd_prefs_layout_x(&p->layout,608),nd_prefs_layout_y(&p->layout,p->compact ? 86:114));
+    Draw(rp,nd_prefs_layout_x(&p->layout,140),nd_prefs_layout_y(&p->layout,p->compact ? 86:114));
     Draw(rp,nd_prefs_layout_x(&p->layout,140),nd_prefs_layout_y(&p->layout,46));
     /* Both sizes compare the same four representative items.  Tiny keeps
      * their real compact proportions and centres the shorter row instead of
@@ -548,6 +551,7 @@ static void draw_preview(struct AppearancePrefs *p)
         w=(454-(columns-1)*gap)/columns;h=58;
         start_x=147;y=51;
     }
+    if(p->compact){h=30;y=51;}
     for (i=0;i<samples;++i) {
         column=i%columns;x=start_x+column*(w+gap);
         sx=nd_prefs_layout_x(&p->layout,x);
@@ -555,7 +559,7 @@ static void draw_preview(struct AppearancePrefs *p)
         sw=nd_prefs_layout_w(&p->layout,w);
         sh=nd_prefs_layout_y(&p->layout,h);
         preview_tile(p,sx,sy,sw,sh,i==1 ? 2 : 1);
-        if (p->cfg->item_size==ND_ITEM_SIZE_TINY) {
+        if (p->compact || p->cfg->item_size==ND_ITEM_SIZE_TINY) {
             preview_tiny_sample(p,tiny_kinds[i],sx,sy,sw,sh);
         } else {
             preview_normal_sample(p,i,sx,sy,sw,sh);
@@ -871,8 +875,9 @@ static int open_editor(struct AppearancePrefs *p)
         font_x=p->screen->RastPort.Font->tf_XSize;
         font_y=p->screen->RastPort.Font->tf_YSize;
     }
+    p->compact=(p->screen->Height-p->screen->BarHeight)*8/font_y<279;
     nd_prefs_layout_init(&p->layout,font_x,font_y,
-        p->screen->Width,p->screen->Height,p->screen->BarHeight,620,267);
+        p->screen->Width,p->screen->Height,p->screen->BarHeight,620,p->compact ? 239:267);
     if (!nd_prefs_layout_fits(&p->layout,10,12)) return 0;
     width=p->layout.window_width;height=p->layout.window_height;
     left=nd_prefs_layout_left(&p->layout);top=nd_prefs_layout_top(&p->layout);
@@ -887,7 +892,8 @@ static int open_editor(struct AppearancePrefs *p)
         !create_button(p,10,69,118,A_ITEMS,"Organize") ||
         !create_button(p,10,93,118,A_PLUGIN_MANAGER,"Plugins") ||
         !create_button(p,10,117,118,A_DIAGNOSTICS,"Diagnostics") ||
-        !create_button(p,10,141,118,A_ABOUT,"About")) return 0;
+        !create_button(p,10,141,118,A_UPDATES,"Update") ||
+        !create_button(p,10,165,118,A_ABOUT,"About")) return 0;
     setup_gadget(p,&ng,190,21,130,16,A_THEME,"Theme:");
     p->g_theme=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
         GTCY_Labels,(ULONG)p->theme_labels,
@@ -1056,6 +1062,8 @@ static void on_gadget(struct AppearancePrefs *p,UWORD id,UWORD code)
         if (collect_numbers(p,1)) {ND_PREFS_MARK_DIRTY();p->done=1;p->status=ND_PREF_NAV_PLUGIN_MANAGER;}break;
     case A_DIAGNOSTICS:
         if (collect_numbers(p,1)) {ND_PREFS_MARK_DIRTY();p->done=1;p->status=ND_PREF_NAV_DIAGNOSTICS;}break;
+    case A_UPDATES:
+        if (collect_numbers(p,1)) {ND_PREFS_MARK_DIRTY();p->done=1;p->status=ND_PREF_NAV_UPDATES;}break;
     case A_ABOUT:
         if (collect_numbers(p,1)) {ND_PREFS_MARK_DIRTY();p->done=1;p->status=ND_PREF_NAV_ABOUT;}break;
     default: break;

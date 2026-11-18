@@ -37,5 +37,17 @@
 <details><summary>How can I recover settings?</summary>
 <p>Open Diagnostics, choose Recover settings, and select a validated ENV or ENVARC backup. Confirm loading it into Preferences, then use Use or Save to apply it. The low-resource preset is also staged until applied.</p>
 </details>
+<details><summary>Are the new plugins in the current download?</summary>
+<p>HASS, AmiRocket, CALC, TOOLTYPES, WATCH, LOGS, SHELF and ALERTS are in development for NovaDock 0.4. The published 0.3 package does not include them. <a href="features.php#next">See the 0.4 changes</a>; <a href="get.php">Downloads</a> follows published GitHub releases.</p>
+</details>
+<details><summary>Where do I configure Home Assistant?</summary>
+<p>In the 0.4 development build, install AmiHASS separately and save the connection in AmiHASSPrefs. HASS settings choose a room/type, device, action, refresh and display for each tile. Read only disables controls. The token stays in AmiHASS.</p>
+</details>
+<details><summary>Can NovaDock check for updates?</summary>
+<p>The 0.4 Updates page has separate startup and running checks, both off by default. Running checks use a 2, 4 or 6 hour interval. Check now shows checking, the last check and whether a newer release is available.</p>
+</details>
+<details><summary>Where is a plugin's artwork?</summary>
+<p>In 0.4, artwork can travel beside the plugin in Program.assets/Artwork.ndart. Keep the executable, manifest and matching assets together, then reload or restart NovaDock. Diagnostics explains missing or damaged artwork. HASS uses confirmed device states for its on/off icons.</p>
+</details>
 </div>
 </details>

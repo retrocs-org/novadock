@@ -1,6 +1,6 @@
 NOVADOCK_ID=MIXER
 NOVADOCK_NAME=Mixer
-NOVADOCK_VERSION=0.2
+NOVADOCK_VERSION=0.3
 NOVADOCK_AUTHOR=NovaDock
 NOVADOCK_DESCRIPTION=AHI output volume: click for a slider and mute; remembered across restarts.
 NOVADOCK_LICENSE=MIT

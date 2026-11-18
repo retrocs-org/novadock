@@ -1,4 +1,4 @@
-/* Register identities/units verified against MNT/BlitterStudio ZZTop.
+/* Register identities/units verified against MNT firmware 1.13 and ZZTop.
  * RTC data uses the documented AK_Sensors 1.3 ENV interface. */
 #include <exec/types.h>
 #include <dos/dos.h>

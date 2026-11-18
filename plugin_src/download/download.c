@@ -57,10 +57,10 @@ failed:
  close_job();strcpy(status,"Could not start downloader");return -1;
 }
 static void pop_queue(void){int i;for(i=1;i<count;++i)queue[i-1]=queue[i];if(count)--count;}
-static void job_events(void)
+static unsigned int job_events(struct NDClient *client)
 {
  struct FetchMessage *m;char part[180];int done=0;
- if(!job.port)return;
+ if(!job.port)return 0;
  while((m=(struct FetchMessage *)GetMsg(job.port))!=NULL){
   if(m->magic!=FETCH_MAGIC || m->msg.mn_Length!=sizeof(*m)){if(m->msg.mn_ReplyPort)ReplyMsg((struct Message *)m);continue;}
   if(m->kind==1){if(job.transferred)m->kind=-1;else{strcpy(m->command,job.command);strcpy(m->directory,job.directory);job.transferred=1;}ReplyMsg((struct Message *)m);}
@@ -73,8 +73,9 @@ static void job_events(void)
    fetch_clean(m->directory);FreeVec(m);done=1;break;
   }
  }
- if(done){close_job();pop_queue();}
- else if((!job.transferred && (ULONG)(weather_ticks()-job.started)>200UL) || (ULONG)(weather_ticks()-job.started)>650UL*50UL){strcpy(status,"Download timed out");close_job();pop_queue();}
+ if(done){unsigned int event=nd_client_notify(client,!strncmp(status,"Saved:",6) ? "Download saved":"Download failed",status,!strncmp(status,"Saved:",6) ? 0:2);close_job();pop_queue();return event;}
+ else if((!job.transferred && (ULONG)(weather_ticks()-job.started)>200UL) || (ULONG)(weather_ticks()-job.started)>650UL*50UL){strcpy(status,"Download timed out");close_job();pop_queue();return nd_client_notify(client,"Download timed out",status,2);}
+ return 0;
 }
 static unsigned int progress(char *bytes)
 {
@@ -104,9 +105,9 @@ int main(int argc,char **argv)
  if(!nd_client_init(&client,argv[1]))return 20;
  for(;;){
   if(reread){read_settings(argv[1]);reread=0;}
-  job_events();if(count&&!job.port){rc=start_job(argv[0]);if(rc<0)pop_queue();}
+  event=job_events(&client);if(count&&!job.port){rc=start_job(argv[0]);if(rc<0)pop_queue();}
   meter=progress(bytes);sprintf(value,"%.31s",job.port ? bytes:status);sprintf(badge,"%d",count);
-  event=nd_client_set_badge(&client,count ? badge:"");
+  event|=nd_client_set_badge(&client,count ? badge:"");
   event|=nd_client_update_quiet(&client,"DOWNLOAD",value,meter,elapsed,500U);
   if(event&ND_EVENT_QUIT)break;if(event&ND_EVENT_SETTINGS)reread=1;
   if(event&ND_EVENT_CLICK){if(panel)nd_panel_raise(panel);else panel=open_panel();}

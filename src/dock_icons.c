@@ -1,5 +1,6 @@
 /* NovaDock: Launcher icons: loading, scaling and reuse across reloads. */
 #include "dock_internal.h"
+#include "nd_artwork.h"
 
 /* Defined below, private to this file. */
 static int icon_source(const struct NDDock *dock,const struct NDConfig *cfg, int index,char *path);
@@ -8,6 +9,34 @@ static int adopt_icon_source(struct NDDock *dock,struct NDIconStash *stash, cons
 static int icon_mask_pixel(const UBYTE *mask,int width,int x,int y);
 static Object *open_datatype_picture(struct NDDock *dock,const char *path, struct BitMap **bitmap, struct BitMap **mask,int *width,int *height, struct ColorRegister **palette, int *num_colors);
 static int build_datatype_icon(struct NDDock *dock,int index, int max_width,int max_height);
+static void release_plugin_artwork(struct NDDock *dock)
+{
+ int i,j,k;for(i=0;i<ND_MAX_ITEMS;++i)if(dock->plugin_artwork[i]){
+  for(j=i+1;j<ND_MAX_ITEMS;++j)if(dock->plugin_artwork[j]==dock->plugin_artwork[i])dock->plugin_artwork[j]=NULL;
+  if(dock->screen)for(k=1;k<16;++k)if(dock->plugin_artwork[i]->owned_pens[k])
+   ReleasePen(dock->screen->ViewPort.ColorMap,dock->plugin_artwork[i]->mapped[k]);
+  nd_artwork_close(dock->plugin_artwork[i]);free(dock->plugin_artwork[i]);dock->plugin_artwork[i]=NULL;
+ }
+}
+void load_plugin_artwork(struct NDDock *dock,int index)
+{
+ const struct NDItem *item=&dock->conf.items[index];struct NDArtwork *a;char path[ND_ARTWORK_PATH];int j,k;
+ if(item->kind!=ND_ITEM_PLUGIN || dock->plugin_artwork[index])return;
+ if(!dock->plugin_art_key[index] && strncmp(item->caption,"ART:",4))return;
+ if(!nd_artwork_path(dock->directory,item->command,path,sizeof(path)))return;
+ for(j=0;j<ND_MAX_ITEMS;++j)if(dock->plugin_artwork[j]&&!strcmp(dock->plugin_artwork[j]->path,path)){dock->plugin_artwork[index]=dock->plugin_artwork[j];return;}
+ a=(struct NDArtwork *)calloc(1,sizeof(*a));if(!a)return;dock->plugin_artwork[index]=a;
+ if(nd_artwork_load(a,path) && dock->screen)for(k=1;k<16;++k){
+  ULONG red=(ULONG)a->data[8+k*3]*0x01010101UL,green=(ULONG)a->data[9+k*3]*0x01010101UL,blue=(ULONG)a->data[10+k*3]*0x01010101UL;
+  LONG mapped;
+  /* FindColor does not reserve a pen: another window may recolour it later.
+   * Hold each RGB pen for the shared bank's lifetime, just like theme pens. */
+  mapped=ObtainBestPenA(dock->screen->ViewPort.ColorMap,red,green,blue,NULL);
+  if(mapped>=0)a->owned_pens[k]=1;
+  else mapped=FindColor(dock->screen->ViewPort.ColorMap,red,green,blue,-1);
+  a->mapped[k]=mapped>=0 ? (ULONG)mapped:0;
+ }
+}
 static void load_item_source(struct NDDock *dock,int i);
 static void build_one_scaled_icon(struct NDDock *dock,int i,int max_width,int max_height);
 static int render_icon(struct NDDock *dock,int i,int max_width,
@@ -27,7 +56,7 @@ static int icon_source(const struct NDDock *dock,const struct NDConfig *cfg,
     size_t len;
     int dopus_icon=item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"DOPUS4");
     int music_icon=item->kind==ND_ITEM_PLUGIN && !strcmp(item->id,"MUSIC");
-    int games_icon=item->kind==ND_ITEM_PLUGIN && (nd_collection_plugin_path(item->command) || nd_actions_plugin_path(item->command));
+    int games_icon=item->kind==ND_ITEM_PLUGIN && (nd_collection_plugin_path(item->command) || nd_actions_plugin_path(item->command) || nd_shelf_plugin_path(item->command));
     int running_apps_icon=item->kind==ND_ITEM_PLUGIN &&
                           (!strcmp(item->id,"SCREENSWITCHER") || !strcmp(item->id,"BITSKIM") || !strcmp(item->id,"RUNNINGAPPS") || !strcmp(item->id,"CLIPBOARD") || !strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW"));
     path[0]='\0';
@@ -179,6 +208,7 @@ static void load_item_source(struct NDDock *dock,int i)
 {
     static char path[ND_ICON_PATH_LEN];
     int source;
+    load_plugin_artwork(dock,i);
     source=icon_source(dock,&dock->conf,i,path);
     if (source) ++dock->diagnostic_icons_loaded;
     if (source==2) {
@@ -225,17 +255,19 @@ static void load_item_source(struct NDDock *dock,int i)
          * is not itself a filesystem object, so request WBDISK directly
          * when Disk.info is absent. */
         if (IconBase->lib_Version >= 44) {
-            struct TagItem load_tags[3];
+            struct TagItem load_tags[5];
             load_tags[0].ti_Tag = ICONGETA_GetPaletteMappedIcon;
-            /* Keep the ColorIcon palette private and translate it into
-             * the existing Workbench palette below.  Asking icon.library
-             * for a palette-mapped icon retains pens until FreeDiskObject
-             * and can starve applications which open their own screens. */
-            load_tags[0].ti_Data = FALSE;
-            load_tags[1].ti_Tag = ICONGETA_GenerateImageMasks;
-            load_tags[1].ti_Data = TRUE;
-            load_tags[2].ti_Tag = TAG_DONE;
+            /* Read embedded ColorIcon/NewIcon colours without allocating
+             * screen pens. GetPaletteMappedIcon=FALSE loses that palette. */
+            load_tags[0].ti_Data = TRUE;
+            load_tags[1].ti_Tag = ICONGETA_RemapIcon;
+            load_tags[1].ti_Data = FALSE;
+            load_tags[2].ti_Tag = ICONGETA_Screen;
             load_tags[2].ti_Data = 0;
+            load_tags[3].ti_Tag = ICONGETA_GenerateImageMasks;
+            load_tags[3].ti_Data = TRUE;
+            load_tags[4].ti_Tag = TAG_DONE;
+            load_tags[4].ti_Data = 0;
             dock->icons[i] = GetIconTagList(path,load_tags);
         } else if (is_volume) {
             dock->icons[i] = GetDiskObject(path);
@@ -258,12 +290,19 @@ void load_icons_reusing(struct NDDock *dock,struct NDIconStash *stash,
 {
     int i;
     APTR requesters=quiet_requesters();
+    if(previous){ULONG keys[ND_MAX_ITEMS];UWORD states[ND_MAX_ITEMS];int j;
+        memcpy(keys,dock->plugin_art_key,sizeof(keys));memcpy(states,dock->plugin_art_state,sizeof(states));
+        memset(dock->plugin_art_key,0,sizeof(keys));memset(dock->plugin_art_state,0,sizeof(states));
+        for(i=0;i<dock->conf.count;++i)for(j=0;j<previous->count;++j)if(!strcmp(dock->conf.items[i].id,previous->items[j].id)){dock->plugin_art_key[i]=keys[j];dock->plugin_art_state[i]=states[j];break;}
+    }
+    release_plugin_artwork(dock);
     dock->diagnostic_icons_reused=0;dock->diagnostic_icons_loaded=0;
     for (i = 0; i < dock->conf.count; ++i) {
         /* DataTypes and icon.library can be slow on a baseline 68k.  Keep
          * resident plugins acknowledged while a live reload rebuilds the
          * artwork, otherwise their bounded IPC wait expires and they exit. */
         if (dock->ipc) process_ipc(dock,0);
+        load_plugin_artwork(dock,i);
         if (adopt_icon_source(dock,stash,previous,i)) {
             ++dock->diagnostic_icons_reused;
             continue;
@@ -449,8 +488,8 @@ static int render_icon(struct NDDock *dock,int i,int max_width,
     LONG mapped[256];
     int width, height, fitted_width, fitted_height, x, y, source_x;
     int source_y,source_pen,opaque,max_pen,j;
-    int ok = 0;
-    if (!IconBase || IconBase->lib_Version<44 || !dock->icons[i]) return 0;
+    int ok = 0, remap_classic = 0;
+    if (!IconBase || !dock->icons[i]) return 0;
     width = height = 0;
     info_tags[0].ti_Tag = ICONCTRLA_IsPaletteMapped;
     info_tags[0].ti_Data = (ULONG)&palette_mapped;
@@ -470,7 +509,7 @@ static int render_icon(struct NDDock *dock,int i,int max_width,
     info_tags[7].ti_Data = (ULONG)&palette_size;
     info_tags[8].ti_Tag = TAG_DONE;
     info_tags[8].ti_Data = 0;
-    IconControlA(dock->icons[i],info_tags);
+    if (IconBase->lib_Version>=44) IconControlA(dock->icons[i],info_tags);
     planar=(struct Image *)dock->icons[i]->do_Gadget.GadgetRender;
     /* Raw ColorIcon image data is preferable here.  It carries the
      * original palette without causing icon.library to reserve pens. */
@@ -513,6 +552,18 @@ static int render_icon(struct NDDock *dock,int i,int max_width,
                 RGBBYTE(palette[j].red),RGBBYTE(palette[j].green),
                 RGBBYTE(palette[j].blue),max_pen);
     }
+    else if (planar->Depth==3 && planar->PlanePick==7 &&
+             !(planar->PlaneOnOff & ~7)) {
+        /* Eight-colour classic icons have no embedded palette. MagicWB
+         * supplies the convention; never interpret its indices as screen pens. */
+        for (j=0;j<8;++j) {
+            unsigned char rgb[3];
+            nd_icon_magicwb_rgb(j,rgb);
+            mapped[j]=FindColor(dock->screen->ViewPort.ColorMap,
+                RGBBYTE(rgb[0]),RGBBYTE(rgb[1]),RGBBYTE(rgb[2]),max_pen);
+        }
+        remap_classic=1;
+    }
     /* First build a small, nearest-neighbour pen map.  Classic planar
      * icons often fake transparency with a two-pen checkerboard matching
      * their Workbench drawer.  A generated icon.library mask may still
@@ -550,7 +601,8 @@ static int render_icon(struct NDDock *dock,int i,int max_width,
             ULONG pixel=(ULONG)y*(ULONG)fitted_width+(ULONG)x;
             if (scaled_opaque[pixel]) {
                 source_pen=scaled_pens[pixel];
-                if (palette_mapped) source_pen=(int)mapped[source_pen];
+                if (palette_mapped || remap_classic) source_pen=(int)mapped[source_pen];
+                if(source_pen<0)continue;
                 SetAPen(&dest_rp,(ULONG)source_pen);
                 WritePixel(&dest_rp,x,y);
                 WritePixel(&mask_rp,x,y);
@@ -665,6 +717,7 @@ void build_brush_bitmaps(struct NDDock *dock)
 void release_icons(struct NDDock *dock)
 {
     int i;
+    release_plugin_artwork(dock);
     if (GfxBase) WaitBlit();
     for (i = 0; i < ND_MAX_ITEMS; ++i) {
         if (dock->scaled_icon_bitmaps[i])

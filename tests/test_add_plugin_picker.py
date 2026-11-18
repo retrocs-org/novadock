@@ -39,6 +39,26 @@ assert(!strcmp(page.cfg->items[page.plugin_row_cfg[row(&page,"SCREENMODE")]].lab
 assert(strstr(page.plugin_names[row(&page,"CPU")],"CPU Activity")&&!strchr(page.plugin_names[row(&page,"CPU")],'['));
 cpu=page.plugin_row_cfg[row(&page,"CPU")];assert(nd_set_item_enabled(&cfg,cpu,1));build_plugin_rows(&page);assert(row(&page,"CPU")==-1&&row(&page,"RAM")>=0);
 page.catalog_count=2;strcpy(page.plugin_catalog[0].id,"RAM");strcpy(page.plugin_catalog[0].problem,"invalid manifest");strcpy(page.plugin_catalog[1].id,"BAD_NEW");strcpy(page.plugin_catalog[1].name,"Broken");strcpy(page.plugin_catalog[1].problem,"missing program");build_plugin_rows(&page);assert(row(&page,"RAM")==-1);{int i;for(i=0;i<page.plugin_count;++i)assert(page.plugin_row_cat[i]!=1);}
+{struct NDManifest m;struct NDOptionDef defs[32];int n,j;
+assert(nd_manifest_builtin("HASS",&m));n=nd_option_collect(&cfg,"HASS",defs,32);
+{int device=0,name=0,entity=0;assert(n>0);for(j=0;j<n;++j){
+ if(!strcmp(defs[j].key,"DEVICE"))device=1;
+ if(!strcmp(defs[j].key,"DEVICE_NAME"))name=1;
+ if(!strcmp(defs[j].key,"ENTITY"))entity=1;
+ m.options[m.option_count++]=defs[j];}assert(device&&name&&entity);}
+/* HASS's built-in options must not consume third-party schema capacity. */
+for(j=cfg.def_count;j<ND_MAX_OPTION_DEFS;++j){strcpy(cfg.defs[j].id,"EXTERNAL");sprintf(cfg.defs[j].key,"K%d",j);}cfg.def_count=ND_MAX_OPTION_DEFS;
+assert(nd_manifest_merge(&cfg,&m,"Plugins/HASS")==ND_MANIFEST_ADDED);
+assert(cfg.def_count==ND_MAX_OPTION_DEFS);}
+
+assert(nd_manifest_bundled_id("HASS"));{struct NDManifest manifest;int hass,new_index;
+assert(nd_manifest_builtin("HASS",&manifest) && manifest.multiple_instances);
+build_plugin_rows(&page);hass=row(&page,"HASS");assert(hass>=0);
+new_index=page.plugin_row_cfg[hass];assert(nd_set_item_enabled(&cfg,new_index,1));
+build_plugin_rows(&page);assert(row(&page,"HASS")>=0);
+assert(nd_add_plugin_instance(&cfg,new_index));assert(!strcmp(cfg.items[cfg.count-1].id,"HASS_2"));
+build_plugin_rows(&page);assert(row(&page,"HASS")>=0 && row(&page,"HASS_2")==-1);
+}
 puts("Add plugin: missing CPU/RAM/Network offered, active singletons filtered, disabled meters restore correctly.");return 0;}
 """
   with tempfile.TemporaryDirectory() as t:

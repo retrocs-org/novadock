@@ -8,6 +8,8 @@
 #include <intuition/intuition.h>
 #include <libraries/gadtools.h>
 #include <dos/dos.h>
+#include <dos/datetime.h>
+#include "nd_update.h"
 #include <dos/dostags.h>
 #include <proto/exec.h>
 #include <proto/alib.h>
@@ -78,6 +80,13 @@ int nd_additem_prefs_run(int argc,char **argv);
 #define G_REFRESH 37
 #define G_MEDIA 38
 #define G_DOCK_HOTKEY 41
+#define G_UPDATES 42
+#define G_UPDATE_STARTUP 43
+#define G_UPDATE_RUNNING 44
+#define G_UPDATE_INTERVAL 45
+#define G_UPDATE_NOW 46
+#define G_UPDATE_STATUS 47
+#define G_UPDATE_LAST 48
 #define G_ABOUT 39
 #define G_PLUGIN_MANAGER 40
 
@@ -100,6 +109,12 @@ struct Prefs {
     struct Gadget *g_hotkey;
     struct Gadget *g_auto_hide;
     struct Gadget *g_refresh;
+    struct Gadget *g_update_interval;
+    int update_page;
+    struct Gadget *g_update_now,*g_update_status,*g_update_last;
+    unsigned int update_ticks,update_requested;
+    unsigned long update_previous;
+    char update_status[160],update_last[80];
     struct Gadget *g_start_dock;
     struct Gadget *g_restart_dock;
     struct Gadget *g_quit_dock;
@@ -117,6 +132,7 @@ struct Prefs {
 static STRPTR clicks[] = {"Run", "Menu", NULL};
 static STRPTR tooltip_modes[] = {"Off", "On", NULL};
 static STRPTR hide_modes[] = {"Off", "On", NULL};
+static STRPTR update_intervals[]={"2 hours","4 hours","6 hours",NULL};
 static STRPTR refresh_modes[] = {"Low mem", "Smooth", NULL};
 
 static void setup_gadget(struct Prefs *p, struct NewGadget *ng,
@@ -296,6 +312,7 @@ static int collect_hotkey(struct Prefs *p)
 static int collect_numbers(struct Prefs *p)
 {
     LONG delay;
+    if(p->update_page)return 1;
     if (!nd_numeric_gadget_read(p->g_delay,p->win,&delay)) return 0;
     if (delay<1 || delay>60) {
         title_message(p, "NovaDock Prefs - invalid hide delay");
@@ -387,9 +404,10 @@ static void quit_dock(struct Prefs *p)
     }
     refresh_dock_controls(p);
 }
-static const char *general_title(void)
+static const char *general_title(struct Prefs *p)
 {
     static char title[96];
+    if(p->update_page)return ND_PREFS_IS_DIRTY() ? "NovaDock Preferences - Update *":"NovaDock Preferences - Update";
     if (nd_prefs_discovery.added) {
         sprintf(title,"NovaDock Preferences - %d new plugin%s in Organize%s",
                 nd_prefs_discovery.added,nd_prefs_discovery.added==1 ? "" : "s",
@@ -398,6 +416,25 @@ static const char *general_title(void)
     }
     return ND_PREFS_IS_DIRTY() ? "NovaDock Preferences - General *" :
                                  "NovaDock Preferences - General";
+}
+static void refresh_update_status(struct Prefs *p)
+{
+ struct NDUpdateStatus status;struct DateTime dt;char date[32],time[32];
+ if(!p->update_page || !p->win)return;
+ nd_update_status(&status);
+ if(status.busy || status.checked!=p->update_previous)p->update_requested=0;
+ if(status.checking || p->update_requested)strcpy(p->update_status,"Checking for updates...");
+ else if(status.result==1)strcpy(p->update_status,"You are up to date.");
+ else if(status.result==2)sprintf(p->update_status,"NovaDock %.31s is available.",status.version);
+ else if(status.result==4)strcpy(p->update_status,"Network is not available; check not completed.");
+ else if(status.result==3 || status.result==5)strcpy(p->update_status,"Check failed; check network, curl and certificates.");
+ else strcpy(p->update_status,"No update check has been completed yet.");
+ if(status.checked){memset(&dt,0,sizeof(dt));dt.dat_Stamp.ds_Days=status.checked/86400UL;dt.dat_Stamp.ds_Minute=(status.checked%86400UL)/60UL;dt.dat_Stamp.ds_Tick=(status.checked%60UL)*50UL;dt.dat_Format=FORMAT_DOS;dt.dat_StrDate=date;dt.dat_StrTime=time;
+  if(DateToStr(&dt))sprintf(p->update_last,"%s %s",date,time);else strcpy(p->update_last,"Time unavailable");
+ }else strcpy(p->update_last,"Never");
+ GT_SetGadgetAttrs(p->g_update_status,p->win,NULL,GTTX_Text,(ULONG)p->update_status,TAG_DONE);
+ GT_SetGadgetAttrs(p->g_update_last,p->win,NULL,GTTX_Text,(ULONG)p->update_last,TAG_DONE);
+ GT_SetGadgetAttrs(p->g_update_now,p->win,NULL,GA_Disabled,(ULONG)(status.busy || p->update_requested),TAG_DONE);
 }
 static int open_editor(struct Prefs *p)
 {
@@ -418,12 +455,36 @@ static int open_editor(struct Prefs *p)
     if (!p->vi || !CreateContext(&p->gadgets)) return 0;
     p->last = p->gadgets;
     sprintf(delay_text,"%d",p->cfg->hide_delay);
-    if (!create_button(p,10,21,118,G_GENERAL,"> General") ||
+    if (!create_button(p,10,21,118,G_GENERAL,p->update_page ? "General":"> General") ||
         !create_button(p,10,45,118,G_APPEARANCE,"Appearance") ||
         !create_button(p,10,69,118,G_LAUNCHERS,"Organize") ||
         !create_button(p,10,93,118,G_PLUGIN_MANAGER,"Plugins") ||
         !create_button(p,10,117,118,G_DIAGNOSTICS,"Diagnostics") ||
-        !create_button(p,10,141,118,G_ABOUT,"About")) return 0;
+        !create_button(p,10,141,118,G_UPDATES,p->update_page ? "> Update":"Update") ||
+        !create_button(p,10,165,118,G_ABOUT,"About")) return 0;
+    if(p->update_page){
+        setup_gadget(p,&ng,154,29,24,16,G_UPDATE_STARTUP,"Check for updates on startup");
+        ng.ng_Flags=PLACETEXT_RIGHT;
+        p->last=CreateGadget(CHECKBOX_KIND,p->last,&ng,GTCB_Checked,(ULONG)p->cfg->check_updates,TAG_DONE);
+        if(!p->last)return 0;
+        setup_gadget(p,&ng,154,65,24,16,G_UPDATE_RUNNING,"Check for updates while running");
+        ng.ng_Flags=PLACETEXT_RIGHT;
+        p->last=CreateGadget(CHECKBOX_KIND,p->last,&ng,GTCB_Checked,(ULONG)p->cfg->check_updates_running,TAG_DONE);
+        if(!p->last)return 0;
+        setup_gadget(p,&ng,290,101,125,16,G_UPDATE_INTERVAL,"Check every:");
+        p->g_update_interval=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
+            GTCY_Labels,(ULONG)update_intervals,GTCY_Active,(ULONG)(p->cfg->update_interval_hours/2-1),
+            GA_Disabled,(ULONG)!p->cfg->check_updates_running,TAG_DONE);
+        if(!p->last)return 0;
+        p->g_update_now=create_button(p,450,101,145,G_UPDATE_NOW,"Check now");
+        if(!p->g_update_now)return 0;
+        setup_gadget(p,&ng,240,130,355,14,G_UPDATE_LAST,"Last check:");
+        p->g_update_last=p->last=CreateGadget(TEXT_KIND,p->last,&ng,GTTX_Text,(ULONG)"Never",GTTX_Clipped,TRUE,TAG_DONE);
+        if(!p->last)return 0;
+        setup_gadget(p,&ng,150,151,445,14,G_UPDATE_STATUS,NULL);
+        p->g_update_status=p->last=CreateGadget(TEXT_KIND,p->last,&ng,GTTX_Text,(ULONG)"",GTTX_Clipped,TRUE,TAG_DONE);
+        if(!p->last)return 0;
+    }else{
     /* Visual placement, font and labels live with their theme in Appearance. */
     /* Keep a fixed gutter between the sidebar and GadTools' left-hand
      * captions.  In particular, the longer Keep in front label must never
@@ -475,36 +536,51 @@ static int open_editor(struct Prefs *p)
     p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
         GTCY_Labels,(ULONG)hide_modes,
         GTCY_Active,p->cfg->removable_media ? 1 : 0,TAG_DONE);
-    if (!p->last ||
-        !create_button(p, 427, 176, 86, G_USE, "Use") ||
+    if(!p->last)return 0;
+    }
+    if (!create_button(p, 427, 176, 86, G_USE, "Use") ||
         !create_button(p, 519, 176, 86, G_SAVE, "Save")) return 0;
     p->win = OpenWindowTags(NULL,
                   WA_PubScreen, (ULONG)p->screen,
                   WA_Left, left, WA_Top, top,
                   WA_Width, width, WA_Height, height,
-                  WA_Title, (ULONG)general_title(),
+                  WA_Title, (ULONG)general_title(p),
                   WA_Gadgets, (ULONG)p->gadgets,
                   WA_DragBar, TRUE, WA_CloseGadget, TRUE,
                   WA_Activate, TRUE, WA_DepthGadget, TRUE,
                   WA_IDCMP, IDCMP_GADGETUP | IDCMP_CLOSEWINDOW |
-                            IDCMP_REFRESHWINDOW | IDCMP_ACTIVEWINDOW | IDCMP_RAWKEY,
+                            IDCMP_REFRESHWINDOW | IDCMP_ACTIVEWINDOW | IDCMP_RAWKEY | (p->update_page ? IDCMP_INTUITICKS:0),
                   WA_Flags, WFLG_SMART_REFRESH | WFLG_ACTIVATE,
                   TAG_DONE);
     if (!p->win) return 0;
     GT_RefreshWindow(p->win, NULL);
     refresh_dock_controls(p);
+    refresh_update_status(p);
     return 1;
 }
 static void on_gadget(struct Prefs *p, UWORD id, UWORD code)
 {
     struct NDItem tmp;
     switch (id) {
-    case G_GENERAL: break;
+    case G_GENERAL: if(p->update_page)navigate_to_page(p,-1);break;
     case G_LEFTCLICK: if (code <= ND_CLICK_MENU) {p->cfg->left_click = code;ND_PREFS_MARK_DIRTY();} break;
     case G_TOOLTIPS: if (code <= 1) {p->cfg->tooltips = code;ND_PREFS_MARK_DIRTY();} break;
     case G_ALWAYS_ON_TOP:
         if (code <= 1) {p->cfg->always_on_top = code;ND_PREFS_MARK_DIRTY();}
         break;
+    case G_UPDATES: if(!p->update_page)navigate_to_page(p,10);break;
+    case G_UPDATE_NOW:
+        {struct NDUpdateStatus status;nd_update_status(&status);p->update_previous=status.checked;
+         if(nd_control_check_updates()){p->update_requested=5;refresh_update_status(p);}
+         else{title_message(p,"Could not start the update checker");DisplayBeep(p->screen);}}break;
+    case G_UPDATE_STARTUP:
+        if(code<=1){p->cfg->check_updates=(int)code;ND_PREFS_MARK_DIRTY();}break;
+    case G_UPDATE_RUNNING:
+        if(code<=1){p->cfg->check_updates_running=(int)code;
+            GT_SetGadgetAttrs(p->g_update_interval,p->win,NULL,GA_Disabled,(ULONG)!code,TAG_DONE);
+            ND_PREFS_MARK_DIRTY();}break;
+    case G_UPDATE_INTERVAL:
+        if(code<3){p->cfg->update_interval_hours=2*((int)code+1);ND_PREFS_MARK_DIRTY();}break;
     case G_MEDIA:
         if (code<=1) {p->cfg->removable_media=(int)code;ND_PREFS_MARK_DIRTY();}
         break;
@@ -601,7 +677,8 @@ static void editor_loop(struct Prefs *p)
             if (cls == IDCMP_CLOSEWINDOW) { p->done = 1; p->exit_status = 0; }
             else if (cls==IDCMP_RAWKEY && code==ND_HELP_KEY) nd_prefs_help(p->screen);
             else if (cls == IDCMP_REFRESHWINDOW) GT_BeginRefresh(p->win);
-            else if (cls == IDCMP_ACTIVEWINDOW) refresh_dock_controls(p);
+            else if (cls == IDCMP_ACTIVEWINDOW) {refresh_dock_controls(p);refresh_update_status(p);}
+            else if(cls==IDCMP_INTUITICKS && ++p->update_ticks>=10){p->update_ticks=0;if(p->update_requested)--p->update_requested;refresh_update_status(p);}
             /* An EMPTY refresh is correct: all UI belongs to GadTools. */
             else if (cls == IDCMP_GADGETUP) on_gadget(p, id, code);
             if (cls == IDCMP_REFRESHWINDOW) GT_EndRefresh(p->win, TRUE);
@@ -622,6 +699,7 @@ static int command_page(int argc, char **argv, char *plugin, int plugin_size)
         else if (!strcmp(argv[i],"PAGE=DIAGNOSTICS")) page=6;
         else if (!strcmp(argv[i],"PAGE=ADD")) page=7;
         else if (!strcmp(argv[i],"PAGE=ABOUT")) page=8;
+        else if (!strcmp(argv[i],"PAGE=UPDATE") || !strcmp(argv[i],"PAGE=UPDATES")) page=10;
         else if (!strcmp(argv[i],"PAGE=PLUGINMANAGER") ||
                  !strcmp(argv[i],"PAGE=PLUGINS")) page=9;
         else if (!strncmp(argv[i],"PLUGIN=",7) && plugin_size>0) {
@@ -686,7 +764,7 @@ static int run_child_pages(int page,int argc,char **argv,char *plugin)
             add_return_page=1;
             continue;
         }
-        if (result==ND_PREF_NAV_GENERAL) return result;
+        if (result==ND_PREF_NAV_GENERAL || result==ND_PREF_NAV_UPDATES) return result;
         if (result==ND_PREF_NAV_APPEARANCE) page=3;
         else if (result==ND_PREF_NAV_ORGANIZE) page=1;
         else if (result==ND_PREF_NAV_LAUNCHER) page=2;
@@ -707,13 +785,13 @@ static int run_child_pages(int page,int argc,char **argv,char *plugin)
 }
 
 static int run_general_page(int argc,char **argv,struct NDConfig *session,
-                            int *next_page,char *next_plugin,int plugin_size)
+                            int *next_page,char *next_plugin,int plugin_size,int update_page)
 {
     struct Prefs *p;
     int result=20;
     p = (struct Prefs *)AllocVec(sizeof(*p), MEMF_PUBLIC | MEMF_CLEAR);
     if (!p) return 20;
-    p->requested_visible=-1;
+    p->requested_visible=-1;p->update_page=update_page;
     { int a;
       for (a=1;a<argc;++a) if (!strncmp(argv[a],"SELECT=",7)) {
           char tail=0;int n=-1;
@@ -813,13 +891,15 @@ int main(int argc, char **argv)
     nd_prefs_preview_active=0;
     page=command_page(argc,argv,plugin,sizeof(plugin));
     for (;;) {
-        if (page) {
+        if (page && page!=10) {
             result=run_child_pages(page,argc,argv,plugin);
             if (result==ND_PREF_NAV_GENERAL) {page=0;continue;}
+            if (result==ND_PREF_NAV_UPDATES) {page=10;continue;}
             break;
         }
-        page=0;
-        result=run_general_page(argc,argv,session,&page,plugin,sizeof(plugin));
+        {int update_page=page==10;page=0;
+        result=run_general_page(argc,argv,session,&page,plugin,sizeof(plugin),update_page);}
+        if(page==-1){page=0;continue;}
         if (page) continue;
         break;
     }

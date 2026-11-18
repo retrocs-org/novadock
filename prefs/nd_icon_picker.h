@@ -7,6 +7,8 @@
 #include <dos/dosextens.h>
 #include "nd_ilbm.h"
 #include "nd_collection_icons.h"
+#include "nd_hass_art.h"
+#include "nd_artwork.h"
 #include "nd_plugin_discovery.h"
 struct GfxBase *GfxBase=NULL;
 #define ND_ICON_PICKER_CHOICES ND_COLLECTION_ICON_COUNT
@@ -50,7 +52,7 @@ static const char *icon_picker_name(int index)
 static void icon_picker_paint(struct Window *win,struct NDIconPicker *pick)
 {
     struct RastPort *rp=win->RPort;int slot,index,x,y,xx,yy,a,b,w,h,start,col,pen;
-    const struct NDPrefsLayout *lay=&pick->layout;
+    char caption[40];const struct NDPrefsLayout *lay=&pick->layout;
     SetDrMd(rp,JAM1);SetAPen(rp,pick->draw->dri_Pens[BACKGROUNDPEN]);
     RectFill(rp,6,nd_prefs_layout_y(lay,12),lay->window_width-7,nd_prefs_layout_y(lay,16+pick->rows*54)-1);
     for(slot=0;slot<pick->rows*5;++slot){
@@ -67,8 +69,12 @@ static void icon_picker_paint(struct Window *win,struct NDIconPicker *pick)
                 SetAPen(rp,(ULONG)pen);RectFill(rp,a,b,x+nd_prefs_layout_x(lay,30+xx)-1,y+nd_prefs_layout_y(lay,3+yy)-1);
             }
         }
-        col=(int)strlen(icon_picker_name(index));SetAPen(rp,pick->draw->dri_Pens[index==pick->selected ? FILLTEXTPEN:TEXTPEN]);
-        Move(rp,x+(w-TextLength(rp,(STRPTR)icon_picker_name(index),col))/2,y+nd_prefs_layout_y(lay,45));Text(rp,(STRPTR)icon_picker_name(index),col);
+        strncpy(caption,icon_picker_name(index),sizeof(caption)-1);caption[sizeof(caption)-1]=0;
+        col=(int)strlen(caption);
+        while(col>0 && TextLength(rp,caption,col)>w-4)--col;
+        if(col<(int)strlen(caption) && col>=3){caption[col-1]='.';caption[col-2]='.';caption[col-3]='.';}
+        SetAPen(rp,pick->draw->dri_Pens[index==pick->selected ? FILLTEXTPEN:TEXTPEN]);
+        Move(rp,x+(w-TextLength(rp,caption,col))/2,y+nd_prefs_layout_y(lay,45));Text(rp,caption,col);
     }
 }
 static void choose_collection_icon(struct PluginPrefs *p,int row)
@@ -191,12 +197,33 @@ static void collection_preview_load(struct PluginPrefs *p)
     LONG colors=0,transparent=-1,iw=0,ih=0;struct TagItem tags[8];
     struct Process *self=(struct Process *)FindTask(NULL);APTR old=self->pr_WindowPtr;
     memset(p->icon_preview,0xff,sizeof(p->icon_preview));p->icon_preview_kind=0;
+    if(hass_settings(p)){
+        const char *kind=nd_hass_auto_icon(hass_edit(p,"ENTITY"),hass_edit(p,"DEVICE_CLASS"),hass_edit(p,"ENTITY_NAME"));
+        struct NDArtwork bank;const unsigned char *runs;unsigned int count,n;int item_index;
+        memset(&bank,0,sizeof(bank));if(nd_plugin_install_drawer(root,sizeof(root)))*FilePart(root)=0;else strcpy(root,"PROGDIR:");
+        for(item_index=0;item_index<p->config->count;++item_index)if(!strcmp(p->config->items[item_index].id,p->id))break;
+        if(item_index>=p->config->count || !nd_artwork_path(root,p->config->items[item_index].command,path,sizeof(path)) || !nd_artwork_load(&bank,path))return;
+        GfxBase=(struct GfxBase *)OpenLibrary("graphics.library",39);if(!GfxBase){nd_artwork_close(&bank);return;}
+        for(k=0;k<16;++k)mapped[k]=FindColor(p->screen->ViewPort.ColorMap,
+            (ULONG)bank.data[8+k*3]*0x01010101UL,(ULONG)bank.data[9+k*3]*0x01010101UL,(ULONG)bank.data[10+k*3]*0x01010101UL,-1);
+        runs=nd_artwork_frame(&bank,kind,ND_HASS_ICON_OFF,&count);
+        if(runs){for(n=0;n<count;++n){const unsigned char *r=runs+n*5;
+            for(y=r[1];y<r[1]+r[3];++y)for(x=r[0];x<r[0]+r[2];++x)p->icon_preview[y*32+x]=(unsigned short)mapped[r[4]];
+        }p->icon_preview_kind=1;}
+        nd_artwork_close(&bank);goto done;
+    }
     if(option<0)return;
-    i=nd_collection_icon_index(p->edits[option]);
+    {const char *choice=p->edits[option];int entity_option;
+     if(!strcmp(nd_option_schema_id(p->config,p->id),"HASS") && !strcmp(choice,"Auto")){
+         entity_option=network_option_index(p,"ENTITY");
+         choice=nd_hass_default_icon(entity_option>=0 ? p->edits[entity_option]:"");
+     }
+     i=nd_collection_icon_index(choice);
+    }
     self->pr_WindowPtr=(APTR)-1L;
     if(nd_plugin_install_drawer(root,sizeof(root)))*FilePart(root)=0;
     else strcpy(root,"PROGDIR:");
-    p->icon_preview_custom=nd_collection_art_path(root,p->edits[option],file>=0 ? p->edits[file]:"",path,sizeof(path))==2;
+    p->icon_preview_custom=nd_collection_art_path(root,i>=0 ? nd_collection_icons[i].name:p->edits[option],file>=0 ? p->edits[file]:"",path,sizeof(path))==2;
     GfxBase=(struct GfxBase *)OpenLibrary("graphics.library",39);if(!GfxBase)goto done;
     image=AllocVec(sizeof(*image),MEMF_PUBLIC|MEMF_CLEAR);
     if(image && nd_ilbm_load(path,image)){

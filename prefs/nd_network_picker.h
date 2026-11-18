@@ -80,8 +80,8 @@ static void choose_network_profile(struct PluginPrefs *p,int row)
     last=gadgets;
     network_picker_field(p,&picker->layout,&ng,12,12,456,16,0);
     last=CreateGadget(TEXT_KIND,last,&ng,GTTX_Text,(ULONG)(picker->choices.truncated ?
-        "Profile list is full; you can still type a name in settings.":
-        "Interfaces with installed drivers; Template = inactive profile."),TAG_DONE);
+        "Profile list full; enter other names in settings.":
+        "Installed drivers only. Template = inactive profile."),GTTX_Clipped,TRUE,TAG_DONE);
     if(!last)goto finish;
     network_picker_field(p,&picker->layout,&ng,12,34,456,height-76,1);
     list=last=CreateGadget(LISTVIEW_KIND,last,&ng,GTLV_Labels,(ULONG)&picker->labels,

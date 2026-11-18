@@ -13,6 +13,7 @@
 #include <string.h>
 #include "nd_plugin_versions.h"
 #include "nd_client.h"
+#include "../warp/nd_warp_ui.h"
 #include "nd_option_runtime.h"
 #include "nd_metrics.h"
 
@@ -131,8 +132,9 @@ int main(int argc, char **argv)
     unsigned int last_meter = 101;
     unsigned int stable_samples = 0;
     int reread = 1;
-    int result = 20;
+    int result = 20,helper;
 
+    helper=nd_warp_helper_main(argc,argv);if(helper>=0)return helper;
     if (argc < 2 || !nd_client_init(&client, argv[1])) return 20;
 
     timer_port = CreateMsgPort();

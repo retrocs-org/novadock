@@ -9,7 +9,7 @@
  *   NOVADOCK_ID=EXAMPLE                 required: unique ID, letters/digits/_-
  *   NOVADOCK_NAME=Example               tile label (default: file name)
  *   NOVADOCK_VIEW=METER|GRAPH           initial view (default METER)
- *   NOVADOCK_ABI=1                      lowest dock IPC ABI it needs (1..3)
+ *   NOVADOCK_ABI=1                      lowest dock IPC ABI it needs (1..5)
  *   NOVADOCK_MULTIPLE=YES|NO            allow repeated dock tiles (default NO)
  *   NOVADOCK_VERSION=1.0                plugin release
  *   NOVADOCK_AUTHOR=Example Author      publisher shown by Plugin Manager
@@ -23,6 +23,7 @@
  *                                       popup  opens a popup or window
  *                                       drop   accepts Workbench icons dropped on it
  *                                       media  player transport controls
+ *                                       artwork  owns a Program.assets/Artwork.ndart bank
  *                                       (settings and several tiles are
  *                                       reported from the option schema and
  *                                       NOVADOCK_MULTIPLE, not listed here)

@@ -33,7 +33,7 @@ int main(int argc,char **argv)
    bubbles=strcmp(bubbles_text,"NO")!=0;interval=!strcmp(speed,"Slow") ? 50:!strcmp(speed,"Fast") ? 15:25;reread=0;
    if(scene.window)aquarium_paint(&scene,fish,bubbles);
   }
-  sprintf(value,"FISH %lu",frame);event=nd_client_update_quiet(&client,"AQUARIUM",value,ND_NO_METER,elapsed,500U);
+  sprintf(value,"FISH %lu",frame);event=nd_client_update_art_quiet(&client,"AQUARIUM",value,"fish",(unsigned int)(frame%70UL),elapsed,500U);
   if(event&ND_EVENT_QUIT)break;if(event&ND_EVENT_SETTINGS)reread=1;
   if(event&ND_EVENT_CLICK)(void)aquarium_open(&scene,fish,bubbles);aquarium_events(&scene);
   active=scene.window&&(scene.window->Flags&WFLG_WINDOWACTIVE);

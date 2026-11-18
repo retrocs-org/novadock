@@ -1,3 +1,4 @@
+#include "nd_artwork.h"
 /* Installed-plugin manager for the unified NovaDock Preferences app.
  *
  * Informational: one row per installed plugin with its version and dock
@@ -5,6 +6,7 @@
  * for the selected one. Add and settings belong to the dock's right-click
  * menus. Import installs a third-party .ndplugin package; Remove uninstalls
  * a third-party plugin that has no tiles in the dock. */
+#define M_UPDATES 950
 #define IntuitionBase NDManagerIntuitionBase
 #define GadToolsBase NDManagerGadToolsBase
 #define AslBase NDManagerAslBase
@@ -32,6 +34,7 @@
 #include "nd_options.h"
 #include "nd_plugin_discovery.h"
 #include "nd_package_install.h"
+#include "nd_plugin_health.h"
 #include "nd_prefs_help.h"
 
 #define M_GENERAL 601
@@ -48,6 +51,7 @@
 #define M_IMPORT 614
 #define M_REMOVE 615
 #define M_DETAIL 620
+#define M_REFRESH 621
 
 #define D_VERSION 0
 #define D_AUTHOR 1
@@ -63,7 +67,7 @@ struct IntuitionBase *IntuitionBase=NULL;
 struct Library *GadToolsBase=NULL;
 struct Library *AslBase=NULL;
 
-#define PACKAGE_FILES 3 /* program, optional icon, manifest (last) */
+#define PACKAGE_FILES 4 /* program, optional icon/artwork, manifest (last) */
 
 struct ManagerPage {
     struct NDConfig *cfg,*owned;
@@ -281,6 +285,19 @@ static void show_details(struct ManagerPage *p)
         strncpy(p->detail_text[D_PROGRAM],command,D_TEXT-1);
         wrap_two(m->description[0] ? m->description : "No description.",
                  p->detail_text[D_ABOUT],p->detail_text[D_ABOUT2],46);
+        if(tiles>0 && p->win){
+            struct NDControlPluginHealthMessage live;LONG rc;
+            rc=nd_control_plugin_health(id,&live);
+            if(rc==ND_CONTROL_OK){
+                struct NDPluginHealth health=nd_plugin_health(nd_option_schema_id(p->cfg,id),live.online,live.stale,live.value);
+                sprintf(p->detail_text[D_DOCK],"%.18s: %.25s",health.label,live.value);
+                if(strcmp(health.label,"Running"))wrap_two(health.help,p->detail_text[D_ABOUT],p->detail_text[D_ABOUT2],46);
+            }else if(rc==ND_CONTROL_NOHOST){
+                strcpy(p->detail_text[D_DOCK],"Dock is stopped; runtime status unavailable");
+            }else if(rc==ND_CONTROL_TIMEOUT){
+                strcpy(p->detail_text[D_DOCK],"Dock did not reply; check Diagnostics");
+            }
+        }
     }
 render_details:
     if (!p->win) return;
@@ -340,8 +357,8 @@ static void import_plugin(struct ManagerPage *p)
     struct FileRequester *fr;
     struct NDManifest *m=&p->entry.manifest;
     char drawer[256],manifest_file[108],source[300],install[256],why[80];
-    char id[20];
-    int n=0,tiles,result,i,owns_destination=0;
+    char id[20],asset_dir[300]="";
+    int n=0,tiles,result,i,owns_destination=0,asset_added=0,asset_created=0;
     if (!AslBase) {say(p,"NovaDock Plugins - file requester unavailable",1);return;}
     fr=(struct FileRequester *)AllocAslRequestTags(ASL_FileRequest,
         ASLFR_TitleText,(ULONG)"Select a plugin's .ndplugin manifest",
@@ -390,7 +407,7 @@ static void import_plugin(struct ManagerPage *p)
         }
         owns_destination=1;
     }
-    /* Program, optional icon, then the manifest. */
+    /* Program, optional icon and artwork, then the manifest. */
     if (!nd_package_join(p->files[n].source,ND_PACKAGE_PATH,drawer,m->program) ||
         !nd_package_join(p->files[n].destination,ND_PACKAGE_PATH,install,m->program) ||
         !nd_package_file_exists(p->files[n].source)) {
@@ -402,6 +419,17 @@ static void import_plugin(struct ManagerPage *p)
         if (nd_package_join(p->files[n].source,ND_PACKAGE_PATH,drawer,why) &&
             nd_package_file_exists(p->files[n].source) &&
             nd_package_join(p->files[n].destination,ND_PACKAGE_PATH,install,why)) ++n;
+    }
+    {
+        char relative[120];struct NDArtwork art;int requires_art=nd_artwork_feature(m->features);
+        memset(&art,0,sizeof(art));sprintf(relative,"%s.assets/Artwork.ndart",m->program);
+        if(!nd_package_join(p->files[n].source,ND_PACKAGE_PATH,drawer,relative) || !nd_package_join(p->files[n].destination,ND_PACKAGE_PATH,install,relative))return;
+        if(nd_package_file_exists(p->files[n].source)){
+            if(!nd_artwork_load(&art,p->files[n].source)){say(p,"Not imported: plugin artwork is invalid",1);return;}
+            nd_artwork_close(&art);sprintf(relative,"%s.assets",m->program);
+            if(!nd_package_join(asset_dir,sizeof(asset_dir),install,relative))return;
+            asset_added=1;++n;
+        }else if(requires_art){say(p,"Not imported: plugin artwork is missing",1);return;}
     }
     if (!nd_package_join(p->files[n].source,ND_PACKAGE_PATH,drawer,manifest_file) ||
         !nd_package_join(p->files[n].destination,ND_PACKAGE_PATH,install,manifest_file)) {
@@ -422,8 +450,12 @@ static void import_plugin(struct ManagerPage *p)
         args[4]=(ULONG)(owns_destination ? "Update this installed package" : "Install a new package");
         if (EasyRequestArgs(p->win,&es,NULL,args)!=1) return;
     }
+    if(asset_added && !nd_package_file_exists(asset_dir)){
+        BPTR lock=CreateDir((STRPTR)asset_dir);if(!lock){say(p,"Not imported: cannot create plugin artwork drawer",1);return;}UnLock(lock);asset_created=1;
+    }
     result=nd_package_install(p->files,n);
     if (result!=ND_PACKAGE_OK) {
+        if(asset_created)DeleteFile((STRPTR)asset_dir); /* only succeeds if empty */
         if (result==ND_PACKAGE_RECOVERY) {
             for (i=0;i<n;++i) if (p->files[i].recovery) {
                 struct EasyStruct es={sizeof(es),0,(STRPTR)"Plugin recovery required",
@@ -483,6 +515,12 @@ static void remove_plugin(struct ManagerPage *p)
             if (!p->entry.manifest_path[0] && !DeleteFile((STRPTR)info)) {
                 say(p,"Not removed: its icon could not be deleted",1);return;
             }
+            {
+                char art[ND_ARTWORK_PATH],folder[ND_ARTWORK_PATH];
+                if(nd_artwork_path("",p->entry.command,art,sizeof(art))){
+                    strcpy(folder,art);*FilePart(folder)=0;if(folder[0] && folder[strlen(folder)-1]=='/')folder[strlen(folder)-1]=0;DeleteFile((STRPTR)art);DeleteFile((STRPTR)folder);
+                }
+            }
             DeleteFile((STRPTR)p->entry.command);
             DeleteFile((STRPTR)info);
         }
@@ -541,7 +579,8 @@ static int open_manager(struct ManagerPage *p)
         !m_button(p,10,69,118,M_ORGANIZE,"Organize") ||
         !m_button(p,10,93,118,M_MANAGER,"> Plugins") ||
         !m_button(p,10,117,118,M_DIAGNOSTICS,"Diagnostics") ||
-        !m_button(p,10,141,118,M_ABOUT,"About")) return 0;
+        !m_button(p,10,141,118,M_UPDATES,"Update") ||
+        !m_button(p,10,165,118,M_ABOUT,"About")) return 0;
     m_field(p,&ng,150,21,455,60,M_LIST,NULL);
     p->list=p->last=CreateGadget(LISTVIEW_KIND,p->last,&ng,
         GTLV_Labels,(ULONG)&p->rows,
@@ -555,7 +594,8 @@ static int open_manager(struct ManagerPage *p)
         !detail_line(p,135,D_PROGRAM,"Program:") ||
         !detail_line(p,147,D_ABOUT,"About:") ||
         !detail_line(p,159,D_ABOUT2,NULL)) return 0;
-    if (!m_button(p,386,181,100,M_IMPORT,"Import...") ||
+    if (!m_button(p,150,181,100,M_REFRESH,"Refresh") ||
+        !m_button(p,386,181,100,M_IMPORT,"Import...") ||
         !m_button(p,492,181,100,M_REMOVE,"Remove...")) return 0;
     p->remove=p->last;
     if (!m_button(p,414,205,90,M_USE,"Use") ||
@@ -613,7 +653,8 @@ int nd_pluginmanager_prefs_run(int argc,char **argv,char *plugin,int plugin_size
             } else if (cls==IDCMP_GADGETUP) {
                 if (id==M_LIST) {
                     if ((int)code<p->count) {p->selected=(int)code;show_details(p);}
-                } else if (id==M_IMPORT) import_plugin(p);
+                } else if (id==M_REFRESH) rescan(p,NULL);
+                else if (id==M_IMPORT) import_plugin(p);
                 else if (id==M_REMOVE) remove_plugin(p);
                 else if (id==M_USE) {
                     if (commit(p,0)) {p->done=1;p->result=0;}
@@ -625,6 +666,7 @@ int nd_pluginmanager_prefs_run(int argc,char **argv,char *plugin,int plugin_size
                 else if (id==M_APPEARANCE) {p->done=1;p->result=ND_PREF_NAV_APPEARANCE;}
                 else if (id==M_ORGANIZE) {p->done=1;p->result=ND_PREF_NAV_ORGANIZE;}
                 else if (id==M_DIAGNOSTICS) {p->done=1;p->result=ND_PREF_NAV_DIAGNOSTICS;}
+                else if (id==M_UPDATES) {p->done=1;p->result=ND_PREF_NAV_UPDATES;}
                 else if (id==M_ABOUT) {p->done=1;p->result=ND_PREF_NAV_ABOUT;}
             }
         }

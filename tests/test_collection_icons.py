@@ -30,5 +30,5 @@ for name in art.NAMES:
     seen.add(fingerprint)
     assert sum(v!=0 for v in fingerprint)>100
     assert all(0<=v<16 for v in fingerprint)
-assert len(seen)==28
-print('Twenty-eight distinct collection/status icons: exact regeneration, transparent ILBM planes and PNG assets passed.')
+assert len(seen)==70
+print('Seventy distinct shared collection icons: exact regeneration, transparent ILBM planes and PNG assets passed.')

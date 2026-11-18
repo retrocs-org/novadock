@@ -6,7 +6,7 @@
 #define ND_SENSOR_DIRECTORY "ENV:NovaDock/Sensors"
 #define ND_SENSOR_WARP_STATUS ND_SENSOR_DIRECTORY "/Warp.status"
 #define ND_SENSOR_CHANNELS(X) \
- X(ZZ_TEMP,"ZZ9000 FPGA temperature","ZZ FPGA","C",-60000,200000) \
+ X(ZZ_TEMP,"ZZ9000 Zynq temperature","ZZ Zynq","C",-60000,200000) \
  X(ZZ_CORE,"ZZ9000 core voltage","ZZ core","V",0,20000) \
  X(ZZ_AUX,"ZZ9000 auxiliary voltage","ZZ aux","V",0,20000) \
  X(RTC_TEMP,"RTC internal temperature","RTC temp","C",-60000,200000) \

@@ -81,12 +81,73 @@ Preferences controls screen edge, alignment, rows, tile size, themes, labels,
 auto-hide and keyboard shortcuts. The other chapters explain launchers,
 groups, removable media, running applications and drawer popups.
 
+## Small screens
+
+At 640x256 with the standard 8-point Workbench font, Appearance, Add Item and
+launcher editing use compact spacing so the buttons remain visible. At
+640x480 they use the taller layout. Plugin settings show a scrollbar only
+when their options exceed the available rows.
+
+Use Previous and Next in the icon chooser to reach more icons. APPS shows
+a page footer when running applications fill its grid; click either half
+to change pages, or use the arrow keys. Search also moves to the matching
+application's page. Larger Workbench fonts need a larger screen mode.
+
 ## Save settings
 
 **Use** applies settings to the current session. **Save** also stores them
 permanently for the next restart. Updates retain saved settings. When an
 invalid configuration is found, recovery choices help you restore a working
 configuration or use the built-in defaults.
+
+## Update notifications (0.4)
+
+Open **Preferences -> Update**, between Diagnostics and About. Both checkboxes
+are off on new installations and when older configurations have no update opt-in:
+
+- **Check for updates on startup** checks once when the network is available.
+- **Check for updates while running** enables the interval selector: **2, 4 or 6 hours**.
+  The default interval is 4 hours. With startup checking off, the first check
+  waits for that interval rather than checking immediately.
+
+Choose **Use** for this session or **Save** to keep the settings. Either option
+works independently. Turning both off stops future checks and dismisses an
+unanswered popup. Checks use GitHub's latest published stable release. They do
+not bring the network online. Periodic failures are silent and retried no sooner
+than an hour later; startup-only checking makes one attempt. An unanswered or
+postponed version is offered at most once per day.
+
+**Check now** runs one check without enabling either automatic option, even
+when the dock itself is stopped. The button is disabled while a check or its
+update prompt is open. **Last check** records the time of the latest attempt;
+the status reports Checking, up to date, a newer version, offline or failure.
+The record is saved across restarts. Manual checks may offer a version again
+even if you postponed it earlier that day.
+
+The checker needs HTTPS-capable `C:curl`, a correct system clock and a working
+CA certificate configuration. It uses normal certificate verification and
+never disables it. Neither a GitHub account nor an API token is required.
+
+A newer version opens a popup showing the installed version, available version
+and LHA filename. Choose **Download...** to select a save drawer and filename,
+or **Later** to continue working. Download and verification run separately
+from the dock, so its tiles remain usable. A status window reports received
+bytes and allows cancellation. Existing destination files are never replaced.
+Use a destination drawer whose path is at most 100 characters long.
+
+NovaDock keeps the archive only when its size and SHA-256 match the release
+metadata and checksum. Downloading does not install or run anything. Unpack
+the saved archive and run **Install-NovaDock -> Update** when ready. Your saved
+settings are retained by the installer.
+
+Text configuration uses `CHECK_UPDATES_STARTUP=YES|NO`,
+`CHECK_UPDATES_RUNNING=YES|NO` and `UPDATE_INTERVAL_HOURS=2|4|6`.
+The old combined `CHECK_UPDATES=YES` remains readable and enables both checks.
+Notification timestamps live in
+`ENVARC:NovaDock/UpdateState`. Keeping settings during uninstall also keeps
+this record; removing settings deletes it. Checks contact GitHub directly,
+which receives the usual request information, such as your IP address and
+NovaDock version. No local configuration or credentials are uploaded.
 
 ## Help and development
 
@@ -102,3 +163,56 @@ applications.
 The CPU tile tooltip shows the detected 68000-family processor and the latest
 measured usage percentage, in both meter and graph views. The percentage is
 a sampled estimate of activity, rather than a per-task CPU accounting figure.
+
+## Classic icon colours
+
+Embedded ColorIcon and NewIcon palettes are mapped to the current screen when
+loading artwork. Untagged three-plane icons use the standard MagicWB palette
+locally, so NovaDock does not require enabling Set MagicWB Colors or changing
+the Workbench palette. Classic four-colour icons retain their screen colours.
+
+
+## Warp1260 CPU controls (0.4)
+
+On a detected Warp control board, right-click CPU and choose
+**Set Turbo Level...**. The window enables writes only after confirming a
+Warp1260 and `cswarp.library` 30.74. Other models and versions are refused.
+The physical-board test is still pending.
+
+The window shows the current clock when available. Choose a level and click
+**Apply** to change and save the board clock. There is no default selection
+and NovaDock never changes the clock automatically. **Read again** checks the
+result. Higher clocks require a suitable processor and cooling.
+
+| Level | Warp1260 clock |
+| --- | --- |
+| 0 | 50 MHz |
+| 1 | 66.6 MHz |
+| 2 | 75 MHz |
+| 3 | 85 MHz |
+| 4 | 90 MHz |
+| 5 | 95 MHz |
+| 6 | 100 MHz |
+| 7 | 105 MHz |
+
+Firmware 30.74 uses frequency settings, so these are legacy turbo-level
+presets translated to MHz, rather than a call to the older CPUTurboLevel
+command. Accepted settings are confirmed separately from clock readback.
+A busy library call runs independently; closing its window does not interrupt
+a submitted change or permit another competing call.
+
+Network offers corresponding Warp Wi-Fi controls and a Prism network chooser.
+See [Network](NETWORK_PLUGIN.md#configure-wi-fi-04) for setup and limitations.
+
+Plugin artwork travels in a `.assets` drawer beside its program. If Preferences
+marks a plugin **Needs repair**, select it to see whether its program or artwork
+is missing, damaged or requires a newer NovaDock. Reinstall the complete plugin
+package, then reopen Preferences.
+
+## Plugin runtime health
+
+Open Preferences -> Plugins, select a dock instance and click Refresh to check
+its runtime status. The details distinguish a missing heartbeat from setup,
+connection and dependency problems, and suggest a next step. Check Diagnostics
+for unresponsive processes and AmiHASSPrefs for HASS connection errors. Empty
+collections, idle tools and lights reporting off are normal states.

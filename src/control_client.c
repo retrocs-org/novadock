@@ -159,7 +159,7 @@ static int wait_for_ports(int running,int ticks)
  * PROGDIR: means nothing to the Shell that runs it.  Probes run with
  * requesters quietened, and the dock gets the 32 KB stack it needs (the
  * Shell default is 4 KB). */
-int nd_control_launch_dock(void)
+static int launch_dock_command(int check_updates)
 {
     static const char *paths[]={
         "PROGDIR:NovaDock","NovaDockApp:NovaDock","SYS:Utilities/NovaDock","NovaDock:NovaDock","SYS:Utilities/NovaDock/NovaDock",
@@ -168,7 +168,7 @@ int nd_control_launch_dock(void)
     struct Process *self=(struct Process *)FindTask(NULL);
     APTR requesters;
     BPTR lock,input,output;
-    char command[300],found[256];
+    char command[360],found[256];
     LONG rc;
     int i;
     found[0]='\0';
@@ -205,6 +205,7 @@ int nd_control_launch_dock(void)
         }
         command[n++]='"';command[n]='\0';
     }
+    if(check_updates){const char *argument=" --ND-UPDATE-CHECK MANUAL";if(strlen(command)+strlen(argument)>=sizeof(command))return 0;strcat(command,argument);}
     input=Open("NIL:",MODE_OLDFILE);
     output=Open("NIL:",MODE_NEWFILE);
     if (!input || !output) {
@@ -217,6 +218,8 @@ int nd_control_launch_dock(void)
     if (rc==-1) {Close(input);Close(output);return 0;}
     return 1;
 }
+int nd_control_launch_dock(void){return launch_dock_command(0);}
+int nd_control_check_updates(void){return launch_dock_command(1);}
 /* Two-stage reload: returns the reload's own result, or ND_CONTROL_PENDING
  * when the dock accepted it but was still busy when we stopped waiting.
  * Returns ND_CONTROL_INVALID without side effects if the dock predates the
@@ -283,4 +286,22 @@ LONG nd_control_diagnostics(struct NDDiagnosticsSnapshot *snapshot)
     result=control_exchange(&pkt,sizeof(pkt),ND_CONTROL_TIMEOUT_SECONDS);
     if (result==ND_CONTROL_OK) *snapshot=pkt.snapshot;
     return result;
+}
+
+LONG nd_control_plugin_health(const char *id,struct NDControlPluginHealthMessage *health)
+{
+ struct NDControlPluginHealthMessage packet;LONG result;
+ if(!id || !health || !*id || strlen(id)>=sizeof(packet.id))return ND_CONTROL_INVALID;
+ memset(&packet,0,sizeof(packet));packet.control.magic=ND_CONTROL_MAGIC;
+ packet.control.version=ND_CONTROL_VERSION;packet.control.action=ND_CONTROL_PLUGIN_HEALTH;
+ packet.control.result=ND_CONTROL_NOHOST;strcpy(packet.id,id);
+ result=control_exchange(&packet,sizeof(packet),1UL);
+ if(result==ND_CONTROL_OK)*health=packet;return result;
+}
+
+LONG nd_control_alerts(struct NDControlAlertsMessage *request)
+{
+ if(!request || request->operation>2)return ND_CONTROL_INVALID;
+ request->control.magic=ND_CONTROL_MAGIC;request->control.version=ND_CONTROL_VERSION;request->control.action=ND_CONTROL_ALERTS;
+ return control_exchange(request,sizeof(*request),ND_CONTROL_TIMEOUT_SECONDS);
 }

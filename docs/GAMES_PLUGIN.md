@@ -106,3 +106,11 @@ Removing a WHDLoad tile clears that instance's label, folder, command and artwor
 settings, along with its saved index and any temporary/backup index files.
 Other WHDLoad instances and the actual games/demos are untouched. The bundled
 WHDLoad entry remains available in Add item with fresh default settings.
+
+## Plugin-owned status artwork
+
+In NovaDock 0.4, the sad status icon ships in
+`Plugins/Games.assets/Artwork.ndart`, beside the plugin executable.
+Update the artwork and executable together, then reload or restart NovaDock.
+Missing or damaged artwork falls back to status text.
+A valid scan folder continues to use your selected collection or custom icon.

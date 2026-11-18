@@ -26,6 +26,9 @@ typedef unsigned long ULONG;typedef long LONG;typedef long BPTR;
 #define FETCH_GUARD "NovaDock.Download.Fetch"
 struct Node {char *ln_Name;};struct MsgPort {struct Node mp_Node;};struct Message {void *mn_ReplyPort;unsigned int mn_Length;};
 struct FetchMessage {struct Message msg;ULONG magic;int kind;LONG result;char command[1800],directory[160];};
+struct NDClient {int unused;};
+static unsigned int notices;
+static unsigned int nd_client_notify(struct NDClient *c,const char *title,const char *text,unsigned int severity){(void)c;assert(title && text && severity<=2);++notices;return 0;}
 static ULONG ticks=100;static int busy,destination,renames,cleaned,freed,replies,command_error;
 static struct FetchMessage *incoming;
 static void Forbid(void){}static void Permit(void){}
@@ -58,13 +61,13 @@ int main(void){int c;
  destination=1;assert(start_job("Plugins/Download")==-1&&!job.port&&count==2);destination=0;
  assert(start_job("Plugins/Download")==1&&job.port&&nd_download_staging_dir(job.directory));assert(strstr(job.directory,"Work:Downloads/")==job.directory);
  assert(strstr(job.command,"--disable --fail --location --proto =http,https --proto-redir =http,https"));assert(strstr(job.command,"--output \"Work:Downloads/NovaDockDownload-"));assert(strstr(job.command," -- \"https://example.org/a.zip?x=1&y=2\""));
- message(1,0);incoming->msg.mn_ReplyPort=&busy;job_events();assert(job.transferred&&replies==1); /* returned to worker ownership */
+ message(1,0);incoming->msg.mn_ReplyPort=&busy;job_events(NULL);assert(job.transferred&&replies==1); /* returned to worker ownership */
  /* The real ReplyMsg transfers the request. This stub retains it for inspection. */
- message(2,0);job_events();assert(!job.port&&count==1&&renames==1&&freed==1&&cleaned==1);assert(!strcmp(queue[0].target,"Work:Downloads/second.zip"));
- setup();assert(start_job("Plugins/Download")==1);job.transferred=1;destination=1;message(2,0);job_events();assert(renames==1&&strstr(status,"already exists")&&!job.port&&count==1);
- setup();assert(start_job("Plugins/Download")==1);job.transferred=1;message(2,22);job_events();assert(renames==1&&strstr(status,"curl 22")&&!job.port);
- setup();assert(start_job("Plugins/Download")==1);c=cleaned;ticks+=201;job_events();assert(!job.port&&count==1&&cleaned==c+1);
- setup();assert(start_job("Plugins/Download")==1);job.transferred=1;c=cleaned;ticks+=650UL*50UL+1;job_events();assert(!job.port&&count==1&&cleaned==c); /* worker owns staging until it exits */
+ message(2,0);job_events(NULL);assert(!job.port&&count==1&&renames==1&&freed==1&&cleaned==1&&notices==1);assert(!strcmp(queue[0].target,"Work:Downloads/second.zip"));
+ setup();assert(start_job("Plugins/Download")==1);job.transferred=1;destination=1;message(2,0);job_events(NULL);assert(renames==1&&strstr(status,"already exists")&&!job.port&&count==1);
+ setup();assert(start_job("Plugins/Download")==1);job.transferred=1;message(2,22);job_events(NULL);assert(renames==1&&strstr(status,"curl 22")&&!job.port);
+ setup();assert(start_job("Plugins/Download")==1);c=cleaned;ticks+=201;job_events(NULL);assert(!job.port&&count==1&&cleaned==c+1);
+ setup();assert(start_job("Plugins/Download")==1);job.transferred=1;c=cleaned;ticks+=650UL*50UL+1;job_events(NULL);assert(!job.port&&count==1&&cleaned==c); /* worker owns staging until it exits */
  setup();command_error=1;assert(start_job("Plugins/Download")==-1&&!job.port);puts("DOWNLOAD jobs: single worker, full destination staging, fixed curl command, completion/failure, overwrite refusal and timeouts passed.");return 0;}
 """
 with tempfile.TemporaryDirectory() as tmp:

@@ -331,7 +331,8 @@ int main(void)
     assert(nd_parse_line(&cfg, "Side=Left") == 1 && cfg.side == ND_SIDE_LEFT);
     assert(nd_parse_line(&cfg, "TOOLTIPS=no") == 1 && cfg.tooltips == 0);
     assert(nd_load_config(&cfg, "novadock.cfg") == 0);
-    assert(cfg.count == 29); /* six active tiles plus optional definitions */
+    assert(cfg.count == 32); /* six active tiles plus optional definitions */
+    assert(!cfg.items[29].enabled && !strcmp(cfg.items[29].id,"AMIROCKET"));
     assert(!cfg.items[17].enabled && !strcmp(cfg.items[17].id,"TIMER"));
     assert(!cfg.items[18].enabled && !strcmp(cfg.items[18].id,"NOTES"));
     assert(!cfg.items[16].enabled && !strcmp(cfg.items[16].id,"BITSKIM"));
@@ -378,6 +379,12 @@ int main(void)
     assert(nd_load_config(&recovered,"tests/known-good.cfg.good")==0);
     assert(recovered.count==cfg.count);
     assert(recovered.items[recovered.count-1].kind==ND_ITEM_GROUP);
+    /* Invalid serialization must never replace either live or known-good. */
+    strcpy(cfg.items[0].label,"bad\nSIDE=invalid");
+    assert(!nd_write_config(&cfg,"tests/known-good.cfg"));
+    assert(nd_load_config(&recovered,"tests/known-good.cfg")==0);
+    assert(strcmp(recovered.items[0].label,"bad\nSIDE=invalid"));
+    assert(nd_load_config(&recovered,"tests/known-good.cfg.good")==0);
     legacy=fopen("tests/known-good.cfg","w");
     assert(legacy!=NULL);
     fputs("THEME=../NOT_A_THEME\n",legacy);

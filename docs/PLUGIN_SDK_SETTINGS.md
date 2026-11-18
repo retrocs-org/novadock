@@ -28,7 +28,7 @@ NOVADOCK_OPTION=KEY|Label|TYPE|Choices or range|Default
 Use unique keys within the plugin. The manifest ID, such as `HELLO`, identifies
 its configuration namespace. NovaDock passes the configured ID as `argv[1]`;
 use that value rather than hard-coding it in your reader. A manifest supports
-up to 12 option definitions.
+up to 32 option definitions.
 
 | Type | Example | Settings control |
 | --- | --- | --- |

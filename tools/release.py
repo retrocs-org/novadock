@@ -372,6 +372,7 @@ def package_contents(directory):
 
 def check_packages(directory):
     from zipfile import ZipFile
+    from check_package_assets import check_sdk_zip
     for suffix, expected in package_contents(directory).items():
         with ZipFile(directory/f'NovaDock-{version()}-{suffix}') as archive:
             names = archive.namelist()
@@ -383,6 +384,7 @@ def check_packages(directory):
                 if archive.read(name) != payload:
                     raise ValueError('Package content differs from current release: '+name)
 
+    check_sdk_zip(directory/f'NovaDock-{version()}-plugin-sdk.zip', ROOT)
 
 def check_build(directory):
     if not (directory/'build-state.json').is_file():

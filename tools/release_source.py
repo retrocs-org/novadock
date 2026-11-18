@@ -19,7 +19,7 @@ def private_file(name):
     return (path.parts[0] in ('work', 'outputs', 'dist', 'private-review')
             or path.parts[:2] == ('build', 'provenance')
             or any(p == '.env' or p.startswith('.env.') or p.endswith('.local.json') for p in path.parts)
-            or path.name in ('release-targets.local.json', '.netrc', 'id_rsa', 'id_ed25519')
+            or path.name in ('release-targets.local.json', '.netrc', 'id_rsa', 'id_ed25519', 'HASS.connection', 'HASS.token')
             or path.suffix.lower() in ('.p12', '.pfx')
             or (path.name == 'release-config.json' and path.parts[0] != 'examples'))
 

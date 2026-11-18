@@ -20,7 +20,14 @@ h=r'''#include <assert.h>
 #include <sys/stat.h>
 #include "nd_manifest.h"
 #include "nd_options.h"
+#include "nd_artwork.h"
+#include "nd_plugin_health.h"
 #include "nd_plugin_discovery.h"
+#define ND_CONTROL_OK 0
+#define ND_CONTROL_NOHOST -4
+#define ND_CONTROL_TIMEOUT -5
+struct NDControlPluginHealthMessage {char id[20],value[32];unsigned short online,stale;};
+static long nd_control_plugin_health(const char *id,struct NDControlPluginHealthMessage *health){(void)id;(void)health;return ND_CONTROL_NOHOST;}
 #define FALSE 0
 #define TRUE 1
 #define D_LINES 7
@@ -35,7 +42,7 @@ h=r'''#include <assert.h>
 #define GTTX_Text 1
 #define GA_Disabled 2
 #define TAG_DONE 0
-typedef unsigned long ULONG;
+typedef unsigned long ULONG;typedef long LONG;
 struct Node {char *ln_Name;};struct List {int count;};
 static void NewList(struct List *l){l->count=0;}
 static void AddTail(struct List *l,struct Node *n){assert(n->ln_Name);++l->count;}
@@ -82,7 +89,7 @@ int main(int argc,char **argv){
   if(!read_text_manifest(argv[i],&parsed)||!nd_manifest_finish(&parsed)){
    fprintf(stderr,"%s: %s\n",argv[i],parsed.error);return 1;
   }
-  if(!strcmp(parsed.id,"SENSORS"))assert(parsed.option_count==18);
+  if(!strcmp(parsed.id,"SENSORS"))assert(parsed.option_count==19);
   if(!strcmp(parsed.id,"MUSICLIB"))assert(parsed.option_count==16);
   ++checked;
  }
@@ -126,7 +133,7 @@ with tempfile.TemporaryDirectory() as tmp:
         (p/(name+'.ndplugin')).write_text(contents)
         if name!='Missing': (p/name).touch()
     (p/'check.c').write_text(h)
-    subprocess.run([os.environ.get('CC','cc'),'-std=c89','-Wall','-Wextra',
+    subprocess.run([os.environ.get('CC','cc'),'-std=c89','-Wall','-Wextra','-Wno-unused-function',
         '-I'+str(ROOT/'include'),str(p/'check.c'),str(ROOT/'src/nd_manifest.c'),
         str(ROOT/'src/config.c'),str(ROOT/'src/nd_options.c'),'-o',str(p/'check')],check=True)
     subprocess.run([str(p/'check'),*[str(f) for f in sorted((ROOT/'Plugins').glob('*.ndplugin'))]],cwd=p,check=True)

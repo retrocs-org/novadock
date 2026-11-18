@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "nd_client.h"
+#include "../warp/nd_warp_ui.h"
 #include "nd_option_runtime.h"
 #include "nd_plugin_versions.h"
 #include "nd_netcontrol.h"
@@ -395,6 +396,7 @@ int main(int argc,char **argv)
     unsigned int event,elapsed=0,meter=ND_NO_METER,a=ND_GRAPH_NO_SAMPLE,b=ND_GRAPH_NO_SAMPLE;
     ULONG poll=250,busy_age=0,busy_started=0,job=0,discovery_age=1500,drain_age=0;
     int installed=0,online=0,busy=0,claimed=0,action=0,queued=0,reload=1,quit=0,notice=0,timed_out=0,shutdown_pending=0,startup_pending=1;
+    int helper=nd_warp_helper_main(argc,argv);if(helper>=0)return helper;
     if(argc==2 && (!strcmp(argv[1],"ONLINE_ERROR") || !strcmp(argv[1],"OFFLINE_ERROR")))return network_error(!strcmp(argv[1],"OFFLINE_ERROR"));
     if(argc==2 && !strcmp(argv[1],"SHUTDOWN_PENDING"))return network_error(2);
     if(argc==2 && !strcmp(argv[1],"NETWORK_BUSY"))return network_error(3);

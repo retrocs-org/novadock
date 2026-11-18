@@ -1,5 +1,6 @@
 /* NovaDock: Timer-driven work: auto-hide, hover, tooltips, feedback, media and task scans. */
 #include "dock_internal.h"
+#include "nd_volume.h"
 #include "nd_whdload_status.h"
 #include "nd_weather_codes.h"
 #include "nd_cpu_info.h"
@@ -389,6 +390,14 @@ void process_timer(struct NDDock *dock)
         int ax,ay,index,quantum=dock->timer_quanta;
         if (quantum<1) quantum=1;
         dock->timer_pending = 0;
+        nd_update_tick(&dock->updates,dock->conf.check_updates,dock->conf.check_updates_running,(unsigned int)dock->conf.update_interval_hours,dock->directory,(unsigned long)quantum*10UL);
+        dock->alerts_update_tick+=(ULONG)quantum;
+        if(dock->alerts_update_tick>=25UL){struct NDUpdateStatus status;int active;dock->alerts_update_tick=0;
+            Forbid();active=FindPort("NovaDock.UpdateCheck")!=NULL;Permit();
+            if(active)dock->alerts_update_waiting=1;
+            if(dock->conf.check_updates || dock->conf.check_updates_running || dock->alerts_update_waiting){nd_update_status(&status);
+                if(!active)dock->alerts_update_waiting=0;
+                if(status.checked && status.checked!=dock->alerts_update_checked && !status.checking){dock->alerts_update_checked=status.checked;if(status.result==2 && nd_update_compare(status.version,ND_VERSION)==1)dock_alert(dock,"UPDATES","New NovaDock version",status.version,ND_ALERT_INFO);}}}
         if (dock->suspended) {
             dock->suspend_ticks-=quantum;
             if (dock->suspend_ticks<=0) dock->suspended=0;
@@ -587,6 +596,8 @@ static void show_tooltip_window(struct NDDock *dock, int index)
         default: second_line=!strcmp(it->value,"INDEX INCOMPLETE") ? nd_tr("Index incomplete. Use Rescan to try again."):it->value;break;
         }
         h=35;
+    } else if(it->kind==ND_ITEM_PLUGIN && nd_hass_plugin_path(it->command)){
+        second_line=it->value;h=35;
     } else if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"NOTES")){
         name="Notes";second_line=it->value;h=35;
     } else if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"TIMER")){
@@ -598,7 +609,7 @@ static void show_tooltip_window(struct NDDock *dock, int index)
         it->meter <= 100U) {
         sprintf(volume_name, "%s: %u%% used", it->label,
                 (unsigned int)it->meter);
-        name = volume_name;
+        name = volume_name;{static char capacity[100];struct NDVolumeSpace space;space.total=it->volume_total;space.used=it->volume_used;space.block_bytes=it->volume_block_bytes;nd_volume_summary(&space,capacity);second_line=capacity;h=35;}
     }
     len=(int)strlen(name);
     if (len > 78) len = 78;

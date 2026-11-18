@@ -124,6 +124,10 @@ struct NDItem {
     int multiple_instances; /* plugin may have several tiles sharing one process */
     int launch_mode;      /* ND_LAUNCH_*; shared by dock, hotkey and Tools menu */
     int tools_menu;       /* expose this action in Workbench's Tools menu */
+    unsigned int volume_warning; /* free-space percent, 0 disables */
+    int volume_show_free;
+    unsigned long volume_total,volume_used,volume_block_bytes; /* cached, never saved */
+    int volume_low_notified;
     int show_volume_meter;/* drawers: sample and show their volume's usage meter */
     int spacer_width;     /* 0: half the normal tile; otherwise 20..140 pixels */
     int spacer_line;      /* 1: draw the divider, 0: use empty space only */
@@ -174,6 +178,9 @@ struct NDConfig {
     int refresh_mode; /* low-memory simple refresh, or smoother smart refresh */
     int auto_hide; /* collapse to a reveal tab when pointer leaves */
     int hide_delay; /* idle seconds (1..60), checked by timer.device */
+    int check_updates; /* opt-in startup release check */
+    int check_updates_running; /* opt-in periodic checks */
+    int update_interval_hours; /* 2, 4 or 6; default 4 */
     int removable_media; /* show inserted floppies/cards/USB volumes as tiles */
     /* Commodities hot key for keyboard control of the dock ("" = none),
      * for example "ctrl alt d". */

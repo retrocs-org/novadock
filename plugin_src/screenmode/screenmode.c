@@ -400,7 +400,7 @@ static const char *apply_preset(struct NDClient *client,const struct Settings *s
             else if(seen_closed || !same_signature(&before,&now))break;
             if(mode_ticks()-finished_at>=600UL)break;
         }else if(age>=750UL){problem=claimed ? "COMMAND TIMEOUT":"NOT STARTED";break;}
-        event=nd_client_update_quiet(client,"SMODE","SWITCHING",ND_NO_METER,10,250U);
+        event=nd_client_update_art_quiet(client,"SMODE","SWITCHING","modes",0,10,250U);
         if(event&ND_EVENT_QUIT){*quit=1;problem="CANCELLED";break;}
         (void)nd_client_wait(client,10);
     }
@@ -462,7 +462,7 @@ int main(int argc,char **argv)
                 (void)nd_scrmode_text(sig.width,sig.height,sig.depth,value,sizeof(value));
             else strcpy(value,"NO WORKBENCH");
         }
-        event=nd_client_update_quiet(&client,"SMODE",value,ND_NO_METER,elapsed,500U);
+        event=nd_client_update_art_quiet(&client,"SMODE",value,"modes",0,elapsed,500U);
         if (event&ND_EVENT_QUIT) break;
         if (event&ND_EVENT_SETTINGS) reread=1;
         if (nd_client_events2(&client)&ND_EVENT2_REFRESH) since=100000U;

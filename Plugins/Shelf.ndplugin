@@ -1,0 +1,15 @@
+NOVADOCK_ID=SHELF
+NOVADOCK_NAME=SHELF
+NOVADOCK_VERSION=0.1
+NOVADOCK_AUTHOR=NovaDock
+NOVADOCK_DESCRIPTION=Independent permanent shortcut shelves; drop files/drawers, filter, open, reorder or remove shortcuts.
+NOVADOCK_LICENSE=MIT
+NOVADOCK_FEATURES=click,drop,popup,badge,artwork
+NOVADOCK_PROGRAM=Shelf
+NOVADOCK_VIEW=METER
+NOVADOCK_ABI=5
+NOVADOCK_MULTIPLE=YES
+NOVADOCK_OPTION=LABEL|Tile label|TEXT||SHELF
+NOVADOCK_OPTION=DRAWER|Storage drawer|FILE||ENVARC:NovaDock/Shelves
+NOVADOCK_OPTION=ICON|Tile icon|TEXT||Favourites
+NOVADOCK_OPTION=ICONFILE|Custom icon or picture|FILE||

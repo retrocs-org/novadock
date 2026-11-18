@@ -12,9 +12,10 @@ site_header('Developers', 'Developers', 'Choose a guide to creating NovaDock plu
 
 <section id="source" class="section-heading"><p class="eyebrow">Build it yourself</p><h2>Build NovaDock from source</h2><p>Get the code, compile it and install it on your Amiga.</p><div class="dev-section"><h3>1. Get the source</h3>
 <p><a class="button" href="<?= site_escape('https://github.com/retrocs-org/novadock/archive/refs/tags/'.rawurlencode(site_release_tag()).'.zip') ?>">Download source ZIP</a> <a class="text-link" href="<?= site_escape('https://github.com/retrocs-org/novadock/tree/'.rawurlencode(site_release_tag())) ?>">Browse the source &rarr;</a></p>
-<p>Unpack the ZIP and open its source directory. Or clone the tagged source:</p>
+<p>These links use the latest published tag. Unpack the ZIP and open its source directory, or clone that tag:</p>
 <pre class="code">git clone --branch <?= site_escape(site_release_tag()) ?> https://github.com/retrocs-org/novadock.git
-cd novadock</pre></div>
+cd novadock</pre>
+<p>For the 0.4 development features, use the <a href="https://github.com/retrocs-org/novadock/tree/main">main branch</a> and its matching documentation and SDK. Development builds are separate from published downloads.</p></div>
 <div class="dev-section"><h3>2. Compile</h3>
 <p>You need vbcc for m68k-amigaos, vasm, vlink and compatible Amiga NDK headers. The code targets a 68000 and AmigaOS 3.0 or later.</p>
 <h4>On the Amiga</h4><p>Configure your vbcc installation, then run this from the source drawer:</p>

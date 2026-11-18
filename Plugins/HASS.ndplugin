@@ -1,0 +1,25 @@
+NOVADOCK_ID=HASS
+NOVADOCK_PROGRAM=HASS
+NOVADOCK_NAME=HASS
+NOVADOCK_VERSION=0.1
+NOVADOCK_AUTHOR=NovaDock
+NOVADOCK_DESCRIPTION=Home Assistant tiles using the separately installed AmiHASS service.
+NOVADOCK_LICENSE=MIT
+NOVADOCK_FEATURES=click,popup,badge,artwork
+NOVADOCK_ABI=1
+NOVADOCK_MULTIPLE=YES
+NOVADOCK_OPTION=LABEL|Tile label|TEXT||HASS
+NOVADOCK_OPTION=DEVICE|Device|TEXT||
+NOVADOCK_OPTION=TYPE|Type|CHOICE|All,light,switch,scene,script,group,sensor,binary_sensor,cover,climate,fan,media_player,lock|light
+NOVADOCK_OPTION=AREA|Room (blank = all)|TEXT||
+NOVADOCK_OPTION=ENTITY|Device|TEXT||
+NOVADOCK_OPTION=ACTION|Click Action|CHOICE|Toggle,Turn on,Turn off,Activate,Show controls,Open cover,Close cover,Stop cover|Toggle
+NOVADOCK_OPTION=ICON|Tile icon|TEXT||Auto
+NOVADOCK_OPTION=ICONFILE|Custom icon or picture|FILE||
+NOVADOCK_OPTION=DEVICE_NAME|Device name|TEXT||
+NOVADOCK_OPTION=ENTITY_NAME|Entity name|TEXT||
+NOVADOCK_OPTION=DEVICE_CLASS|Device class|TEXT||
+NOVADOCK_OPTION=READONLY|Read only|BOOL||NO
+NOVADOCK_OPTION=REFRESH|Refresh seconds|CHOICE|Default,5,10,30,60,300,900,3600|Default
+NOVADOCK_OPTION=DISPLAY|Display|CHOICE|State,Name and state,Name|State
+NOVADOCK_OPTION=TIMESTAMP|Show updated time|BOOL||YES

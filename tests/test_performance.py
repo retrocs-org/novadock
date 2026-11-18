@@ -94,6 +94,8 @@ int main(void)
 #include <stdio.h>
 #include <string.h>
 #include "nd_config.h"
+#include "nd_volume.h"
+#include "nd_alerts.h"
 #define ND_NO_METER 65535U
 static const char identity_texts[]="\0Custom";
 #define ITEM_TEXT(item,key) (identity_texts+(item)->text[key])
@@ -103,7 +105,7 @@ typedef void *APTR;
 typedef unsigned long BPTR;
 typedef unsigned short UWORD;
 typedef char *STRPTR;
-struct InfoData {long id_NumBlocks,id_NumBlocksUsed;};
+struct InfoData {long id_NumBlocks,id_NumBlocksUsed,id_BytesPerBlock;};
 struct NDCliSnapshot {int unused;};
 struct NDDock {
     struct NDConfig conf;
@@ -119,8 +121,9 @@ static int item_visible(struct NDDock *d,int i) {(void)d;return i>=visible_first
 int nd_item_supports_space_meter(const struct NDItem *item) {return item->kind==ND_ITEM_DRAWER;}
 unsigned int nd_used_percent(unsigned long used,unsigned long total) {return (unsigned int)(used*100/total);}
 static BPTR Lock(STRPTR name,int mode) {(void)name;(void)mode;++locks;return 1;}
-static int Info(BPTR lock,struct InfoData *info) {(void)lock;++infos;info->id_NumBlocks=100;info->id_NumBlocksUsed=25;return 1;}
+static int Info(BPTR lock,struct InfoData *info) {(void)lock;++infos;info->id_NumBlocks=100;info->id_NumBlocksUsed=25;info->id_BytesPerBlock=512;return 1;}
 static void UnLock(BPTR lock) {(void)lock;++unlocks;}
+static void dock_alert(struct NDDock *d,const char *source,const char *title,const char *text,unsigned int severity){(void)d;(void)source;(void)title;(void)text;assert(severity==ND_ALERT_WARNING);}
 static void mark_tile_dirty(struct NDDock *d,int i) {++marks;d->dirty_tiles[i]=1;}
 static void snapshot_cli_commands(struct NDCliSnapshot *s) {(void)s;++scans;}
 static int launcher_running_using(struct NDDock *d,const struct NDItem *i,const struct NDCliSnapshot *s)
@@ -192,7 +195,7 @@ int main(void)
             path = Path(temporary)
             (path/'performance.c').write_text(harness)
             subprocess.run([os.environ.get('CC', 'cc'), '-std=c89', '-Wall', '-Wextra',
-                            '-I'+str(ROOT/'include'), str(path/'performance.c'),
+                            '-I'+str(ROOT/'include'), str(path/'performance.c'), str(ROOT/'src/nd_volume.c'),
                             '-o', str(path/'performance')], check=True)
             subprocess.run([str(path/'performance')], check=True)
 
@@ -204,6 +207,8 @@ int main(void)
 #include <assert.h>
 #include <string.h>
 #include "nd_config.h"
+#include "nd_volume.h"
+#include "nd_alerts.h"
 #define ND_TIMER_IDLE_QUANTA 5
 #define ND_TIMER_MICROSECONDS 200000UL
 #define TR_ADDREQUEST 1

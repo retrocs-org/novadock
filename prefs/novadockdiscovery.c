@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "nd_config.h"
+#include "nd_artwork.h"
 #include "nd_manifest.h"
 #include "nd_plugin_discovery.h"
 
@@ -104,6 +105,8 @@ static void catalog_consider(struct CatalogWalk *w,const char *dir,
     } else if (!is_file(path)) {
         if (!w->diagnostics) return;
         strcpy(e->problem,"plugin program is missing");
+    } else if(nd_artwork_package_problem(path,m->features,e->problem,sizeof(e->problem))){
+        if(!w->diagnostics)return;
     }
     /* Invalid metadata is shown by file, even when an ID is absent or
      * duplicates another plugin. It cannot suppress a healthy plugin. */

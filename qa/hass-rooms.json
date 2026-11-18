@@ -1,0 +1,6 @@
+{
+  "name": "NovaDock AmiHASS room filtering, subscriptions and read-only controls",
+  "application": "QATests:RoomsCheck",
+  "timeoutSeconds": 240,
+  "expectedReturnCode": 0
+}

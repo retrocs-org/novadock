@@ -1,3 +1,4 @@
+#include "../plugin_src/hass/nd_hass_native.h"
 /* Plugin settings page for NovaDock Preferences 0.1. Native GadTools.
  * Plugins identify settings through built-in schemas or OPTIONDEF lines in
  * the SAME novadock.cfg. Page size is bounded for 640x200 Workbench.
@@ -26,12 +27,15 @@
 #include "nd_options.h"
 #include "nd_music_formats.h"
 #include "nd_sensors.h"
+#include "nd_i2c_cache.h"
+#include "nd_sensor_status.h"
 #include "nd_control_client.h"
 #include "nd_prefs_nav.h"
 #include "nd_prefs_session.h"
 #include "nd_prefs_layout.h"
 #include "nd_prefs_help.h"
 #include "nd_manifest.h"
+#include "../plugin_src/hass/nd_hass_selection.h"
 
 #define PP_ROWS 12
 #define PP_PAGE_ROWS 5
@@ -69,6 +73,7 @@ struct PluginPrefs {
     unsigned short icon_preview[1024];
     int icon_preview_kind,icon_preview_custom;
     unsigned long sensor_available;
+    char sensor_status[32];
     char choices[PP_ROWS][96];
     STRPTR choice_labels[PP_ROWS][18];
 };
@@ -129,11 +134,19 @@ static int network_picker(const struct PluginPrefs *p,const struct NDOptionDef *
     return 0;
 }
 static int whdload_settings(const struct PluginPrefs *p)
-{const char *schema=nd_option_schema_id(p->config,p->id);return !strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"ACTIONS");}
+{const char *schema=nd_option_schema_id(p->config,p->id);return !strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"ACTIONS") || !strcmp(schema,"HASS") || !strcmp(schema,"SHELF");}
 static int music_format_checkbox(const struct PluginPrefs *p,const struct NDOptionDef *d)
-{return (!strcmp(nd_option_schema_id(p->config,p->id),"MUSICLIB") && nd_music_format_index(d->key)>=0) || (!strcmp(nd_option_schema_id(p->config,p->id),"SENSORS") && nd_sensor_index(d->key)>=0);}
+{return (!strcmp(nd_option_schema_id(p->config,p->id),"MUSICLIB") && nd_music_format_index(d->key)>=0) || (!strcmp(nd_option_schema_id(p->config,p->id),"SENSORS") && (nd_sensor_index(d->key)>=0 || nd_i2c_key(d->key)));}
+static int hass_settings(const struct PluginPrefs *p)
+{return !strcmp(nd_option_schema_id(p->config,p->id),"HASS");}
+static int hass_selection(const struct PluginPrefs *p,const struct NDOptionDef *d)
+{return hass_settings(p) && (!strcmp(d->key,"DEVICE") || !strcmp(d->key,"ENTITY"));}
+static const char *hass_edit(const struct PluginPrefs *p,const char *key)
+{int i=network_option_index(p,key);return i>=0 ? p->edits[i]:"";}
+static int picker_disabled(const struct PluginPrefs *p,const struct NDOptionDef *d)
+{return sampling_field_disabled(p,d);}
 static int has_picker(const struct PluginPrefs *p,const struct NDOptionDef *d)
-{return !strcmp(d->type,"FILE") || network_picker(p,d) || (whdload_settings(p) && !strcmp(d->key,"ICON"));}
+{return hass_selection(p,d) || !strcmp(d->type,"FILE") || network_picker(p,d) || (whdload_settings(p) && !strcmp(d->key,"ICON"));}
 static int choice_index(struct PluginPrefs *p,int row,const char *choice)
 {
     int j;
@@ -162,6 +175,7 @@ static int collect_page(struct PluginPrefs *p)
     int i,at=visible_start(p);
     for (i=0;i<page_rows(p) && at+i<p->count;++i) {
         const struct NDOptionDef *def=&p->definitions[at+i];
+        if(hass_selection(p,def))continue;
         if(music_format_checkbox(p,def))strcpy(p->edits[at+i],p->active[i] ? "YES":"NO");
         else if (!strcmp(def->type,"BOOL") || !strcmp(def->type,"CHOICE")) {
             int ix=p->active[i];
@@ -255,22 +269,22 @@ static int open_ui(struct PluginPrefs *p)
             p->active[i]=!strcmp(p->edits[current],"YES");
             p->fields[i]=p->last=CreateGadget(CHECKBOX_KIND,p->last,&ng,GTCB_Checked,(ULONG)p->active[i],TAG_DONE);
         }else if (!strcmp(d->type,"BOOL") || !strcmp(d->type,"CHOICE")) {
-            open_choices(p,i,!strcmp(d->type,"BOOL") ? "NO,YES" : d->choices);
+            open_choices(p,i,hass_settings(p) && !strcmp(d->key,"ACTION") ? (hass_edit(p,"ENTITY")[0] ? nd_hass_click_choices(hass_edit(p,"ENTITY")):nd_hass_type_choices(hass_edit(p,"TYPE"))):!strcmp(d->type,"BOOL") ? "NO,YES" : d->choices);
             p->active[i]=choice_index(p,i,p->edits[current]);
             p->fields[i]=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
                        GTCY_Labels,(ULONG)p->choice_labels[i],
-                       GTCY_Active,p->active[i],TAG_DONE);
+                       GTCY_Active,p->active[i],GA_Disabled,(ULONG)(hass_settings(p) && !strcmp(d->key,"ACTION") && !strcmp(hass_edit(p,"READONLY"),"YES")),TAG_DONE);
         } else {
             p->fields[i]=p->last=CreateGadget(STRING_KIND,p->last,&ng,
-                       GTST_String,(ULONG)p->edits[current],
+                       GTST_String,(ULONG)(hass_settings(p) && !strcmp(d->key,"ENTITY") && hass_edit(p,"ENTITY_NAME")[0] ? hass_edit(p,"ENTITY_NAME"):p->edits[current]),
                        GTST_MaxChars,(whdload_settings(p) && !strcmp(d->key,"LABEL")) ? ND_LABEL_LEN-1 : ND_OPT_VALUE_LEN-1,
-                       GA_Disabled,(ULONG)sampling_field_disabled(p,d),TAG_DONE);
+                       GA_Disabled,(ULONG)(sampling_field_disabled(p,d) || hass_selection(p,d)),TAG_DONE);
             if (p->last && has_picker(p,d)) {
                 field(p,&ng,p->focused ? 405 : 515,16+i*24,
                       p->focused ? 60 : 90,16,G_FILE_FIRST+i,(STRPTR)"Select");
                 ng.ng_Flags=PLACETEXT_IN;
                 p->file_buttons[i]=p->last=CreateGadget(BUTTON_KIND,p->last,&ng,
-                    GA_Disabled,(ULONG)sampling_field_disabled(p,d),TAG_DONE);
+                    GA_Disabled,(ULONG)picker_disabled(p,d),TAG_DONE);
             }
         }
         if (!p->last) return 0;
@@ -291,7 +305,7 @@ static int open_ui(struct PluginPrefs *p)
             !button(p,405,button_y,G_SAVE,"Save"))) return 0;
         {const char *name=nd_manifest_builtin_name(nd_option_schema_id(p->config,p->id));
          sprintf(p->title,"%s settings",name ? name:p->id);}
-        if(!strcmp(nd_option_schema_id(p->config,p->id),"SENSORS") && !p->sensor_available)strcat(p->title," - no sensors detected");
+        if(!strcmp(nd_option_schema_id(p->config,p->id),"SENSORS") && p->sensor_status[0]){strcat(p->title," - ");strcat(p->title,p->sensor_status);}
     } else {
         if(!strcmp(p->id,"NET") && !button(p,319,151,G_ADVANCED,
             p->advanced ? "Basic":sampling_override(p) ? "Advanced *":"Advanced..."))return 0;
@@ -323,9 +337,27 @@ static void choose_file(struct PluginPrefs *p,int row)
     char path[ND_OPT_VALUE_LEN],drawer[ND_OPT_VALUE_LEN]="",file[ND_OPT_VALUE_LEN]="";
     const char *title="Select file",*pattern="#?";
     if(row<0 || row>=PP_ROWS || at>=p->count || !has_picker(p,&p->definitions[at]))return;
+    if(hass_selection(p,&p->definitions[at])){
+        struct NDHassEntity chosen;char device_id[96],name[64],room[96];int entity=network_option_index(p,"ENTITY"),device=network_option_index(p,"DEVICE");
+        int device_name=network_option_index(p,"DEVICE_NAME"),entity_name=network_option_index(p,"ENTITY_NAME"),device_class=network_option_index(p,"DEVICE_CLASS");
+        int action=network_option_index(p,"ACTION"),label=network_option_index(p,"LABEL");
+        if(!collect_page(p)){DisplayBeep(p->screen);return;}
+        if(!amihass_area_valid(hass_edit(p,"AREA"))){SetWindowTitles(p->win,(STRPTR)"Room: use a name or ID up to 95 characters",(STRPTR)-1);DisplayBeep(p->screen);return;}
+        device_id[0]=0;if(nd_hass_picker_device_id(hass_edit(p,"DEVICE")))strcpy(device_id,hass_edit(p,"DEVICE"));nd_hass_device_name(name,hass_edit(p,"DEVICE_NAME"));strcpy(room,hass_edit(p,"AREA"));
+        if(!nd_hass_choose_target_area(hass_edit(p,"TYPE"),room,device_id,name,&chosen))return;
+        {int area=network_option_index(p,"AREA");if(area>=0)strcpy(p->edits[area],room);}
+        strcpy(p->edits[device],device_id);if(device_name>=0)strcpy(p->edits[device_name],name);
+        strcpy(p->edits[entity],chosen.id);
+        if(entity_name>=0)nd_hass_device_name(p->edits[entity_name],chosen.name);
+        if(device_class>=0){strncpy(p->edits[device_class],chosen.device_class,23);p->edits[device_class][23]=0;}
+        if(label>=0 && !strcmp(p->edits[label],"HASS")){nd_hass_device_name(name,chosen.name);strncpy(p->edits[label],name,ND_LABEL_LEN-1);p->edits[label][ND_LABEL_LEN-1]=0;}
+        if(action>=0){char api[96],body[180];if(strcmp(p->edits[action],"Show controls") && !nd_hass_action(chosen.id,p->edits[action],api,body))strcpy(p->edits[action],nd_hass_action(chosen.id,"Toggle",api,body) ? "Toggle":nd_hass_action(chosen.id,"Activate",api,body) ? "Activate":"Show controls");}
+        close_ui(p);if(!open_ui(p))p->done=1;
+        return;
+    }
     if(whdload_settings(p) && !strcmp(p->definitions[at].key,"ICON")){choose_collection_icon(p,row);return;}
     kind=network_picker(p,&p->definitions[at]);
-    folder_only=((whdload_settings(p) || !strcmp(p->id,"DOWNLOAD") || !strcmp(p->id,"AMINET")) && !strcmp(p->definitions[at].key,"DRAWER")) || (!strcmp(p->id,"PLACES") && !strncmp(p->definitions[at].key,"BOOKMARK",8));
+    folder_only=(!strcmp(nd_option_schema_id(p->config,p->id),"WATCH") && !strcmp(p->definitions[at].key,"DRAWER")) || ((whdload_settings(p) || !strcmp(p->id,"DOWNLOAD") || !strcmp(p->id,"AMINET")) && !strcmp(p->definitions[at].key,"DRAWER")) || (!strcmp(p->id,"PLACES") && !strncmp(p->definitions[at].key,"BOOKMARK",8));
     if(kind==1){choose_network_profile(p,row);return;}
     if(!AslBase){
         SetWindowTitles(p->win,(STRPTR)"ASL requester unavailable; type the path",(STRPTR)-1);
@@ -420,15 +452,40 @@ static int start(struct PluginPrefs *p,const char *id)
     if (!found) return 0;
     p->count=nd_option_collect(p->config,id,p->definitions,PP_MAX);
     if(!strcmp(nd_option_schema_id(p->config,id),"SENSORS")){
-        struct DateStamp stamp;unsigned long now;int kept=0,index;
+        struct DateStamp stamp;unsigned long now,known=0,stale=0;int kept=0,index;
         DateStamp(&stamp);now=(unsigned long)stamp.ds_Days*86400UL+(unsigned long)stamp.ds_Minute*60UL+(unsigned long)stamp.ds_Tick/50UL;
         p->sensor_available=nd_sensor_available_for(id,now);
+        known=p->sensor_available;
+        {char path[120],line[100],key[32];unsigned long sampled=0;FILE *f;
+         strcpy(p->sensor_status,p->sensor_available ? "Ready":"Start SENSOR for live status");
+         if(nd_sensor_status_path(id,path,sizeof(path)-8)){strcat(path,".health");f=fopen(path,"r");if(f){
+          if(fgets(line,sizeof(line),f) && sscanf(line,"NDSHEALTH1 %lu",&sampled)==1 && fgets(line,sizeof(line),f)){
+           line[strcspn(line,"\r\n")]=0;
+           if(sampled<=now && now-sampled<=30){strncpy(p->sensor_status,line,sizeof(p->sensor_status)-1);p->sensor_status[sizeof(p->sensor_status)-1]=0;}
+           else strcpy(p->sensor_status,"SENSOR status is stale");
+           while(fgets(line,sizeof(line),f))if(sscanf(line,"%31s",key)==1 && (index=nd_sensor_index(key))>=0){known|=1UL<<index;if(strstr(line,"Stale") || sampled>now || now-sampled>30)stale|=1UL<<index;}
+          }fclose(f);
+         }}}
         for(i=0;i<p->count;++i){index=nd_sensor_index(p->definitions[i].key);
-            if(index<0 || (p->sensor_available&(1UL<<index)))p->definitions[kept++]=p->definitions[i];}
+            if(index<0 || (known&(1UL<<index))){
+                if(index>=0 && !(p->sensor_available&(1UL<<index))){char name[32];strcpy(name,p->definitions[i].label);sprintf(p->definitions[i].label,"%s %.21s",stale&(1UL<<index) ? "Stale":"Absent",name);}
+                p->definitions[kept++]=p->definitions[i];}}
         p->count=kept;
+        {struct NDI2CCache cache;if(nd_i2c_load(&cache)){
+          unsigned int j;for(j=0;j<cache.count && p->count<PP_MAX;++j){struct NDOptionDef *d=&p->definitions[p->count++];memset(d,0,sizeof(*d));strcpy(d->id,id);nd_i2c_option(cache.readings[j].id,d->key);sprintf(d->label,"%s %.21s",!cache.provider ? "Missing":!nd_i2c_fresh(&cache,now,60) || (cache.readings[j].stamp && (now<cache.readings[j].stamp || now-cache.readings[j].stamp>60)) ? "Stale":!cache.readings[j].available ? "Absent":"I2C",cache.readings[j].name);strcpy(d->type,"BOOL");strcpy(d->default_value,"YES");}
+          if(cache.count)p->sensor_available|=0x80000000UL;
+        }}
     }
     p->total_count=p->basic_count=p->count;
     p->basic_count=nd_option_group_settings(id,p->definitions,p->total_count);
+    if(hass_settings(p)){
+        static const char *visible[]={"LABEL","TYPE","AREA","ENTITY","ACTION","READONLY","REFRESH","DISPLAY","TIMESTAMP"};int j,k;
+        /* Keep transport identifiers and artwork metadata out of the UI. */
+        for(j=0;j<9;++j)for(k=j;k<p->total_count;++k)if(!strcmp(p->definitions[k].key,visible[j])){
+            struct NDOptionDef chosen=p->definitions[k];for(i=k;i>j;--i)p->definitions[i]=p->definitions[i-1];p->definitions[j]=chosen;break;
+        }
+        p->basic_count=9;
+    }
     for (i=0;i<p->total_count;++i) {
         const char *value=nd_option_get(p->config,id,p->definitions[i].key);
         if (!value) value=p->definitions[i].default_value;
@@ -436,6 +493,10 @@ static int start(struct PluginPrefs *p,const char *id)
         p->edits[i][ND_OPT_VALUE_LEN-1]=0;
     }
     p->count=p->basic_count;
+    if(hass_settings(p)){
+        int icon=network_option_index(p,"ICON"),file=network_option_index(p,"ICONFILE");
+        if(icon>=0)strcpy(p->edits[icon],"Auto");if(file>=0)p->edits[file][0]=0;
+    }
     if(!strcmp(p->id,"NET") && !sampling_override(p)){
         int device=network_option_index(p,"DEVICE"),unit=network_option_index(p,"UNIT");
         if(device>=0)p->edits[device][0]=0;
@@ -510,12 +571,24 @@ int nd_plugin_prefs_run(int argc,char **argv)
                         code<17 && p->choice_labels[row][code]) {
                         p->active[row]=(int)code;
                         strcpy(p->edits[at],p->choice_labels[row][code]);
-                        if(!strcmp(p->id,"NET") && !strcmp(p->definitions[at].key,"SAMPLING_OVERRIDE")){
+                        if(hass_settings(p) && !strcmp(p->definitions[at].key,"TYPE")){
+                            int entity=network_option_index(p,"ENTITY"),name=network_option_index(p,"ENTITY_NAME");
+                            if(!collect_page(p)){DisplayBeep(p->screen);continue;}
+                            if(entity>=0)p->edits[entity][0]=0;if(name>=0)p->edits[name][0]=0;
+                            {int action=network_option_index(p,"ACTION"),device=network_option_index(p,"DEVICE"),dn=network_option_index(p,"DEVICE_NAME");const char *choices=nd_hass_type_choices(hass_edit(p,"TYPE"));unsigned int n=0;
+                             if(device>=0)p->edits[device][0]=0;if(dn>=0)p->edits[dn][0]=0;
+                             if(action>=0){while(choices[n] && choices[n]!=',' && n<19){p->edits[action][n]=choices[n];++n;}p->edits[action][n]=0;}}
+
+                            close_ui(p);if(!open_ui(p))p->done=1;
+                        }else if(hass_settings(p) && !strcmp(p->definitions[at].key,"READONLY")){
+                            if(!collect_page(p)){DisplayBeep(p->screen);continue;}
+                            close_ui(p);if(!open_ui(p))p->done=1;
+                        }else if(!strcmp(p->id,"NET") && !strcmp(p->definitions[at].key,"SAMPLING_OVERRIDE")){
                             if(!collect_page(p)){DisplayBeep(p->screen);continue;}
                             close_ui(p);if(!open_ui(p))p->done=1;
                         }
                     }else if(at<p->count && whdload_settings(p) &&
-                        (!strcmp(p->definitions[at].key,"ICON") || !strcmp(p->definitions[at].key,"ICONFILE"))){
+                        (!strcmp(p->definitions[at].key,"ICON") || !strcmp(p->definitions[at].key,"ICONFILE") || !strcmp(p->definitions[at].key,"ENTITY"))){
                         if(collect_page(p)){collection_preview_load(p);collection_preview_paint(p);}
                     }
                 } else if (id>=G_FILE_FIRST && id<G_FILE_FIRST+PP_ROWS) {

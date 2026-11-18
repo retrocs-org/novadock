@@ -309,8 +309,9 @@ A removed/disabled plugin receives `ND_EVENT_QUIT` at its next ordinary
 status update. Existing IDs retain their plugin instance when reloading;
 changing the executable path for an existing ID requires restarting the dock.
 The current ABI lacks authenticated registration and instance generation
-identifiers, so immediate OFF→ON or recovery of a genuinely hung task can
-briefly duplicate a process. Plugins should poll and honor `ND_EVENT_QUIT`
+identifiers, so immediate OFF→ON can briefly duplicate a process. The watchdog
+does not relaunch a stale client while its known task/wake-port owner is still
+alive, and never forcibly kills a plugin task. Plugins should poll and honor `ND_EVENT_QUIT`
 promptly rather than relying on host shutdown or direct task killing.
 
 After a blocking reload, online plugins receive a fresh 20-second watchdog
@@ -318,11 +319,20 @@ window; diagnostics still show their actual last update time.
 
 The host checks heartbeats on its existing low-rate housekeeping timer; it
 does not add a second polling task. An enabled plugin that produces no update
-for 20 seconds is marked stale and relaunched. `ND_MSG_GOODBYE` schedules a
+for 20 seconds is marked stale. A live stalled task displays **NOT RESPONDING**;
+its queued clicks/actions are discarded, and a valid late heartbeat restores it.
+Once its known task has exited, the tile displays **OFFLINE** until a replacement
+responds; the dock may relaunch it. `ND_MSG_GOODBYE` schedules a
 quicker five-second retry. Repeated failures wait 20, 40, 80, 160 and then
 300 seconds between attempts, preventing a bad path or broken executable from
 creating a shell-launch storm. Plugins with unusually slow work should still
 send a lightweight status heartbeat inside the 20-second window.
+
+The dock handles at most 32 plugin packets per dispatch before returning to
+input and control events. Plugin shutdown retains its one-second grace period;
+a flooding or unresponsive client cannot extend it by keeping the queue busy.
+Classic AmigaOS has no process memory isolation: a plugin that corrupts memory
+or disables scheduling still needs system-level recovery.
 
 ## Network connection example
 
@@ -465,3 +475,34 @@ retained if a legacy or crashed receiver never returns it.
 Graph history is indexed by received samples. Adaptive polling and quiet
 updates vary the wall-clock distance between columns; it is not a fixed-seconds
 time axis. Diagnostics labels this explicitly.
+
+## Plugin-owned artwork (NovaDock 0.4)
+
+`nd_client_update_art_quiet()` selects a frame from a neighbouring
+`<program>.assets/Artwork.ndart` bank. Support is advertised through
+`ND_EVENT2_HOST_ARTWORK` in ABI 5 replies; the client consumes that capability
+and retains text fallback for older docks. The wire packet layout is unchanged.
+See [PLUGIN_SDK_ARTWORK.md](PLUGIN_SDK_ARTWORK.md) for authoring and lifecycle.
+
+Artwork metadata is capability-negotiated inside the existing ABI 5 packet.
+`ND_EXT_HAS_ARTWORK` uses `reserved2[0]` for the FNV-1a artwork name key
+and `reserved` for the state (0-255). Send it only after the host advertises
+`ND_EVENT2_HOST_ARTWORK_META`. The supplied client helper handles negotiation,
+state-only repaint notifications and older-host fallbacks. Captions and values
+remain normal readable strings. No packet layout or service-port change is needed.
+
+## Session notifications (NovaDock 0.4)
+
+After a normal update negotiates host capabilities,
+`nd_client_notify(client, title, details, severity)` can add a notice to the
+ALERTS session history. Severity is 0 for information, 1 for warnings and 2
+for errors. Keep details within 31 characters and omit credentials.
+
+OR the returned event bits into the normal update result so a simultaneous
+click or settings action is retained. Read extended actions through
+`nd_client_events2()` as usual. The client waits for `ND_EVENT2_HOST_ALERTS`
+before sending notices and safely does nothing on older hosts. Send notices
+on meaningful transitions rather than on every sample.
+
+Host capability flags remain present on badge and notification replies as
+well as status updates. These replies do not revoke negotiated artwork support.

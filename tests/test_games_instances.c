@@ -5,6 +5,7 @@
 #include "nd_config.h"
 #include "nd_options.h"
 #include "nd_manifest.h"
+#include "nd_plugin_versions.h"
 static int find(struct NDConfig *cfg,const char *id){int i;for(i=0;i<cfg->count;++i)if(!strcmp(cfg->items[i].id,id))return i;return -1;}
 static int visible(struct NDConfig *cfg,int at){int i,n=0;for(i=0;i<at;++i)if(cfg->items[i].enabled)++n;return n;}
 int main(void){struct NDConfig *cfg=calloc(1,sizeof(*cfg)),*loaded=calloc(1,sizeof(*loaded));struct NDOptionDef defs[20];struct NDManifest m;int a,b,before,old_options;FILE *f;char long_label[40];assert(cfg && loaded);nd_default_config(cfg);
@@ -70,7 +71,7 @@ int main(void){struct NDConfig *cfg=calloc(1,sizeof(*cfg)),*loaded=calloc(1,size
  assert(nd_add_plugin_instance(cfg,a));b=find(cfg,"MUSICLIB_2");assert(b>=0 && !strcmp(nd_option_schema_id(cfg,"MUSICLIB_2"),"MUSICLIB"));
  assert(nd_option_set(cfg,"MUSICLIB_2","LABEL","SID tunes") && nd_option_set(cfg,"MUSICLIB_2","DRAWER","Music:SID"));
  assert(nd_option_set(cfg,"MUSICLIB_2","MOD","NO") && !strcmp(nd_option_get(cfg,"MUSICLIB","MOD"),"YES"));
- assert(nd_manifest_builtin("MUSICLIB",&m) && m.multiple_instances && !strcmp(m.name,"MUSIC") && !strcmp(m.version,"0.1"));
+ assert(nd_manifest_builtin("MUSICLIB",&m) && m.multiple_instances && !strcmp(m.name,"MUSIC") && !strcmp(m.version,ND_PLUGIN_VERSION_MUSICLIB));
  /* Migrate former default labels, including independent instances, while
   * preserving user labels and all collection settings. */
  assert(nd_option_set(cfg,"MUSICLIB","LABEL","Music Library"));
@@ -88,7 +89,7 @@ int main(void){struct NDConfig *cfg=calloc(1,sizeof(*cfg)),*loaded=calloc(1,size
  assert(!strcmp(loaded->items[find(loaded,"MUSICLIB")].label,"MUSIC"));
  assert(nd_parse_line(cfg,"PLUGIN=SENSOR|Plugins/Sensors|SENSORS|METER|ON|NO"));
  assert(nd_manifest_builtin("SENSORS",&m) && m.multiple_instances);
- assert(nd_option_collect(cfg,"SENSORS",defs,20)==18);
+ assert(nd_option_collect(cfg,"SENSORS",defs,20)==19);
  assert(nd_option_set(cfg,"SENSORS","ZZ_TEMP","NO"));
  assert(nd_write_config(cfg,"sensors.cfg") && nd_load_config(loaded,"sensors.cfg")==0);
  assert(!strcmp(nd_option_get(loaded,"SENSORS","ZZ_TEMP"),"NO"));

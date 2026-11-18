@@ -1,5 +1,6 @@
 #include "nd_plugin_labels.h"
 #include "nd_config.h"
+#include "nd_i2c_cache.h"
 #include "nd_version.h"
 #include "nd_options.h"
 #include "nd_collection_icons.h"
@@ -297,13 +298,14 @@ static int add_item(struct NDConfig *cfg, int kind, const char *name,
     /* Transfer progress is not a time-series monitor. Ignore saved graph
      * flags from older builds as well as graph requests on new items. */
     p->graph = graph && kind == ND_ITEM_PLUGIN && strcmp(p->id,"BITSKIM") &&
-               strcmp(p->id,"SCREENSHOT") && strcmp(p->id,"SCREENMODE") &&
+               strcmp(p->id,"AMIROCKET") && strcmp(p->id,"ALERTS") && strcmp(p->id,"TOOLTYPES") && strcmp(p->id,"CALC") && strcmp(p->id,"WATCH") && strcmp(p->id,"LOGS") && strcmp(p->id,"SCREENSHOT") && strcmp(p->id,"SCREENMODE") &&
                strcmp(p->id,"SCREENSWITCHER") && strcmp(p->id,"WEATHER");
     p->enabled = enabled;
     p->multiple_instances = kind == ND_ITEM_PLUGIN && multiple_instances;
     p->launch_mode = ND_LAUNCH_AUTO;
     /* Only volume roots opt in automatically.  Ordinary drawers support the
      * same meter, but must be enabled explicitly in Preferences. */
+    p->volume_warning=10;
     p->show_volume_meter = kind==ND_ITEM_DRAWER &&
                            command[strlen(command)-1]==':';
     ++cfg->count;
@@ -593,7 +595,7 @@ int nd_add_plugin_instance(struct NDConfig *cfg,int index)
         for(i=0;i<old_options;++i)if(!strcmp(cfg->options[i].id,cfg->items[index].id))++options;
         if(old_options+options>ND_MAX_OPTIONS)return 0;
         for(number=2;number<10000;++number){
-            sprintf(id,"%s_%d",nd_independent_plugin_path(cfg->items[index].command)==4 ? "ACTIONS":nd_independent_plugin_path(cfg->items[index].command)==3 ? "SENSORS":nd_independent_plugin_path(cfg->items[index].command)==2 ? "MUSICLIB":"WHDLOAD",number);
+            sprintf(id,"%s_%d",nd_independent_plugin_id(cfg->items[index].command),number);
             for(j=0;j<cfg->count;++j)if(!strcmp(cfg->items[j].id,id))break;
             if(j==cfg->count)break;
         }
@@ -644,11 +646,11 @@ int nd_remove_visible_item(struct NDConfig *cfg, int visible)
         for(i=0,w=0;i<cfg->option_count;++i)
             if(strcmp(cfg->options[i].id,id))cfg->options[w++]=cfg->options[i];
         cfg->option_count=w;
-        if(strcmp(id,nd_independent_plugin_path(cfg->items[row].command)==4 ? "ACTIONS":nd_independent_plugin_path(cfg->items[row].command)==3 ? "SENSORS":nd_independent_plugin_path(cfg->items[row].command)==2 ? "MUSICLIB":"WHDLOAD")){
+        if(strcmp(id,nd_independent_plugin_id(cfg->items[row].command))){
             cfg->items[row].enabled=0;
             if(!nd_remove_plugin(cfg,id))return 0;
         }else{
-            const char *label=nd_independent_plugin_path(cfg->items[row].command)==4 ? "ACTIONS":nd_independent_plugin_path(cfg->items[row].command)==3 ? "SENSOR":nd_independent_plugin_path(cfg->items[row].command)==2 ? "MUSIC":"WHDLoad";
+            const char *label=nd_collection_plugin_path(cfg->items[row].command)==1 ? "WHDLoad":nd_sensor_plugin_path(cfg->items[row].command) ? "SENSOR":nd_collection_plugin_path(cfg->items[row].command)==2 ? "MUSIC":nd_independent_plugin_id(cfg->items[row].command);
             cfg->items[row].enabled=0;
             strcpy(cfg->items[row].label,label);strcpy(cfg->items[row].caption,label);
         }
@@ -739,6 +741,7 @@ int nd_insert_launcher_visible(struct NDConfig *cfg, int visible, int kind,
         item->meter=65535U;
         item->enabled=1;
         item->launch_mode=ND_LAUNCH_AUTO;
+        item->volume_warning=10;
         item->show_volume_meter=kind==ND_ITEM_DRAWER &&
                                 target[strlen(target)-1]==':';
         if (recycle<before) --before;
@@ -851,8 +854,20 @@ int nd_actions_plugin_path(const char *command)
  for(p=command;*p;++p)if(*p==':' || *p=='/')base=p+1;
  return !strcmp(base,"Actions");
 }
+int nd_hass_plugin_path(const char *command)
+{
+ const char *base,*p;if(!command)return 0;base=command;
+ for(p=command;*p;++p)if(*p==':' || *p=='/')base=p+1;
+ return !strcmp(base,"HASS");
+}
+int nd_shelf_plugin_path(const char *command)
+{const char *base,*p;if(!command)return 0;base=command;for(p=command;*p;++p)if(*p==':' || *p=='/')base=p+1;return !strcmp(base,"Shelf");}
+int nd_monitor_plugin_path(const char *command)
+{const char *base,*p;if(!command)return 0;base=command;for(p=command;*p;++p)if(*p==':' || *p=='/')base=p+1;return !strcmp(base,"Watch") ? 7:!strcmp(base,"Logs") ? 8:0;}
+const char *nd_independent_plugin_id(const char *command)
+{static const char *ids[]={"","WHDLOAD","MUSICLIB","SENSORS","ACTIONS","HASS","SHELF","WATCH","LOGS"};int kind=nd_independent_plugin_path(command);return ids[kind];}
 int nd_independent_plugin_path(const char *command)
-{int collection=nd_collection_plugin_path(command);return collection ? collection:nd_sensor_plugin_path(command) ? 3:nd_actions_plugin_path(command) ? 4:0;}
+{int collection=nd_collection_plugin_path(command);return collection ? collection:nd_sensor_plugin_path(command) ? 3:nd_actions_plugin_path(command) ? 4:nd_hass_plugin_path(command) ? 5:nd_shelf_plugin_path(command) ? 6:nd_monitor_plugin_path(command);}
 int nd_command_plugin_path(const char *command)
 {
     const char *base,*p;
@@ -874,7 +889,7 @@ const char *nd_option_schema_id(const struct NDConfig *cfg,const char *id)
                    nd_collection_plugin_path(cfg->items[i].command)==1 ? "WHDLOAD" :
                    nd_collection_plugin_path(cfg->items[i].command)==2 ? "MUSICLIB" :
                    nd_sensor_plugin_path(cfg->items[i].command) ? "SENSORS":
-                   nd_actions_plugin_path(cfg->items[i].command) ? "ACTIONS":id;
+                   nd_actions_plugin_path(cfg->items[i].command) ? "ACTIONS":nd_hass_plugin_path(cfg->items[i].command) ? "HASS":nd_shelf_plugin_path(cfg->items[i].command) ? "SHELF":nd_monitor_plugin_path(cfg->items[i].command) ? nd_independent_plugin_id(cfg->items[i].command):id;
     return id;
 }
 const char *nd_option_get(const struct NDConfig *cfg, const char *id, const char *key)
@@ -899,6 +914,7 @@ const char *nd_option_get(const struct NDConfig *cfg, const char *id, const char
     for (i=0; i<cfg->def_count; ++i)
         if (!strcmp(cfg->defs[i].id,id) && !strcmp(cfg->defs[i].key,key))
             return cfg->defs[i].default_value;
+    if(!strcmp(schema,"SENSORS") && nd_i2c_key(key))return "YES";
     return NULL;
 }
 static void apply_network_view(struct NDConfig *cfg,const char *value)
@@ -928,17 +944,20 @@ int nd_option_set(struct NDConfig *cfg, const char *id, const char *key,
     for (i=0; i<cfg->def_count; ++i)
         if (!strcmp(cfg->defs[i].id,id) && !strcmp(cfg->defs[i].key,key))
             spec=&cfg->defs[i];
+    if(!spec && !strcmp(schema,"SENSORS") && nd_i2c_key(key)){
+        static const struct NDOptionDef sensor_id={"SENSORS","","I2C sensor","BOOL","","YES"};spec=&sensor_id;
+    }
     if (!spec || !nd_option_validate(spec,value)) return 0;
-    if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"ACTIONS")) && !strcmp(key,"ICON") &&
+    if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"ACTIONS") || !strcmp(schema,"SHELF")) && !strcmp(key,"ICON") &&
        nd_collection_icon_index(value)<0 && strcmp(value,"Custom") && strcmp(value,"Text"))return 0;
-    if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS")) && !strcmp(key,"LABEL")){
+    if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS") || !strcmp(schema,"HASS") || !strcmp(schema,"WATCH") || !strcmp(schema,"LOGS") || !strcmp(schema,"SHELF")) && !strcmp(key,"LABEL")){
         if(!*value || strlen(value)>=ND_LABEL_LEN)return 0;
     }
     for (i=0; i<cfg->option_count; ++i) {
         if (!strcmp(cfg->options[i].id,id) && !strcmp(cfg->options[i].key,key)) {
             copy_string(cfg->options[i].value,value,ND_OPT_VALUE_LEN);
             if(!strcmp(id,"NET") && !strcmp(key,"VIEW"))apply_network_view(cfg,value);
-            if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS")) && !strcmp(key,"LABEL")){
+            if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS") || !strcmp(schema,"HASS") || !strcmp(schema,"WATCH") || !strcmp(schema,"LOGS") || !strcmp(schema,"SHELF")) && !strcmp(key,"LABEL")){
                 int j;for(j=0;j<cfg->count;++j)if(cfg->items[j].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[j].id,id))
                     if(strcmp(cfg->items[j].label,value))copy_string(cfg->items[j].label,value,sizeof(cfg->items[j].label));
             }
@@ -951,7 +970,7 @@ int nd_option_set(struct NDConfig *cfg, const char *id, const char *key,
     copy_string(cfg->options[i].key,key,sizeof(cfg->options[i].key));
     copy_string(cfg->options[i].value,value,sizeof(cfg->options[i].value));
     if(!strcmp(id,"NET") && !strcmp(key,"VIEW"))apply_network_view(cfg,value);
-    if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS")) && !strcmp(key,"LABEL")){
+    if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS") || !strcmp(schema,"HASS") || !strcmp(schema,"WATCH") || !strcmp(schema,"LOGS") || !strcmp(schema,"SHELF")) && !strcmp(key,"LABEL")){
                 int j;for(j=0;j<cfg->count;++j)if(cfg->items[j].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[j].id,id))
                     if(strcmp(cfg->items[j].label,value))copy_string(cfg->items[j].label,value,sizeof(cfg->items[j].label));
             }
@@ -1046,6 +1065,9 @@ void nd_default_config(struct NDConfig *cfg)
     cfg->item_size = ND_ITEM_SIZE_NORMAL;
     cfg->running_apps = 1;
     cfg->removable_media = 1;
+    cfg->check_updates = 0;
+    cfg->check_updates_running = 0;
+    cfg->update_interval_hours = 4;
     cfg->refresh_mode = ND_REFRESH_LOW_MEMORY;
     cfg->theme = ND_THEME_NORD;
     copy_string(cfg->theme_id,"Nord",sizeof(cfg->theme_id));
@@ -1367,6 +1389,27 @@ int nd_parse_line(struct NDConfig *cfg, const char *line)
         strcpy(cfg->dock_hotkey,value);
         return 1;
     }
+    if (!ci_cmp(key,"UPDATE_INTERVAL_HOURS")) {
+        n=numeric(value,2,6);
+        if(n!=2 && n!=4 && n!=6)return 0;
+        cfg->update_interval_hours=n;return 1;
+    }
+    if (!ci_cmp(key,"CHECK_UPDATES_STARTUP") || !ci_cmp(key,"CHECK_UPDATES_RUNNING")) {
+        int flag;
+        if(!ci_cmp(value,"YES"))flag=1;
+        else if(!ci_cmp(value,"NO"))flag=0;
+        else return 0;
+        if(!ci_cmp(key,"CHECK_UPDATES_STARTUP"))cfg->check_updates=flag;
+        else cfg->check_updates_running=flag;
+        return 1;
+    }
+    if (!ci_cmp(key, "CHECK_UPDATES")) {
+        if (!ci_cmp(value,"YES")) cfg->check_updates=1;
+        else if (!ci_cmp(value,"NO")) cfg->check_updates=0;
+        else return 0;
+        cfg->check_updates_running=cfg->check_updates; /* legacy combined opt-in */
+        return 1;
+    }
     if (!ci_cmp(key, "REMOVABLE_MEDIA")) {
         if (!ci_cmp(value,"YES")) cfg->removable_media=1;
         else if (!ci_cmp(value,"NO")) cfg->removable_media=0;
@@ -1461,13 +1504,13 @@ int nd_parse_line(struct NDConfig *cfg, const char *line)
         if (!ci_cmp(key, "LAUNCH") || !ci_cmp(key, "DRAWER") ||
             !ci_cmp(key, "GROUP")) {
             char *icon = strchr(cmd, '|');
-            char *parts[11];
+            char *parts[13];
             int count=0,mode=ND_LAUNCH_AUTO,tools=0,show_meter=-1,added,i;
             enabled=1;
             if (icon) {
                 *icon++ = '\0';
                 parts[count++]=icon;
-                while (count<11) {
+                while (count<13) {
                     char *sep=strchr(parts[count-1],'|');
                     if (!sep) break;
                     *sep++='\0';parts[count++]=sep;
@@ -1500,6 +1543,8 @@ int nd_parse_line(struct NDConfig *cfg, const char *line)
                                   ND_ITEM_GROUP : ND_ITEM_LAUNCH,
                                   name, trim(cmd), icon);
             if (!added) return 0;
+            if(count>=12){unsigned long warning;char *end;warning=strtoul(parts[11],&end,10);if(!*parts[11] || *end || warning>99){--cfg->count;return 0;}cfg->items[cfg->count-1].volume_warning=(unsigned int)warning;}
+            if(count>=13){if(!ci_cmp(parts[12],"YES"))cfg->items[cfg->count-1].volume_show_free=1;else if(ci_cmp(parts[12],"NO")){--cfg->count;return 0;}}
             cfg->items[cfg->count-1].enabled=enabled;
             if (show_meter>=0)
                 cfg->items[cfg->count-1].show_volume_meter=show_meter;
@@ -1580,7 +1625,8 @@ int nd_load_config(struct NDConfig *cfg, const char *filename)
         }
         if (!nd_parse_line(cfg, line)) ++bad_lines;
     }
-    fclose(f);
+    if (ferror(f)) ++bad_lines;
+    if (fclose(f)!=0) ++bad_lines;
     /* 0.1 originally shipped separate CHIPRAM and FASTRAM tiles.  Fold old
      * user configs into the compact dual-bar RAM tile on first load while
      * retaining the earliest tile position and either tile's enabled state. */
@@ -1718,7 +1764,7 @@ int nd_item_runtime_equal(const char *pool_a,const struct NDItem *a,
         a->graph==b->graph && a->enabled==b->enabled &&
         a->multiple_instances==b->multiple_instances &&
         a->launch_mode==b->launch_mode && a->tools_menu==b->tools_menu &&
-        a->show_volume_meter==b->show_volume_meter &&
+        a->show_volume_meter==b->show_volume_meter && a->volume_warning==b->volume_warning && a->volume_show_free==b->volume_show_free &&
         a->spacer_width==b->spacer_width &&
         a->spacer_line==b->spacer_line &&
         a->spacer_line_width==b->spacer_line_width &&
@@ -1747,7 +1793,8 @@ int nd_config_runtime_equal(const struct NDConfig *a,const struct NDConfig *b)
         a->left_click!=b->left_click || a->tooltips!=b->tooltips ||
         a->always_on_top!=b->always_on_top ||
         a->running_apps!=b->running_apps ||
-        a->removable_media!=b->removable_media ||
+        a->removable_media!=b->removable_media || a->check_updates!=b->check_updates ||
+        a->check_updates_running!=b->check_updates_running || a->update_interval_hours!=b->update_interval_hours ||
         strcmp(a->dock_hotkey,b->dock_hotkey) ||
         a->running_section!=b->running_section ||
         a->folder_view!=b->folder_view || a->folder_sort!=b->folder_sort ||
@@ -1881,6 +1928,12 @@ int nd_load_effective(struct NDConfig *cfg)
     for (i=0;paths[i];++i) {
         if (!strncmp(paths[i],"PROGDIR:",8) && !ND_CONFIG_HAVE_PROGDIR()) continue;
         status=nd_load_config(cfg,paths[i]);
+        if(status==0){
+            int item,usable=0;
+            for(item=0;item<cfg->count;++item)
+                if(cfg->items[item].enabled) {usable=1;break;}
+            if(!usable)status=1; /* Empty/truncated/all-disabled startup profile. */
+        }
         if (status==0) {nd_upgrade_network_config(cfg);effective_config_source=paths[i];return 0;}
         if (status>0) saw_invalid=1;
     }
@@ -2022,6 +2075,7 @@ int nd_write_config(const struct NDConfig *cfg, const char *filename)
         if (fprintf(f,"ROW_COUNTS=%d,%d,%d\n",cfg->row_counts[0],
                     cfg->row_counts[1],cfg->row_counts[2])<0) ok=0;
     } else if (fprintf(f,"ROW_COUNTS=AUTO\n")<0) ok=0;
+    if (fprintf(f,"CHECK_UPDATES_STARTUP=%s\nCHECK_UPDATES_RUNNING=%s\nUPDATE_INTERVAL_HOURS=%d\n",cfg->check_updates ? "YES":"NO",cfg->check_updates_running ? "YES":"NO",cfg->update_interval_hours)<0)ok=0;
     if (fprintf(f, "REMOVABLE_MEDIA=%s\nRUNNING_SECTION=%s\n"
                 "FOLDER_VIEW=%s\nFOLDER_SORT=%s\n",
                 cfg->removable_media ? "YES" : "NO",
@@ -2056,7 +2110,7 @@ int nd_write_config(const struct NDConfig *cfg, const char *filename)
         } else if (item->kind == ND_ITEM_LAUNCH ||
                    item->kind == ND_ITEM_DRAWER ||
                    item->kind == ND_ITEM_GROUP) {
-            if (fprintf(f, "%s=%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s\n",
+            if (fprintf(f, "%s=%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%u|%s\n",
                         item->kind == ND_ITEM_DRAWER ? "DRAWER" :
                         item->kind == ND_ITEM_GROUP ? "GROUP" : "LAUNCH",
                         item->label,
@@ -2070,7 +2124,7 @@ int nd_write_config(const struct NDConfig *cfg, const char *filename)
                         item->show_volume_meter ? "YES" : "NO",
                         nd_item_text(cfg,item,ND_TEXT_MATCH_TASK),
                         nd_item_text(cfg,item,ND_TEXT_MATCH_WINDOW),
-                        nd_item_text(cfg,item,ND_TEXT_MATCH_PORT)) < 0) ok = 0;
+                        nd_item_text(cfg,item,ND_TEXT_MATCH_PORT),item->volume_warning,item->volume_show_free ? "YES":"NO") < 0) ok = 0;
         }
     }
     if (cfg->unknown_count>0 &&
@@ -2088,6 +2142,12 @@ int nd_write_config(const struct NDConfig *cfg, const char *filename)
     }
     if (fclose(f) != 0) ok = 0;
     if (!ok) { remove(tmp); return 0; }
+    {
+        struct NDConfig *check=(struct NDConfig *)malloc(sizeof(*check));
+        int valid=check && nd_load_config(check,tmp)==0;
+        if(check)free(check);
+        if(!valid){remove(tmp);return 0;}
+    }
     if (!preserve_config_backup(filename,backup)) {remove(tmp);return 0;}
     if (rename(tmp, filename) == 0) {
         publish_known_good(filename);

@@ -27,6 +27,7 @@
  * docks answer unknown commands with QUIT, so a plugin sends ND_MSG_BADGE
  * only after a reply carried ND_EVENT_HOST_BADGES; nd_client_set_badge()
  * does this automatically. */
+#define ND_MSG_NOTICE 4U /* caption/title, value/details, meter/severity; capability gated */
 #define ND_MSG_BADGE 3U
 #define ND_BADGE_LEN 8          /* including the terminating NUL */
 #define ND_BADGE_ABI_VERSION 4  /* for manifests: NOVADOCK_ABI=4 */
@@ -106,6 +107,10 @@ struct NDMediaMessage {
 #define ND_HOST_ABI ND_EXT_ABI_VERSION
 #define ND_EXT_HAS_GRAPH 1U
 #define ND_EXT_HAS_MEDIA 2U
+#define ND_EXT_HAS_ARTWORK 4U /* reserved2[0]: name key; reserved: state */
+#define ND_EVENT2_HOST_ALERTS 16UL /* accepts ND_MSG_NOTICE */
+#define ND_EVENT2_HOST_ARTWORK_META 8UL /* separate art metadata; captions stay readable */
+#define ND_EVENT2_HOST_ARTWORK 4UL /* host can render plugin-owned artwork banks */
 #define ND_EVENT2_NOTE_NEW 2UL /* bundled Notes: open a new permanent note */
 #define ND_EVENT2_REFRESH 1UL  /* user asked for a fresh value now */
 struct NDExtMessage {

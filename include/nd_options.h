@@ -16,7 +16,11 @@ int nd_games_plugin_path(const char *command);
 int nd_collection_plugin_path(const char *command);
 int nd_sensor_plugin_path(const char *command);
 int nd_actions_plugin_path(const char *command);
-/* Independent settings: collections 1/2, Sensors 3 and Actions 4. */
+int nd_hass_plugin_path(const char *command);
+/* Independent settings: collections 1/2, Sensors 3, Actions 4 and HASS 5. */
+int nd_monitor_plugin_path(const char *command);
+const char *nd_independent_plugin_id(const char *command);
+int nd_shelf_plugin_path(const char *command);
 int nd_independent_plugin_path(const char *command);
 const char *nd_games_icon_path(const struct NDConfig *cfg,const char *id);
 int nd_collection_art_path(const char *base,const char *choice,const char *custom,char *out,unsigned int size);

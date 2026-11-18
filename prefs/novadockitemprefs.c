@@ -1,6 +1,7 @@
 /* Active/inactive Organize page for NovaDock Preferences 0.1.
  * Plugins, launchers, drawers and spacers share one ordered dock model.
  */
+#define G_NAV_UPDATES 950
 #define IntuitionBase NDItemsIntuitionBase
 #define GadToolsBase NDItemsGadToolsBase
 #define GfxBase NDItemsGfxBase
@@ -359,7 +360,8 @@ static int open_ui(struct ItemPage *p)
         !button(p,10,69,118,G_NAV_ITEMS,"> Organize") ||
         !button(p,10,93,118,G_NAV_PLUGIN_MANAGER,"Plugins") ||
         !button(p,10,117,118,G_NAV_DIAGNOSTICS,"Diagnostics") ||
-        !button(p,10,141,118,G_NAV_ABOUT,"About")) return 0;
+        !button(p,10,141,118,G_NAV_UPDATES,"Update") ||
+        !button(p,10,165,118,G_NAV_ABOUT,"About")) return 0;
     ng_init(p,&ng,140,30,465,86,G_ACTIVE,"In dock");
     ng.ng_Flags=PLACETEXT_ABOVE;
     p->active_gad=p->last=CreateGadget(LISTVIEW_KIND,p->last,&ng,
@@ -416,6 +418,7 @@ static void on_gadget(struct ItemPage *p,UWORD id,UWORD code)
     case G_NAV_ITEMS:break;
     case G_NAV_PLUGIN_MANAGER:p->done=1;p->result=ND_PREF_NAV_PLUGIN_MANAGER;break;
     case G_NAV_DIAGNOSTICS:p->done=1;p->result=ND_PREF_NAV_DIAGNOSTICS;break;
+    case G_NAV_UPDATES:p->done=1;p->result=ND_PREF_NAV_UPDATES;break;
     case G_NAV_ABOUT:p->done=1;p->result=ND_PREF_NAV_ABOUT;break;
     case G_ACTIVE:
         if (code<p->active_display_count && p->active_display_map[code]>=0) {

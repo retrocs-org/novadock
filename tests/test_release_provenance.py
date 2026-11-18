@@ -64,8 +64,7 @@ class IntegrityTests(unittest.TestCase):
         for member, name in package.SDK_FILES:
             path = self.root/name
             path.parent.mkdir(parents=True, exist_ok=True)
-            if not path.exists():
-                path.write_text('SDK fixture')
+            path.write_bytes((ROOT/name).read_bytes())
         # Adding fixture SDK/icon inputs changes the fingerprint before building.
         inputs = r.provenance.source_inputs(self.root)
         self.info['inputs'] = inputs

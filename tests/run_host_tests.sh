@@ -19,6 +19,48 @@ if [ "${SANITIZE:-0}" = 1 ]; then
 fi
 # Lifecycle and fallback regressions run in a private temporary directory.
 REGRESSION_TMP=$(mktemp -d "${TMPDIR:-/tmp}/nd-regressions.XXXXXX")
+$CC -std=c89 -Wall -Wextra -Wno-unused-function -Iinclude -Iplugin_src/monitor tests/test_monitors.c plugin_src/monitor/nd_monitor.c -o "$REGRESSION_TMP/monitors"
+"$REGRESSION_TMP/monitors"
+python3 tests/test_monitor_io.py
+python3 tests/test_worker_lifecycle.py
+python3 tests/test_list_layout.py
+$CC -std=c89 -Wall -Wextra -Iplugin_src/calc -Iplugin_src/tooltypes -Iplugin_src/monitor tests/test_utilities.c plugin_src/calc/nd_calc.c plugin_src/tooltypes/nd_tooltypes.c plugin_src/monitor/nd_monitor.c -o "$REGRESSION_TMP/utilities"
+"$REGRESSION_TMP/utilities"
+python3 tests/test_hass_extended.py
+$CC -std=c99 -Wall -Wextra -Iinclude tests/test_monitor_config.c src/config.c src/nd_options.c src/nd_manifest.c -o "$REGRESSION_TMP/monitor_config"
+(cd "$REGRESSION_TMP" && ./monitor_config)
+$CC -std=c99 -Wall -Wextra -pedantic -Iinclude -Iplugin_src/hass tests/test_hass.c plugin_src/hass/nd_hass.c src/config.c src/nd_options.c src/nd_manifest.c -o "$REGRESSION_TMP/hass"
+$CC -std=c89 -Wall -Wextra -pedantic -Iplugin_src/amirocket tests/test_amirocket.c plugin_src/amirocket/nd_amirocket.c -o "$REGRESSION_TMP/amirocket"
+"$REGRESSION_TMP/amirocket"
+$CC -std=c89 -Wall -Wextra tests/test_amirocket_requests.c -o "$REGRESSION_TMP/amirocket_requests"
+$CC -std=c99 -Wall -Wextra -Iinclude -Iplugin_src/shelf tests/test_collections_alerts_volume.c src/nd_volume.c src/nd_alerts.c src/nd_i2c_cache.c plugin_src/shelf/nd_shelf.c src/config.c src/nd_options.c -o "$REGRESSION_TMP/collections_alerts_volume"
+(cd "$REGRESSION_TMP" && ./collections_alerts_volume)
+"$REGRESSION_TMP/amirocket_requests"
+$CC -std=c99 -Wall -Wextra -Iinclude -Iplugin_src/shelf tests/test_collections_alerts_volume.c src/nd_volume.c src/nd_alerts.c src/nd_i2c_cache.c plugin_src/shelf/nd_shelf.c src/config.c src/nd_options.c -o "$REGRESSION_TMP/collections_alerts_volume"
+(cd "$REGRESSION_TMP" && ./collections_alerts_volume)
+python3 tools/generate_amirocket_art.py --check
+python3 tools/generate_utility_plugin_art.py --check
+"$REGRESSION_TMP/hass"
+$CC -std=c89 -Wall -Wextra -Iinclude tests/test_plugin_health.c -o "$REGRESSION_TMP/plugin_health"
+"$REGRESSION_TMP/plugin_health"
+python3 tests/test_small_screens.py
+python3 tests/test_update_status.py
+python3 tests/test_hass_transport.py
+python3 tests/test_hass_controls_ui.py
+python3 tests/test_plugin_health_ipc.py
+python3 tests/test_hass_bridge.py
+python3 tests/test_hass_new_sdk.py
+python3 tests/test_hass_picker.py
+python3 tests/test_hass_capabilities.py
+python3 tests/test_plugin_artwork.py
+python3 tools/generate_bundled_plugin_art.py --check
+python3 tests/test_artwork_discovery.py
+python3 tests/test_artwork_render.py
+python3 tests/test_artwork_palette.py
+python3 tests/test_compile_workspace.py
+python3 tests/test_package_assets.py
+$CC -std=c99 -Wall -Wextra -pedantic -Iinclude tests/test_updates.c src/nd_update.c src/nd_update_hash.c src/config.c src/nd_options.c src/layout_profiles.c -o "$REGRESSION_TMP/updates"
+(cd "$REGRESSION_TMP" && ./updates)
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_reply.c -o "$REGRESSION_TMP/reply"
 $CC -std=c89 -Wall -Wextra -pedantic -Iplugin_src/games tests/test_games_scan.c plugin_src/games/nd_games_scan.c -o "$REGRESSION_TMP/games_scan"
 $CC -std=c89 -Wall -Wextra -pedantic -Iplugin_src/games tests/test_games_cache.c plugin_src/games/nd_games_cache.c -o "$REGRESSION_TMP/games_cache"
@@ -31,6 +73,9 @@ $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_places.c src/config.c 
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_saver.c -o "$REGRESSION_TMP/saver"
 "$REGRESSION_TMP/saver"
 python3 tests/test_saver_window.py
+python3 tests/test_saver_performance.py
+python3 tests/test_saver_stats.py
+python3 tests/test_plugin_isolation.py
 python3 tests/test_cpu_tooltip.py
 $CC -std=c89 -Wall -Wextra -pedantic -Iplugin_src/aminet tests/test_aminet.c plugin_src/aminet/nd_aminet.c -o "$REGRESSION_TMP/aminet"
 "$REGRESSION_TMP/aminet"
@@ -59,6 +104,17 @@ python3 tests/test_christmas_audio.py
 python3 tests/test_wintery_module.py
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_sensors.c src/nd_sensors.c -o "$REGRESSION_TMP/sensors"
 "$REGRESSION_TMP/sensors"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude -Iplugin_src/sensors tests/test_warp_diag.c plugin_src/sensors/nd_warp_diag.c src/nd_sensors.c -o "$REGRESSION_TMP/warp_diag"
+$CC -std=c89 -Wall -Wextra -pedantic -Iplugin_src/warp tests/test_warp_control.c plugin_src/warp/nd_warp_control.c -o "$REGRESSION_TMP/warp_control"
+$CC -std=c99 -Wall -Wextra -pedantic -Iplugin_src/prism tests/test_prism.c plugin_src/prism/nd_prism.c plugin_src/warp/nd_warp_control.c -o "$REGRESSION_TMP/prism"
+"$REGRESSION_TMP/prism"
+$CC -std=c99 -Wall -Wextra -pedantic -Iplugin_src/prism tests/test_prism_store.c plugin_src/prism/nd_prism.c plugin_src/prism/nd_prism_store.c plugin_src/warp/nd_warp_control.c -o "$REGRESSION_TMP/prism_store"
+(cd "$REGRESSION_TMP" && ./prism_store)
+mkdir "$REGRESSION_TMP/prism_rollback"
+$CC -std=c99 -Wall -Wextra -pedantic -DTEST_RENAME_FAILURE -DND_PRISM_RENAME=qa_prism_rename -include tests/prism_store_hooks.h -Iplugin_src/prism tests/test_prism_store.c plugin_src/prism/nd_prism.c plugin_src/prism/nd_prism_store.c plugin_src/warp/nd_warp_control.c -o "$REGRESSION_TMP/prism_rollback/test"
+(cd "$REGRESSION_TMP/prism_rollback" && ./test)
+"$REGRESSION_TMP/warp_control"
+"$REGRESSION_TMP/warp_diag"
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude -Iplugin_src/games tests/test_music_formats.c src/nd_music_formats.c -o "$REGRESSION_TMP/music_formats"
 "$REGRESSION_TMP/music_formats"
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_actions_instances.c src/config.c src/nd_options.c src/nd_manifest.c -o "$REGRESSION_TMP/actions_instances"
@@ -199,6 +255,7 @@ $CC -std=c89 -Wall -Wextra -pedantic -Iinclude \
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude \
   src/icon_mask.c tests/test_icon_mask.c -o tests/nd_icon_mask_test
 ./tests/nd_icon_mask_test
+"$PYTHON" tests/test_icon_palette.py
 
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude \
   src/config.c src/nd_options.c tests/test_launchers.c -o tests/nd_launchers_test
@@ -618,7 +675,7 @@ fi
 if ! grep -q 'nd_client_update_quiet' plugin_src/common/nd_client.c ||
    ! grep -q 'nd_client_update_quiet' plugin_src/clock/clock.c ||
    ! grep -q 'nd_client_update_quiet' plugin_src/eyes/eyes.c ||
-   ! grep -q 'nd_client_update_quiet' plugin_src/archive/archive.c ||
+   ! grep -q 'nd_client_update_art_quiet' plugin_src/archive/archive.c ||
    ! grep -q 'nd_client_update_quiet' plugin_src/dopus4/dopus4.c; then
   echo "Idle plugin traffic test failed: stable tiles must use change-driven updates." >&2
   exit 1

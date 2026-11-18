@@ -13,7 +13,7 @@ from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / 'public-web'
-ROOT_FILES = ('Aminet-parser-LICENSE.txt', '.gitignore', 'README.md', 'CHANGELOG.md', 'DEVELOPMENT.md', 'LICENSE', 'Makefile',
+ROOT_FILES = ('Plugins/SensorsI2C.LICENSE', 'Aminet-parser-LICENSE.txt', '.gitignore', 'README.md', 'CHANGELOG.md', 'DEVELOPMENT.md', 'LICENSE', 'Makefile',
               'Makefile.cross', 'build.amiga', 'install.amiga', 'novadock.cfg',
               'examples.rexx', 'NovaDock.info', 'NovaDockPrefs.info',
               'Plugins/MusicPlayer.info', 'Plugins/RunningApps.info',
@@ -37,6 +37,13 @@ SDK_FILES = (
     ('Makefile', 'plugin_src/template/Makefile.sdk'),
     ('include/nd_protocol.h', 'include/nd_protocol.h'),
     ('include/nd_reply.h', 'include/nd_reply.h'),
+    ('include/nd_artwork.h', 'include/nd_artwork.h'),
+    ('PLUGIN_SDK_ARTWORK.md', 'docs/PLUGIN_SDK_ARTWORK.md'),
+    ('tools/pack_plugin_art.py', 'tools/pack_plugin_art.py'),
+    ('examples/arthello.c', 'plugin_src/template/arthello.c'),
+    ('examples/ArtHello.ndplugin', 'plugin_src/template/ArtHello.ndplugin'),
+    ('examples/artwork.json', 'plugin_src/template/artwork.json'),
+    ('ArtHello.assets/Artwork.ndart', 'plugin_src/template/ArtHello.assets/Artwork.ndart'),
     ('include/nd_client.h', 'plugin_src/common/nd_client.h'),
     ('src/nd_client.c', 'plugin_src/common/nd_client.c'),
     ('include/nd_option_runtime.h', 'include/nd_option_runtime.h'),
@@ -47,7 +54,7 @@ SDK_FILES = (
 
 
 def kept(path):
-    return (not any(p.startswith('.') or p == '__pycache__' or p.endswith('.dSYM') for p in path.parts)
+    return (path.name not in ('HASS.connection', 'HASS.token') and not any(p.startswith('.') or p == '__pycache__' or p.endswith('.dSYM') for p in path.parts)
             and path.suffix.lower() not in ('.o', '.a', '.pyc', '.exe')
             and not path.name.endswith(('~', '.swp'))
             and not (path.parent.name == 'tests'
@@ -68,7 +75,7 @@ def _source_files():
         directory = ROOT / dirname
         for path in sorted(directory.rglob('*')):
             if path.is_file() and kept(path.relative_to(ROOT)):
-                if dirname == 'plugin-sdk' and path.name == 'Hello':
+                if dirname == 'plugin-sdk' and path.name in ('Hello', 'ArtHello'):
                     continue
                 # Toolchains may retain generated assembly beside C files.
                 # Ship only assembly explicitly used by the native build.
@@ -81,6 +88,8 @@ def _source_files():
 def source_files():
     seen = set()
     metadata = sorted((ROOT/'Plugins').glob('*.info')) + sorted((ROOT/'Plugins').glob('*.ndplugin'))
+    for folder in sorted((ROOT/'Plugins').glob('*.assets')):
+        metadata += sorted(p for p in folder.rglob('*') if p.is_file() and kept(p.relative_to(ROOT)))
     for path in list(_source_files()) + metadata:
         if path not in seen:
             seen.add(path)

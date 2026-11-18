@@ -12,6 +12,15 @@ int main(void){struct NDConfig *c=malloc(sizeof(*c));assert(c);
  assert(nd_write_config(c,"ENV:NovaDock/novadock.cfg"));c->side=ND_SIDE_RIGHT;
  assert(nd_write_config(c,"PROGDIR:novadock.cfg"));
  assert(nd_load_effective(c)==0 && c->side==ND_SIDE_LEFT);
+ {
+  FILE *f=fopen("ENV:NovaDock/novadock.cfg","w");assert(f);
+  fputs("SIDE=invalid\n",f);assert(fclose(f)==0);
+  assert(nd_load_effective(c)==0 && c->side==ND_SIDE_LEFT);
+  assert(!strcmp(nd_effective_config_source(),"ENV:NovaDock/novadock.cfg.good"));
+  f=fopen("ENV:NovaDock/novadock.cfg","w");assert(f);assert(fclose(f)==0);
+  assert(nd_load_effective(c)==0 && c->side==ND_SIDE_LEFT);
+  assert(!strcmp(nd_effective_config_source(),"ENV:NovaDock/novadock.cfg.good"));
+ }
  assert(nd_config_low_resource(c));
  assert(c->refresh_mode==ND_REFRESH_LOW_MEMORY && c->folder_view==1);
  assert(!c->running_apps && !c->always_on_top);

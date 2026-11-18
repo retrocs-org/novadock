@@ -1,0 +1,13 @@
+{
+  "project": "AmiHASS",
+  "version": "0.1",
+  "abi": 1,
+  "files": {
+    "amihass.h": "524744a30561d9f462799a9eb55598ed250568ac35fb428c9267ee3afdc49ab1",
+    "amihass_core.h": "b369abc5890ff5b3e7f021b082430f072b3304066975f27937f2f8e35056aeec",
+    "amihass_config.h": "0acc452d4974d660a2305822e745312e042f38dc1113a69a1ca495662c58f9ea",
+    "amihass_client.c": "789f16f923338bb729d52a9c4fe8f428b776c40fc7270381092ce14dcebee27c",
+    "core.c": "ff89858a0a0cd45b6d3ebba6fc7ca3f4a6c38e493b2f4702922ea6a9acfc4659",
+    "nd_reply.h": "a3fc8345a03a5ccdd95356510069150158b086e21567ae4e58e1a29b699cd74c"
+  }
+}

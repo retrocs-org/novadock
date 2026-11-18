@@ -37,9 +37,9 @@ with tempfile.TemporaryDirectory() as temp:
     (root / 'VERSION').write_text('VERSION=9.9\nDATE=01.01.2030\n')
     assert not module.sync(check=True)
     header = root / 'include/nd_plugin_versions.h'
-    header.write_text(header.read_text().replace('ND_PLUGIN_VERSION_CLIPBOARD "' + releases['CLIPBOARD'] + '"', 'ND_PLUGIN_VERSION_CLIPBOARD "0.3"'))
+    header.write_text(header.read_text().replace('ND_PLUGIN_VERSION_CLIPBOARD "' + releases['CLIPBOARD'] + '"', 'ND_PLUGIN_VERSION_CLIPBOARD "9.8"'))
     assert module.sync(check=True) == ['Plugins/Clipboard.ndplugin']
     module.sync()
     assert not module.sync(check=True)
-    assert 'NOVADOCK_VERSION=0.3' in (root / 'Plugins/Clipboard.ndplugin').read_text()
+    assert 'NOVADOCK_VERSION=9.8' in (root / 'Plugins/Clipboard.ndplugin').read_text()
 print('Independent native plugin versions, manifest drift and dock-version independence passed.')

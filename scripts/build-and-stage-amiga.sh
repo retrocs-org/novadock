@@ -65,8 +65,17 @@ Plugins/Saver
 Plugins/Aminet
 Plugins/Download
 Plugins/System
+Plugins/HASS
 Plugins/Actions
 Plugins/AmIRC
+Plugins/AmiRocket
+Plugins/Alerts
+Plugins/Shelf
+Plugins/Logs
+Plugins/Watch
+Plugins/ToolTypes
+Plugins/Calc
+Plugins/SensorsI2C
 Plugins/BitSkim
 Plugins/Clipboard
 Plugins/Mixer
@@ -106,6 +115,13 @@ cp -p "$project_root"/Plugins/*.info "$destination/Plugins/"
 # Copy all self-describing plugin manifests, including optional components.
 cp -p "$project_root"/Plugins/*.ndplugin "$destination/Plugins/"
 
+# Plugin-owned artwork stays with its executable and manifest.
+for assets in "$project_root"/Plugins/*.assets; do
+    if [ -d "$assets" ]; then cp -R "$assets" "$destination/Plugins/"; fi
+done
+"$PYTHON" "$project_root/tools/generate_hass_device_icons.py" --clean-legacy "$destination/Icons"
+"$PYTHON" "$project_root/tools/generate_plugin_status_art.py" --clean-legacy "$destination/Icons"
+
 # Workbench entry points and the optional in-Amiga installer.
 cp -p "$project_root/NovaDock.info" "$destination/NovaDock.info"
 cp -p "$project_root/NovaDockPrefs.info" "$destination/NovaDockPrefs.info"
@@ -133,6 +149,7 @@ cp -p "$project_root/Install-NovaDock.info" "$destination/Install-NovaDock.info"
 cp -p "$project_root/Icons/SoftwarePackage.info" "$destination/Icons/SoftwarePackage.info"
 cp -p "$project_root/NovaDock.guide" "$destination/NovaDock.guide"
 cp -p "$project_root/NovaDock.guide.info" "$destination/NovaDock.guide.info"
+cp -p "$project_root/Plugins/SensorsI2C.LICENSE" "$destination/Plugins/"
 for extra in Aminet-parser-LICENSE.txt README.md LICENSE BitSkim-icon-LICENSE.txt CHANGELOG.md examples.rexx; do
     cp -p "$project_root/$extra" "$destination/$extra"
 done

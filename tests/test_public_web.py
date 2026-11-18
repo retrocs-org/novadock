@@ -43,6 +43,7 @@ official_links = {
     'https://github.com/retrocs-org/novadock',
     'https://github.com/retrocs-org/novadock/releases',
     'https://bitskim.retrocs.org',
+    'https://github.com/retrocs-org/amihass',
     'mailto:support@retrocs.org',
 }
 for file in pages:
@@ -54,7 +55,7 @@ for file in pages:
     assert not render.stderr, render.stderr.decode()
     contents = render.stdout
     contents.decode('ascii')
-    assert len(contents) < (22000 if file == 'features.php' else (20000 if file == 'marketplace.php' else 13000)), f'{file} is too large'
+    assert len(contents) < (22000 if file == 'features.php' else (24000 if file == 'marketplace.php' else 13000)), f'{file} is too large'
     parser = Links()
     parser.feed(contents.decode('ascii'))
     assert parser.doctype, f'{file} lacks an HTML DOCTYPE'
@@ -174,7 +175,7 @@ catalog = json.loads(subprocess.check_output([php, '-r',
     'echo json_encode(require $argv[1]);', str((web/'includes/plugin_catalog.php').resolve())]))
 import re
 programs = re.search(r'^all:(.*)$', (root/'Makefile').read_text(), re.M).group(1).split()
-expected = {name.split('/', 1)[1] for name in programs if name.startswith('Plugins/')} - {'Christmas'}
+expected = {name.split('/', 1)[1] for name in programs if name.startswith('Plugins/')} - {'Christmas', 'SensorsI2C'}
 actual = [item['executable'] for item in catalog]
 assert len(actual) == len(set(actual)) and set(actual) == expected
 marketplace = subprocess.check_output([php, str((web/'marketplace.php').resolve())]).decode('ascii')
@@ -217,6 +218,37 @@ assert 'Build instructions' not in rendered_download and 'sh scripts/build-amiga
 assert 'https://bitskim.retrocs.org' in marketplace
 assert 'data-executable="Roadshow"' not in marketplace
 print('GitHub release links, browsable SDK tree and retired plugin checks passed.')
+# Render isolated offline release scenarios: working-tree VERSION must not leak
+# into published asset filenames or count upcoming plugins as already released.
+import tempfile
+with tempfile.TemporaryDirectory() as temp:
+    site = Path(temp)
+    (site/'includes').mkdir()
+    for file in ('index.php', 'marketplace.php', 'plugin-sdk.php'):
+        shutil.copy2(web/file, site/file)
+    for file in ('layout.php','site_info.php','releases.php','plugin_catalog.php','theme_catalog.php'):
+        shutil.copy2(web/'includes'/file, site/'includes'/file)
+    def render_saved(version):
+        entry = next(e.copy() for e in release_entries if e['version'] == version)
+        entry['status'] = 'published'
+        (site/'releases.json').write_text(json.dumps([entry]))
+        return {name: subprocess.check_output([php, str(site/(name+'.php'))]).decode('ascii')
+                for name in ('index','marketplace','plugin-sdk')}
+    published = render_saved('0.3')
+    released_count = sum('added' not in p or tuple(map(int,p['added'].split('.'))) <= (0,3) for p in catalog)
+    assert f'Explore {released_count} released plugins' in published['index']
+    assert 'Coming in 0.2' not in published['marketplace'] and 'Since 0.2' in published['marketplace']
+    assert 'Coming in 0.4' in published['marketplace']
+    assert '/download/0.3/NovaDock-0.3-plugin-sdk.zip' in published['plugin-sdk']
+    assert '/download/0.3/NovaDock-0.4-' not in published['plugin-sdk']
+    assert 'NovaDock 0.4 (in development)' in published['index']
+    future = render_saved('0.4')
+    assert f'Explore {len(catalog)} released plugins' in future['index']
+    assert 'Coming in 0.4' not in future['marketplace']
+    assert '/download/0.4/NovaDock-0.4-plugin-sdk.zip' in future['plugin-sdk']
+    assert 'NovaDock 0.4 (in development)' not in future['index']
+print('Website release status, published SDK filenames and released/upcoming plugin counts passed.')
+
 
 source_page = subprocess.check_output([php, str((web/'developers.php').resolve())]).decode('ascii')
 developer_page = subprocess.check_output([php, str((web/'developers.php').resolve())]).decode('ascii')

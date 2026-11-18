@@ -12,11 +12,14 @@ static void nd_saver_line(void *ctx,NDSaverRect box,int c,int x,int y,int xx,int
 }
 static void nd_saver_copper(void *ctx,NDSaverRect box,unsigned long f)
 {
- int y,x,i,col;
- box(ctx,0,0,0,320,160);
+ int y,x,i,col,start,bands[160];
+ box(ctx,0,0,0,320,160);for(y=0;y<160;++y)bands[y]=-1;
  for(i=0;i<40;++i){x=(int)(((unsigned long)i*7919UL+960UL-f%320UL)%320UL);y=(i*37)%160;box(ctx,i%3 ? 1:2,x,y,1,1);}
  for(i=0;i<4;++i){y=80+nd_saver_sin[(f+i*16)%64]/3;
-  for(x=-8;x<=8;++x){col=13+i*3+(x<0 ? -x:x)/4;nd_saver_box(ctx,box,col,0,y+x,320,1);}}
+  for(x=-8;x<=8;++x)if(y+x>=0 && y+x<160)bands[y+x]=13+i*3+(x<0 ? -x:x)/4;}
+ /* Resolve overlapping raster bars before painting; equal adjacent rows are
+  * one fill instead of repeatedly overwriting full-width scanlines. */
+ for(y=0;y<160;){col=bands[y];start=y++;while(y<160 && bands[y]==col)++y;if(col>=0)box(ctx,col,0,start,320,y-start);}
  for(x=0;x<320;x+=4){y=80+nd_saver_sin[(x/4+f)%64]/3;nd_saver_box(ctx,box,2,x,y,4,2);}
 }
 static void nd_saver_vectors(void *ctx,NDSaverRect box,unsigned long f)

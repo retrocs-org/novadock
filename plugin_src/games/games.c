@@ -711,7 +711,11 @@ int main(int argc,char **argv)
         if(root_valid && game_count>=0 && !scanner.head)sprintf(badge,"%d",game_count);
         else if(root_valid)strcpy(badge,"...");else badge[0]=0;
         event=nd_client_set_badge(&client,badge);
-        if(!(event&ND_EVENT_QUIT))event|=nd_client_update_quiet(&client,tile_label,value,ND_NO_METER,elapsed,500U);
+        if(!(event&ND_EVENT_QUIT)){
+            if(!root_valid)event|=nd_client_update_art_quiet(&client,tile_label,value,
+                COLLECTION_MUSIC ? "SadMusic":"SadWHDLoad",0,elapsed,500U);
+            else event|=nd_client_update_quiet(&client,tile_label,value,ND_NO_METER,elapsed,500U);
+        }
         if (event&ND_EVENT_QUIT) break;
         if (event&ND_EVENT_SETTINGS) {
             /* Another drawer: read it again the next time the list opens. */

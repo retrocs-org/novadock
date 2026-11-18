@@ -116,8 +116,9 @@ class ReleaseNotesTests(unittest.TestCase):
     def test_committed_notes_and_real_plugin_inventory(self):
         self.assertEqual((ROOT/'docs/RELEASE-NOTES.md').read_text(), n.markdown(ROOT))
         names = n.plugin_names(ROOT)
-        self.assertEqual(len(names), 32)
-        for name in ('Weather', 'Notes', 'Timer', 'SCREENS', 'SHOT', 'SMODE', 'ARCHIVE', 'MUSIC', 'SENSOR', 'ACTIONS'):
+        self.assertEqual(len(names), 40)
+        self.assertIn("AmiRocket", names)
+        for name in ('Weather', 'Notes', 'Timer', 'SCREENS', 'SHOT', 'SMODE', 'ARCHIVE', 'MUSIC', 'SENSOR', 'ACTIONS', 'HASS', 'WATCH', 'LOGS', 'CALC', 'TOOLTYPES'):
             self.assertIn(name, names)
         self.assertIn('LumiAMP', n.aminet(ROOT, 'maintainer@example.org'))
         self.assertNotIn('Christmas', names)

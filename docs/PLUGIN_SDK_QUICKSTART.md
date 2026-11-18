@@ -152,7 +152,7 @@ reacts to clicks immediately.
 ## Package and import a plugin
 
 Distribute the compiled executable with a manifest named after it,
-`<NOVADOCK_PROGRAM>.ndplugin`, and optionally its icon:
+`<NOVADOCK_PROGRAM>.ndplugin`, optionally its Workbench icon and artwork bank:
 
 ```text
 Hello-0.1/
@@ -161,6 +161,8 @@ Hello-0.1/
     Hello
     Hello.info          (optional)
     Hello.ndplugin
+    Hello.assets/       (optional plugin-owned artwork)
+      Artwork.ndart
 ```
 
 **Import...** in Preferences > Plugins accepts a package only when its
@@ -172,10 +174,31 @@ different installed plugin. Add `NOVADOCK_MULTIPLE=YES` only when separate
 instances are safe. The README should state the plugin name, author, license,
 compatible NovaDock version, ABI level and dependencies.
 
-Import copies the program, its icon and the manifest into NovaDock's Plugins
+Import copies the program, its icon, optional artwork bank and manifest into NovaDock's Plugins
 drawer as one change: if anything fails, nothing is left half-installed and a
 previous version stays in place. A newer version replaces an installed one
 once its tiles are removed from the dock. **Remove...** uninstalls a
 third-party plugin that has no tiles, deleting its manifest first so a
 partly removed plugin is never offered again. A plugin is a native
 executable, so install packages only from a source you trust.
+
+## Own artwork and state icons
+
+NovaDock 0.4 can load a plugin's own `Program.assets/Artwork.ndart` bank.
+Use `nd_client_update_art_quiet()` to select named frames and states; older
+docks receive a text fallback. The SDK includes the ArtHello example, a ready
+bank, authoring JSON and a Python packer. See [PLUGIN_SDK_ARTWORK.md](PLUGIN_SDK_ARTWORK.md)
+for the format, packaging, import/removal and state-update API.
+
+## Session notifications (NovaDock 0.4)
+
+After a normal update negotiates host capabilities,
+`nd_client_notify(client, title, details, severity)` can add a notice to the
+ALERTS session history. Severity is 0 for information, 1 for warnings and 2
+for errors. Keep details within 31 characters and omit credentials.
+
+OR the returned event bits into the normal update result so a simultaneous
+click or settings action is retained. Read extended actions through
+`nd_client_events2()` as usual. The client waits for `ND_EVENT2_HOST_ALERTS`
+before sending notices and safely does nothing on older hosts. Send notices
+on meaningful transitions rather than on every sample.

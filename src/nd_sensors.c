@@ -19,7 +19,7 @@ int nd_sensor_number(const char *text,long *milli)
  while(space(*p))++p;
  if(*p){if(!strncmp(p,"deg",3)){p+=3;while(space(*p))++p;}
   if(*p=='C' || *p=='V' || *p=='%')++p;
-  else if((unsigned char)*p==176 && p[1]=='C')p+=2;
+  else if((unsigned char)*p==176){++p;while(space(*p))++p;if(*p!='C')return 0;++p;}
   else return 0;
   while(space(*p))++p;if(*p)return 0;
  }
@@ -39,7 +39,8 @@ void nd_sensor_format(int index,long milli,char *out)
  else if(!strcmp(nd_sensor_defs[index].unit,"%"))sprintf(out,"%s%lu%%",sign,n/1000);
  else sprintf(out,"%s%lu.%lu C",sign,n/1000,(n%1000)/100);
 }
-/* Offsets and engineering units from ZZTop's public board interface. */
+/* MNT firmware 1.13 and ZZTop: C*10, V*100; firmware is major<<8|minor.
+ * Read-only 16-bit registers, converted to our milli-unit snapshot. */
 int nd_sensor_zz_sample(struct NDSensors *set,unsigned int (*read16)(void *,unsigned int),void *context,unsigned long now)
 {
  unsigned int version=read16(context,0xc0),temp;
@@ -49,17 +50,37 @@ int nd_sensor_zz_sample(struct NDSensors *set,unsigned int (*read16)(void *,unsi
  nd_sensor_put(set,2,(long)read16(context,0xe2)*10L,now);
  return (set->available&7UL)!=0;
 }
+/* WarpTool colours both labels and values with Amiga CSI or ANSI SGR.
+ * Remove complete control sequences before interpreting only known rows. */
+static int warp_plain(const char *line,char *out,unsigned int size)
+{
+ unsigned int used=0;unsigned char c;
+ if(!line || !size)return 0;
+ while((c=(unsigned char)*line++)!=0){
+  if(c==27 || c==155){
+   if(c==27 && *line++!='[')return 0;
+   while((unsigned char)*line>=0x30 && (unsigned char)*line<=0x3f)++line;
+   while((unsigned char)*line>=0x20 && (unsigned char)*line<=0x2f)++line;
+   if((unsigned char)*line<0x40 || (unsigned char)*line>0x7e)return 0;
+   ++line;continue;
+  }
+  if(used+1>=size)return 0;out[used++]=(char)c;
+ }
+ out[used]=0;return 1;
+}
 int nd_sensor_warp_line(struct NDSensors *set,const char *line,unsigned long now)
 {
  static const struct {const char *label,*key;} fields[]={
   {"MC680x0 int. temp.","WARP_CPU"},{"MC680x0 ext. temp.","WARP_EXT"},
   {"ARM STM32H7 temp.","WARP_ARM"},{"Artix FPGA temp.","WARP_FPGA"},
   {"5V supply","WARP_5V"},{"Backup batt. voltage","WARP_BATT"},{"Fan current output","WARP_FAN"}};
- unsigned int i,n;long value;while(space(*line))++line;
+ char plain_line[512];unsigned int i,n;long value;
+ if(!warp_plain(line,plain_line,sizeof(plain_line)))return 0;line=plain_line;while(space(*line))++line;
  for(i=0;i<sizeof(fields)/sizeof(fields[0]);++i){n=(unsigned int)strlen(fields[i].label);
   if(strncmp(line,fields[i].label,n))continue;
-  line+=n;if(!space(*line) && *line!=':' && *line!='=')return 0;
-  while(space(*line) || *line==':' || *line=='=')++line;
+  line+=n;while(space(*line) || *line=='.')++line;
+  if(*line!=':' && *line!='=')return 0;
+  ++line;while(space(*line))++line;
   return nd_sensor_number(line,&value) && nd_sensor_put(set,nd_sensor_index(fields[i].key),value,now);
  }
  return 0;

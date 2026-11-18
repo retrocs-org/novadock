@@ -47,7 +47,7 @@ int main(int argc,char **argv)
    if(scene.window)xmas_paint(&scene,mode,light);
   }
   sprintf(value,"TREE %u %d %d",frame,mode,light);
-  event=nd_client_update_quiet(&client,"XMAS",value,ND_NO_METER,elapsed,500U);
+  event=nd_client_update_art_quiet(&client,"XMAS",value,"tree",(unsigned int)(mode*16+light*8+(frame&7)),elapsed,500U);
   if(event&ND_EVENT_QUIT)break;if(event&ND_EVENT_SETTINGS)reread=1;
   if(event&ND_EVENT_CLICK)(void)xmas_open(&scene,mode,light);
   xmas_events(&scene);

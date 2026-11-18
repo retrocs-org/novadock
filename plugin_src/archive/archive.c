@@ -642,13 +642,14 @@ int main(int argc,char **argv)
         char status[32],badge[4];
         int running;
         int state=collect_status(status,sizeof(status),&running);
+        event=0;if(state==1)event|=nd_client_notify(&client,"Archive operation finished",status,(!strcmp(status,"FAILED") || !strcmp(status,"INTERRUPTED")) ? 2:0);
         if (state) {
             strcpy(value,status);
             strcpy(caption,status_subject[0] ? status_subject:"ARCHIVE");
             hold=state==1 ? 8:0;
         } else if (hold>0) --hold;
         else {strcpy(value,available ? "DROP HERE" : "NO TOOLS");strcpy(caption,"ARCHIVE");}
-        event=nd_client_update_quiet(&client,caption,value,ND_NO_METER,
+        event|=nd_client_update_art_quiet(&client,caption,value,"archive",!strncmp(value,"COMPRESSING",11) ? 1U:!strncmp(value,"EXTRACTING",10) ? 2U:!strncmp(value,"WORKING",7) ? 3U:0U,
                                      elapsed_ticks,ND_ARCHIVE_HEARTBEAT_TICKS);
         /* Badge: how many operations are running (none: no badge). */
         if (running<=0) badge[0]='\0';

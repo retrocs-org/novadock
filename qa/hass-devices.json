@@ -1,0 +1,7 @@
+{
+  "name": "NovaDock light brightness and reconnect through AmiHASS sample service",
+  "application": "QATests:NovaDockHASSDevicesCheck",
+  "arguments": [],
+  "timeoutSeconds": 240,
+  "expectedReturnCode": 0
+}

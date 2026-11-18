@@ -59,7 +59,7 @@ def plugin_names(root=ROOT):
     for program in match[1].split():
         if not program.startswith('Plugins/'): continue
         executable = program.split('/', 1)[1]
-        if executable == 'Christmas': continue
+        if executable in ('Christmas','SensorsI2C'): continue
         path = root/'Plugins'/(executable+'.ndplugin')
         name = fallback.get(executable, executable)
         if path.is_file():

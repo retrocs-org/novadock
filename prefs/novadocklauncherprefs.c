@@ -32,6 +32,8 @@
 #include "nd_prefs_session.h"
 #include "nd_prefs_layout.h"
 #include "nd_prefs_help.h"
+#include "nd_panel.h"
+#include <stdlib.h>
 
 #define G_LIST 10
 #define G_NAME 11
@@ -60,6 +62,7 @@
 #define G_MATCH_TASK 36
 #define G_MATCH_WINDOW 37
 #define G_MATCH_PORT 38
+#define G_SPACE_OPTIONS 39
 
 struct IntuitionBase *IntuitionBase = NULL;
 struct Library *GadToolsBase = NULL;
@@ -69,6 +72,7 @@ struct Library *WorkbenchBase = NULL;
 static STRPTR kinds[] = {"Application", "Directory", "Application group", NULL};
 static STRPTR modes[] = {"Automatic", "Workbench", "CLI", "ARexx", NULL};
 struct Editor {
+    int compact;
     struct NDConfig *cfg;
     struct NDConfig *original;
     int original_dirty;
@@ -89,6 +93,15 @@ struct Editor {
     int nrows, selection, done, result, focused;
     int requested_visible, request_icon;
 };
+static void space_options(struct Editor *e)
+{
+ struct NDPanel *p;struct NDPanelField fields[2];static const char *buttons[]={"Use","Cancel"};char warning[8],*end;unsigned long n;int action,index;
+ if(e->selection<0 || e->selection>=e->nrows)return;index=e->map[e->selection];if(e->cfg->items[index].kind!=ND_ITEM_DRAWER){return;}
+ sprintf(warning,"%u",e->cfg->items[index].volume_warning);fields[0].label="Warn below % (0 = off)";fields[0].value=warning;fields[0].limit=2;
+ fields[1].label="Show free space (YES/NO)";fields[1].value=e->cfg->items[index].volume_show_free ? "YES":"NO";fields[1].limit=3;
+ p=nd_panel_open("Volume space options",fields,2,buttons,2);if(!p)return;
+ for(;;){action=nd_panel_event(p);if(action==-1 || action==101)break;if(action==100){n=strtoul(nd_panel_get(p,0),&end,10);if(*nd_panel_get(p,0) && !*end && n<=99 && (!strcmp(nd_panel_get(p,1),"YES") || !strcmp(nd_panel_get(p,1),"NO"))){e->cfg->items[index].volume_warning=(unsigned int)n;e->cfg->items[index].volume_show_free=!strcmp(nd_panel_get(p,1),"YES");ND_PREFS_MARK_DIRTY();break;}nd_panel_title(p,"Use 0-99 and YES or NO");}Wait(nd_panel_signals(p));}nd_panel_close(p);
+}
 static int wb_arg_path(const struct WBArg *arg, char *path, int path_size,
                        int *kind)
 {
@@ -144,6 +157,10 @@ static void title(struct Editor *e, const char *s)
 static void ng_init(struct Editor *e, struct NewGadget *ng, int x, int y,
                     int w, int h, int id, STRPTR caption)
 {
+    if(e->compact && (e->focused || x>=130)){
+        y=e->focused ? 18+(y-18)*18/25:18+(y-24)*17/24;
+        if(h==163)h=118;
+    }
     memset(ng, 0, sizeof(*ng));
     ng->ng_LeftEdge=nd_prefs_layout_x(&e->layout,x);
     ng->ng_TopEdge=nd_prefs_layout_y(&e->layout,y);
@@ -301,6 +318,7 @@ static int update_current(struct Editor *e)
     if (success)
         success=nd_set_launcher_match(e->cfg,index,field(e->match_task),
                    field(e->match_window),field(e->match_port));
+    if(success){e->cfg->items[index].volume_warning=old.volume_warning;e->cfg->items[index].volume_show_free=old.volume_show_free;}
     if (success && e->space_meter)
         e->cfg->items[index].show_volume_meter=space_meter ? 1 : 0;
     if (!success) {
@@ -470,6 +488,8 @@ static int open_ui(struct Editor *e)
         font_x=e->screen->RastPort.Font->tf_XSize;
         font_y=e->screen->RastPort.Font->tf_YSize;
     }
+    e->compact=(e->screen->Height-e->screen->BarHeight)*8/font_y<base_height+12;
+    if(e->compact)base_height=238;
     nd_prefs_layout_init(&e->layout,font_x,font_y,
         e->screen->Width,e->screen->Height,e->screen->BarHeight,
         base_width,base_height);
@@ -504,7 +524,7 @@ static int open_ui(struct Editor *e)
         e->icon=e->last=CreateGadget(STRING_KIND,e->last,&ng,
                                  GTST_MaxChars,ND_COMMAND_LEN-1,TAG_DONE);
         if (!e->last || !button(e,515,68,90,G_BROWSE,"Icon...")) return 0;
-        ng_init(e,&ng,125,93,150,16,G_KIND,"Type:");
+        ng_init(e,&ng,125,93,174,16,G_KIND,"Type:");
         e->kind=e->last=CreateGadget(CYCLE_KIND,e->last,&ng,
                                  GTCY_Labels,(ULONG)kinds,TAG_DONE);
         if (!e->last) return 0;
@@ -523,12 +543,13 @@ static int open_ui(struct Editor *e)
         /* Focused item editing keeps the final row uncluttered: the global
          * Tools-menu flag remains preserved in the action definition, while
          * every directory can opt into its backing volume's usage meter. */
-        ng_init(e,&ng,585,168,20,16,G_SPACE_METER,"Show space usage:");
+        if(!button(e,340,168,100,G_SPACE_OPTIONS,"Space..."))return 0;
+        ng_init(e,&ng,585,168,20,16,G_SPACE_METER,"Meter:");
         e->space_meter=e->last=CreateGadget(CHECKBOX_KIND,e->last,&ng,TAG_DONE);
         ng_init(e,&ng,125,193,480,16,G_MATCH_TASK,"Running task:");
         e->match_task=e->last=CreateGadget(STRING_KIND,e->last,&ng,
                                  GTST_MaxChars,ND_MATCH_LEN-1,TAG_DONE);
-        ng_init(e,&ng,125,218,480,16,G_MATCH_WINDOW,"Window pattern:");
+        ng_init(e,&ng,125,218,480,16,G_MATCH_WINDOW,"Window:");
         e->match_window=e->last=CreateGadget(STRING_KIND,e->last,&ng,
                                  GTST_MaxChars,ND_MATCH_LEN-1,TAG_DONE);
         ng_init(e,&ng,125,243,480,16,G_MATCH_PORT,"ARexx port:");
@@ -682,6 +703,7 @@ static void on_gadget(struct Editor *e,UWORD id,UWORD code)
             break;
         case G_BROWSE: choose_icon(e); break;
         case G_TARGET_BROWSE: choose_target(e); break;
+        case G_SPACE_OPTIONS: space_options(e);break;
         case G_USE: commit(e,0); break;
         case G_SAVE: commit(e,1); break;
         default: break;

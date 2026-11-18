@@ -1,0 +1,13 @@
+NOVADOCK_ID=AMIROCKET
+NOVADOCK_NAME=AmiRocket
+NOVADOCK_VERSION=0.1
+NOVADOCK_AUTHOR=NovaDock
+NOVADOCK_DESCRIPTION=Unread badge and connection status across AmiRocket servers; click to start or restore the client.
+NOVADOCK_LICENSE=MIT
+NOVADOCK_FEATURES=meter,click,badge,artwork
+NOVADOCK_PROGRAM=AmiRocket
+NOVADOCK_VIEW=METER
+NOVADOCK_ABI=5
+NOVADOCK_OPTION=PROGRAM|AmiRocket executable|FILE||SYS:Utilities/AmiRocket/AmiRocket
+NOVADOCK_OPTION=PORT|Client port (AUTO discovers)|TEXT||AUTO
+NOVADOCK_OPTION=BADGE|Show unread count|BOOL||YES

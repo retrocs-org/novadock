@@ -1,4 +1,4 @@
-NOVADOCK 0.2 - PUBLIC WEBSITE
+NOVADOCK 0.4 DEVELOPMENT - PUBLIC WEBSITE
 ============================
 
 This is the public NovaDock PHP website. Shared server-side templates render
@@ -38,6 +38,7 @@ CONTENTS
   screenshots.php  Redirect to Features screenshot gallery
   includes/layout.php  Shared PHP rendering functions
   includes/releases.php  Automatic public GitHub catalogue and cache
+  includes/site_info.php  Shared release status and released/upcoming plugin labels
   includes/*_catalog.php  Bundled plugin and theme listings
   site.css          Responsive presentation and classic fallback
   images/*.gif      32x32 indexed icons (legacy browser friendly)
@@ -45,9 +46,9 @@ CONTENTS
   screenshots/*.gif actual application crops and lightweight previews
   images/px.gif     transparent 1x1 spacer for card accent strips
   downloads/*.zip   Standalone downloads (no recursive website copy)
-  downloads/NovaDock-0.2-plugin-sdk.zip   Standalone plugin SDK and example
-  downloads/NovaDock-0.2.lha  Verified runnable release
-  downloads/NovaDock-0.2.readme  Release information
+  downloads/NovaDock-0.4-plugin-sdk.zip   Standalone plugin SDK and example
+  downloads/NovaDock-0.4.lha  Locally built development package
+  downloads/NovaDock-0.4.readme  Local development package information
   downloads/SHA256SUMS.txt   Binary, readme, source and SDK checksums
 
 HOW TO PREVIEW AND PUBLISH
@@ -71,7 +72,7 @@ The downloadable ZIP is the development source tree without public-web/
 project archive includes both the source tree and this public-web/ folder.
 Compiled 68k binaries and the installer are included in the separate ready-to-install package; the website source ZIP remains source-only.
 
-APPLICATION VERSION: 0.2
+APPLICATION VERSION: 0.4 (in development; published downloads currently 0.3)
 
 REBUILD PACKAGES
   From the NovaDock project root on a modern machine run:
@@ -84,6 +85,11 @@ RELEASE LIST
   Refresh published entries: python3 tools/sync_github_releases.py
   Prepare the VERSION tag offline: python3 tools/sync_github_releases.py --upcoming
   The SDK source is included in the repository under plugin-sdk/.
+  Published download links and SDK asset names come from the same release
+  record. Never combine the development VERSION with a published release tag.
+  Home/Marketplace counts and labels exclude plugins newer than that release.
+  0.4 development features are described separately from the 0.3 download.
+  Only files in public-web/ are deployed; do not upload QA profiles or tokens.
 
 AUTOMATIC RELEASE DATA
   Get NovaDock reads the public retrocs-org/novadock GitHub releases API.

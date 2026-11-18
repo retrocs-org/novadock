@@ -65,13 +65,15 @@ on AmigaOS Workbench.
 
 ## Save and recovery behavior
 
-NovaDock closes a complete `.new` file before replacing `novadock.cfg`, and
+NovaDock closes and validates a complete `.new` file before replacing `novadock.cfg`, and
 retains the preceding fully valid generation as `novadock.cfg.bak`. A malformed
 current file is never copied over that backup. Effective loading accepts only
-zero-error parses and tries `ENV:`, its `.good` and `.bak` generations,
+zero-error parses with enabled dock items and tries `ENV:`, its `.good` and `.bak` generations,
 `ENVARC:` and its generations, then packaged `PROGDIR:` settings and their
 generations, and finally `SYS:NovaDock/novadock.cfg.default`. The Diagnostics page identifies a selected backup
-as **Recovered config**. Saving the recovered working copy repairs the active
+as **Recovered config**. At startup, NovaDock asks whether to use the validated
+recovery copy; it leaves disk files untouched. You can also choose **Recover settings**
+in Diagnostics to load a known-good or previous backup into Preferences. Saving the recovered working copy repairs the active
 file through the same replacement path.
 
 ## Bundled Eyes widget

@@ -13,5 +13,6 @@
 #define ND_PREF_NAV_ADD_ITEM   107
 #define ND_PREF_NAV_ABOUT      108
 #define ND_PREF_NAV_PLUGIN_MANAGER 109
+#define ND_PREF_NAV_UPDATES        110
 
 #endif

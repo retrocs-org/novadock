@@ -23,9 +23,9 @@ static void Draw(struct RastPort *r,int x,int y){assert(r&&x>=0&&y>=0&&x<width&&
 static ULONG TextFit(struct RastPort *r,STRPTR text,ULONG n,struct TextExtent *fit,void *unused,int direction,int w,int h){(void)text;(void)unused;(void)direction;assert(r&&w>0&&h>=8);if(n>(ULONG)(w/8))n=w/8;fit->te_Width=(int)n*8;return n;}
 static void Text(struct RastPort *r,STRPTR text,ULONG n){char copy[200];assert(r&&cursor_x+(int)n*8<=width&&cursor_y<height&&n<sizeof(copy));memcpy(copy,text,n);copy[n]=0;if(!strcmp(copy,"Rain / snow"))seen_header=1;if(strstr(copy,"1.8 cm")||strstr(copy,"1.8cm"))seen_snow=1;assert(!strstr(copy,"Rain Rain"));if(draw)printf("T|%d|%d|%d|%s\n",pen,cursor_x,cursor_y,copy);}
 """+s[a:b]+r"""
-int main(int argc,char **argv){struct NDWeatherView p;struct Window win;int i,compact,empty;char date[11];(void)argv;
- for(compact=0;compact<2;++compact)for(empty=0;empty<2;++empty){
-  memset(&p,0,sizeof(p));p.width=width=compact ? 296:616;p.top=27;p.row=22;p.compact=compact;height=p.top+44+5*p.row+60;win.Width=width;win.Height=height;win.RPort=&rp;p.window=&win;p.text=2;p.bg=0;p.accent=3;p.line=1;p.have=!empty;p.weather.count=5;
+int main(int argc,char **argv){struct NDWeatherView p;struct Window win;int i,compact,empty,screen_height;char date[11];(void)argv;
+ for(screen_height=256;screen_height<=480;screen_height+=224)for(compact=0;compact<2;++compact)for(empty=0;empty<2;++empty){
+  memset(&p,0,sizeof(p));p.width=width=compact ? 296:616;p.top=18;p.row=screen_height==256 ? 22:26;p.compact=compact;height=p.top+44+5*p.row+60;assert(height+13<=screen_height);win.Width=width;win.Height=height;win.RPort=&rp;p.window=&win;p.text=2;p.bg=0;p.accent=3;p.line=1;p.have=!empty;p.weather.count=5;
   p.weather.temperature=58;p.weather.code=3;strcpy(p.weather.updated,"2026-11-16T01:30");strcpy(p.status,"Updated");
   for(i=0;i<5;++i){sprintf(date,"2026-11-%02d",16+i);strcpy(p.weather.days[i].date,date);p.weather.days[i].code=i==0 ? 71:i==1 ? 85:i==2 ? 61:3;p.weather.days[i].low=-30;p.weather.days[i].high=20;p.weather.days[i].rain=84;p.weather.days[i].snow=i==0 ? 18:0;p.weather.days[i].rain_amount=i==1 ? 24:0;}
   for(i=0;i<5;++i)p.icons[i]=i;

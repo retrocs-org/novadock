@@ -95,7 +95,7 @@ struct AddItemPage {
     struct Gadget *caption,*interval,*output_line,*meter,*click,*click_command_g;
     struct Gadget *plugin_list,*plugin_name,*plugin_program;
     struct NDPrefsLayout layout;
-    int type,done,reopen,result;
+    int type,done,reopen,result,compact;
     char names[ADD_TYPE_COUNT][ND_LABEL_LEN];
     char targets[3][ND_COMMAND_LEN];
     char icons[3][ND_COMMAND_LEN];
@@ -164,6 +164,8 @@ static void add_title(struct AddItemPage *p,const char *text)
 static void add_ng(struct AddItemPage *p,struct NewGadget *ng,
                    int x,int y,int w,int h,int id,STRPTR label)
 {
+    if(x>=200)x-=20;
+    if(p->compact && x>=180){y=28+(y-28)*18/28;if(h==120)h=74;}
     memset(ng,0,sizeof(*ng));
     ng->ng_LeftEdge=nd_prefs_layout_x(&p->layout,x);
     ng->ng_TopEdge=nd_prefs_layout_y(&p->layout,y);
@@ -247,7 +249,7 @@ static void build_plugin_rows(struct AddItemPage *p)
     for (i=0;i<p->cfg->count;++i) {
         const struct NDItem *item=&p->cfg->items[i];
         int active=-1,inactive=-1,seen=0;
-        if(nd_independent_plugin_path(item->command) && strcmp(item->id,nd_actions_plugin_path(item->command) ? "ACTIONS":nd_sensor_plugin_path(item->command) ? "SENSORS":nd_collection_plugin_path(item->command)==2 ? "MUSICLIB":"WHDLOAD"))continue;
+        if(nd_independent_plugin_path(item->command) && strcmp(item->id,nd_independent_plugin_id(item->command)))continue;
         if (item->kind!=ND_ITEM_PLUGIN || !strcmp(item->id,"ROADSHOW") || nd_command_plugin_path(item->command) || nd_script_plugin_path(item->command))
             continue;
         for (j=0;j<i;++j)
@@ -438,8 +440,9 @@ static int open_add_ui(struct AddItemPage *p)
         font_x=p->screen->RastPort.Font->tf_XSize;
         font_y=p->screen->RastPort.Font->tf_YSize;
     }
+    p->compact=(p->screen->Height-p->screen->BarHeight)*8/font_y<342;
     nd_prefs_layout_init(&p->layout,font_x,font_y,p->screen->Width,
-                         p->screen->Height,p->screen->BarHeight,660,330);
+                         p->screen->Height,p->screen->BarHeight,620,p->compact ? 230:330);
     if (!nd_prefs_layout_fits(&p->layout,10,12)) return 0;
     width=p->layout.window_width;height=p->layout.window_height;
     x=nd_prefs_layout_left(&p->layout);y=nd_prefs_layout_top(&p->layout);
@@ -744,7 +747,7 @@ static int commit_add(struct AddItemPage *p,int permanent)
     *backup=*p->cfg;
     if (!add_selected(p)) {
         *p->cfg=*backup;FreeVec(backup);
-        add_title(p,"NovaDock Add Item - check the required fields");
+        add_title(p,p->type==ADD_PLUGIN ? "NovaDock Add Item - plugin could not be added":"NovaDock Add Item - check the required fields");
         DisplayBeep(p->screen);return 0;
     }
     ok=nd_layout_fit_enabled(p->cfg,p->screen->Width,p->screen->Height,

@@ -1,4 +1,5 @@
 /* About section for the unified NovaDock Preferences application. */
+#define B_UPDATES 950
 #define IntuitionBase NDAboutIntuitionBase
 #define GadToolsBase NDAboutGadToolsBase
 #define GfxBase NDAboutGfxBase
@@ -90,7 +91,7 @@ static int open_about_page(struct AboutPage *p)
         font_y=p->screen->RastPort.Font->tf_YSize;
     }
     nd_prefs_layout_init(&p->layout,font_x,font_y,p->screen->Width,
-        p->screen->Height,p->screen->BarHeight,620,184);
+        p->screen->Height,p->screen->BarHeight,620,188);
     if (!nd_prefs_layout_fits(&p->layout,10,12)) return 0;
     width=p->layout.window_width;height=p->layout.window_height;
     x=nd_prefs_layout_left(&p->layout);y=nd_prefs_layout_top(&p->layout);
@@ -103,7 +104,8 @@ static int open_about_page(struct AboutPage *p)
         !about_button(p,10,69,118,B_ORGANIZE,"Organize") ||
         !about_button(p,10,93,118,B_PLUGIN_MANAGER,"Plugins") ||
         !about_button(p,10,117,118,B_DIAGNOSTICS,"Diagnostics") ||
-        !about_button(p,10,141,118,B_ABOUT,"> About") ||
+        !about_button(p,10,141,118,B_UPDATES,"Update") ||
+        !about_button(p,10,165,118,B_ABOUT,"> About") ||
         /* The manual; the Help key opens it from every window too. */
         !about_button(p,170,163,118,B_HELP,"Help...")) return 0;
     p->win=OpenWindowTags(NULL,WA_PubScreen,(ULONG)p->screen,
@@ -146,6 +148,7 @@ int nd_about_prefs_run(int argc,char **argv)
                 else if (id==B_ORGANIZE) {p->done=1;p->result=ND_PREF_NAV_ORGANIZE;}
                 else if (id==B_PLUGIN_MANAGER) {p->done=1;p->result=ND_PREF_NAV_PLUGIN_MANAGER;}
                 else if (id==B_HELP) nd_prefs_help(p->screen);
+                else if (id==B_UPDATES) {p->done=1;p->result=ND_PREF_NAV_UPDATES;}
                 else if (id==B_DIAGNOSTICS) {p->done=1;p->result=ND_PREF_NAV_DIAGNOSTICS;}
             }
         }

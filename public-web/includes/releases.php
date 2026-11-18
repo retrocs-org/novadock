@@ -76,7 +76,7 @@ function nd_release_saved_entries($records): array {
         $entry['published_at'] = is_string($record['published_at'] ?? null) ? $record['published_at'] : ($entry['date'] ?? '');
         $result[] = $entry;
     }
-    usort($result, static function ($a, $b) { return strcmp($b['published_at'], $a['published_at']); });
+    usort($result, static function ($a, $b) { return strcmp($b['published_at'], $a['published_at']) ?: version_compare($b['version'], $a['version']); });
     return $result;
 }
 
@@ -154,7 +154,7 @@ function nd_release_catalog(?callable $fetch = null, ?string $cacheDir = null, ?
         elseif (($response['status'] ?? null) === 200 && is_array($response['records'] ?? null)) {
             $entries = [];
             foreach ($response['records'] as $record) if (is_array($record) && ($entry = nd_release_normalize($record))) $entries[] = $entry;
-            usort($entries, static function ($a, $b) { return strcmp($b['published_at'], $a['published_at']); });
+            usort($entries, static function ($a, $b) { return strcmp($b['published_at'], $a['published_at']) ?: version_compare($b['version'], $a['version']); });
         }
         $success = $entries !== null;
         $payload = ['schema'=>($success || $currentSchema) ? ND_RELEASE_CACHE_SCHEMA : 0,

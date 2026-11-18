@@ -1,7 +1,7 @@
 #ifndef ND_COLLECTION_ICONS_H
 #define ND_COLLECTION_ICONS_H
 #include <string.h>
-#define ND_COLLECTION_ICON_COUNT 30
+#define ND_COLLECTION_ICON_COUNT 75
 struct NDCollectionIcon {const char *name,*path;};
 static const struct NDCollectionIcon nd_collection_icons[ND_COLLECTION_ICON_COUNT]={
  {"WHDLoad","Icons/WHDLoad.iff"},
@@ -34,6 +34,53 @@ static const struct NDCollectionIcon nd_collection_icons[ND_COLLECTION_ICON_COUN
  {"DiskSpace","Icons/DiskSpace.iff"},
  {"Mail","Icons/Mail.iff"},
  {"Camera","Icons/Camera.iff"},
+ {"Home","Icons/Home.iff"},
+ {"Thermometer","Icons/Thermometer.iff"},
+ {"Sensor","Icons/Sensor.iff"},
+ {"Door","Icons/Door.iff"},
+ {"Garage","Icons/Garage.iff"},
+ {"FrontDoor","Icons/FrontDoor.iff"},
+ {"Bulb","Icons/Bulb.iff"},
+ {"LightStrip","Icons/LightStrip.iff"},
+ {"AC","Icons/AC.iff"},
+ {"Heater","Icons/Heater.iff"},
+ {"Fan","Icons/Fan.iff"},
+ {"TV","Icons/TV.iff"},
+ {"Scene","Icons/Scene.iff"},
+ {"LightGroup","Icons/LightGroup.iff"},
+ {"ChristmasLights","Icons/ChristmasLights.iff"},
+ {"Fridge","Icons/Fridge.iff"},
+ {"Freezer","Icons/Freezer.iff"},
+ {"BeerKeg","Icons/BeerKeg.iff"},
+ {"Dishwasher","Icons/Dishwasher.iff"},
+ {"Washer","Icons/Washer.iff"},
+ {"Dryer","Icons/Dryer.iff"},
+ {"SousVide","Icons/SousVide.iff"},
+ {"CeilingLight","Icons/CeilingLight.iff"},
+ {"FloorLamp","Icons/FloorLamp.iff"},
+ {"ShelfLamp","Icons/ShelfLamp.iff"},
+ {"Monitor","Icons/Monitor.iff"},
+ {"AppleTV","Icons/AppleTV.iff"},
+ {"Receiver","Icons/Receiver.iff"},
+ {"HomePod","Icons/HomePod.iff"},
+ {"Moisture","Icons/Moisture.iff"},
+ {"Leak","Icons/Leak.iff"},
+ {"WindowSensor","Icons/WindowSensor.iff"},
+ {"DoorSensor","Icons/DoorSensor.iff"},
+ {"RobotVacuum","Icons/RobotVacuum.iff"},
+ {"RobotMower","Icons/RobotMower.iff"},
+ {"FireAlarm","Icons/FireAlarm.iff"},
+ {"SecurityCamera","Icons/SecurityCamera.iff"},
+ {"Firewall","Icons/Firewall.iff"},
+ {"Router","Icons/Router.iff"},
+ {"NetworkSwitch","Icons/NetworkSwitch.iff"},
+ {"WiFiAP","Icons/WiFiAP.iff"},
+ {"HueBridge","Icons/HueBridge.iff"},
+ {"HueSyncBox","Icons/HueSyncBox.iff"},
+ {"TheaterPC","Icons/TheaterPC.iff"},
+ {"Thermostat","Icons/Thermostat.iff"},
+
+
 };
 static int nd_collection_icon_index(const char *name)
 {int i;if(name)for(i=0;i<ND_COLLECTION_ICON_COUNT;++i)if(!strcmp(name,nd_collection_icons[i].name))return i;return -1;}

@@ -1,6 +1,6 @@
-; $VER: Install-NovaDock 0.3 (15.11.2026)
+; $VER: Install-NovaDock 0.4 (18.11.2026)
 ;
-; GUI installer for NovaDock 0.3, for the Commodore Installer (V42 and
+; GUI installer for NovaDock 0.4, for the Commodore Installer (V42 and
 ; later, as shipped with AmigaOS 3.x).  Double-click the Install-NovaDock
 ; icon, or from a Shell:  Installer Install-NovaDock APPNAME NovaDock
 ;
@@ -11,7 +11,7 @@
 ; Binary and shared-data assignments persist in S:User-Startup.
 
 (set @app-name "NovaDock")
-(set #version "0.3")
+(set #version "0.4")
 (set #standard-dest "SYS:NovaDock")
 (set #appdir "SYS:Utilities")
 (set #app "SYS:Utilities/NovaDock")
@@ -627,12 +627,12 @@
             (askbool
                 (prompt "Also remove your NovaDock settings and saved Notes?\n\n"
                         "Keep settings preserves your configuration and Notes.\n"
-                        "Remove settings deletes saved settings and default Notes.\n\n"
+                        "Remove settings deletes saved settings, default Notes and shelves.\n\n"
                         "Notes stored in a custom drawer are kept.")
                 (help "Keep them if you may install NovaDock again: it "
                       "will then start with your dock exactly as before.\n\n"
                       "Removing settings also removes Notes in the default "
-                      "ENVARC:NovaDock/Notes drawer, including deleted-note backups. "
+                      "ENVARC:NovaDock/Notes drawer, including deleted-note backups, and default Shelves. "
                       "Notes in a separately configured drawer are not removed.\n\n"
                       @askbool-help)
                 (choices "Keep settings" "Remove settings")

@@ -69,7 +69,7 @@ int main(void)
 #define ND_EVENT_BITSKIM_CANCEL 8
 #define ND_EVENT_MANAGE_HISTORY 16
 #define ND_EVENT2_NOTE_NEW 2UL
-struct NDDock {struct NDConfig conf; unsigned long plugin_event2[48]; int popup_item,edit_mode,popup_network_online; void *screen;};
+struct NDDock {struct NDConfig conf; unsigned long plugin_event2[48]; int popup_item,edit_mode,popup_network_online,popup_warp_present,popup_prism_present; void *screen;};
 static int launches,removed,beeps,allow_launch=1;
 static const char *music="";
 static char arguments[80];
@@ -87,6 +87,7 @@ static void launch_item(struct NDDock *d,int i) {(void)d;(void)i;}
 static void request_dopus_action(struct NDDock *d,int i) {(void)d;(void)i;}
 static int launch_default_music_application(struct NDDock *d) {(void)d;return 1;}
 """
+        harness += '\n' + function((ROOT/'src/config.c').read_text(), 'int nd_hass_plugin_path(const char *command)')
         for signature in [
             'static int plugin_can_launch(const struct NDDock *dock,\n                             const struct NDItem *item)',
             'int is_trash_tile(const struct NDDock *dock,int index)',
@@ -125,6 +126,28 @@ int main(void)
         assert(plugin_popup_action(&dock,0,count-1)==1);
         assert(removed==before+1);
     }
+    strcpy(dock.conf.items[0].command,"Plugins/HASS");strcpy(dock.conf.items[0].id,"HASS_2");
+    assert(popup_count_for(&dock)==2);assert(!strcmp(popup_label_en(&dock,0),"Edit settings..."));
+    assert(!strcmp(popup_label_en(&dock,1),"Remove"));
+    plugin_popup_action(&dock,0,0);assert(!strcmp(arguments,"PAGE=PLUGIN PLUGIN=HASS_2 FOCUSED=1"));
+    before=removed;assert(plugin_popup_action(&dock,0,1)==1);assert(removed==before+1);
+    dock.conf.items[0].command[0]=0;
+    dock.popup_warp_present=1;
+    strcpy(dock.conf.items[0].id,"CPU");assert(popup_count_for(&dock)==3);
+    assert(!strcmp(popup_label_en(&dock,0),"Set Turbo Level..."));
+    plugin_popup_action(&dock,0,0);assert(!strcmp(arguments,"WARP_TURBO"));
+    plugin_popup_action(&dock,0,1);assert(!strcmp(arguments,"PAGE=PLUGIN PLUGIN=CPU FOCUSED=1"));
+    strcpy(dock.conf.items[0].id,"NET");assert(popup_count_for(&dock)==5);
+    assert(!strcmp(popup_label_en(&dock,2),"Configure Wi-Fi Network..."));
+    plugin_popup_action(&dock,0,2);assert(!strcmp(arguments,"WARP_WIFI"));
+    plugin_popup_action(&dock,0,3);assert(!strcmp(arguments,"PAGE=PLUGIN PLUGIN=NET FOCUSED=1"));
+    dock.popup_prism_present=1;assert(popup_count_for(&dock)==6);
+    assert(!strcmp(popup_label_en(&dock,3),"Configure Prism Wi-Fi..."));
+    plugin_popup_action(&dock,0,3);assert(!strcmp(arguments,"PRISM_WIFI"));
+    plugin_popup_action(&dock,0,4);assert(!strcmp(arguments,"PAGE=PLUGIN PLUGIN=NET FOCUSED=1"));
+    dock.popup_warp_present=0;assert(popup_count_for(&dock)==5);
+    plugin_popup_action(&dock,0,2);assert(!strcmp(arguments,"PRISM_WIFI"));
+    dock.popup_prism_present=0;
     strcpy(dock.conf.items[0].id,"NOTES");
     assert(popup_count_for(&dock)==4);
     assert(!strcmp(popup_label_en(&dock,1),"Add new note..."));
@@ -208,21 +231,24 @@ int nd_insert_launcher_visible(struct NDConfig *c,int pos,int kind,const char *n
 static int save_and_reload(struct NDDock *d,struct NDConfig **c)
 {assert(replies==1);d->conf=**c;free(*c);*c=NULL;return 1;}
 """
+        config_source = (ROOT/'src/config.c').read_text()
+        start=config_source.index('int nd_shelf_plugin_path(')
+        harness += '\n'+config_source[start:config_source.index('int nd_monitor_plugin_path(',start)]
         harness += '\n'+function(source, 'void dropped_icons(struct NDDock *dock)')
         harness += r"""
 int main(void)
 {
     static struct NDDock dock;
     struct WBArg args[3];
-    const char *ids[]={"TRASH","BITSKIM","ARCHIVE","APP","DRAWER"};
+    const char *ids[]={"TRASH","BITSKIM","ARCHIVE","APP","DRAWER","SHELF_2"};
     int i,mode;
     args[0].number=0;args[1].number=1;
     message.am_ArgList=args;message.am_NumArgs=1;message.am_MouseX=75;
     dock.drop_port=&dock;
-    for(mode=0;mode<=1;++mode) for(i=0;i<5;++i) {
+    for(mode=0;mode<=1;++mode) for(i=0;i<6;++i) {
         dock.edit_mode=mode;dock.conf.count=1;
         strcpy(dock.conf.items[0].id,ids[i]);
-        strcpy(dock.conf.items[0].command,"Work:Apps");
+        strcpy(dock.conf.items[0].command,i==5 ? "Plugins/Shelf":"Work:Apps");
         dock.conf.items[0].kind=i==3 ? ND_ITEM_LAUNCH : i==4 ? ND_ITEM_DRAWER : ND_ITEM_PLUGIN;
         added=actions=replies=0;pending=1;
         dropped_icons(&dock);

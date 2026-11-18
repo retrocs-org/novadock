@@ -65,3 +65,15 @@ int nd_icon_art_top(int tile_y,int tile_height,int image_height,int tiny)
     top=tile_y+3+(tile_height-24-image_height)/2;
     return top<tile_y+2 ? tile_y+2 : top;
 }
+
+/* MagicWB palette: classic .info images do not store RGB values. */
+int nd_icon_magicwb_rgb(int pen,unsigned char rgb[3])
+{
+    static const unsigned char palette[8][3]={
+        {149,149,149},{0,0,0},{255,255,255},{59,103,162},
+        {123,123,123},{175,175,175},{170,144,124},{255,169,151}
+    };
+    if(pen<0 || pen>7 || !rgb)return 0;
+    rgb[0]=palette[pen][0];rgb[1]=palette[pen][1];rgb[2]=palette[pen][2];
+    return 1;
+}

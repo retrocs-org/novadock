@@ -155,6 +155,13 @@ void dropped_icons(struct NDDock *dock)
             if(failed)show_feedback(dock,"BitSkim accepts one regular file at a time",1);
             continue;
         }
+        if(!dock->edit_mode && pos>=0 && pos<dock->conf.count && dock->conf.items[pos].kind==ND_ITEM_PLUGIN && nd_shelf_plugin_path(dock->conf.items[pos].command)){
+            opened=launch_archive_drop(dock,pos,m);ReplyMsg((struct Message *)m);show_feedback(dock,opened ? "Adding shelf shortcuts":"Could not add shelf shortcuts",!opened);continue;
+        }
+        if(!dock->edit_mode && pos>=0 && pos<dock->conf.count && dock->conf.items[pos].kind==ND_ITEM_PLUGIN && !strcmp(dock->conf.items[pos].id,"TOOLTYPES")){
+            opened=m->am_NumArgs==1 && build_wb_path(&m->am_ArgList[0],path,sizeof(path),&kind) && launch_plugin_helper(dock,pos,"EDIT",path);
+            ReplyMsg((struct Message *)m);show_feedback(dock,opened ? "Opening icon ToolTypes":"Drop one Workbench icon at a time",!opened);continue;
+        }
         if (!dock->edit_mode && drop_extracts_archive(dock,pos)) {
             opened=launch_archive_drop(dock,pos,m) ? m->am_NumArgs:0;
             failed=opened ? 0:m->am_NumArgs;
@@ -313,7 +320,7 @@ static void click_tile(struct NDDock *dock,int index,int mx,int my,
             if(!launch_plugin_helper(dock,index,"OPEN",NULL))
                 show_feedback(dock,"Could not open Running Apps",1);
         } else if (!strcmp(it->id,"SCREENSHOT") || !strcmp(it->id,"SCREENMODE") ||
-                   !strcmp(it->id,"SCREENSWITCHER") || !strcmp(it->id,"WEATHER") ||
+                   !strcmp(it->id,"SCREENSWITCHER") || !strcmp(it->id,"WEATHER") || !strcmp(it->id,"AMIROCKET") || !strcmp(it->id,"ALERTS") ||
                    !strcmp(it->id,"CHRISTMAS") || !strcmp(it->id,"AQUARIUM") ||
                    !strcmp(it->id,"DOWNLOAD") || !strcmp(it->id,"SYSTEM") || !strcmp(it->id,"PLACES") || !strcmp(it->id,"SAVER") || !strcmp(it->id,"AMINET") || nd_independent_plugin_path(it->command)) {
             /* These tiles perform actions, even if a Shift qualifier is

@@ -6,6 +6,7 @@
 #include <string.h>
 #include "nd_client.h"
 #include "nd_reply.h"
+#include "nd_artwork.h"
 
 static void clear_timeout_completion(struct NDClient *c)
 {
@@ -143,6 +144,7 @@ static unsigned int exchange(struct NDClient *c, unsigned short cmd, int extensi
             if (extension==1) {ext->graph_a=a;ext->graph_b=b;}
             ext->reserved=0;ext->event2=0;
             ext->reserved2[0]=ext->reserved2[1]=0;
+            if(cmd==ND_MSG_UPDATE && c->art_sending && c->host_artwork_meta){ext->flags|=ND_EXT_HAS_ARTWORK;ext->reserved=c->art_state;ext->reserved2[0]=c->art_key;}
             message_size=sizeof(struct NDExtMessage);
         } else {
             msg->version = (UWORD)(extension == 2 ? ND_MEDIA_ABI_VERSION :
@@ -179,7 +181,8 @@ static unsigned int exchange(struct NDClient *c, unsigned short cmd, int extensi
         }
         return ND_EVENT_QUIT;
     }
-    if (use_ext) c->event2|=ext->event2;
+    if (!use_ext){c->host_alerts=0;c->host_artwork=0;c->host_artwork_meta=0;}
+    if (use_ext){c->host_alerts=(UWORD)((ext->event2&ND_EVENT2_HOST_ALERTS)!=0);c->host_artwork=(UWORD)((ext->event2&ND_EVENT2_HOST_ARTWORK)!=0);c->host_artwork_meta=(UWORD)((ext->event2&ND_EVENT2_HOST_ARTWORK_META)!=0);c->event2|=ext->event2&~(ND_EVENT2_HOST_ARTWORK|ND_EVENT2_HOST_ARTWORK_META|ND_EVENT2_HOST_ALERTS);}
     memcpy(&c->packet,wire,sizeof(c->packet));
     event=c->packet.graph.base.event;
     c->throttled=(UWORD)((event&ND_EVENT_THROTTLE)!=0);
@@ -264,6 +267,7 @@ unsigned int nd_client_update(struct NDClient *c, const char *caption,
     struct NDMessage *p = &c->packet.graph.base;
     if (!c->reply) return ND_EVENT_QUIT;
     if (!caption || !value) return ND_EVENT_QUIT;
+    if(!c->art_sending)c->art_mode=0;
     strncpy(p->caption, caption, ND_TEXT_LEN - 1);
     p->caption[ND_TEXT_LEN - 1] = '\0';
     strncpy(p->value, value, ND_TEXT_LEN - 1);
@@ -497,4 +501,27 @@ void nd_client_close(struct NDClient *c)
     }
     close_timeout(c);
     if (c->wire_packet) {FreeVec(c->wire_packet);c->wire_packet=NULL;}
+}
+
+unsigned int nd_client_notify(struct NDClient *c,const char *title,const char *text,unsigned int severity)
+{
+ struct NDMessage saved;unsigned int event;if(!c || !c->host_alerts || !title || !text || severity>2)return ND_EVENT_NONE;
+ saved=c->packet.graph.base;strncpy(c->packet.graph.base.caption,title,ND_TEXT_LEN-1);c->packet.graph.base.caption[ND_TEXT_LEN-1]=0;
+ strncpy(c->packet.graph.base.value,text,ND_TEXT_LEN-1);c->packet.graph.base.value[ND_TEXT_LEN-1]=0;c->packet.graph.base.meter=(UWORD)severity;
+ event=exchange(c,ND_MSG_NOTICE,0);c->packet.graph.base=saved;return event;
+}
+
+unsigned int nd_client_update_art_quiet(struct NDClient *c,const char *caption,
+ const char *value,const char *name,unsigned int state,unsigned int elapsed_ticks,
+ unsigned int heartbeat_ticks)
+{
+ char encoded[32];const char *shown=caption;unsigned int mode=0,event;unsigned long key=0;
+ if(c && nd_artwork_caption(encoded,name,state)){
+  key=nd_artwork_key(name);mode=c->host_artwork_meta ? 2U:c->host_artwork ? 1U:0U;
+  if(mode==1)shown=encoded;
+  if(c->art_key!=key || c->art_state!=state || c->art_mode!=mode)c->quiet_valid=0;
+  c->art_key=key;c->art_state=(UWORD)state;c->art_mode=(UWORD)mode;c->art_sending=1;
+ }
+ event=nd_client_update_quiet(c,shown,value,ND_NO_METER,elapsed_ticks,heartbeat_ticks);
+ if(c)c->art_sending=0;return event;
 }

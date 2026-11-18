@@ -5,8 +5,8 @@ Use Python 3.9+ from the project root. The entry point is `scripts/release.py`;
 manifest, then publish those same verified bytes. Review the notes, destinations
 and four download files before publishing.
 
-NovaDock remains **0.3** until a version change is agreed. The published 0.2 tag
-already exists; the new-release examples below do not authorize replacing it.
+NovaDock remains **0.4** until a version change is agreed. Version 0.4 is in development. Published tags through 0.3
+already exist; the new-release examples below do not authorize replacing them.
 Normal release commands never move tags, overwrite conflicting assets, create
 repositories, deploy the website or roll back another service's release. Source
 branch pushes are a separate, explicitly confirmed command.
@@ -32,13 +32,13 @@ branch pushes are a separate, explicitly confirmed command.
 - VERSION, the application, Preferences, package metadata and current release
   notes must agree. Plugins have independent versions: update a changed plugin's
   own version and metadata rather than copying the dock version to every plugin.
-- Use the exact version as the public tag, such as `0.3`, without a `v` prefix.
+- Use the exact version as the public tag, such as `0.4`, without a `v` prefix.
   New preparations default to the bare VERSION. Pass `--tag` explicitly to pin
   the intended tag; subsequent commands reuse an existing manifest's tag.
 - Both repositories receive the same annotated tag object and source commit.
   Never force-push, move or recreate a published tag through the normal workflow.
-- Release titles use the application and version, for example **NovaDock 0.3**;
-  the Git tag remains **0.3**. Publish normal releases, including versions
+- Release titles use the application and version, for example **NovaDock 0.4**;
+  the Git tag remains **0.4**. Publish normal releases, including versions
   below 1.0. GitHub uses `prerelease: false` and explicitly selects Latest with
   `make_latest: "true"` after all assets verify. A draft is only an upload stage.
 - GitLab uses its ordinary published-release API, with no future release date or
@@ -93,10 +93,10 @@ manifests or publication receipts to disguise a metadata-only update.
 Upload exactly these four files, substituting the agreed VERSION:
 
 ```text
-NovaDock-0.3.lha
-NovaDock-0.3.lha.sha256
-NovaDock-0.3-plugin-sdk.zip
-NovaDock-0.3-plugin-sdk.zip.sha256
+NovaDock-0.4.lha
+NovaDock-0.4.lha.sha256
+NovaDock-0.4-plugin-sdk.zip
+NovaDock-0.4-plugin-sdk.zip.sha256
 ```
 
 The LHA contains the installable application, all bundled plugins, themes, help
@@ -124,17 +124,17 @@ Hosted CI configuration is not a release prerequisite. Checks run locally.
 5. Publish explicitly using the same output directory and tag. Preserve receipts
    and verify the release links. Website deployment remains a separate manual task.
 
-Example for a new 0.3 tag:
+Example for a new 0.4 tag:
 
 ```sh
 python3 scripts/release.py source --to gitlab,github --dry-run
 python3 scripts/release.py source --to gitlab,github --confirm-push
-python3 scripts/release.py build --output outputs/release-0.3-new
-python3 scripts/release.py check --output outputs/release-0.3-new
-python3 scripts/release.py prepare --output outputs/release-0.3-new \
-  --tag 0.3 --tag-message "NovaDock 0.3 release" --notes docs/RELEASE-NOTES.md
-python3 scripts/release.py publish --output outputs/release-0.3-new \
-  --tag 0.3 --to gitlab,github --confirm-publish
+python3 scripts/release.py build --output outputs/release-0.4-new
+python3 scripts/release.py check --output outputs/release-0.4-new
+python3 scripts/release.py prepare --output outputs/release-0.4-new \
+  --tag 0.4 --tag-message "NovaDock 0.4 release" --notes docs/RELEASE-NOTES.md
+python3 scripts/release.py publish --output outputs/release-0.4-new \
+  --tag 0.4 --to gitlab,github --confirm-publish
 ```
 
 `--notes` belongs to `prepare` or the combined `release` command, not `publish`.
@@ -292,9 +292,9 @@ Review independent plugin versions with
 
 ```sh
 python3 scripts/release.py plan
-python3 scripts/release.py build --output outputs/release-0.3-new
-python3 scripts/release.py check --output outputs/release-0.3-new
-python3 scripts/release.py prepare --output outputs/release-0.3-new --tag 0.3
+python3 scripts/release.py build --output outputs/release-0.4-new
+python3 scripts/release.py check --output outputs/release-0.4-new
+python3 scripts/release.py prepare --output outputs/release-0.4-new --tag 0.4
 ```
 
 Use the same output directory on publication. Default output is `outputs/release`;
@@ -327,6 +327,16 @@ The runtime LHA uses classic level-1 headers and LH5 compression, with extractio
 and per-file byte comparisons; LHa for UNIX is required. Source/SDK/site ZIPs are
 also checked against expected contents. There is no stored-archive fallback in
 NovaDock's runtime packaging path.
+
+Cross-compilation keeps temporary assembly and object files in isolated,
+ignored `build/intermediates/` workspaces; compiler outputs are excluded from
+Git and source packages. Handwritten assembly remains part of the source.
+
+`tools/check_package_assets.py` verifies each declared plugin artwork bank,
+its executable and matching manifest after LHA extraction. The SDK check
+extracts the exact standalone inventory and rebuilds ArtHello's artwork from
+its included JSON using the shipped format. Missing, changed or invalid banks,
+incomplete examples and unexpected ZIP entries stop verification.
 
 An extracted tree may build local packages with a null commit. Repository
 publication requires the original clean committed checkout, tracked inputs and
@@ -365,10 +375,10 @@ access. Repositories must already exist with the intended visibility and GitLab
 package registry enabled. The tool does not configure hosting or access policies.
 
 ```sh
-python3 scripts/release.py publish --output outputs/release-0.3-new \
-  --tag 0.3 --to gitlab,github --confirm-publish
-python3 scripts/release.py publish --output outputs/release-0.3-new \
-  --tag 0.3 --to aminet --confirm-publish
+python3 scripts/release.py publish --output outputs/release-0.4-new \
+  --tag 0.4 --to gitlab,github --confirm-publish
+python3 scripts/release.py publish --output outputs/release-0.4-new \
+  --tag 0.4 --to aminet --confirm-publish
 ```
 
 Choose distinct destinations, optionally `--to gitlab,github,aminet`. Default is
@@ -486,9 +496,9 @@ independently of current HEAD. Newer website or documentation edits can remain o
 main; detaching to the old tag is unnecessary.
 
 ```sh
-python3 scripts/release.py aminet --output outputs/release-0.3-corrected
-python3 scripts/release.py publish --output outputs/release-0.3-corrected \
-  --tag 0.3 --to aminet --confirm-publish
+python3 scripts/release.py aminet --output outputs/release-0.4-corrected
+python3 scripts/release.py publish --output outputs/release-0.4-corrected \
+  --tag 0.4 --to aminet --confirm-publish
 ```
 
 The first command previews the pair without uploading. There is no `prepare-aminet`

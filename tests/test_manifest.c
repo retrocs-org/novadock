@@ -36,6 +36,9 @@ int main(void)
     struct NDOptionDef defs[16];
     int i,n,before;
 
+    assert(nd_manifest_bundled_id("AMIROCKET"));
+    assert(nd_manifest_builtin("AMIROCKET",&m));
+    assert(!strcmp(m.name,"AmiRocket") && !strcmp(m.version,"0.1"));
     assert(load(&m,"Work:NovaDock/Plugins/DemoForecast",weather));
     assert(!strcmp(m.id,"DEMOFORECAST") && !strcmp(m.name,"DemoForecast"));
     assert(m.graph==1 && m.abi==2 && m.multiple_instances &&

@@ -228,3 +228,70 @@ perform no action; right-click still exposes Online, Details and settings.
 Online tiles align the NETWORK heading with CPU/RAM and show IN/OUT meters or
 a two-channel graph. Packet rates and control/sampling status are available
 in the hover tooltip. Offline tiles keep the network icon and bottom title.
+
+
+## Configure Wi-Fi (0.4)
+
+The Network context menu offers Wi-Fi controls when a supported Warp control
+board or an installed `prism2.device` is found. The settings window checks the
+actual hardware before a board write. CPU and Network calls run in a separate
+worker, so a slow device does not block the dock. If a call remains busy, the
+window can be closed; NovaDock waits for that operation before accepting another.
+The new hardware paths still need validation on physical cards.
+
+### CS-Lab Warp1260
+
+Choose **Configure Wi-Fi Network...**. With a Warp1260 and
+`cswarp.library` 30.74, the window reads the configured SSID. Enter both the
+network name and password, then click **Apply**. The password is masked, is
+never placed in command arguments, logs or NovaDock settings, and is cleared
+from NovaDock's buffers after use. The board saves its own Wi-Fi settings.
+
+This initial implementation accepts printable ASCII: SSIDs of 2-32 characters
+and passwords of 1-63 characters, matching the inspected WarpTool validation.
+It sends the SSID first and the password second. If the second step fails,
+the window reports that the SSID was already submitted; check the board's
+settings before retrying. An accepted setting is not proof of a completed
+Wi-Fi connection. Use Network **Details** to check TCP/IP afterward.
+
+Other Warp models and library versions are refused. NovaDock does not need
+to launch WarpTool for these controls. It never changes Wi-Fi credentials at
+startup or during ordinary Network sampling.
+
+### Prism cards
+
+Install the Prism2 driver and WirelessManager first. Choose
+**Configure Prism Wi-Fi...**. Select the card unit (normally 0), then **Scan**.
+Scanning uses the driver's wireless API without taking an existing connection
+offline or reconfiguring its address. The interface must already be online for
+the driver to scan. If scanning fails, a known or hidden SSID can still be
+entered manually. Choose a listed network to fill the SSID field. Up to 32 distinct SSIDs are
+shown, strongest first. Duplicate access points use their best signal.
+
+Select **WPA / WPA2 personal** and enter an 8-63 character password, or select
+**Open (no password)** for an open network. SSIDs of 1-32 printable ASCII
+characters are supported initially. WPA3, enterprise authentication and WEP
+are not offered. WPA/WPA2 support also depends on the card and its firmware.
+
+**Save** derives the WPA key and updates both `ENVARC:Sys/Wireless.prefs` and
+`ENV:Sys/Wireless.prefs`. Existing unrelated settings and network blocks are
+preserved. NovaDock replaces only its own marked profile block, using priority
+1000. One NovaDock-managed Prism profile is saved at a time. Saving again
+replaces that profile, rather than accumulating duplicates.
+
+The plain password is not saved. The derived PSK in Wireless.prefs still grants
+network access: keep these files private and outside source/release archives.
+NovaDock stages both files before replacing either. An interrupted transaction
+can leave `.novadock-new` or `.novadock-backup` files; it refuses to overwrite
+these until their originals and pending data have been checked. A partial
+transaction is reported explicitly. Retain backups when recovering from errors.
+
+Saving a profile does not start or restart WirelessManager, change startup
+files, disconnect the current network, or establish an IP connection. Reconnect
+WirelessManager using your existing setup to load the saved profile, then use
+the Network tile's normal Online/Details controls for TCP/IP.
+
+The chooser uses the public SANA-II wireless interface described in the
+[AmigaOS documentation](https://wiki.amigaos.net/wiki/SANA-II_Revision_7).
+The [zenPrismWifi package](https://aminet.net/package/comm/net/zenPrismWifi_v0.4)
+provided the integration reference; its source and executable are not bundled.

@@ -1,6 +1,6 @@
 NOVADOCK_ID=NET
 NOVADOCK_NAME=Network
-NOVADOCK_VERSION=0.3
+NOVADOCK_VERSION=0.4
 NOVADOCK_AUTHOR=NovaDock
 NOVADOCK_DESCRIPTION=Roadshow online/offline controls and live packet meters or graphs. Offline uses a launcher icon.
 NOVADOCK_LICENSE=MIT

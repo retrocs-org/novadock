@@ -122,7 +122,7 @@ def page(label, title, description, content):
 <!-- /content -->
 </font>
 <br>
-<table class="site-footer" width="100%" border="0" cellpadding="10" cellspacing="0" bgcolor="#181825"><tr><td align="center"><font face="{FACE}" size="-1" color="#A6ADC8">NovaDock {VERSION} &middot; Classic AmigaOS 3.x &middot; <a href="https://github.com/retrocs-org/novadock">Source on GitHub</a> &middot; <a href="marketplace.php">Marketplace</a> &middot; <a href="features.php#screenshots">Screenshots</a> &middot; <a href="theme-development.php">Theme guide</a> &middot; <a href="developers.php">Developers</a> &middot; <a href="developers.php#source">Build from source</a> &middot; <a href="support.php#faq">Support &amp; FAQ</a></font></td></tr></table>
+<table class="site-footer" width="100%" border="0" cellpadding="10" cellspacing="0" bgcolor="#181825"><tr><td align="center"><font face="{FACE}" size="-1" color="#A6ADC8">NovaDock {VERSION}<?php if (site_is_development()): ?> (in development)<?php endif; ?> &middot; Classic AmigaOS 3.x &middot; <a href="https://github.com/retrocs-org/novadock">Source on GitHub</a> &middot; <a href="marketplace.php">Marketplace</a> &middot; <a href="features.php#screenshots">Screenshots</a> &middot; <a href="theme-development.php">Theme guide</a> &middot; <a href="developers.php">Developers</a> &middot; <a href="developers.php#source">Build from source</a> &middot; <a href="support.php#faq">Support &amp; FAQ</a></font></td></tr></table>
 </td></tr></table>
 </center>
 </body>
@@ -145,14 +145,7 @@ def main():
     layout = (f"<?php\ndeclare(strict_types=1);\nconst NOVADOCK_VERSION = '{VERSION}';\n"
               "function site_escape(string $text): string {\n"
               "    return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'ISO-8859-1');\n}\n"
-              "function site_release_tag(): string {\n"
-              "    $entries = json_decode((string) @file_get_contents(__DIR__.'/../releases.json'), true);\n"
-              "    $latest = null;\n"
-              "    foreach (is_array($entries) ? $entries : [] as $entry) {\n"
-              "        if (($entry['status'] ?? '') !== 'published' || !is_string($entry['tag'] ?? null) || !is_string($entry['version'] ?? null)) continue;\n"
-              "        if ($latest === null || version_compare($entry['version'], $latest['version'], '>')) $latest = $entry;\n"
-              "    }\n"
-              "    return $latest === null ? 'main' : $latest['tag'];\n}\n"
+              "require_once __DIR__.'/site_info.php';\n"
               "function site_header(string $title, string $current, string $description): void {\n"
               "    header('Content-Type: text/html; charset=ISO-8859-1');\n?>\n"
               + head + "<?php\n}\nfunction site_footer(): void {\n?>"

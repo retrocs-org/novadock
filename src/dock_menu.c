@@ -1,5 +1,6 @@
 /* NovaDock: Context menus and their actions; launcher actions and tasks. */
 #include "dock_internal.h"
+#include "nd_warp_detect.h"
 
 /* Defined below, private to this file. */
 static int plugin_can_launch(const struct NDDock *dock, const struct NDItem *item);
@@ -64,7 +65,8 @@ void open_trash(struct NDDock *dock)
 static int plugin_settings_action(const struct NDDock *dock,const struct NDItem *item)
 {
     if (!strcmp(item->id,"TRASH")) return 3;
-    if (!strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW")) return 2;
+    if (!strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW")) return 2+dock->popup_warp_present+dock->popup_prism_present;
+    if (!strcmp(item->id,"CPU") && dock->popup_warp_present) return 1;
     if (!strcmp(item->id,"BITSKIM")) return 4;
     if (!strcmp(item->id,"CLIPBOARD") || !strcmp(item->id,"NOTES")) return 2;
     return plugin_can_launch(dock,item) ? 1 : 0;
@@ -77,7 +79,7 @@ static int popup_count_for(const struct NDDock *dock)
     item=&dock->conf.items[dock->popup_item];
     if (item->kind==ND_ITEM_SPACER) return 2;
     if (item->transient==ND_TRANSIENT_TASK) return ITEM_TEXT(item,ND_TEXT_ARGS)[0] ? 4 : 3;
-    if (item->kind==ND_ITEM_DRAWER || item->kind==ND_ITEM_GROUP) return 4;
+    if (item->kind==ND_ITEM_DRAWER || item->kind==ND_ITEM_GROUP) return 5;
     if (item->kind==ND_ITEM_LAUNCH) return 3;
     if (item->kind==ND_ITEM_PLUGIN)
         return plugin_settings_action(dock,item)+2;
@@ -96,11 +98,13 @@ static const char *media_actions[] = {
     "Open", "Popup contents", "Flush (safe to remove)", "Pin to dock"
 };
 static const char *drawer_actions[] = {
-    "Open", "Popup contents", "Edit settings...", "Remove"
+    "Open", "Popup contents", "Edit settings...", "Remove", "Volume overview..."
 };
 static const char *trash_actions[] = {
     "Open trash", "Empty trash...", "Refresh", "Edit settings...", "Remove"
 };
+static const char *warp_network_actions[]={"Details...", "Configure Wi-Fi Network...", "Edit settings...", "Remove"};
+static const char *warp_cpu_actions[]={"Set Turbo Level...", "Edit settings...", "Remove"};
 static const char *network_actions[]={"Details...", "Edit settings...", "Remove"};
 static const char *bitskim_actions[]={"Open BitSkim", "Send file...", "Toggle receiving", "Cancel transfer", "Edit settings...", "Remove"};
 static const char *notes_actions[]={"Browse notes", "Add new note...", "Edit settings...", "Remove"};
@@ -132,7 +136,14 @@ static const char *popup_label_en(const struct NDDock *dock, int item)
         if (it->kind==ND_ITEM_LAUNCH) return launcher_actions[item];
         if (it->kind==ND_ITEM_PLUGIN && is_trash_tile(dock,dock->popup_item))
             return trash_actions[item];
-        if(it->kind==ND_ITEM_PLUGIN && (!strcmp(it->id,"NET") || !strcmp(it->id,"ROADSHOW")))return item==0 ? (dock->popup_network_online ? "Offline":"Online"):network_actions[item-1];
+        if(it->kind==ND_ITEM_PLUGIN && (!strcmp(it->id,"NET") || !strcmp(it->id,"ROADSHOW"))){
+            if(item==0)return dock->popup_network_online ? "Offline":"Online";
+            if(item==1)return network_actions[0];
+            if(item==2 && dock->popup_warp_present)return warp_network_actions[1];
+            if(item==2+dock->popup_warp_present && dock->popup_prism_present)return "Configure Prism Wi-Fi...";
+            return network_actions[item-1-dock->popup_warp_present-dock->popup_prism_present];
+        }
+        if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"CPU") && dock->popup_warp_present)return warp_cpu_actions[item];
         if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"BITSKIM"))return bitskim_actions[item];
         if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"CLIPBOARD"))return clipboard_actions[item];
         if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"NOTES"))return notes_actions[item];
@@ -177,7 +188,7 @@ static void draw_popup(struct NDDock *dock)
 }
 void open_popup(struct NDDock *dock, int item, int x, int y)
 {
-    int px, py, popup_height, count;
+    int px, py, popup_height, popup_width=175, width, count, i;
     if (item < -2 || item >= dock->conf.count || !dock->window ||
         dock->hidden || dock->box_pending) return;
     /* Plugins now get their own native context menu. */
@@ -189,18 +200,28 @@ void open_popup(struct NDDock *dock, int item, int x, int y)
      * window; close_popup() deliberately cleared the previous target. */
     dock->popup_item = item;
     dock->popup_network_online=item>=0 && !strcmp(dock->conf.items[item].badge,"*");
+    dock->popup_warp_present=0;dock->popup_prism_present=0;
+    if(item>=0 && dock->conf.items[item].kind==ND_ITEM_PLUGIN &&
+       (!strcmp(dock->conf.items[item].id,"CPU") || !strcmp(dock->conf.items[item].id,"NET") ||
+        !strcmp(dock->conf.items[item].id,"ROADSHOW")))dock->popup_warp_present=nd_warp_control_present();
+    if(item>=0 && dock->conf.items[item].kind==ND_ITEM_PLUGIN &&
+       (!strcmp(dock->conf.items[item].id,"NET") || !strcmp(dock->conf.items[item].id,"ROADSHOW")))
+        dock->popup_prism_present=nd_prism_driver_present();
     px = dock->window->LeftEdge + x;
     py = dock->window->TopEdge + y;
     count=popup_count_for(dock);
     popup_height=8+19*count;
-    if (px + 175 > dock->screen->Width) px = dock->screen->Width - 175;
+    for(i=0;i<count;++i){width=TextLength(dock->window->RPort,(STRPTR)popup_label(dock,i),strlen(popup_label(dock,i)))+20;
+        if(width>popup_width)popup_width=width;}
+    if(popup_width>dock->screen->Width)popup_width=dock->screen->Width;
+    if (px + popup_width > dock->screen->Width) px = dock->screen->Width - popup_width;
     if (py + popup_height > dock->screen->Height)
         py = dock->screen->Height - popup_height;
     if (px < 0) px = 0;
     if (py < dock->screen->BarHeight) py = dock->screen->BarHeight;
     dock->popup = OpenWindowTags(NULL,
         WA_PubScreen, (ULONG)dock->screen,
-        WA_Left, px, WA_Top, py, WA_Width, 175, WA_Height, popup_height,
+        WA_Left, px, WA_Top, py, WA_Width, popup_width, WA_Height, popup_height,
         WA_Borderless, TRUE, WA_Activate, TRUE, WA_RMBTrap, TRUE,
         WA_IDCMP, IDCMP_MOUSEBUTTONS | IDCMP_MOUSEMOVE |
                   IDCMP_REFRESHWINDOW | IDCMP_INACTIVEWINDOW | IDCMP_RAWKEY,
@@ -570,6 +591,7 @@ static int popup_action(struct NDDock *dock, int index, int action)
     case 3:
         if (drawer) return remove_dragged_item(dock,index);
         break;
+    case 4: if(drawer){char command[600],path[260];strcpy(path,dock->directory);AddPart(path,"Plugins/Places",sizeof(path));if(nd_quote_path(command,sizeof(command)-10,path)){strcat(command," VOLUMES");launch_command(command);}}break;
     default: break;
     }
     return 0;
@@ -611,7 +633,18 @@ static int plugin_popup_action(struct NDDock *dock, int index, int action)
         }else if(action==1){
             if(!launch_plugin_helper(dock,index,"DETAILS",NULL))
                 show_feedback(dock,"Could not open Network details",1);
+        }else if(action==2 && dock->popup_warp_present){
+            if(!launch_plugin_helper(dock,index,"WARP_WIFI",NULL))
+                show_feedback(dock,"Could not open Warp Wi-Fi settings",1);
+        }else if(action==2+dock->popup_warp_present && dock->popup_prism_present){
+            if(!launch_plugin_helper(dock,index,"PRISM_WIFI",NULL))
+                show_feedback(dock,"Could not open Prism Wi-Fi settings",1);
         }
+        return 0;
+    }
+    if(!strcmp(item->id,"CPU") && dock->popup_warp_present){
+        if(action==0 && !launch_plugin_helper(dock,index,"WARP_TURBO",NULL))
+            show_feedback(dock,"Could not open Warp turbo settings",1);
         return 0;
     }
     if(!strcmp(item->id,"BITSKIM")){

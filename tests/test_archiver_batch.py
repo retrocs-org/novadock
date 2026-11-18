@@ -18,7 +18,8 @@ class ArchiveBatch(unittest.TestCase):
 typedef unsigned long ULONG;typedef long BPTR;
 struct WBArg {const char *path;};
 struct AppMessage {unsigned int am_NumArgs;struct WBArg *am_ArgList;};
-struct NDDock {struct {int count;struct {char id[20];}items[1];}conf;};
+struct NDDock {struct {int count;struct {char id[20],command[64];}items[1];}conf;};
+static int nd_shelf_plugin_path(const char *p){return !strcmp(p,"Plugins/Shelf");}
 static int launches,deletes,create_fail,write_fail,launch_ok=1,allocations;
 static char written[4096],verb[24];
 static void *AllocVec(size_t n,int f){(void)f;++allocations;return calloc(1,n);}
@@ -28,7 +29,7 @@ static int build_wb_path(const struct WBArg *a,char *p,unsigned int n,int *kind)
 static int launch_archive_helper(struct NDDock *d,int i,const char *p)
 {(void)d;(void)i;(void)p;++launches;strcpy(verb,"HANDLE");return launch_ok;}
 static int launch_plugin_helper(struct NDDock *d,int i,const char *v,const char *p)
-{(void)d;(void)i;assert(strstr(p,"T:NovaDockArchiveDrop-")==p);++launches;strcpy(verb,v);return launch_ok;}
+{(void)d;(void)i;assert(!strcmp(v,"PUT") || strstr(p,"T:NovaDockArchiveDrop-")==p || strstr(p,"T:NovaDockShelfDrop-")==p);++launches;strcpy(verb,v);return launch_ok;}
 static BPTR CreateDir(const char *p){(void)p;return !create_fail;}
 static void UnLock(BPTR p){(void)p;}
 static void *FindTask(void *p){(void)p;return (void *)0x1234;}
@@ -48,6 +49,9 @@ int main(void){struct NDDock dock;struct AppMessage m;struct WBArg args[3];
  reset();args[1].path="Work:bad\npath";assert(!launch_archive_drop(&dock,0,&m));assert(!launches&&!deletes&&!allocations);args[1].path="Other:Drawer";
  reset();create_fail=1;assert(!launch_archive_drop(&dock,0,&m));assert(!launches&&!deletes&&!allocations);
  reset();m.am_NumArgs=1;assert(launch_archive_drop(&dock,0,&m));assert(launches==1&&!strcmp(verb,"HANDLE")&&!allocations);
+ reset();strcpy(dock.conf.items[0].id,"SHELF_2");strcpy(dock.conf.items[0].command,"Plugins/Shelf");m.am_NumArgs=3;assert(launch_archive_drop(&dock,0,&m));assert(launches==1&&!strcmp(verb,"HANDLELIST"));
+ reset();m.am_NumArgs=1;assert(launch_archive_drop(&dock,0,&m));assert(launches==1&&!strcmp(verb,"PUT"));
+ m.am_NumArgs=33;assert(!launch_archive_drop(&dock,0,&m));
  m.am_NumArgs=ND_ARCHIVE_MAX_SOURCES+1;assert(!launch_archive_drop(&dock,0,&m));return 0;}
 '''
   with tempfile.TemporaryDirectory() as t:

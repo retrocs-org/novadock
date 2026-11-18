@@ -25,6 +25,7 @@
 #include <string.h>
 #include "nd_plugin_versions.h"
 #include "nd_client.h"
+#include "nd_screen_art.h"
 #include "nd_option_runtime.h"
 #include "nd_shotfile.h"
 #include "nd_cybergraphics.h"
@@ -124,7 +125,7 @@ static const char *capture(struct NDClient *client,const struct ShotSettings *s,
     if (!dir) return "NO DRAWER";
     UnLock(dir);
     if (!pick_name(s->drawer,path,sizeof(path))) return "NAME FAILED";
-    if(nd_client_update_quiet(client,"SHOT","CAPTURING",ND_NO_METER,0,500U)&ND_EVENT_QUIT)
+    if(nd_client_update_art_quiet(client,"SHOT","CAPTURING","shot",ND_SHOT_CAPTURE,0,500U)&ND_EVENT_QUIT)
         return "CANCELLED";
     if (s->workbench) {
         workbench=LockPubScreen((STRPTR)"Workbench");
@@ -176,7 +177,7 @@ static const char *capture(struct NDClient *client,const struct ShotSettings *s,
             if (percent!=shown) {
                 shown=percent;
                 sprintf(progress,"SAVING %u%%",percent);
-                (void)nd_client_update_quiet(client,"SHOT",progress,percent,0,500U);
+                (void)nd_client_update_art_quiet(client,"SHOT",progress,"shot",ND_SHOT_CAPTURE,0,500U);
             }
         }
         if (!nd_shot_end(&writer,path) && !problem) problem="WRITE FAILED";
@@ -231,7 +232,7 @@ int main(int argc,char **argv)
             message=message>elapsed ? message-elapsed : 0;
             if (!message) strcpy(value,"READY");
         }
-        event=nd_client_update_quiet(&client,"SHOT",value,ND_NO_METER,elapsed,500U);
+        event=nd_client_update_art_quiet(&client,"SHOT",value,"shot",(unsigned int)nd_shot_art_state(value,1),elapsed,500U);
         if (event&ND_EVENT_QUIT) break;
         if (event&ND_EVENT_SETTINGS) reread=1;
         if (event&ND_EVENT_CLICK) {

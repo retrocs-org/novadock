@@ -32,14 +32,14 @@ NOVADOCK_OPTION=POLL_TICKS|Refresh ticks|UINT|250,30000|3000
 | `NOVADOCK_ID` | Required. Unique ID (letters, digits, `_`, `-`, max 19). The dock passes it in `argv[1]`, and settings are stored as `OPTION.<ID>.<key>`. |
 | `NOVADOCK_NAME` | Tile label; defaults to the program's file name. |
 | `NOVADOCK_VIEW` | `METER` (default) or `GRAPH`, the initial view. |
-| `NOVADOCK_ABI` | Lowest dock IPC ABI the plugin needs: 1 (basic), 2 (graphs), 3 (media controls) or 4 (badges). A newer requirement is reported, not installed. Badges degrade gracefully, so a plugin that only adds a badge can keep a lower ABI. |
+| `NOVADOCK_ABI` | Lowest dock IPC ABI the plugin needs: 1 (basic), 2 (graphs), 3 (media controls) 4 (badges), or 5 (extended events and artwork negotiation). A newer requirement is reported, not installed. Badges degrade gracefully, so a plugin that only adds a badge can keep a lower ABI. |
 | `NOVADOCK_MULTIPLE` | `YES` allows several dock tiles for this plugin; the default is `NO`. Repeated tiles share one plugin process, live state and settings namespace. |
 | `NOVADOCK_VERSION` | Plugin release, shown in the Plugin Manager list and details (max 15 characters). |
 | `NOVADOCK_AUTHOR` | Author or publisher, shown by the Plugin Manager. |
 | `NOVADOCK_DESCRIPTION` | One line describing what the tile does; the Plugin Manager wraps it over two lines of about 46 characters. |
 | `NOVADOCK_LICENSE` | Licence name or identifier, shown after the version. |
 | `NOVADOCK_WEBSITE` | Optional project page. |
-| `NOVADOCK_FEATURES` | Comma-separated capabilities, from: `meter` (shows a value or bar), `graph` (history graph), `click` (reacts to clicks), `popup` (opens a popup or window), `drop` (accepts dropped Workbench icons), `media` (player transport controls), `badge` (a label on the tile's corner). Unknown words are displayed as written. Do not list settings or several tiles: the Plugin Manager reports those from `NOVADOCK_OPTION` and `NOVADOCK_MULTIPLE`. |
+| `NOVADOCK_FEATURES` | Comma-separated capabilities, from: `meter` (shows a value or bar), `graph` (history graph), `click` (reacts to clicks), `popup` (opens a popup or window), `drop` (accepts dropped Workbench icons), `media` (player transport controls), `badge` (a label on the tile's corner), `artwork` (a required plugin-owned `Program.assets/Artwork.ndart` bank; see [artwork guide](PLUGIN_SDK_ARTWORK.md)). Unknown words are displayed as written. Do not list settings or several tiles: the Plugin Manager reports those from `NOVADOCK_OPTION` and `NOVADOCK_MULTIPLE`. |
 | `NOVADOCK_PROGRAM` | Installed executable file name, when it differs from the manifest's name. |
 | `NOVADOCK_OPTION` | `KEY|Label|TYPE|choices|default`, up to 32. TYPE is `BOOL`, `CHOICE` (comma-separated choices), `UINT` (`min,max`), `TEXT`, or `FILE` (text plus an ASL file chooser). The default must be valid for its type. |
 

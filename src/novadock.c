@@ -141,6 +141,7 @@ void reset_diagnostic_counters(struct NDDock *dock)
 static void reset_diagnostics(struct NDDock *dock)
 {
     reset_diagnostic_counters(dock);
+    dock->alerts_started=diagnostic_ticks();
     memset(dock->diagnostic_plugin_last,0,
            sizeof(dock->diagnostic_plugin_last));
 }
@@ -330,7 +331,8 @@ static int is_quit_argument(const char *arg)
 int main(int argc, char **argv)
 {
     struct NDDock *dock;
-    int result = 10, parsing, running_elsewhere;
+    int result = 10, parsing, running_elsewhere, update_helper;
+    update_helper=nd_update_helper_main(argc,argv);if(update_helper>=0)return update_helper;
     /* argc is 0 when started from Workbench (argv is then a WBStartup). */
     if (argc>1 && is_quit_argument(argv[1])) return quit_running_dock();
     dock = (struct NDDock *)alloc_data(sizeof(*dock));
@@ -374,6 +376,14 @@ int main(int argc, char **argv)
                   "Start with the built-in defaults? Your files are\n"
                   "left untouched until you save from Preferences.",
                   "Use defaults|Quit")) goto cleanup;
+    if (parsing==0 && (strstr(nd_effective_config_source(),".good") ||
+                       strstr(nd_effective_config_source(),".bak")) &&
+        !ask_user("The current settings could not be loaded.\n"
+                  "A validated recovery copy is available.\n\n"
+                  "Use recovered settings? Your files remain unchanged.\n"
+                  "Preferences > Diagnostics shows the recovery source;\n"
+                  "Save from Preferences repairs the current settings.",
+                  "Use recovered|Quit")) goto cleanup;
     (void)nd_publish_config_source(ND_CONFIG_SOURCE_FILE);
     get_program_dir(dock);
     if(parsing<=0)christmas_startup(dock);

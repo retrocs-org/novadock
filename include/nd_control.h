@@ -3,6 +3,7 @@
 /* Independent from the public plugin ABI. Control messages are synchronous:
  * caller must keep packet/reply port alive until dock replies. */
 #include <exec/types.h>
+#include "nd_alerts.h"
 #include <exec/ports.h>
 #define ND_CONTROL_PORT "NovaDock.Control.1"
 #define ND_CONTROL_MAGIC 0x4e444354UL /* 'NDCT' */
@@ -24,6 +25,8 @@
 #define ND_CONTROL_SAVE_FLUSH 10U
 #define ND_CONTROL_SAVE_LOCK 11U
 #define ND_CONTROL_SAVE_UNLOCK 12U
+#define ND_CONTROL_ALERTS 14U /* bounded history: list, acknowledge or clear */
+#define ND_CONTROL_PLUGIN_HEALTH 13U /* selected-instance, read-only status */
 #define ND_DIAGNOSTIC_MAX_PLUGINS 12
 #define ND_DIAGNOSTIC_TICKS_PER_SECOND 50UL
 #define ND_DIAGNOSTIC_AGE_UNKNOWN 0xffffffffUL
@@ -111,8 +114,19 @@ struct NDDiagnosticsSnapshot {
     ULONG save_last_ticks,save_total_ticks,save_env_ticks,save_envarc_ticks;
     UWORD save_env_ok,save_envarc_ok;
 };
+struct NDControlPluginHealthMessage {
+    struct NDControlMessage control;
+    char id[20],value[32];
+    UWORD online,stale;
+};
 struct NDControlDiagnosticsMessage {
     struct NDControlMessage control;
     struct NDDiagnosticsSnapshot snapshot;
+};
+struct NDControlAlertsMessage {
+    struct NDControlMessage control;
+    ULONG through;
+    UWORD operation,offset,count,total,unread,reserved;
+    struct NDAlertEntry entries[ND_ALERT_PAGE];
 };
 #endif

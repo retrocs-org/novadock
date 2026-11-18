@@ -14,6 +14,8 @@
 #include "nd_option_runtime.h"
 #include "nd_interaction.h"
 #include "nd_places.h"
+#include "nd_list.h"
+#include "nd_volume.h"
 #include "../clipboard/nd_clipboard_popup.h"
 struct IntuitionBase *IntuitionBase=NULL;struct GfxBase *GfxBase=NULL;
 struct Library *WorkbenchBase=NULL;
@@ -73,10 +75,19 @@ static int open_place(const char *path)
  sprintf(command,"C:WBRUN %s",quoted);result=SystemTags(command,SYS_Input,input,SYS_Output,output,SYS_Asynch,TRUE,TAG_DONE);
  if(result==-1){Close(input);Close(output);return 0;}return 1;
 }
+static void volume_rows(struct NDList *list)
+{
+ struct Settings s;static char rows[ND_PLACES_MAX][160];const char *pointers[ND_PLACES_MAX];struct InfoData info;struct NDVolumeSpace space;BPTR lock;int i;char text[100];
+ memset(&s,0,sizeof(s));strcpy(s.system,"NO");collect(&s);
+ for(i=0;i<places.count;++i){memset(&space,0,sizeof(space));lock=Lock(places.items[i].path,ACCESS_READ);if(lock){memset(&info,0,sizeof(info));if(Info(lock,&info) && info.id_NumBlocks>0 && info.id_NumBlocksUsed>=0 && info.id_BytesPerBlock>0){space.total=(unsigned long)info.id_NumBlocks;space.used=(unsigned long)info.id_NumBlocksUsed;space.block_bytes=(unsigned long)info.id_BytesPerBlock;}UnLock(lock);}nd_volume_summary(&space,text);sprintf(rows[i],"%.48s  %.99s",places.items[i].path,text);pointers[i]=rows[i];}nd_list_rows(list,pointers,(unsigned int)places.count);
+}
+static int volumes(void)
+{static const char *buttons[]={"Open","Refresh","Close"};struct NDList *list;int action,selected;((struct Process *)FindTask(NULL))->pr_WindowPtr=(APTR)-1;WorkbenchBase=OpenLibrary("workbench.library",36);list=nd_list_open("Mounted volumes",buttons,3);if(!list)return 20;volume_rows(list);for(;;){action=nd_list_event(list);if(action==-1 || action==102)break;if(action==100){selected=nd_list_selected(list);if(selected>=0 && selected<places.count)open_place(places.items[selected].path);}if(action==101)volume_rows(list);if(!action)Wait(nd_list_signals(list));}nd_list_close(list);if(WorkbenchBase)CloseLibrary(WorkbenchBase);return 0;}
 int main(int argc,char **argv)
 {
  struct NDClient client;struct NDClipQuick *picker=NULL;struct Settings settings;
  unsigned int event,elapsed=0;int reread=1,selected,result=20;char status[32]="Click for places";
+ if(argc==2 && !strcmp(argv[1],"VOLUMES"))return volumes();
  if(argc<2)return 20;((struct Process *)FindTask(NULL))->pr_WindowPtr=(APTR)-1;
  IntuitionBase=(struct IntuitionBase *)OpenLibrary("intuition.library",39);GfxBase=(struct GfxBase *)OpenLibrary("graphics.library",39);WorkbenchBase=OpenLibrary("workbench.library",36);
  if(!IntuitionBase||!GfxBase||!nd_client_init(&client,argv[1]))goto done;
@@ -84,7 +95,7 @@ int main(int argc,char **argv)
  nd_clip_quick_labels(picker,"PLACES","No places configured","NovaDock Places","Click or Return to open - Esc to close","Place");
  for(;;){
   if(reread){nd_clip_quick_close(picker);read_settings(argv[1],&settings);reread=0;}
-  event=nd_client_update_quiet(&client,"PLACES",status,ND_NO_METER,elapsed,500U);
+  event=nd_client_update_art_quiet(&client,"PLACES",status,"places",0,elapsed,500U);
   if(event&ND_EVENT_QUIT){result=0;break;}if(event&ND_EVENT_SETTINGS){reread=1;continue;}
   if(event&ND_EVENT_CLICK){if(nd_clip_quick_active(picker))nd_clip_quick_close(picker);else if(!open_picker(picker,&settings))strcpy(status,"Picker unavailable");}
   if(nd_clip_quick_events(picker)){

@@ -410,7 +410,7 @@ int main(int argc,char **argv)
         if (trash_refresh_pending(&watch)) {
             items=count_items();describe(items,value,badge);
         }
-        event=nd_client_update_quiet(&client,"TRASH",value,ND_NO_METER,
+        event=nd_client_update_art_quiet(&client,"TRASH",value,"trash",items>0 ? 1U:0U,
                                      elapsed,TRASH_HEARTBEAT_TICKS);
         if (!(event&ND_EVENT_QUIT)) event|=nd_client_set_badge(&client,badge);
         if (event&ND_EVENT_QUIT) break;

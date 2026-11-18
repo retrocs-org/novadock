@@ -14,7 +14,7 @@ SANITIZE=1 sh tests/run_host_tests.sh
 sh tests/amiga_syntax_check.sh
 ```
 
-The native build produces 29 Amiga Hunk executables. Host tests exercise the
+The native build produces 40 Amiga Hunk executables. Host tests exercise the
 portable logic; native syntax checking requires AmigaOS headers and a
 m68k-amigaos GCC installation. Set M68K_CC and OPENNDK when they are not found
 in the standard locations.
@@ -28,6 +28,11 @@ sh scripts/build-and-stage-amiga.sh /path/to/transfer-volume
 This creates a NovaDock drawer with programs, Workbench icons, themes, setup
 utilities, installer and defaults. Existing novadock.cfg settings are retained;
 updated defaults are supplied as novadock.cfg.default for comparison.
+
+Cross-builds use `scripts/compile-amiga.py` to keep compiler assembly and object
+files in isolated workspaces below ignored `build/intermediates/`. Workspaces
+are removed on success or failure. Handwritten assembly remains in the source
+folders; generated assembly is not tracked or distributed as source.
 
 ## Linux toolchain
 
@@ -60,14 +65,14 @@ systems extract as hundreds of stray files and warnings.
 
 ## Making and publishing releases
 
-Use `python3 tools/release.py prepare --output ../dist/release-0.1` to compile,
-test and package a release. `publish` previews GitHub and GitLab publication;
-add `--execute` to push the version tag and attach verified release assets.
-The `aminet` subcommand separately checks or submits the Aminet files.
+Use `scripts/release.py` from the project root. Build and check a fresh output
+directory, prepare its explicit version tag, then review the manifest before
+publishing with `--confirm-publish`. The complete commands, credentials and
+recovery rules are in [docs/RELEASING.md](docs/RELEASING.md).
 
-See [docs/RELEASING.md](docs/RELEASING.md) for setup, credentials, complete
-commands, retry behavior and the native test requirements. No hosted CI or
-automatic tag-triggered upload is assumed by these scripts.
+The release checks validate plugin artwork after LHA extraction and verify the
+complete SDK after ZIP extraction, including rebuilding ArtHello's artwork from
+its JSON source. Runtime testing on AmigaOS remains a separate check.
 
 ## Dock source layout
 

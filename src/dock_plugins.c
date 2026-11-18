@@ -153,7 +153,7 @@ int launch_plugin_helper(struct NDDock *dock,int index,const char *verb,
     if (!dock || index<0 || index>=dock->conf.count || !verb) return 0;
     item=&dock->conf.items[index];
     if (item->kind!=ND_ITEM_PLUGIN) return 0;
-    if(path && strcmp(item->id,"BITSKIM") && !nd_archive_safe_path(path))return 0;
+    if(path && strcmp(item->id,"BITSKIM") && !nd_shelf_plugin_path(item->command) && !nd_archive_safe_path(path))return 0;
     if (!resolve_plugin_executable(dock,item->command,executable,sizeof(executable)))return 0;
     if (!nd_quote_path(command,sizeof(command)-80,executable))return 0;
     length=strlen(command);
@@ -178,24 +178,25 @@ int launch_archive_drop(struct NDDock *dock,int index,const struct AppMessage *m
 {
     static ULONG serial=0;
     char path[ND_COMMAND_LEN],directory[96],list[110];
-    char (*paths)[260];BPTR created,file;unsigned int i;int kind,ok=1,attempt;
+    char (*paths)[260];BPTR created,file;unsigned int i;int kind,ok=1,attempt,shelf;
     if(!dock || index<0 || index>=dock->conf.count ||
-       strcmp(dock->conf.items[index].id,"ARCHIVE") || !message ||
+       (strcmp(dock->conf.items[index].id,"ARCHIVE") && !nd_shelf_plugin_path(dock->conf.items[index].command)) || !message ||
        message->am_NumArgs<1 || message->am_NumArgs>ND_ARCHIVE_MAX_SOURCES)return 0;
+    shelf=nd_shelf_plugin_path(dock->conf.items[index].command);if(shelf && message->am_NumArgs>32)return 0;
     if(message->am_NumArgs==1){
         return build_wb_path(&message->am_ArgList[0],path,sizeof(path),&kind) &&
-               launch_archive_helper(dock,index,path);
+               (shelf ? launch_plugin_helper(dock,index,"PUT",path):launch_archive_helper(dock,index,path));
     }
     paths=AllocVec(message->am_NumArgs*sizeof(*paths),MEMF_PUBLIC|MEMF_CLEAR);
     if(!paths)return 0;
     for(i=0;i<message->am_NumArgs;++i){
         if(!build_wb_path(&message->am_ArgList[i],path,sizeof(path),&kind) ||
-           strlen(path)>=sizeof(paths[0]) || !nd_archive_safe_path(path)){ok=0;break;}
+           strlen(path)>=sizeof(paths[0]) || strchr(path,'\n') || strchr(path,'\r') || (!shelf && !nd_archive_safe_path(path))){ok=0;break;}
         strcpy(paths[i],path);
     }
     created=0;
     if(ok)for(attempt=0;attempt<20;++attempt){
-        sprintf(directory,"T:NovaDockArchiveDrop-%08lx-%lu",(unsigned long)FindTask(NULL),(unsigned long)++serial);
+        sprintf(directory,shelf ? "T:NovaDockShelfDrop-%08lx-%lu":"T:NovaDockArchiveDrop-%08lx-%lu",(unsigned long)FindTask(NULL),(unsigned long)++serial);
         created=CreateDir(directory);if(created){UnLock(created);break;}
     }
     if(!created){FreeVec(paths);return 0;}
@@ -274,6 +275,25 @@ void plugin_watchdog_tick(struct NDDock *dock,int quantum)
             sync_plugin_twins(dock,i);
             mark_tile_dirty(dock,i);
         }
+        /* A stalled process still owns its resources. Never start another
+         * copy over it or kill its task. A late heartbeat recovers normally. */
+        if (dock->plugin_task[i] &&
+            (dock->plugin_wake_port[i] ? find_wake_port(dock,i,dock->plugin_task[i]) :
+                                        task_exists(dock->plugin_task[i]))) {
+            item->clicks=0;item->media_event=0;dock->plugin_event2[i]=0;
+            if(strcmp(item->value,"NOT RESPONDING")){
+                strcpy(item->value,"NOT RESPONDING");item->meter=ND_NO_METER;
+                sync_plugin_twins(dock,i);mark_tile_dirty(dock,i);
+            }
+            continue;
+        }
+        /* A dead client cannot still be doing the last reported job. Keep
+         * the tile explicitly offline until a replacement sends a heartbeat. */
+        if(strcmp(item->value,"OFFLINE") || item->meter!=ND_NO_METER){
+            strcpy(item->value,"OFFLINE");item->meter=ND_NO_METER;
+            item->clicks=0;item->media_event=0;dock->plugin_event2[i]=0;
+            sync_plugin_twins(dock,i);mark_tile_dirty(dock,i);
+        }
         (void)launch_plugin(dock,i,1);
     }
 }
@@ -299,6 +319,9 @@ void sync_plugin_twins(struct NDDock *dock,int source)
                 to->media_state!=from->media_state ||
                 to->media_volume!=from->media_volume ||
                 strcmp(to->badge,from->badge);
+        if(dock->plugin_art_key[i]!=dock->plugin_art_key[source] || dock->plugin_art_state[i]!=dock->plugin_art_state[source])changed=1;
+        dock->plugin_art_key[i]=dock->plugin_art_key[source];dock->plugin_art_state[i]=dock->plugin_art_state[source];
+        if(dock->plugin_art_key[i])load_plugin_artwork(dock,i);
         strcpy(to->badge,from->badge);
         strcpy(to->caption,from->caption);
         strcpy(to->value,from->value);
@@ -315,6 +338,29 @@ void sync_plugin_twins(struct NDDock *dock,int source)
         if (changed) mark_tile_dirty(dock,i);
     }
 }
+static int receive_plugin_artwork(struct NDDock *dock,int index,const struct NDExtMessage *ext)
+{
+    struct NDItem *item=&dock->conf.items[index];
+    ULONG key=ext && (ext->flags&ND_EXT_HAS_ARTWORK) && ext->reserved<=255 ? ext->reserved2[0]:0;
+    UWORD state=key ? ext->reserved:0;
+    int changed=dock->plugin_art_key[index]!=key || dock->plugin_art_state[index]!=state;
+    dock->plugin_art_key[index]=key;dock->plugin_art_state[index]=state;
+    if(key || !strncmp(item->caption,"ART:",4))load_plugin_artwork(dock,index);
+    return changed;
+}
+/* Limit each dispatch so a flooding client cannot starve input/control or
+ * the shutdown grace timer. Reassert the port signal for the next turn. */
+#define ND_PLUGIN_IPC_BATCH 32U
+static struct NDMessage *next_plugin_packet(struct NDDock *dock,unsigned int *count)
+{
+    if(*count>=ND_PLUGIN_IPC_BATCH){
+        Forbid();
+        if(dock->ipc->mp_MsgList.lh_Head->ln_Succ)
+            Signal(FindTask(NULL),1UL<<dock->ipc->mp_SigBit);
+        Permit();return NULL;
+    }
+    ++*count;return (struct NDMessage *)GetMsg(dock->ipc);
+}
 void process_ipc(struct NDDock *dock, int quitting)
 {
     struct NDMessage *m;
@@ -326,9 +372,10 @@ void process_ipc(struct NDDock *dock, int quitting)
     unsigned int sample_a, sample_b;
     unsigned int new_meter;
     int index, changed,i,packet_abandoned,graph_only,has_graph,has_media;
+    unsigned int packets=0;
     unsigned char abandoned[ND_MAX_ITEMS];
     memset(abandoned,0,sizeof(abandoned));
-    while ((m = (struct NDMessage *)GetMsg(dock->ipc)) != NULL) {
+    while ((m = next_plugin_packet(dock,&packets)) != NULL) {
         if (m->exec_msg.mn_Length < sizeof(struct NDMessage)) {
             dock->diagnostic_reclaimed_replies+=(ULONG)nd_reply_finish((struct Message *)m);
             continue;
@@ -350,14 +397,18 @@ void process_ipc(struct NDDock *dock, int quitting)
                (!strcmp(m->id,"WHDLOAD") || !strncmp(m->id,"WHDLOAD_",8) || !strcmp(m->id,"MUSICLIB") || !strncmp(m->id,"MUSICLIB_",9) || !strcmp(m->id,"SENSORS") || !strncmp(m->id,"SENSORS_",8)))
                 (void)nd_games_forget_cache(m->id);
             ext = m->version==ND_EXT_ABI_VERSION ? (struct NDExtMessage *)m : NULL;
-            if (ext) ext->event2=0;
+            /* Capabilities describe the host, not this message's command.
+             * Badge/notice replies must not revoke negotiated artwork support. */
+            if (ext) ext->event2=ND_EVENT2_HOST_ALERTS|ND_EVENT2_HOST_ARTWORK|ND_EVENT2_HOST_ARTWORK_META;
             has_graph = m->version==ND_GRAPH_ABI_VERSION ||
                         (ext && (ext->flags&ND_EXT_HAS_GRAPH));
             has_media = m->version==ND_MEDIA_ABI_VERSION ||
                         (ext && (ext->flags&ND_EXT_HAS_MEDIA));
             if (item) {
                 m->event = ND_EVENT_NONE;
-                if (m->command == ND_MSG_UPDATE) {
+                if(m->command==ND_MSG_NOTICE){
+                    dock_alert(dock,m->id,m->caption,m->value,m->meter);
+                } else if (m->command == ND_MSG_UPDATE) {
                     packet_abandoned=0;
                     index = (int)(item - dock->conf.items);
                     /* Repeated tiles share this first logical client.  Fold
@@ -389,6 +440,12 @@ void process_ipc(struct NDDock *dock, int quitting)
                                 ND_MEDIA_VOLUME_UNKNOWN;
                         }
                     }
+                    /* Discard actions clicked during a stall rather than
+                     * executing them unexpectedly when the client recovers.
+                     * Settings notifications remain pending and are safe. */
+                    if(!item->online && !strcmp(item->value,"NOT RESPONDING")){
+                        item->clicks=0;item->media_event=0;dock->plugin_event2[index]=0;
+                    }
                     changed = !item->online;
                     /* Scrolling also redraws the graph heading/value rows. A
                      * changing meter therefore needs no full tile repaint. */
@@ -398,6 +455,7 @@ void process_ipc(struct NDDock *dock, int quitting)
                         strncpy(item->caption, m->caption, sizeof(item->caption) - 1);
                         item->caption[sizeof(item->caption) - 1] = '\0';
                     }
+                    if(receive_plugin_artwork(dock,index,ext))changed=1;
                     if (strcmp(item->value, m->value)) changed = 1;
                     strncpy(item->value, m->value, sizeof(item->value) - 1);
                     item->value[sizeof(item->value) - 1] = '\0';
@@ -447,7 +505,7 @@ void process_ipc(struct NDDock *dock, int quitting)
                     dock->plugin_task[index]=task;
                     /* Second-word events go out only in a v5 reply; an
                      * older client could never receive them. */
-                    if (ext) ext->event2=dock->plugin_event2[index];
+                    if (ext) ext->event2|=dock->plugin_event2[index];
                     dock->plugin_event2[index]=0;
                     if (!strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW")) {
                         /* OFFLINE, or packet rates / ONLINE.  Transitions
@@ -643,7 +701,11 @@ void remove_port(struct NDDock *dock)
         dock->is_public = 0;
     }
     /* No new writers after RemPort; drain queued sends before freeing port. */
-    process_ipc(dock, 1);
+    /* Port is unpublished. Freeze senders while draining the finite final
+     * queue; no client can keep replenishing it during teardown. */
+    Forbid();
+    while(dock->ipc->mp_MsgList.lh_Head->ln_Succ)process_ipc(dock,1);
+    Permit();
     DeleteMsgPort(dock->ipc);
     dock->ipc = NULL;
 }
@@ -680,3 +742,6 @@ void wake_pending_plugins(struct NDDock *dock)
         dock->plugin_woken[i]=1;
     }
 }
+
+void dock_alert(struct NDDock *dock,const char *source,const char *title,const char *text,unsigned int severity)
+{int i;nd_alerts_add(&dock->alerts,source,title,text,severity,(diagnostic_ticks()-dock->alerts_started)/ND_DIAGNOSTIC_TICKS_PER_SECOND);for(i=0;i<dock->conf.count;++i)if(!strcmp(dock->conf.items[i].id,"ALERTS"))wake_plugin(dock,i);}

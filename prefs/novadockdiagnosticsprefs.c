@@ -1,4 +1,5 @@
 /* Diagnostics section for live telemetry, counter reset and text snapshots. */
+#define D_UPDATES 950
 #define IntuitionBase NDDiagnosticsIntuitionBase
 #define GadToolsBase NDDiagnosticsGadToolsBase
 #include <exec/types.h>
@@ -387,7 +388,8 @@ static int open_page(struct DiagnosticsPage *p)
         !d_button(p,10,69,118,D_DOCKBAR,"Organize") ||
         !d_button(p,10,93,118,D_PLUGIN_MANAGER,"Plugins") ||
         !d_button(p,10,117,118,D_DIAGNOSTICS,"> Diagnostics") ||
-        !d_button(p,10,141,118,D_ABOUT,"About")) return 0;
+        !d_button(p,10,141,118,D_UPDATES,"Update") ||
+        !d_button(p,10,165,118,D_ABOUT,"About")) return 0;
     d_field(p,&ng,145,24,460,112,D_LIST,"Runtime performance");
     ng.ng_Flags=PLACETEXT_ABOVE;
     p->list=p->last=CreateGadget(LISTVIEW_KIND,p->last,&ng,
@@ -438,6 +440,7 @@ int nd_diagnostics_prefs_run(int argc,char **argv)
                 else if (id==D_APPEARANCE) {p->done=1;p->result=ND_PREF_NAV_APPEARANCE;}
                 else if (id==D_DOCKBAR) {p->done=1;p->result=ND_PREF_NAV_ORGANIZE;}
                 else if (id==D_PLUGIN_MANAGER) {p->done=1;p->result=ND_PREF_NAV_PLUGIN_MANAGER;}
+                else if (id==D_UPDATES) {p->done=1;p->result=ND_PREF_NAV_UPDATES;}
                 else if (id==D_ABOUT) {p->done=1;p->result=ND_PREF_NAV_ABOUT;}
                 else if (id==D_RECOVERY) recover_settings(p);
                 else if (id==D_LOW_RESOURCE) low_resource(p);

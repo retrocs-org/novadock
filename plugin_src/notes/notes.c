@@ -154,7 +154,7 @@ int main(int argc,char **argv)
             reread=0;
         }
         if(rescan){scan_ok=scan_notes();rescan=0;sprintf(value,scan_ok ? "%u note%s saved":"%u notes; read error",count,count==1 ? "":"s");}
-        event=nd_client_update_quiet(&client,"NOTES",value,ND_NO_METER,elapsed,500U);
+        event=nd_client_update_art_quiet(&client,"NOTES",value,"notes",0,elapsed,500U);
         sprintf(badge,"%u",count);if(!(event&ND_EVENT_QUIT))event|=nd_client_set_badge(&client,count ? badge:"");
         extra=nd_client_events2(&client);
         if(event&ND_EVENT_QUIT){

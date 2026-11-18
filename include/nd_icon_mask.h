@@ -11,6 +11,9 @@ int nd_icon_remove_border_background(const unsigned char *pens,
                                      unsigned long *queue,
                                      unsigned long queue_count);
 
+/* Standard eight-colour MagicWB palette for untagged three-plane icons. */
+int nd_icon_magicwb_rgb(int pen,unsigned char rgb[3]);
+
 /* Shared artwork area for launcher and launcher-style plugin tiles. */
 void nd_icon_art_box(int tile_width,int tile_height,int tiny,int *width,int *height);
 int nd_icon_art_top(int tile_y,int tile_height,int image_height,int tiny);

@@ -46,6 +46,11 @@ struct NDClient {
      * wake port (see ND_WAKE_PORT_PREFIX). */
     ULONG event2;
     UWORD host_abi;
+    UWORD host_artwork;
+    UWORD host_artwork_meta;
+    UWORD host_alerts;
+    UWORD art_sending,art_state,art_mode;
+    ULONG art_key;
     UWORD wake_owned;
     struct MsgPort *wake_port;
     char wake_name[ND_ID_LEN+16];
@@ -69,6 +74,11 @@ unsigned int nd_client_update_quiet(struct NDClient *c,const char *caption,
                                     const char *value,unsigned int meter,
                                     unsigned int elapsed_ticks,
                                     unsigned int heartbeat_ticks);
+/* Plugin-owned NAME/STATE in <program>.assets/Artwork.ndart. Older docks
+ * receive CAPTION as ordinary text. Same quiet/heartbeat semantics as above. */
+unsigned int nd_client_update_art_quiet(struct NDClient *c,const char *caption,
+ const char *value,const char *name,unsigned int state,unsigned int elapsed_ticks,
+ unsigned int heartbeat_ticks);
 /* Sends independent normalized series. b=ND_GRAPH_NO_SAMPLE for one line.
  * Neither graph channel changes the existing text/progress meter.
  */
@@ -117,5 +127,7 @@ unsigned int nd_client_wait_signals(struct NDClient *c,unsigned int ticks,unsign
 /* ND_EVENT2_* bits received since the previous call (ABI 5 docks only;
  * always 0 with an older dock).  Reading clears them. */
 unsigned long nd_client_events2(struct NDClient *c);
+/* Optional session alert history. Older docks safely ignore this API. */
+unsigned int nd_client_notify(struct NDClient *c,const char *title,const char *text,unsigned int severity);
 void nd_client_close(struct NDClient *c);
 #endif

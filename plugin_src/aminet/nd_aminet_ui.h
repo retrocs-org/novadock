@@ -41,9 +41,9 @@ static int am_open(void)
  ui=AllocVec(sizeof(*ui),MEMF_PUBLIC|MEMF_CLEAR);if(!ui)return 0;ui->selected=-1;NewList(&ui->labels);ui->font=OpenFont(&font);if(!ui->font)goto fail;
  ui->screen=LockPubScreen("Workbench");if(!ui->screen)goto fail;ui->width=ui->screen->Width-12;if(ui->width>740)ui->width=740;ui->height=ui->screen->Height-ui->screen->BarHeight-8;if(ui->height>460)ui->height=460;if(ui->width<300||ui->height<208)goto fail;
  ui->visual=GetVisualInfo(ui->screen,TAG_DONE);if(!ui->visual)goto fail;last=CreateContext(&ui->gadgets);if(!last)goto fail;
- top=ui->screen->WBorTop+ui->screen->Font->ta_YSize+7;memset(&ng,0,sizeof(ng));ng.ng_TextAttr=&font;ng.ng_VisualInfo=ui->visual;ng.ng_Height=18;ng.ng_TopEdge=top;ng.ng_LeftEdge=10;ng.ng_Width=ui->width-80;ng.ng_GadgetID=1;
+ top=ui->screen->WBorTop+ui->screen->Font->ta_YSize+7;memset(&ng,0,sizeof(ng));ng.ng_TextAttr=&font;ng.ng_VisualInfo=ui->visual;ng.ng_Height=18;ng.ng_TopEdge=top;ng.ng_LeftEdge=10;ng.ng_Width=ui->width-86;ng.ng_GadgetID=1;
  last=ui->query=CreateGadget(STRING_KIND,last,&ng,GTST_MaxChars,80,GTST_String,(ULONG)"",TAG_DONE);if(!last)goto fail;
- ng.ng_LeftEdge=ui->width-64;ng.ng_Width=54;ng.ng_GadgetID=2;ng.ng_GadgetText="Search";last=CreateGadget(BUTTON_KIND,last,&ng,TAG_DONE);if(!last)goto fail;
+ ng.ng_LeftEdge=ui->width-70;ng.ng_Width=60;ng.ng_GadgetID=2;ng.ng_GadgetText="Search";last=CreateGadget(BUTTON_KIND,last,&ng,TAG_DONE);if(!last)goto fail;
  for(i=0;i<3;++i){ng.ng_LeftEdge=10+i*(ui->width-20)/3;ng.ng_Width=(ui->width-32)/3;ng.ng_TopEdge=top+24;ng.ng_GadgetID=3+i;ng.ng_GadgetText=(STRPTR)nav[i];last=CreateGadget(BUTTON_KIND,last,&ng,TAG_DONE);if(!last)goto fail;}
  ng.ng_LeftEdge=10;ng.ng_TopEdge=top+49;ng.ng_Width=ui->width-20;ng.ng_Height=ui->height-top-139;ng.ng_GadgetID=10;ng.ng_GadgetText=NULL;
  last=ui->list=CreateGadget(LISTVIEW_KIND,last,&ng,GTLV_Labels,(ULONG)&ui->labels,GTLV_ShowSelected,NULL,GTLV_ScrollWidth,18,GTLV_Selected,~0UL,TAG_DONE);if(!last)goto fail;

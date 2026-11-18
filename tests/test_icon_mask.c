@@ -7,7 +7,10 @@ int main(void)
 {
     unsigned char pens[49],opaque[49];
     unsigned long queue[49];
-    int x,y,w,h;
+    int x,y,w,h;unsigned char rgb[3];
+    assert(nd_icon_magicwb_rgb(4,rgb) && rgb[0]==123 && rgb[1]==123 && rgb[2]==123);
+    assert(nd_icon_magicwb_rgb(6,rgb) && rgb[0]==170 && rgb[1]==144 && rgb[2]==124);
+    assert(!nd_icon_magicwb_rgb(-1,rgb) && !nd_icon_magicwb_rgb(8,rgb) && !nd_icon_magicwb_rgb(0,NULL));
     nd_icon_art_box(84,68,0,&w,&h);assert(w==48 && h==40);
     nd_icon_art_box(168,68,0,&w,&h);assert(w==48 && h==40);
     nd_icon_art_box(40,28,1,&w,&h);assert(w==38 && h==26);

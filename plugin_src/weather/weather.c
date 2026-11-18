@@ -16,6 +16,7 @@
 #include "nd_weather_window.h"
 #include "nd_weather.h"
 #include "nd_weather_codes.h"
+#include "nd_weather_art.h"
 #include "nd_fetch_worker.h"
 const char nd_version[]=ND_PLUGIN_VER_STRING(WEATHER,"Weather");
 long __stack=32768;
@@ -176,7 +177,7 @@ int main(int argc,char **argv)
         }
         if(have){sprintf(caption,"WX:%d %.24s",forecast.code,settings.location);nd_weather_temperature(forecast.temperature,!strcmp(settings.units,"F"),value);}
         else{sprintf(caption,"WX:-1 %.24s",settings.location);strcpy(value,settings.location[0] ? "NO DATA":"SET LOCATION");}
-        event=nd_client_update_quiet(&client,caption,value,ND_NO_METER,elapsed,500U);
+        event=nd_client_update_art_quiet(&client,caption,value,"weather",(unsigned int)nd_weather_art_state(have ? forecast.code:-1),elapsed,500U);
         badge[0]=stale ? '*':0;badge[1]=0;if(!(event&ND_EVENT_QUIT))event|=nd_client_set_badge(&client,badge);
         if(event&ND_EVENT_QUIT)break;if(event&ND_EVENT_SETTINGS)reread=1;
         if(event&ND_EVENT_CLICK){if(panel)nd_weather_view_raise(panel);else panel=panel_open(&settings);}
