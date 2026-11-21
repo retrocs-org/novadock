@@ -1085,6 +1085,7 @@ void nd_default_config(struct NDConfig *cfg)
     cfg->items[0].show_volume_meter=1;
     add_item(cfg, ND_ITEM_LAUNCH, "Shell", "NewShell", NULL, "SYS:System/Shell", 0, 1, 0);
     add_item(cfg, ND_ITEM_PLUGIN, "MusicPlayer", "Plugins/MusicPlayer", "MUSIC", NULL, 0, 1, 0);
+    add_item(cfg,ND_ITEM_PLUGIN,"Trash","Plugins/Trash","TRASH",NULL,0,1,0);
     add_item(cfg, ND_ITEM_PLUGIN, "CPU", "Plugins/Activity", "CPU", NULL, 0, 1, 0);
     add_item(cfg, ND_ITEM_PLUGIN, "RAM", "Plugins/Memory", "RAM", NULL, 0, 1, 0);
     add_item(cfg, ND_ITEM_PLUGIN, "Clock", "Plugins/Clock", "CLOCK", NULL, 0, 1, 0);
@@ -1096,7 +1097,6 @@ void nd_default_config(struct NDConfig *cfg)
              "RUNNINGAPPS", NULL, 0, 0, 0);
     add_item(cfg,ND_ITEM_PLUGIN,"Timer","Plugins/Timer","TIMER",NULL,0,0,0);
     add_item(cfg,ND_ITEM_PLUGIN,"Notes","Plugins/Notes","NOTES",NULL,0,0,0);
-    add_item(cfg,ND_ITEM_PLUGIN,"Trash","Plugins/Trash","TRASH",NULL,0,1,0);
 }
 const char *nd_theme_name(int theme)
 {

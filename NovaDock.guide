@@ -161,7 +161,7 @@ application.
 ---------
 
 A fresh configuration uses the Nord theme and seven tiles: System, Shell,
-Music, CPU, RAM, Clock and Trash. Existing installations retain their
+Music, Trash, CPU, RAM and Clock. Existing installations retain their
 layout.
 
 Click a launcher to open its application or drawer. Plugin clicks perform

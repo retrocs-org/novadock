@@ -10,7 +10,7 @@ int main(void)
 {
     struct NDConfig *cfg;
     struct NDOptionDef defs[16];
-    int x,y,i,n,eyes=0;
+    int x,y,i,n,eyes=0,eyes_index=-1;
     const char *file="tests/eyes-roundtrip.cfg";
     nd_eyes_pupil(100,100,100,100,12,14,100,&x,&y);
     assert(x==100 && y==100);
@@ -31,10 +31,10 @@ int main(void)
     nd_default_config(cfg);
     assert(cfg->count==14);
     for (i=0;i<cfg->count;++i)
-        if (cfg->items[i].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[i].id,"EYES")) ++eyes;
+        if (cfg->items[i].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[i].id,"EYES")) { ++eyes; eyes_index=i; }
     assert(eyes==1);
-    assert(cfg->items[7].multiple_instances);
-    assert(nd_add_plugin_instance(cfg,7));
+    assert(eyes_index>=0 && cfg->items[eyes_index].multiple_instances);
+    assert(nd_add_plugin_instance(cfg,eyes_index));
     eyes=0;
     for (i=0;i<cfg->count;++i)
         if (cfg->items[i].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[i].id,"EYES")) ++eyes;

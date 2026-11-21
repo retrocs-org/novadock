@@ -84,7 +84,7 @@ Uninstall asks for confirmation and whether to keep settings and saved Notes.
 Reinstalling after keeping settings restores that configuration.
 
 Fresh installs use Nord with seven tiles: the boot disk (`SYS:`), the installation's
-default shell (`NewShell`), MusicPlayer, CPU, RAM, Clock and Trash. Right-click the dock
+default shell (`NewShell`), MusicPlayer, Trash, CPU, RAM and Clock. Right-click the dock
 to add items, open Preferences, restart or quit. Right-click a plugin for its settings.
 
 Default installed locations:

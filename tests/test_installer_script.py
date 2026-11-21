@@ -42,7 +42,7 @@ PARAMETERS = {
 }
 QUESTIONS = {'askbool', 'askchoice', 'askoptions'}
 # Built at packaging time and guarded by (exists ...) in the script.
-OPTIONAL = {'Catalogs'}
+OPTIONAL = {'Catalogs', 'novadock.cfg.default'}
 SOURCE_ONLY = '--source-only' in sys.argv
 BUILT_FILES = {'NovaDock', 'NovaDockPrefs', 'SaveConfig', 'MakeIcon', 'StartInstaller', 'SetupStartup'}
 
@@ -448,11 +448,98 @@ def check_maintenance_levels(nodes):
     print('Maintenance: Update/Uninstall, removal consent and settings choices pass at all three levels.')
 
 
+def check_factory_settings(text, nodes):
+    """Run real installer copy expressions with edited stage and saved settings."""
+    factory = (ROOT / 'novadock.cfg').read_bytes()
+    edited = factory.replace(b'PLUGIN=Trash|Plugins/Trash|TRASH|METER|ON',
+                             b'PLUGIN=Trash|Plugins/Trash|TRASH|METER|OFF')
+    start = next(i for i, n in enumerate(nodes) if head(n) == 'set' and n['items'][1][2] == '#defaults')
+    selection = nodes[start:start + 2]
+    install = next(n for n in nodes if head(n) == 'procedure' and n['items'][1][2] == 'P_INSTALL')
+    statements = install['items'][2]['items']
+    factory_copy = next(n for n in statements if head(n) == 'copyfiles' and any(
+        head(a) == 'newname' and a['items'][1][2] == 'novadock.cfg.default'
+        for a in n['items'] if isinstance(a, dict)))
+    settings = [n for n in statements if head(n) == 'if' and any(
+        head(c) == 'copyfiles' and any(head(a) == 'dest' and isinstance(a['items'][1], tuple) and a['items'][1][2] in
+            ('ENVARC:NovaDock', 'ENV:NovaDock') for a in c['items'] if isinstance(a, dict))
+        for c in walk([n]))]
+    assert len(settings) == 2
+    for staged in (False, True):
+        for saved in (False, True):
+            files = {'Package:novadock.cfg': edited if staged else factory}
+            if staged: files['Package:novadock.cfg.default'] = factory
+            if saved:
+                files['ENVARC:NovaDock/novadock.cfg'] = edited
+                files['ENV:NovaDock/novadock.cfg'] = edited
+            env = {'#src': 'Package:', '#dest': 'SYS:NovaDock',
+                   '#config': 'ENVARC:NovaDock/novadock.cfg'}
+            def evaluate(node):
+                if isinstance(node, tuple):
+                    if node[0] == 'str': return node[2]
+                    return env[node[2]] if node[2] in env else int(node[2])
+                name, args = head(node), node['items'][1:]
+                if name == 'set': env[args[0][2]] = evaluate(args[1]); return
+                if name == 'if':
+                    return evaluate(args[1]) if evaluate(args[0]) else (evaluate(args[2]) if len(args) > 2 else None)
+                if name == 'exists': return int(evaluate(args[0]) in files)
+                if name in ('=', '<>'):
+                    same = evaluate(args[0]) == evaluate(args[1])
+                    return same if name == '=' else not same
+                if name == 'tackon':
+                    base, leaf = map(evaluate, args)
+                    return base + ('' if base.endswith(':') else '/') + leaf
+                if name == 'copyfiles':
+                    fields = {head(a): a for a in args if isinstance(a, dict)}
+                    source = evaluate(fields['source']['items'][1])
+                    dest = evaluate(fields['dest']['items'][1])
+                    leaf = evaluate(fields['newname']['items'][1]) if 'newname' in fields else source.rsplit('/', 1)[-1].rsplit(':', 1)[-1]
+                    files[dest + ('' if dest.endswith(':') else '/') + leaf] = files[source]
+                    return
+                raise AssertionError('unhandled settings operation: ' + str(name))
+            for node in selection + [factory_copy] + settings: evaluate(node)
+            assert files['SYS:NovaDock/novadock.cfg.default'] == factory
+            assert files['ENVARC:NovaDock/novadock.cfg'] == (edited if saved else factory)
+            assert files['ENV:NovaDock/novadock.cfg'] == (edited if saved else factory)
+            assert 'ENVARC:NovaDock/novadock.cfg.default' not in files
+
+            # Execute the Shell installer's actual conditional Copy statements.
+            shell = (ROOT / 'install.amiga').read_text()
+            block = shell[shell.index('IF NOT EXISTS ENVARC:NovaDock/novadock.cfg'):shell.index('Echo "NovaDock installed.')]
+            block += shell[shell.index('; The runnable staging drawer'):shell.index('Copy NovaDock.guide')]
+            files = {'novadock.cfg': edited if staged else factory}
+            if staged: files['novadock.cfg.default'] = factory
+            if saved:
+                files['ENVARC:NovaDock/novadock.cfg'] = edited
+                files['ENV:NovaDock/novadock.cfg'] = edited
+            stack = []
+            active = True
+            for line in block.splitlines():
+                words = line.strip().split()
+                if not words or words[0].startswith(';'): continue
+                if words[0] == 'IF':
+                    exists = words[-1] in files
+                    condition = not exists if words[1] == 'NOT' else exists
+                    stack.append((active, condition))
+                    active = active and condition
+                elif words[0] == 'ELSE': active = stack[-1][0] and not stack[-1][1]
+                elif words[0] == 'ENDIF': active = stack.pop()[0]
+                elif active:
+                    assert words[0] == 'Copy' and words[2] == 'TO'
+                    files[words[3]] = files[words[1]]
+            assert not stack
+            assert files['SYS:NovaDock/novadock.cfg.default'] == factory
+            assert files['ENVARC:NovaDock/novadock.cfg'] == (edited if saved else factory)
+            assert files['ENV:NovaDock/novadock.cfg'] == (edited if saved else factory)
+    print('Factory settings: GUI and Shell installs select clean defaults; saved settings remain unchanged.')
+
+
 def main():
     nodes = parse(tokenize(SCRIPT.read_text('latin-1')))
     check_maintenance_detection(SCRIPT.read_text('latin-1'), nodes)
     check_installation_levels(nodes)
     check_fresh_path_guards(nodes)
+    check_factory_settings(SCRIPT.read_text('latin-1'), nodes)
     check_startup_label_collisions(nodes)
     check_maintenance_levels(nodes)
     # Every mode installs the complete bundled library. Dock membership is

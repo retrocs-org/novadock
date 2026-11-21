@@ -204,7 +204,11 @@ IF NOT EXISTS ENV:NovaDock
   MakeDir ENV:NovaDock
 ENDIF
 IF NOT EXISTS ENVARC:NovaDock/novadock.cfg
-  Copy novadock.cfg TO ENVARC:NovaDock/novadock.cfg
+  IF EXISTS novadock.cfg.default
+    Copy novadock.cfg.default TO ENVARC:NovaDock/novadock.cfg
+  ELSE
+    Copy novadock.cfg TO ENVARC:NovaDock/novadock.cfg
+  ENDIF
 ENDIF
 IF NOT EXISTS ENV:NovaDock/novadock.cfg
   Copy ENVARC:NovaDock/novadock.cfg TO ENV:NovaDock/novadock.cfg
@@ -212,7 +216,12 @@ ENDIF
 Echo "NovaDock installed. Double-click SYS:Prefs/NovaDockPrefs to configure."
 Echo "Optional classic autostart: run SetupStartup once (see README)."
 
-Copy novadock.cfg TO SYS:NovaDock/novadock.cfg.default
+; The runnable staging drawer keeps its factory defaults separate from test settings.
+IF EXISTS novadock.cfg.default
+  Copy novadock.cfg.default TO SYS:NovaDock/novadock.cfg.default
+ELSE
+  Copy novadock.cfg TO SYS:NovaDock/novadock.cfg.default
+ENDIF
 Copy NovaDock.guide TO HELP:NovaDock.guide
 Copy NovaDock.guide.info TO HELP:NovaDock.guide.info
 IF EXISTS HELP:NovaDock/NovaDock.guide

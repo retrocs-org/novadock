@@ -4,9 +4,13 @@
 static void populated_dock(struct NDConfig *cfg)
 {
     int i;
-    struct NDItem music;
+    struct NDItem music,trash;
     nd_default_config(cfg);
-    cfg->count=11; /* fixed paging fixture: omit newly bundled optional tools */
+    /* Keep this historical paging fixture independent of the factory order. */
+    trash=cfg->items[3];
+    for (i=3;i<cfg->count-1;++i) cfg->items[i]=cfg->items[i+1];
+    cfg->items[cfg->count-1]=trash;
+    cfg->count=11; /* omit Trash and newly bundled optional tools */
     /* A test-only extra meter keeps the paging fixture independent of the
      * number of retired or newly bundled optional plugins. */
     cfg->items[cfg->count]=cfg->items[3];

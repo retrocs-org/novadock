@@ -53,7 +53,7 @@ also replaced. The installer handles this when updating the application.
 ## First use
 
 A fresh configuration uses the Nord theme and seven tiles: System, Shell,
-Music, CPU, RAM, Clock and Trash. Existing installations retain their layout.
+Music, Trash, CPU, RAM and Clock. Existing installations retain their layout.
 
 Click a launcher to open its application or drawer. Plugin clicks perform
 their own actions: the clock opens a calendar, Notes opens its collection,

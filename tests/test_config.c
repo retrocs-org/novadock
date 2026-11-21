@@ -32,6 +32,8 @@ int main(void)
     assert(!nd_config_can_update_live(&cfg,&recovered));
     assert(!nd_config_can_update_live(NULL,&cfg));
     assert(cfg.count == 14);
+    assert(!strcmp(cfg.items[2].id,"MUSIC"));
+    assert(!strcmp(cfg.items[3].id,"TRASH"));
     assert(cfg.side == ND_SIDE_BOTTOM);
     assert(cfg.position == ND_POSITION_CENTER);
     assert(cfg.font_mode == ND_FONT_WORKBENCH);
@@ -47,10 +49,10 @@ int main(void)
     assert(cfg.items[0].show_volume_meter);
     assert(!strcmp(nd_item_text(&cfg,&cfg.items[0],ND_TEXT_ICON),"SYS:Disk"));
     assert(!strcmp(cfg.items[1].command,"NewShell"));
-    assert(!strcmp(cfg.items[3].id,"CPU"));
-    assert(!strcmp(cfg.items[4].id,"RAM"));
-    assert(!strcmp(cfg.items[5].id,"CLOCK"));
-    for (i=0;i<cfg.count;++i) assert(cfg.items[i].enabled==(i<6 || !strcmp(cfg.items[i].id,"TRASH")));
+    assert(!strcmp(cfg.items[4].id,"CPU"));
+    assert(!strcmp(cfg.items[5].id,"RAM"));
+    assert(!strcmp(cfg.items[6].id,"CLOCK"));
+    for (i=0;i<cfg.count;++i) assert(cfg.items[i].enabled==(i<7));
 
     assert(cfg.tooltips == 1);
     /* Keyboard-control hot key: optional, kept verbatim, bounded, and it
@@ -119,17 +121,17 @@ int main(void)
     assert(nd_parse_line(&cfg,"ROWS=3") == 1 && cfg.rows==3);
     assert(nd_parse_line(&cfg,"ROWS=0") == 0);
     assert(nd_parse_line(&cfg,"ROWS=4") == 0);
-    assert(cfg.items[3].kind == ND_ITEM_PLUGIN);
-    assert(cfg.items[3].graph == 0);
-    assert(!cfg.items[4].graph && !cfg.items[5].graph && !cfg.items[6].graph);
+    assert(cfg.items[4].kind == ND_ITEM_PLUGIN);
+    assert(cfg.items[4].graph == 0);
+    assert(!cfg.items[5].graph && !cfg.items[6].graph && !cfg.items[7].graph);
 
-    assert(strcmp(cfg.items[4].id, "RAM") == 0);
-    assert(strcmp(cfg.items[6].id, "NET") == 0);
+    assert(strcmp(cfg.items[5].id, "RAM") == 0);
+    assert(strcmp(cfg.items[7].id, "NET") == 0);
     assert(strcmp(cfg.items[2].id, "MUSIC") == 0);
-    assert(strcmp(cfg.items[7].id, "EYES") == 0);
-    assert(nd_plugin_allows_multiple(&cfg.items[7]));
+    assert(strcmp(cfg.items[8].id, "EYES") == 0);
+    assert(nd_plugin_allows_multiple(&cfg.items[8]));
     n=cfg.count;
-    assert(nd_add_plugin_instance(&cfg,7));
+    assert(nd_add_plugin_instance(&cfg,8));
     assert(cfg.count==n+1 && !strcmp(cfg.items[n].id,"EYES"));
     assert(cfg.items[n].enabled && cfg.items[n].multiple_instances);
     /* The installed-plugin catalogue and active tiles share this array.  A
@@ -144,13 +146,13 @@ int main(void)
         ++cfg.count;
     }
     assert(cfg.count==27);
-    assert(nd_add_plugin_instance(&cfg,7));
+    assert(nd_add_plugin_instance(&cfg,8));
     assert(cfg.count==28 && !strcmp(cfg.items[27].id,"EYES"));
     nd_default_config(&cfg); /* keep the fixed catalogue indexes below */
-    assert(strcmp(cfg.items[8].id, "DOPUS4") == 0 && !cfg.items[8].enabled);
-    assert(strcmp(cfg.items[9].id,"ARCHIVE")==0 && !cfg.items[9].enabled);
-    assert(strcmp(cfg.items[10].id,"RUNNINGAPPS")==0 && !cfg.items[10].enabled);
-    assert(strcmp(cfg.items[5].id, "CLOCK") == 0);
+    assert(strcmp(cfg.items[9].id, "DOPUS4") == 0 && !cfg.items[9].enabled);
+    assert(strcmp(cfg.items[10].id,"ARCHIVE")==0 && !cfg.items[10].enabled);
+    assert(strcmp(cfg.items[11].id,"RUNNINGAPPS")==0 && !cfg.items[11].enabled);
+    assert(strcmp(cfg.items[6].id, "CLOCK") == 0);
     assert(nd_parse_line(&cfg, " SIDE = LEFT \r\n") == 1);
     assert(cfg.side == ND_SIDE_LEFT);
     assert(nd_parse_line(&cfg,"POSITION=START") && cfg.position==ND_POSITION_START);
@@ -332,6 +334,11 @@ int main(void)
     assert(nd_parse_line(&cfg, "TOOLTIPS=no") == 1 && cfg.tooltips == 0);
     assert(nd_load_config(&cfg, "novadock.cfg") == 0);
     assert(cfg.count == 32); /* seven active tiles plus optional definitions */
+    assert(!strcmp(cfg.items[2].id,"MUSIC"));
+    assert(!strcmp(cfg.items[3].id,"TRASH"));
+    assert(!strcmp(cfg.items[4].id,"CPU"));
+    assert(!strcmp(cfg.items[5].id,"RAM"));
+    assert(!strcmp(cfg.items[6].id,"CLOCK"));
     assert(!cfg.items[29].enabled && !strcmp(cfg.items[29].id,"AMIROCKET"));
     assert(!cfg.items[17].enabled && !strcmp(cfg.items[17].id,"TIMER"));
     assert(!cfg.items[18].enabled && !strcmp(cfg.items[18].id,"NOTES"));
@@ -340,15 +347,15 @@ int main(void)
     assert(!cfg.items[15].enabled && !strcmp(cfg.items[15].id,"CLIPBOARD"));
     assert(!cfg.items[19].enabled && !strcmp(cfg.items[19].id,"MUSICLIB"));
     assert(!cfg.items[20].enabled && !strcmp(cfg.items[20].id,"SENSORS"));
-    for (i=0;i<cfg.count;++i) assert(cfg.items[i].enabled==(i<6 || !strcmp(cfg.items[i].id,"TRASH")));
+    for (i=0;i<cfg.count;++i) assert(cfg.items[i].enabled==(i<7));
     assert(cfg.theme==ND_THEME_NORD && cfg.shape==ND_SHAPE_ROUNDED);
     assert(!strcmp(cfg.items[0].command,"SYS:"));
     assert(!strcmp(cfg.items[1].command,"NewShell"));
 
     assert(!cfg.items[13].enabled && !strcmp(cfg.items[13].id,"KICKSTART"));
-    assert(!cfg.items[10].enabled && !strcmp(cfg.items[10].id,"RUNNINGAPPS"));
-    assert(cfg.items[3].graph == 0); /* default CPU meter */
-    assert(!cfg.items[4].graph && !cfg.items[5].graph && !cfg.items[6].graph);
+    assert(!cfg.items[11].enabled && !strcmp(cfg.items[11].id,"RUNNINGAPPS"));
+    assert(cfg.items[4].graph == 0); /* default CPU meter */
+    assert(!cfg.items[5].graph && !cfg.items[6].graph && !cfg.items[7].graph);
     legacy=fopen("tests/legacy-ram.cfg","w");
     assert(legacy!=NULL);
     fputs("PLUGIN=Chip RAM|Plugins/Memory|CHIPRAM|GRAPH|ON\n",legacy);
@@ -396,6 +403,8 @@ int main(void)
     remove("tests/known-good.cfg.bak");
     assert(nd_load_config(&cfg, "this-file-does-not-exist.cfg") == -1);
     assert(cfg.count == 14);
+    assert(!strcmp(cfg.items[2].id,"MUSIC"));
+    assert(!strcmp(cfg.items[3].id,"TRASH"));
     puts("Config tests passed.");
     return 0;
 }

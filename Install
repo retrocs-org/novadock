@@ -29,6 +29,12 @@
     (set #src (pathonly (expandpath @icon))))
 (if (= #src "") (set #src (expandpath "")))
 
+; A runnable development drawer may keep edited test settings in novadock.cfg.
+; New installs and explicit resets must use its separately staged factory file.
+(set #defaults (tackon #src "novadock.cfg"))
+(if (= (exists (tackon #src "novadock.cfg.default") (noreq)) 1)
+    (set #defaults (tackon #src "novadock.cfg.default")))
+
 (set #uninstall-trace 0)
 (set #stage "")
 
@@ -508,7 +514,7 @@
     ; Keep a distribution default with the shared components; live settings
     ; retain the standard ENV:/ENVARC: locations.
     (copyfiles (prompt "Copying factory defaults") (help @copyfiles-help)
-        (source (tackon #src "novadock.cfg")) (dest #dest)
+        (source #defaults) (dest #dest)
         (newname "novadock.cfg.default") (optional "force"))
     ; Settings
     (complete 88)
@@ -532,8 +538,8 @@
         (copyfiles
             (prompt "Installing the default settings")
             (help @copyfiles-help)
-            (source (tackon #src "novadock.cfg"))
-            (dest "ENVARC:NovaDock")))
+            (source #defaults)
+            (dest "ENVARC:NovaDock") (newname "novadock.cfg")))
     (if (<> (exists "ENV:NovaDock/novadock.cfg") 1)
         (copyfiles
             (prompt "Activating the settings")

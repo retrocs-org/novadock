@@ -13,7 +13,7 @@
 ### Enhancements
 
 - Confirm HASS unlock, latch and door-opening actions; show clear door states and load supported actions in the background.
-- Include Trash in the default dock layout.
+- Include Trash between Music and CPU in the default dock layout.
 - Show percentage changes beside BENCH saved-result comparisons.
 - Add optional bounded plugin thumbnails without host-side image decoding or palette changes.
 - Retry saving a completed BENCH report after a destination error without rerunning its measurements.
@@ -32,6 +32,7 @@
 
 ### Bugs
 
+- Use factory defaults for fresh installs from a runnable development drawer, preserving existing installed settings on updates.
 - Synchronize the AmiHASS SDK and require confirmed open/closed readback after stopping a cover.
 - Keep QR/BENCH staging filenames within classic filesystem limits; report write-protected, full and invalid destinations without losing results or replacing existing files.
 - Preserve COLOUR edits and saved palettes on failed writes, with actionable destination and recovery errors.
