@@ -32,14 +32,22 @@ with tempfile.TemporaryDirectory() as temp:
     shutil.copytree(ROOT / 'Plugins', root / 'Plugins', ignore=shutil.ignore_patterns('*'))
     for path in (ROOT / 'Plugins').glob('*.ndplugin'):
         shutil.copy(path, root / 'Plugins')
+    website = ROOT / 'public-web/includes/plugin_versions.php'
+    if website.exists():
+        (root / 'public-web/includes').mkdir(parents=True)
+        shutil.copy(website, root / 'public-web/includes')
     module.ROOT = root
     # A later dock release must leave every independent plugin unchanged.
     (root / 'VERSION').write_text('VERSION=9.9\nDATE=01.01.2030\n')
     assert not module.sync(check=True)
     header = root / 'include/nd_plugin_versions.h'
     header.write_text(header.read_text().replace('ND_PLUGIN_VERSION_CLIPBOARD "' + releases['CLIPBOARD'] + '"', 'ND_PLUGIN_VERSION_CLIPBOARD "9.8"'))
-    assert module.sync(check=True) == ['Plugins/Clipboard.ndplugin']
+    expected = ['Plugins/Clipboard.ndplugin']
+    if website.exists(): expected.append('public-web/includes/plugin_versions.php')
+    assert module.sync(check=True) == expected
     module.sync()
     assert not module.sync(check=True)
+    if website.exists():
+        assert "'Clipboard' => '9.8'" in (root / 'public-web/includes/plugin_versions.php').read_text()
     assert 'NOVADOCK_VERSION=9.8' in (root / 'Plugins/Clipboard.ndplugin').read_text()
 print('Independent native plugin versions, manifest drift and dock-version independence passed.')

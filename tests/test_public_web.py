@@ -170,19 +170,31 @@ assert 'fifteen-second' in (web/'plugin-sdk.php').read_text('ascii')
 assert 'five-second' not in (web/'plugin-sdk.php').read_text('ascii')
 print('Screenshot gallery and current protocol information passed.' if SOURCE_ONLY else 'Screenshot gallery, binary downloads and current protocol information passed.')
 
-# Marketplace lists public plugins; seasonal surprises remain unlisted.
+# Marketplace lists all dock plugins; the sensor provider is a helper program.
 catalog = json.loads(subprocess.check_output([php, '-r',
     'echo json_encode(require $argv[1]);', str((web/'includes/plugin_catalog.php').resolve())]))
 import re
 programs = re.search(r'^all:(.*)$', (root/'Makefile').read_text(), re.M).group(1).split()
-expected = {name.split('/', 1)[1] for name in programs if name.startswith('Plugins/')} - {'Christmas', 'SensorsI2C'}
+expected = {name.split('/', 1)[1] for name in programs if name.startswith('Plugins/')} - {'SensorsI2C'}
 actual = [item['executable'] for item in catalog]
 assert len(actual) == len(set(actual)) and set(actual) == expected
 marketplace = subprocess.check_output([php, str((web/'marketplace.php').resolve())]).decode('ascii')
 assert set(re.findall(r'data-executable="([^"]+)"', marketplace)) == expected
 assert 'No community plugins are listed yet.' in marketplace
 assert "header('Location: marketplace.php', true, 301)" in (web/'plugins.php').read_text()
-print('Marketplace covers public plugins; seasonal surprises stay unlisted.')
+for plugin in catalog:
+    path = root/'Plugins'/(plugin['executable']+'.ndplugin')
+    if path.exists():
+        manifest = dict(line.split('=', 1) for line in path.read_text().splitlines() if '=' in line)
+        wanted_version = manifest['NOVADOCK_VERSION']
+    else:
+        native = '\n'.join(p.read_text() for p in (root/'plugin_src').glob('*/*.c'))
+        key = re.search(r'ND_PLUGIN_VER_STRING\((\w+),"'+re.escape(plugin['executable'])+r'"\)', native)[1]
+        wanted_version = re.search(r'#define ND_PLUGIN_VERSION_'+key+r' "([^"]+)"', (root/'include/nd_plugin_versions.h').read_text())[1]
+    assert plugin['version'] == wanted_version
+    assert re.search(r'data-executable="'+re.escape(plugin['executable'])+r'"><h3>[^<]+ <small>Version '+re.escape(plugin['version'])+r'</small>', marketplace)
+    assert 'added' not in plugin and 'preview' not in plugin
+print('Marketplace covers every dock plugin with its independent manifest version.')
 
 # Theme listings and palette dots must agree with the actual bundled presets.
 themes = json.loads(subprocess.check_output([php, '-r',
@@ -218,44 +230,39 @@ assert 'Build instructions' not in rendered_download and 'sh scripts/build-amiga
 assert 'https://bitskim.retrocs.org' in marketplace
 assert 'data-executable="Roadshow"' not in marketplace
 print('GitHub release links, browsable SDK tree and retired plugin checks passed.')
-# Render isolated offline release scenarios: working-tree VERSION must not leak
-# into published asset filenames or count upcoming plugins as already released.
+# Product copy stays the same across release changes; tagged SDK URLs follow Downloads.
 import tempfile
 with tempfile.TemporaryDirectory() as temp:
     site = Path(temp)
     (site/'includes').mkdir()
     for file in ('index.php', 'marketplace.php', 'plugin-sdk.php'):
         shutil.copy2(web/file, site/file)
-    for file in ('layout.php','site_info.php','releases.php','plugin_catalog.php','theme_catalog.php'):
+    for file in ('layout.php','site_info.php','releases.php','plugin_catalog.php','plugin_versions.php','theme_catalog.php'):
         shutil.copy2(web/'includes'/file, site/'includes'/file)
-    def render_saved(version):
+    for version in ('0.3', '0.4', VERSION):
         entry = next(e.copy() for e in release_entries if e['version'] == version)
         entry['status'] = 'published'
         (site/'releases.json').write_text(json.dumps([entry]))
-        return {name: subprocess.check_output([php, str(site/(name+'.php'))]).decode('ascii')
-                for name in ('index','marketplace','plugin-sdk')}
-    published = render_saved('0.3')
-    released_count = sum('added' not in p or tuple(map(int,p['added'].split('.'))) <= (0,3) for p in catalog)
-    assert f'Explore {released_count} released plugins' in published['index']
-    assert 'Coming in 0.2' not in published['marketplace'] and 'Since 0.2' in published['marketplace']
-    assert 'Coming in 0.4' in published['marketplace']
-    assert '/download/0.3/NovaDock-0.3-plugin-sdk.zip' in published['plugin-sdk']
-    assert '/download/0.3/NovaDock-0.4-' not in published['plugin-sdk']
-    development = next(line.split('=', 1)[1].strip() for line in (root/'VERSION').read_text().splitlines() if line.startswith('VERSION='))
-    assert f'NovaDock {development} (in development)' in published['index']
-    future = render_saved('0.4')
-    released_04 = sum('added' not in p or tuple(map(int,p['added'].split('.'))) <= (0,4) for p in catalog)
-    assert f'Explore {released_04} released plugins' in future['index']
-    assert 'Coming in 0.4' not in future['marketplace']
-    assert '/download/0.4/NovaDock-0.4-plugin-sdk.zip' in future['plugin-sdk']
-    if development != '0.4':
-        assert f'NovaDock {development} (in development)' in future['index']
-    else:
-        assert '(in development)' not in future['index']
-    current = render_saved(development)
-    assert f'NovaDock {development} (in development)' not in current['index']
-    assert f'/download/{development}/NovaDock-{development}-plugin-sdk.zip' in current['plugin-sdk']
-print('Website release status, published SDK filenames and released/upcoming plugin counts passed.')
+        rendered = {name: subprocess.check_output([php, str(site/(name+'.php'))]).decode('ascii')
+                    for name in ('index','marketplace','plugin-sdk')}
+        assert f'Explore {len(catalog)} bundled plugins' in rendered['index']
+        assert set(re.findall(r'data-executable="([^"]+)"', rendered['marketplace'])) == expected
+        assert f'/download/{version}/NovaDock-{version}-plugin-sdk.zip' in rendered['plugin-sdk']
+        assert f'Download Plugin SDK {version}' not in rendered['plugin-sdk']
+        assert '(in development)' not in rendered['index']
+class VisibleCopy(HTMLParser):
+    def __init__(self): super().__init__(); self.text = []
+    def handle_data(self, text): self.text.append(text)
+for file in pages:
+    if file == 'get.php': continue
+    html = subprocess.check_output([php, str((web/file).resolve())]).decode('ascii')
+    copy = VisibleCopy(); copy.feed(html)
+    text = ' '.join(copy.text)
+    assert not re.search(r'NovaDock\s+\d+\.\d+', text), file
+    assert not re.search(r'(?:New in|Coming in|Added in|Since)\s+(?:NovaDock\s+)?\d+\.\d+', text, re.I), file
+    assert 'in development for' not in text.lower(), file
+    assert 'not included in the' not in text.lower(), file
+print('Product pages stay release-independent; Downloads and tagged SDK links follow published releases.')
 
 
 source_page = subprocess.check_output([php, str((web/'developers.php').resolve())]).decode('ascii')

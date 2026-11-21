@@ -480,6 +480,12 @@ from build child environments; API credential responses are not printed.
 Deploy the PHP website manually from `public-web/`. After publication,
 `python3 tools/sync_github_releases.py` can refresh its fallback release list;
 the live download page discovers stable GitHub releases automatically.
+Product pages describe current capabilities without dock release labels; only
+Downloads displays dock release versions. Refresh feature descriptions at release
+time. Marketplace versions come from plugin manifests through
+`python3 tools/update_plugin_versions.py`; its `--check` mode and website tests
+reject stale plugin version data. Repackage the website after synchronizing.
+
 Package download counts come from GitHub release assets and share the 15-minute
 release cache. Cache format updates trigger one full refresh, so existing server
 caches do not hide newly added information. Unknown counts are omitted; source

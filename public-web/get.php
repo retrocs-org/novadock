@@ -13,7 +13,6 @@ $latest = $releases[0] ?? null;
 <p class="eyebrow">Ready for your Workbench</p>
 <h1>Get NovaDock.</h1>
 <p class="lead">Download the dock, unpack it, and make yourself at home.</p>
-<?php if (site_is_development()): ?><p class="note">NovaDock 0.5 is in development. The packages below are published releases; <a href="features.php#next">0.4 additions</a> are not included in the 0.3 download.</p><?php endif; ?>
 <div class="release-meta"><span>AmigaOS 3.0+</span><span>68000 or better</span><span>Free &middot; MIT licensed</span></div>
 <?php if ($latest): ?>
 <div class="download-panel">

@@ -1,4 +1,4 @@
-NOVADOCK 0.4 DEVELOPMENT - PUBLIC WEBSITE
+NOVADOCK - PUBLIC WEBSITE
 ============================
 
 This is the public NovaDock PHP website. Shared server-side templates render
@@ -38,17 +38,18 @@ CONTENTS
   screenshots.php  Redirect to Features screenshot gallery
   includes/layout.php  Shared PHP rendering functions
   includes/releases.php  Automatic public GitHub catalogue and cache
-  includes/site_info.php  Shared release status and released/upcoming plugin labels
+  includes/site_info.php  Published release links for Downloads and SDK sources
   includes/*_catalog.php  Bundled plugin and theme listings
+  includes/plugin_versions.php  Generated independent plugin versions
   site.css          Responsive presentation and classic fallback
   images/*.gif      32x32 indexed icons (legacy browser friendly)
   images/logo.gif   header logo; images/dock.gif legacy illustration
   screenshots/*.gif actual application crops and lightweight previews
   images/px.gif     transparent 1x1 spacer for card accent strips
   downloads/*.zip   Standalone downloads (no recursive website copy)
-  downloads/NovaDock-0.4-plugin-sdk.zip   Standalone plugin SDK and example
-  downloads/NovaDock-0.4.lha  Locally built development package
-  downloads/NovaDock-0.4.readme  Local development package information
+  downloads/NovaDock-<version>-plugin-sdk.zip   Standalone plugin SDK and example
+  downloads/NovaDock-<version>.lha  Verified release package
+  downloads/NovaDock-<version>.readme  Release package information
   downloads/SHA256SUMS.txt   Binary, readme, source and SDK checksums
 
 HOW TO PREVIEW AND PUBLISH
@@ -72,7 +73,10 @@ The downloadable ZIP is the development source tree without public-web/
 project archive includes both the source tree and this public-web/ folder.
 Compiled 68k binaries and the installer are included in the separate ready-to-install package; the website source ZIP remains source-only.
 
-APPLICATION VERSION: 0.4 (in development; published downloads currently 0.3)
+Product pages describe current features without dock release numbers.
+Only Downloads displays NovaDock release versions. Marketplace shows each
+plugin's independent version, generated from its manifest by
+python3 tools/update_plugin_versions.py (also checked during release builds).
 
 REBUILD PACKAGES
   From the NovaDock project root on a modern machine run:
@@ -87,8 +91,10 @@ RELEASE LIST
   The SDK source is included in the repository under plugin-sdk/.
   Published download links and SDK asset names come from the same release
   record. Never combine the development VERSION with a published release tag.
-  Home/Marketplace counts and labels exclude plugins newer than that release.
-  0.4 development features are described separately from the 0.3 download.
+  Update feature descriptions and requirements when publishing a release.
+  Keep product copy free of dock release numbers and historical "New in" labels.
+  Run python3 tools/update_plugin_versions.py after changing plugin versions,
+  then python3 tests/test_public_web.py to check the website before packaging.
   Only files in public-web/ are deployed; do not upload QA profiles or tokens.
 
 AUTOMATIC RELEASE DATA

@@ -10,8 +10,9 @@
 include/nd_version.h is generated (dock programs build their $VER strings and
 version texts from it).  Shell scripts, the release tools, CI and the
 website chrome read VERSION themselves.  Release text that names the
-version in prose (website pages, README, installer) is checked here, and
-rewritten from the previous version when VERSION changes.
+version in prose (README and installer) is checked here, and
+rewritten from the previous version when VERSION changes. Product pages remain
+release-independent; Downloads follows published release records.
 """
 from pathlib import Path
 import re
@@ -20,10 +21,8 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 HEADER = ROOT / 'include' / 'nd_version.h'
-# Current build mentions. Screenshot captions retain the captured release version.
-TEXT_FILES = ['README.md', 'Install', 'novadock.cfg'] + \
-    sorted(str(p.relative_to(ROOT)) for p in (ROOT / 'public-web').glob('*.php')
-           if p.name != 'features.php')
+# Product pages describe current features without naming a dock release.
+TEXT_FILES = ['README.md', 'Install', 'novadock.cfg']
 MENTION = re.compile(r'(NovaDock[ -])(\d+\.\d+(?:\.\d+)?)\b')
 
 

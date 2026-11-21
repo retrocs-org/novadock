@@ -18,13 +18,10 @@ import re
 import sys
 
 WEB = Path(__file__).resolve().parents[1] / 'public-web'
-VERSION = next(line.split('=', 1)[1].strip()
-               for line in (WEB.parent / 'VERSION').read_text('ascii').splitlines()
-               if line.startswith('VERSION='))
 FACE = 'Helvetica,Arial,sans-serif'   # helvetica.font exists on Workbench too
 PAGES = (
     ('index.php', 'Home', 'Home',
-     f'NovaDock {VERSION} - a Classic AmigaOS Workbench dock with plugin support.'),
+     'NovaDock - a Classic AmigaOS Workbench dock with plugin support.'),
     ('features.php', 'Features', 'Features', None),
     ('marketplace.php', 'Marketplace', 'Marketplace', None),
     ('plugin-sdk.php', 'Plugin SDK', 'Plugin SDK', None),
@@ -122,7 +119,7 @@ def page(label, title, description, content):
 <!-- /content -->
 </font>
 <br>
-<table class="site-footer" width="100%" border="0" cellpadding="10" cellspacing="0" bgcolor="#181825"><tr><td align="center"><font face="{FACE}" size="-1" color="#A6ADC8">NovaDock {VERSION}<?php if (site_is_development()): ?> (in development)<?php endif; ?> &middot; Classic AmigaOS 3.x &middot; <a href="https://github.com/retrocs-org/novadock">Source on GitHub</a> &middot; <a href="marketplace.php">Marketplace</a> &middot; <a href="features.php#screenshots">Screenshots</a> &middot; <a href="theme-development.php">Theme guide</a> &middot; <a href="developers.php">Developers</a> &middot; <a href="developers.php#source">Build from source</a> &middot; <a href="support.php#faq">Support &amp; FAQ</a></font></td></tr></table>
+<table class="site-footer" width="100%" border="0" cellpadding="10" cellspacing="0" bgcolor="#181825"><tr><td align="center"><font face="{FACE}" size="-1" color="#A6ADC8">NovaDock &middot; Classic AmigaOS 3.x &middot; <a href="https://github.com/retrocs-org/novadock">Source on GitHub</a> &middot; <a href="marketplace.php">Marketplace</a> &middot; <a href="features.php#screenshots">Screenshots</a> &middot; <a href="theme-development.php">Theme guide</a> &middot; <a href="developers.php">Developers</a> &middot; <a href="developers.php#source">Build from source</a> &middot; <a href="support.php#faq">Support &amp; FAQ</a></font></td></tr></table>
 </td></tr></table>
 </center>
 </body>
@@ -142,7 +139,7 @@ def main():
     head, foot = frame.split(marker)
     head = head.replace('<!-- content -->\n', '')
     foot = foot.replace('\n<!-- /content -->', '')
-    layout = (f"<?php\ndeclare(strict_types=1);\nconst NOVADOCK_VERSION = '{VERSION}';\n"
+    layout = ("<?php\ndeclare(strict_types=1);\n"
               "function site_escape(string $text): string {\n"
               "    return htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'ISO-8859-1');\n}\n"
               "require_once __DIR__.'/site_info.php';\n"
