@@ -84,7 +84,7 @@ class ReleaseNotesTests(unittest.TestCase):
             self.assertNotIn(excluded,text)
         with self.assertRaises(ValueError): n.validate_notes(text+'\nApplication overview\n',self.root)
 
-    def test_plain_aminet_layout_contains_every_current_change(self):
+    def test_plain_aminet_layout_contains_complete_release_history(self):
         text = n.aminet(self.root, 'maintainer@example.org')
         text.encode('ascii')
         self.assertTrue(all(len(line) <= 76 for line in text.splitlines()))
@@ -98,7 +98,8 @@ class ReleaseNotesTests(unittest.TestCase):
             for entry in entries: self.assertIn(n.plain(entry), compact)
         self.assertNotIn('**', text)
         self.assertNotIn('Future version only', text)
-        self.assertNotIn('Initial version only', text)
+        self.assertIn('Initial version only', text)
+        self.assertLess(text.index('  Version 0.2\n'), text.index('  Version 0.1\n'))
 
     def test_bad_contact_or_header_injection_rejected(self):
         for uploader, author in (('', 'Contributors'), ('placeholder', 'Contributors'),
@@ -133,10 +134,31 @@ class ReleaseNotesTests(unittest.TestCase):
                         'format-readme', str(path)], check=True)
         formatted = path.read_text('ascii')
         self.assertTrue(all(len(line) <= 76 for line in formatted.splitlines()))
-        for entries in n.changes(self.root).values():
-            for entry in entries:
-                self.assertIn(n.plain(entry), ' '.join(formatted.split()))
+        for _, groups in n.history(self.root):
+            for entries in groups.values():
+                for entry in entries:
+                    self.assertIn(n.plain(entry), ' '.join(formatted.split()))
         self.assertIn('    - Settings survive restart.', formatted)
+
+    def test_aminet_history_is_complete_for_every_actual_release(self):
+        text = n.aminet(ROOT, 'maintainer@example.org')
+        releases = n.history(ROOT)
+        self.assertEqual([v for v, _ in releases], ['0.5', '0.4', '0.3', '0.2', '0.1'])
+        compact = ' '.join(text.split())
+        for release_version, groups in releases:
+            self.assertEqual(text.count('  Version '+release_version+'\n'), 1)
+            for entries in groups.values():
+                for entry in entries:
+                    self.assertIn(n.plain(entry), compact)
+        self.assertEqual(n.markdown(ROOT), (ROOT/'docs/RELEASE-NOTES.md').read_text())
+
+    def test_duplicate_or_invalid_historical_sections_are_rejected(self):
+        original = (self.root/'CHANGELOG.md').read_text()
+        (self.root/'CHANGELOG.md').write_text(original+'\n## NovaDock 0.1\n\n- Duplicate history.\n')
+        with self.assertRaisesRegex(ValueError, 'duplicate'): n.aminet(self.root, 'maintainer@example.org')
+        (self.root/'CHANGELOG.md').write_text(original.replace('- Initial version only.', 'Invalid historical paragraph.'))
+        with self.assertRaises(ValueError): n.aminet(self.root, 'maintainer@example.org')
+        self.assertTrue(n.markdown(self.root).startswith('### Features'))
 
     def test_credential_lookup_forms_must_be_unambiguous(self):
         with self.assertRaisesRegex(ValueError, 'not both'):

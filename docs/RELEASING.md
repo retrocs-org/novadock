@@ -83,7 +83,10 @@ lists its initial features and omits empty fix groups. A custom --notes file
 must retain this complete changelog-only structure.
 
 Aminet remains separate: its plain-text readme still includes the required
-metadata, application features, installation, source/licence and changelog.
+metadata, application features, installation, source/licence and the full
+version changelog through the current release, newest first. Future draft
+versions are excluded. GitHub and GitLab notes still contain only the current
+release changelog.
 Published title/description corrections do not require moving tags or rebuilding
 downloads. Retain a separate correction receipt; do not rewrite old package
 manifests or publication receipts to disguise a metadata-only update.
@@ -172,7 +175,8 @@ submit the SDK ZIP as the application archive.
 
 ### Readme format
 
-`tools/release_notes.py` generates the readme before the runtime LHA is packed;
+`tools/release_notes.py` generates the readme with every release changelog,
+including the current version, before the runtime LHA is packed;
 `scripts/make-release.sh` invokes it during the normal build. The same readme is
 retained beside the LHA and staged under the stable Aminet name. The formatter
 supports an optional reviewed `AMINET_REPLACES` header.

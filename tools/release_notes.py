@@ -27,8 +27,8 @@ FEATURES = (
 def version(root=ROOT):
     return next(s.split('=', 1)[1].strip() for s in (root/'VERSION').read_text('ascii').splitlines() if s.startswith('VERSION='))
 
-def changes(root=ROOT):
-    v = version(root)
+def changes(root=ROOT, release_version=None):
+    v = version(root) if release_version is None else release_version
     text = (root/'CHANGELOG.md').read_text('utf-8')
     sections = list(re.finditer(r'^## NovaDock ([^\s]+)([^\n]*)\n', text, re.M))
     found = [m for m in sections if m[1] == v]
@@ -50,6 +50,22 @@ def changes(root=ROOT):
         else: raise ValueError('Current changelog entries must be grouped bullet lists.')
     if not any(groups.values()): raise ValueError('Current release changelog is empty.')
     return groups
+
+def history(root=ROOT):
+    """Every release through VERSION, newest first; future drafts stay out."""
+    def key(value):
+        if not re.fullmatch(r'\d+(?:\.\d+)*', value):
+            raise ValueError('Invalid changelog version: '+value)
+        parts = tuple(map(int, value.split('.')))
+        return parts + (0,) * max(0, 3-len(parts))
+    current = version(root)
+    changes(root)  # Require the current release, even when history is empty.
+    text = (root/'CHANGELOG.md').read_text('utf-8')
+    versions = re.findall(r'^## NovaDock ([^\s]+)[^\n]*\n', text, re.M)
+    included = [v for v in versions if key(v) <= key(current)]
+    if len(included) != len(set(included)):
+        raise ValueError('CHANGELOG.md contains duplicate release versions.')
+    return [(v, changes(root, v)) for v in sorted(included, key=key, reverse=True)]
 
 def plugin_names(root=ROOT):
     match = re.search(r'^all:\s*(.+)$', (root/'Makefile').read_text(), re.M)
@@ -114,10 +130,12 @@ def aminet(root=ROOT, uploader=None, author=None):
         wrap('Unpack novadock.lha, open the NovaDock drawer and double-click Install. The graphical installer requires Installer 42 or newer, included with AmigaOS 3.1 and later. It supports installation, updating and removal; updates preserve settings.'), '',
         wrap('For a standard-location Shell install, run "Execute install.amiga" in the NovaDock drawer. Help is installed as HELP:NovaDock.guide. Settings and permanent Notes use ENVARC:NovaDock by default. Weather updates need internet access and an HTTPS-capable curl or Wget. Other integrations require their corresponding applications.'), '',
         'SOURCE AND LICENCE', '', REPOSITORY, REPOSITORY+'/releases/tag/'+quote(v, safe=''), WEBSITE,
-        'MIT licence; see LICENSE in the archive.', '', 'VERSION CHANGELOG', '', '  '+v,
+        'MIT licence; see LICENSE in the archive.', '', 'VERSION CHANGELOG',
     ]
-    for name, entries in changes(root).items():
-        if entries: lines += ['', '  '+name] + [wrap(entry, indent='    ', bullet=True) for entry in entries]
+    for release_version, groups in history(root):
+        lines += ['', '  Version '+release_version]
+        for name, entries in groups.items():
+            if entries: lines += ['', '  '+name] + [wrap(entry, indent='    ', bullet=True) for entry in entries]
     text = '\n'.join(lines)+'\n'
     if any(len(line)>76 for line in text.splitlines()): raise ValueError('Aminet metadata or an unbroken word exceeds 76 columns.')
     return text
