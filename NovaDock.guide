@@ -1,10 +1,10 @@
 @database NovaDock.guide
-@$VER: NovaDock.guide 0.4 (18.11.2026)
+@$VER: NovaDock.guide 0.5 (21.11.2026)
 @author "NovaDock contributors"
 @(c) "Copyright 2026 NovaDock contributors, MIT licence"
-@node Main "NovaDock 0.4 manual"
+@node Main "NovaDock 0.5 manual"
 
-@{b}NovaDock 0.4@{ub}
+@{b}NovaDock 0.5@{ub}
 A lightweight, extensible dock for Classic AmigaOS Workbench.
 
 Select a topic. Press Help in any NovaDock Preferences window to
@@ -34,6 +34,12 @@ return to this manual.
   @{" Watch " link WATCH_PLUGIN}
   @{" Logs " link LOGS_PLUGIN}
   @{" Calculator " link CALC_PLUGIN}
+  @{" Tasks and reminders " link AGENDA_PLUGIN}
+  @{" Picture slideshow " link PICTURES_PLUGIN}
+  @{" Benchmarks " link BENCH_PLUGIN}
+  @{" QR codes " link QR_PLUGIN}
+  @{" Moon and solar estimates " link MOON_PLUGIN}
+  @{" Colour sampler " link COLOUR_PLUGIN}
   @{" ToolTypes " link TOOLTYPES_PLUGIN}
   @{" Volume space " link VOLUME_SPACE}
   @{" BitSkim " link BITSKIM_PLUGIN}
@@ -85,17 +91,18 @@ Source:  github.com/retrocs-org/novadock
 ================================
 
 @{b}Sections@{ub}
-  @{" Install, update or remove " link USING_NOVADOCK 21}
-  @{" Start and stop " link USING_NOVADOCK 57}
-  @{" First use " link USING_NOVADOCK 69}
-  @{" Add and arrange tiles " link USING_NOVADOCK 84}
-  @{" Small screens " link USING_NOVADOCK 102}
-  @{" Save settings " link USING_NOVADOCK 115}
-  @{" Update notifications (0.4) " link USING_NOVADOCK 123}
-  @{" Help and development " link USING_NOVADOCK 175}
-  @{" Classic icon colours " link USING_NOVADOCK 192}
-  @{" Warp1260 CPU controls (0.4) " link USING_NOVADOCK 201}
-  @{" Plugin runtime health " link USING_NOVADOCK 239}
+  @{" Install, update or remove " link USING_NOVADOCK 22}
+  @{" Start and stop " link USING_NOVADOCK 58}
+  @{" First use " link USING_NOVADOCK 70}
+  @{" Add and arrange tiles " link USING_NOVADOCK 86}
+  @{" Small screens " link USING_NOVADOCK 104}
+  @{" Save settings " link USING_NOVADOCK 117}
+  @{" Update notifications (0.4) " link USING_NOVADOCK 125}
+  @{" Help and development " link USING_NOVADOCK 177}
+  @{" Classic icon colours " link USING_NOVADOCK 194}
+  @{" Warp1260 CPU controls (0.4) " link USING_NOVADOCK 203}
+  @{" Plugin runtime health " link USING_NOVADOCK 241}
+  @{" Additional 0.5 tools " link USING_NOVADOCK 251}
 
 NovaDock is an application dock for Classic AmigaOS Workbench 3.x. It keeps
 applications, drawers, disks and useful plugin controls within easy reach.
@@ -105,9 +112,9 @@ need other software; their help pages describe those requirements.
 @{b}Install, update or remove@{ub}
 -------------------------
 
-Unpack the application archive, open its drawer and double-click
-@{b}Install-NovaDock@{ub}. The installer needs Commodore Installer version 42 or
-newer. Keep the supplied StartInstaller launcher beside the installer.
+Unpack the application archive, open its drawer and double-click @{b}Install@{ub}.
+The installer needs Commodore Installer version 42 or newer. Keep the
+supplied StartInstaller launcher beside the installer.
 
   * @{b}Novice@{ub} uses the standard locations, keeps existing settings and starts
     NovaDock automatically with Workbench and after installation.
@@ -153,8 +160,9 @@ application.
 @{b}First use@{ub}
 ---------
 
-A fresh configuration uses the Nord theme and six tiles: System, Shell,
-Music, CPU, RAM and Clock. Existing installations retain their layout.
+A fresh configuration uses the Nord theme and seven tiles: System, Shell,
+Music, CPU, RAM, Clock and Trash. Existing installations retain their
+layout.
 
 Click a launcher to open its application or drawer. Plugin clicks perform
 their own actions: the clock opens a calendar, Notes opens its collection,
@@ -244,8 +252,8 @@ characters long.
 
 NovaDock keeps the archive only when its size and SHA-256 match the release
 metadata and checksum. Downloading does not install or run anything. Unpack
-the saved archive and run @{b}Install-NovaDock -> Update@{ub} when ready. Your saved
-settings are retained by the installer.
+the saved archive and run @{b}Install -> Update@{ub} when ready. Your saved settings
+are retained by the installer.
 
 Text configuration uses CHECK_UPDATES_STARTUP=YES|NO,
 CHECK_UPDATES_RUNNING=YES|NO and UPDATE_INTERVAL_HOURS=2|4|6. The old
@@ -329,6 +337,13 @@ setup, connection and dependency problems, and suggest a next step. Check
 Diagnostics for unresponsive processes and AmiHASSPrefs for HASS connection
 errors. Empty collections, idle tools and lights reporting off are normal
 states.
+
+@{b}Additional 0.5 tools@{ub}
+--------------------
+
+BENCH, QR, MOON and COLOUR are available under Add Item -> Plugin. See the
+@{"benchmark" link BENCH_PLUGIN}, @{"QR" link QR_PLUGIN}, @{"moon" link MOON_PLUGIN} and @{"colour" link COLOUR_PLUGIN} chapters for use, settings and limits. HASS
+Type room adds read-only room summaries through AmiHASS; see @{"HASS" link HASS_PLUGIN}.
 @endnode
 
 @node LAUNCHERS_AND_ICONS "Launchers and icons"
@@ -655,6 +670,12 @@ tiles retain their compact artwork area and central placement.
 @{b}Responsive settings and diagnostics@{ub}
 ===================================
 
+@{b}Sections@{ub}
+  @{" Status dots " link RESPONSIVE_SETTINGS 50}
+  @{" Recovery and low-resource preset " link RESPONSIVE_SETTINGS 64}
+  @{" Preferences startup and preview backups " link RESPONSIVE_SETTINGS 85}
+  @{" Cached plugin inventory in 0.5 " link RESPONSIVE_SETTINGS 114}
+
 Moving, adding and removing dock items, switching the CPU/RAM view, and
 changing folder view/sort update the dock immediately. Rapid edits share an
 in-memory full configuration, including disabled plugins and their settings.
@@ -730,6 +751,65 @@ less frequent.
 65,535). Existing per-plugin rows show update age, stale/offline state and
 restart counts. Full native timing and input behavior still require testing
 on the target Workbench setup.
+
+@{b}Preferences startup and preview backups@{ub}
+---------------------------------------
+
+In 0.5, General, Appearance, Updates and bundled plugin settings open
+without scanning every installed plugin or decoding unrelated artwork.
+Organize performs discovery when first opened; Add Item and Plugins scan
+their catalogues when needed. A focused third-party settings lookup
+validates only the matching plugin's executable and artwork. Explicit
+catalogue refresh still reads disk.
+
+The private preview backup uses an exact, checksummed same-process snapshot
+in T:, with a separate name for each Preferences process. This avoids
+applying the permanent text-save routine and its repeated validation passes
+to a temporary copy. Cancel after Test restores the starting settings,
+including pooled text and plugin options. If T: cannot be written,
+Preferences retains its in-memory fallback. The temporary snapshot is
+removed on exit; it is not an import format. Use, Save and preview
+restoration to ENV: retain normal validated text writes and coordination
+with the running dock's save worker.
+
+Artwork validation uses bounded lookup tables for names and frame states
+instead of comparing every pair of frames. It still rejects duplicate states
+and name hash collisions, including at the 256-frame limit. Package checks
+read and validate one bank without opening it twice or building
+renderer-only key arrays. Built-in option assignment stops at the matching
+definition while keeping custom schema overrides and value validation
+authoritative. These optimizations also apply to dock startup/reload and
+plugin settings outside Preferences.
+
+@{b}Cached plugin inventory in 0.5@{ub}
+------------------------------
+
+The Plugins window opens before inventory discovery begins. A
+lower-priority, independently loaded worker reads and validates packages,
+then sends bounded results through Exec messages. Navigation and Close stay
+available while loading. Refresh forces a new background validation scan;
+imports and removal wait for current results. Third-party metadata also
+loads in the worker, with rapid selection changes coalesced. Closing or
+leaving the page removes the reply port; workers stop cooperatively between
+records and discard undeliverable replies.
+
+Repeated plugin-list openings reuse validated package metadata and health
+results from compact, checksummed disposable files in T:. Unused option
+slots and fixed-string padding are omitted to keep cache memory and I/O
+bounded. Program, manifest, Workbench icon and artwork-bank fingerprints are
+checked on each scan. Bounded directory snapshots avoid repeated file
+queries; a cold scan checks a second snapshot before saving its packed
+records. Ordinary icons and duplicate installations are cached too. Filename
+matching follows AmigaDOS case rules. Changed or missing sources invalidate
+the entry; missing, truncated or corrupt caches fall back to normal
+validation. Refresh on the Plugins page forces a complete validation scan.
+Cache files do not change saved settings and can be discarded at any time.
+
+Tool result panels update their fields in place. Background readings
+preserve uncommitted text edits and keyboard focus; an explicit Paste or
+palette Use replaces the selected input. Idle tools wait on UI/worker
+signals and keep their normal dock heartbeat, rather than running frequent
+polling timers.
 @endnode
 
 @node AUTOHIDE_AND_DOCK_MENU "Auto-hide and the dock menu"
@@ -1728,28 +1808,32 @@ so both rain and snow remain visible.
 ==============
 
 @{b}Sections@{ub}
-  @{" Connect through AmiHASS " link HASS_PLUGIN 31}
-  @{" A light-bulb toggle " link HASS_PLUGIN 68}
-  @{" Entities, scenes and groups " link HASS_PLUGIN 119}
-  @{" Light brightness " link HASS_PLUGIN 154}
-  @{" RGB color and climate targets " link HASS_PLUGIN 172}
-  @{" Automatic artwork and states " link HASS_PLUGIN 181}
-  @{" Offline behavior and credentials " link HASS_PLUGIN 206}
-  @{" AmiHASS framework for developers " link HASS_PLUGIN 244}
-  @{" Integration checks " link HASS_PLUGIN 276}
-  @{" Fan, cover and temperature controls " link HASS_PLUGIN 313}
-  @{" Per-tile refresh, display and read-only mode " link HASS_PLUGIN 343}
-  @{" Bridge compatibility " link HASS_PLUGIN 383}
+  @{" Connect through AmiHASS " link HASS_PLUGIN 35}
+  @{" A light-bulb toggle " link HASS_PLUGIN 72}
+  @{" Entities, scenes and groups " link HASS_PLUGIN 123}
+  @{" Light brightness " link HASS_PLUGIN 158}
+  @{" RGB color and climate targets " link HASS_PLUGIN 176}
+  @{" Automatic artwork and states " link HASS_PLUGIN 185}
+  @{" Offline behavior and credentials " link HASS_PLUGIN 210}
+  @{" AmiHASS framework for developers " link HASS_PLUGIN 248}
+  @{" Integration checks " link HASS_PLUGIN 280}
+  @{" Fan, cover and temperature controls " link HASS_PLUGIN 317}
+  @{" Per-tile refresh, display and read-only mode " link HASS_PLUGIN 347}
+  @{" Bridge compatibility " link HASS_PLUGIN 387}
+  @{" Read-only room summaries (0.5) " link HASS_PLUGIN 406}
+  @{" Media players " link HASS_PLUGIN 436}
+  @{" Locks and motorised doors " link HASS_PLUGIN 457}
 
-HASS connects NovaDock 0.4 to the separate AmiHASS background service. Add
+HASS connects NovaDock 0.5 to the separate AmiHASS background service. Add
 independent tiles for lights, switches, groups, scenes, scripts or sensor
 readings. AmiHASS owns the Home Assistant connection and credentials. The
 dock uses its C SDK through Exec message ports for discovery, cached
 readings and controls.
 
 Native builds, mock-server requests and sample-service IPC checks cover the
-integration. Live read-only API and paging checks have also passed.
-Interactive UI validation, physical-device controls and idle-resource
+integration. Live read-only API and paging checks have also passed. Native
+sample controls, room filtering and service restart recovery pass on
+Workbench. Physical-device controls and physical-system resource
 measurements remain release checks. WebSocket events and custom multi-entity
 selections remain future work for the dock. Native sample tests cover
 brightness, RGB and climate target readback plus the plugin control-panel
@@ -1758,7 +1842,7 @@ inputs. Physical-device testing remains a separate release check.
 @{b}Connect through AmiHASS@{ub}
 -----------------------
 
-  1. Install the separate @{b}AmiHASS 0.1@{ub} package using @{b}Install-AmiHASS@{ub}.
+  1. Install the separate @{b}AmiHASS 0.2@{ub} package using @{b}Install@{ub}.
   2. Configure AmiHASS's networking requirements (C:curl, CA certificates
      for HTTPS and your TCP/IP stack). The dock plugin itself makes no HTTP
      requests.
@@ -1830,7 +1914,7 @@ send a control action to Home Assistant.
 Each tile saves its device ID, readable names, entity and action
 independently. Existing entity-only tiles keep working after an update;
 choose a device when changing their entity. New device-based selections
-require the updated AmiHASS 0.1 service with device discovery support. An
+require the updated AmiHASS 0.2 service with device discovery support. An
 older service shows an update message rather than silently browsing the
 whole server.
 
@@ -1888,7 +1972,7 @@ turns the light off. On/off/toggle buttons remain available.
 
 The slider appears only when AmiHASS reports brightness support. Older
 service builds without control metadata, on/off-only lights and other entity
-types keep their existing controls. Use an updated AmiHASS 0.1 service for
+types keep their existing controls. Use an updated AmiHASS 0.2 service for
 dimming.
 
 The dock reads the confirmed level after a request and picks up changes made
@@ -1950,9 +2034,9 @@ not follow redirects to another origin.
 
 Other local Amiga programs can access local files; the OS provides no
 isolation. Uninstalling NovaDock does not stop AmiHASS or remove its
-connection settings. Use @{b}Install-AmiHASS -> Uninstall@{ub} to stop/remove the
-separate service; choose whether to keep or remove its token. NovaDock's
-removal only affects tile settings.
+connection settings. Use @{b}Install -> Uninstall@{ub} to stop/remove the separate
+service; choose whether to keep or remove its token. NovaDock's removal only
+affects tile settings.
 
 Open @{b}NovaDock Preferences -> Plugins@{ub}, select the affected instance and click
 @{b}Refresh@{ub} for its current runtime status and repair guidance. This
@@ -2003,7 +2087,7 @@ read-only C example.
 @{b}Integration checks@{ub}
 ------------------
 
-The public AmiHASS 0.1/ABI 1 snapshot is recorded in
+The public AmiHASS 0.2/ABI 1 snapshot is recorded in
 plugin_src/hass/service/sdk.json, including hashes for the protocol, client
 and portable request/metadata decoder. Optional QUERY.items[] control
 metadata extends ABI 1 without changing its message size. Older replies
@@ -2049,7 +2133,7 @@ Unsupported controls are omitted.
 
 All actions still go to the Amiga AmiHASS service through structured Exec
 messages. The plugin does not connect to Home Assistant. Fan and cover
-controls require the matching updated AmiHASS 0.1 service; optional metadata
+controls require the matching updated AmiHASS 0.2 service; optional metadata
 extends the existing ABI 1 message without changing its layout. Older
 bridges leave these controls unavailable. Locks remain read-only.
 
@@ -2110,14 +2194,109 @@ shared polling.
 @{b}Bridge compatibility@{ub}
 --------------------
 
+The tested release pair is @{b}NovaDock 0.5 with AmiHASS 0.2@{ub}. Install and
+configure the bridge separately; no credentials belong in NovaDock. A
+missing service shows @{b}Start AmiHASS 0.2+ service@{ub} and connection failures
+must not retain a successful Sample data label. Newer bridges are accepted
+by their advertised capabilities, rather than rejected for an unfamiliar
+version.
+
 Discovery checks the service's advertised room/filter features before
 sending catalogue requests. An older AmiHASS 0.1 build that does not
-advertise these features shows @{b}Update AmiHASS service@{ub}, rather than ignoring
+advertise these features shows @{b}Update to AmiHASS 0.2+@{ub}, rather than ignoring
 a room/type filter. Refresh after updating the bridge. ABI 1 and packet
 sizes are unchanged. Configured entity tiles can retain legacy cached QUERY
 support, while their detail window identifies the need to update the bridge.
 Optional controls still require their own capability metadata; missing
 support never becomes a zero.
+
+@{b}Read-only room summaries (0.5)@{ub}
+------------------------------
+
+Set Type to room and use Select beside Room. The chooser lists rooms
+supplied by AmiHASS; a specific room is required. HASS obtains all room
+entities through the same public Exec-port SDK, without connecting directly
+to Home Assistant.
+
+The tile reports light entities switched on and open contacts/covers. Click
+for on/off light counts, open/closed door and window contacts/covers,
+unavailable entities and a room total. Lights and Open contacts show
+matching entries. Motion sensors are not counted as open doors.
+Opening/closing covers count as open until fully closed. These summaries
+send no control commands.
+
+Refresh defaults to sixty seconds. A complete paged snapshot is required
+before counts become current. On failure the previous counts remain
+explicitly stale and the badge clears. Summaries support at most 1,024
+distinct room entities, with up to sixty list details visible; counts
+include the full supported room. Oversized, inconsistent or duplicate pages
+produce a refresh error. AmiHASS must advertise room and filter support.
+Custom hand-picked entity sets remain future work.
+
+Tiles for the same room share one paged aggregation and one duplicate-check
+workspace. The fastest requested interval applies to that room; repeated
+Refresh requests are combined. Different rooms start their reads at
+staggered times. Closing the tile performing the read lets a remaining tile
+take over. A stalled owner is reported as stale rather than displaying its
+counts as current.
+
+@{b}Media players@{ub}
+-------------
+
+Choose Type media_player and select a device/entity through AmiHASS. Show
+controls opens only the actions advertised by that entity: Previous, Play,
+Pause, Next and a confirmed Volume slider. Track and artist appear when the
+bridge reports them. The default State tile display shows track information.
+Read-only tiles show metadata and Refresh but expose no mutating controls.
+
+Playback and volume commands use the public Exec-port C SDK. The updated
+AmiHASS 0.2 service owns all network calls, validates advertised
+capabilities and supplies sample media playback, volume and track changes
+for offline tests. Older service builds without media metadata safely leave
+these controls absent. Commands are not replayed after outages; volume and
+playback use confirmed readback, and track navigation waits for an updated
+state timestamp.
+
+Feature flags and service names follow the official Home Assistant
+media-player entity API
+(https://contributors.home-assistant.io/core/entities/media-player/).
+
+@{b}Locks and motorised doors@{ub}
+-------------------------
+
+Choose Type lock and select a device/entity. The click-action picker and
+control popup offer Lock, Unlock and Open lock only when AmiHASS reports
+those controls. Open lock releases the latch; it is distinct from Unlock. A
+lock that requires a keypad code stays read-only because NovaDock does not
+collect or send PINs. Door contact sensors also remain read-only and display
+Open/Closed. Lock states display Locked, Unlocked or Latch open without
+changing the raw SDK state.
+
+Cover entities retain their advertised Open cover, Close cover, Stop cover
+and position controls. Stop is confirmed only by an Open or Closed state,
+not by an unknown, jammed or moving state. The tile artwork follows
+confirmed raw states.
+
+Unlocking, releasing a latch, opening a cover, or increasing its position
+opens a separate confirmation window with the device name, entity ID and
+action. Confirmations also apply to sample devices. Cancel, Escape and
+closing the confirmation send nothing. The dialog expires after 30 seconds;
+a settings, source, capability or availability change invalidates it.
+Confirm checks the current state again, and the plugin does not replay an
+accepted action after a connection loss. Read-only mode blocks actions below
+the UI as well.
+
+The settings window opens immediately, then queries the selected lock, cover
+or media player's capabilities asynchronously through the Exec SDK. Until
+the capabilities are verified, its action picker offers Show controls.
+Unsupported actions are removed; failed queries leave the picker read-only.
+No Home Assistant credentials or HTTP calls are handled by the dock.
+
+These controls require the current AmiHASS 0.2 build with lock metadata.
+Older ABI 1 services remain usable for supported existing entities; missing
+lock metadata never enables an action. Integration QA uses only the bridge's
+shared sample front-door lock and garage door, with no real lock or door
+commands.
 @endnode
 
 @node AMIRC_PLUGIN "AmIRC"
@@ -2499,6 +2678,209 @@ require an FPU. Calculations run only when requested. Clipboard writes run
 in a separate bounded worker, allowing the dock and calculator to remain
 responsive if the clipboard owner is slow. The artwork ships in Calc.assets
 beside the plugin.
+@endnode
+
+@node AGENDA_PLUGIN "Tasks and reminders"
+@toc Main
+@{b}Tasks and reminders@{ub}
+===================
+
+Add AGENDA from Add Item -> Plugin. Click its tile to list tasks, then use
+New, Edit, Complete or Remove. Tasks are saved independently for each
+instance under ENVARC:NovaDock/Agenda. Up to 64 tasks are supported per
+instance.
+
+Enter a task title, a date in YYYY-MM-DD and a time in HH:MM, using the
+Amiga local clock. Leave the date blank for an undated task. Repeat accepts
+NONE, DAILY, WEEKLY or MONTHLY, without regard to case. Dates cover
+1978-2099. Completing a recurring task schedules its next occurrence after
+today; monthly recurrence retains its original day, clamping to shorter
+months when necessary. Completing an ordinary task toggles its completed
+state.
+
+The badge counts incomplete tasks due today or overdue. Reminder alerts use
+the dock's ALERTS history and are enabled by default in tile settings. They
+are checked once a minute and recorded once per occurrence before
+notification, so restarting the dock does not repeat an acknowledged
+reminder. A failed reminder save is retried later. AGENDA must be running
+for reminders to appear.
+
+Loading and saving run in background workers. Failed saves retain the
+current list and editor contents. Successful replacements keep a .bak copy;
+an unreadable or malformed existing task file is not replaced. Keep the
+backup when recovering a damaged file. Uninstalling with Keep settings
+retains tasks; Remove settings deletes this default storage with the other
+NovaDock data.
+@endnode
+
+@node PICTURES_PLUGIN "Picture slideshow"
+@toc Main
+@{b}Picture slideshow@{ub}
+=================
+
+Add PICTURES from Add Item -> Plugin and select its Picture drawer in tile
+settings. The slideshow interval is 10-3600 seconds (default 30). Each
+instance has its own drawer and slideshow. Images and their original files
+are read-only.
+
+The plugin indexes up to the first 32 supported filenames in sorted order,
+scanning at most 4096 immediate drawer entries. It recognises IFF/ILBM, PNG,
+JPEG, GIF and BMP filenames; decoding requires a matching installed picture
+DataType. Files must be at most 4 MiB with dimensions at most 1024×1024.
+Header checks happen before invoking the decoder. Unsupported/corrupt files
+report an error; manual Next or the next slideshow interval can move past
+them.
+
+Image indexing, decoding and 16-colour preview conversion run in a separate
+worker. One 128×96 preview is retained; the dock receives a fixed 32×32
+thumbnail and caches its display bitmap. The renderer uses existing
+Workbench pens and does not change the shared palette. Image fidelity
+depends on screen colours; the larger viewer displays the bounded preview
+rather than the full-resolution source. Unsupported true-colour DataTypes
+require compatible CyberGraphX support.
+
+Click for a larger preview and Previous, Next, Play/Pause and Rescan
+controls. Left/right arrows navigate in the preview, Space pauses/resumes
+and Escape closes it. Rescan picks up directory changes. The slideshow
+avoids decoding while the dock is hidden/covered and only repaints changed
+images or exposed windows. Older docks without thumbnail support retain the
+plugin's static art.
+@endnode
+
+@node BENCH_PLUGIN "Benchmarks"
+@toc Main
+@{b}Benchmarks@{ub}
+==========
+
+Add BENCH from Add Item -> Plugin. Click its tile and choose Run to measure
+integer CPU throughput, a 64 KiB memory copy and rectangle fills in a
+private 320×128, two-plane bitmap. Each stage lasts about one second, with
+CPU, memory-copy and drawing stage feedback in the window title. Stop
+cancels between batches; partial results are not saved. The dock remains
+responsive.
+
+Completed results include the date, CPU flags, available Chip/Fast memory,
+allocation type, display dimensions/depth and EClock frequency. Dated text
+reports live in ENVARC:NovaDock/Bench. History shows the newest sixteen
+reports and Compare displays their rates beside the current result.
+
+These are short comparative tests, not a hardware rating or a fullscreen
+screen-mode benchmark. Compare the same NovaDock benchmark version, memory
+allocation and workload with similar background activity. Off-screen fill
+speed includes graphics.library and the available blitter implementation;
+emulator results do not establish physical Amiga performance. Artwork ships
+in Bench.assets.
+
+If the report cannot be saved, the results window keeps the completed
+measurements and shows the destination error. Fix the destination, then
+choose @{b}Retry save@{ub} to save those same measurements without running the
+benchmark again. The button is enabled only for an unsaved completed report.
+@{b}Stop@{ub} cancels an active benchmark; saving disables both controls until the
+write finishes. Existing reports remain intact and failed saves leave no
+partial report. Report and temporary filenames fit classic Amiga
+filesystems.
+
+Compare shows signed percentage changes alongside the current and saved
+rates. A zero baseline is shown as n/a; extreme changes are capped in the
+display to avoid overflowing the 68000's integer arithmetic. Positive rates
+mean more work per second, not a percentage of CPU utilisation.
+@endnode
+
+@node QR_PLUGIN "QR codes"
+@toc Main
+@{b}QR codes@{ub}
+========
+
+Add QR from Add Item -> Plugin. Enter text or a URL, or use Paste to read the
+Amiga clipboard, then Generate. Encoding runs locally in a separate worker;
+text is never sent to a web service. The preview uses exact black and white,
+whole pixels and a four-module quiet zone. If the current screen cannot fit
+a readable code or allocate those colours, QR reports the problem.
+
+Input is limited to 512 UTF-8 bytes. Valid UTF-8 is retained; legacy
+clipboard bytes are interpreted as Latin-1 and converted to UTF-8. The
+encoded QR declares UTF-8 and uses at least medium error correction. Shorter
+text is easier to scan.
+
+Enter an Amiga filename and choose Export to save a one-plane black/white
+ILBM with the quiet zone included, at two pixels per module. Export is
+enabled only when the generated code matches the current input and no job is
+running. Existing files are not overwritten. Preview and export use the same
+encoded matrix. Changing the input while a job runs discards its outdated
+result. QR.assets contains the artwork; the bundled Nayuki encoder retains
+its MIT licence and pinned source provenance.
+
+Export reports write-protected, full or missing destinations and keeps the
+input, export path and generated preview for retry. Temporary filenames fit
+classic Amiga filesystems and are removed after a failed write. Existing
+exports remain intact.
+@endnode
+
+@node MOON_PLUGIN "Moon and solar estimates"
+@toc Main
+@{b}Moon and solar estimates@{ub}
+========================
+
+Add MOON from Add Item -> Plugin. Its sixteen-frame tile follows the
+estimated moon phase. Click for phase name, illumination, lunar age,
+sunrise/sunset and the date and UTC offset used. No network connection or
+FPU is required.
+
+Configure latitude and longitude in decimal degrees (north/east positive)
+and UTC offset as +01:00 or -05:30. Set the current local offset, including
+any summer-time adjustment; MOON does not infer daylight-saving rules. The
+Amiga clock is treated as local time. Default location and offset are zero,
+so enter your own values for local sunrise/sunset. Preferences validates
+coordinates and UTC offsets before Use/Save and explains invalid values in
+the window title. Refresh defaults to sixty minutes, with an optional
+interval from fifteen to 360 minutes and a manual Refresh.
+
+The mean-cycle lunar estimate uses the 2000-01-06 18:14 UTC new moon and a
+29.530588853-day cycle. Solar estimates use NOAA's fractional-year equations
+and apparent horizon. They are approximate, ignore local terrain and
+weather, and report polar day/night when the sun does not cross that
+horizon. Dates 1978-2099 are supported. These estimates are unsuitable for
+navigation or precise astronomical timing. Artwork ships in Moon.assets.
+
+References: NASA lunar phases
+(https://eclipse.gsfc.nasa.gov/phase/phases1901.html) and NOAA solar
+equations (https://gml.noaa.gov/grad/solcalc/solareqns.PDF).
+@endnode
+
+@node COLOUR_PLUGIN "Colour sampler"
+@toc Main
+@{b}Colour sampler@{ub}
+==============
+
+Add COLOUR from Add Item -> Plugin and click its tile. Pick (3s) starts a
+three-second countdown: move the pointer over the desired Workbench pixel.
+No click is needed. The window shows #RRGGBB and decimal RGB values; you can
+also type a six-digit hex colour and press Return. A live swatch previews
+the colour using the nearest available screen pen; the RGB/hex values remain
+exact. Cancel pick stops the countdown. Copy hex writes to the Amiga
+clipboard. Change COPY_FORMAT to RGB in tile settings for decimal copying.
+
+Sampling supports indexed Workbench screens, including Extra Halfbrite, and
+compatible CyberGraphX RTG screens. Workbench must be the front screen; HAM
+and unsupported RTG sampling report a failure rather than an invented
+colour. Sampling and clipboard operations run in bounded background workers.
+
+Enter a palette name and choose Save colour. Up to 32 named colours are
+stored in ENVARC:NovaDock/Colours/Palette. Saving the same name replaces its
+value. Palette opens a list with Use and Remove controls; removing a colour
+affects only this saved palette. Successful replacements retain a .bak copy
+and validate the new file before replacing the original. A malformed
+existing palette is preserved and reported as an error. Colour.assets
+belongs to the plugin and is installed beside it.
+
+Palette rows are built only when the list opens or its contents change.
+Sampling results update the existing window and preserve uncommitted text
+edits.
+
+Write-protected or full destinations report an error without discarding the
+typed colour/name or replacing the saved palette. Choose Save colour again
+after fixing the destination. Failed saves leave no partial palette; if
+rollback itself fails, the error identifies the retained original in .bak.
 @endnode
 
 @node TOOLTYPES_PLUGIN "ToolTypes"
@@ -5205,6 +5587,12 @@ dock's right-click settings form.
 @{b}Plugin-owned artwork@{ub}
 ====================
 
+@{b}Sections@{ub}
+  @{" Select a named frame and state " link PLUGIN_SDK_ARTWORK 26}
+  @{" Build an artwork bank " link PLUGIN_SDK_ARTWORK 57}
+  @{" Theme colours and value layouts " link PLUGIN_SDK_ARTWORK 84}
+  @{" Dynamic thumbnails (NovaDock 0.5) " link PLUGIN_SDK_ARTWORK 110}
+
 NovaDock 0.4 supports artwork that travels with a plugin. Keep the
 executable, manifest and its .assets drawer together:
 
@@ -5305,6 +5693,19 @@ this capability receive the legacy text fallback or reserved ART caption.
 Preferences marks a required missing, invalid or newer-format bank as @{b}Needs
 repair@{ub} and excludes that package from Add Item. Reinstall/update the
 complete plugin package, or update NovaDock for a newer artwork format.
+
+@{b}Dynamic thumbnails (NovaDock 0.5)@{ub}
+---------------------------------
+
+For changing local content, nd_client_thumbnail sends a bounded 32×32
+indexed frame with sixteen RGB colours. nd_client.h includes its portable
+nd_thumbnail.h definition. The helper negotiates ND_EVENT2_HOST_THUMBNAIL
+before sending; older hosts receive no new command. A zero-size frame clears
+the thumbnail. No plugin-supplied paths or decoder calls execute in the
+dock. The host validates indices, caches screen bitmaps and uses existing
+Workbench pens. Keep normal status/heartbeat updates running and resend a
+frame after settings changes or screen reloads. Package static artwork as
+the fallback for hosts without this optional capability.
 @endnode
 
 @node PLUGIN_API "Plugin protocol"

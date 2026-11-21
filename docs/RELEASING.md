@@ -5,7 +5,7 @@ Use Python 3.9+ from the project root. The entry point is `scripts/release.py`;
 manifest, then publish those same verified bytes. Review the notes, destinations
 and four download files before publishing.
 
-NovaDock remains **0.4** until a version change is agreed. Version 0.4 is in development. Published tags through 0.3
+NovaDock **0.5** is in development and is not authorized for publication yet. Published tags through 0.4
 already exist; the new-release examples below do not authorize replacing them.
 Normal release commands never move tags, overwrite conflicting assets, create
 repositories, deploy the website or roll back another service's release. Source
@@ -32,13 +32,13 @@ branch pushes are a separate, explicitly confirmed command.
 - VERSION, the application, Preferences, package metadata and current release
   notes must agree. Plugins have independent versions: update a changed plugin's
   own version and metadata rather than copying the dock version to every plugin.
-- Use the exact version as the public tag, such as `0.4`, without a `v` prefix.
+- Use the exact version as the public tag, such as `0.5`, without a `v` prefix.
   New preparations default to the bare VERSION. Pass `--tag` explicitly to pin
   the intended tag; subsequent commands reuse an existing manifest's tag.
 - Both repositories receive the same annotated tag object and source commit.
   Never force-push, move or recreate a published tag through the normal workflow.
-- Release titles use the application and version, for example **NovaDock 0.4**;
-  the Git tag remains **0.4**. Publish normal releases, including versions
+- Release titles use the application and version, for example **NovaDock 0.5**;
+  the Git tag remains **0.5**. Publish normal releases, including versions
   below 1.0. GitHub uses `prerelease: false` and explicitly selects Latest with
   `make_latest: "true"` after all assets verify. A draft is only an upload stage.
 - GitLab uses its ordinary published-release API, with no future release date or
@@ -93,10 +93,10 @@ manifests or publication receipts to disguise a metadata-only update.
 Upload exactly these four files, substituting the agreed VERSION:
 
 ```text
-NovaDock-0.4.lha
-NovaDock-0.4.lha.sha256
-NovaDock-0.4-plugin-sdk.zip
-NovaDock-0.4-plugin-sdk.zip.sha256
+NovaDock-0.5.lha
+NovaDock-0.5.lha.sha256
+NovaDock-0.5-plugin-sdk.zip
+NovaDock-0.5-plugin-sdk.zip.sha256
 ```
 
 The LHA contains the installable application, all bundled plugins, themes, help
@@ -124,17 +124,17 @@ Hosted CI configuration is not a release prerequisite. Checks run locally.
 5. Publish explicitly using the same output directory and tag. Preserve receipts
    and verify the release links. Website deployment remains a separate manual task.
 
-Example for a new 0.4 tag:
+Example for a new 0.5 tag:
 
 ```sh
 python3 scripts/release.py source --to gitlab,github --dry-run
 python3 scripts/release.py source --to gitlab,github --confirm-push
-python3 scripts/release.py build --output outputs/release-0.4-new
-python3 scripts/release.py check --output outputs/release-0.4-new
-python3 scripts/release.py prepare --output outputs/release-0.4-new \
-  --tag 0.4 --tag-message "NovaDock 0.4 release" --notes docs/RELEASE-NOTES.md
-python3 scripts/release.py publish --output outputs/release-0.4-new \
-  --tag 0.4 --to gitlab,github --confirm-publish
+python3 scripts/release.py build --output outputs/release-0.5-new
+python3 scripts/release.py check --output outputs/release-0.5-new
+python3 scripts/release.py prepare --output outputs/release-0.5-new \
+  --tag 0.5 --tag-message "NovaDock 0.5 release" --notes docs/RELEASE-NOTES.md
+python3 scripts/release.py publish --output outputs/release-0.5-new \
+  --tag 0.5 --to gitlab,github --confirm-publish
 ```
 
 `--notes` belongs to `prepare` or the combined `release` command, not `publish`.
@@ -194,7 +194,7 @@ URL:          https://novadock.retrocs.org
 ```
 
 A short description follows, then FEATURES, INSTALLATION, SOURCE AND LICENCE,
-and VERSION CHANGELOG. Installation explains `novadock.lha`, Install-NovaDock,
+and VERSION CHANGELOG. Installation explains `novadock.lha`, Install,
 Installer 42+, the Shell alternative and help location. VERSION CHANGELOG includes
 every current-version entry, grouped under Features, Enhancements and Bugs with
 indented bullets; older releases are excluded. The uploader contact is public.
@@ -292,9 +292,9 @@ Review independent plugin versions with
 
 ```sh
 python3 scripts/release.py plan
-python3 scripts/release.py build --output outputs/release-0.4-new
-python3 scripts/release.py check --output outputs/release-0.4-new
-python3 scripts/release.py prepare --output outputs/release-0.4-new --tag 0.4
+python3 scripts/release.py build --output outputs/release-0.5-new
+python3 scripts/release.py check --output outputs/release-0.5-new
+python3 scripts/release.py prepare --output outputs/release-0.5-new --tag 0.5
 ```
 
 Use the same output directory on publication. Default output is `outputs/release`;
@@ -327,6 +327,13 @@ The runtime LHA uses classic level-1 headers and LH5 compression, with extractio
 and per-file byte comparisons; LHa for UNIX is required. Source/SDK/site ZIPs are
 also checked against expected contents. There is no stored-archive fallback in
 NovaDock's runtime packaging path.
+
+LHA staging files and directories receive the current packaging time before
+compression; extraction verifies file timestamps as well as bytes. Source, SDK
+and website ZIP entries likewise use the current packaging time, shared across
+each packaging run. Archive dates have two-second DOS resolution. Source-file
+dates and VERSION's release date do not set the archived file dates; source
+files and already-published bundles are not retimestamped.
 
 Cross-compilation keeps temporary assembly and object files in isolated,
 ignored `build/intermediates/` workspaces; compiler outputs are excluded from
@@ -375,10 +382,10 @@ access. Repositories must already exist with the intended visibility and GitLab
 package registry enabled. The tool does not configure hosting or access policies.
 
 ```sh
-python3 scripts/release.py publish --output outputs/release-0.4-new \
-  --tag 0.4 --to gitlab,github --confirm-publish
-python3 scripts/release.py publish --output outputs/release-0.4-new \
-  --tag 0.4 --to aminet --confirm-publish
+python3 scripts/release.py publish --output outputs/release-0.5-new \
+  --tag 0.5 --to gitlab,github --confirm-publish
+python3 scripts/release.py publish --output outputs/release-0.5-new \
+  --tag 0.5 --to aminet --confirm-publish
 ```
 
 Choose distinct destinations, optionally `--to gitlab,github,aminet`. Default is
@@ -512,3 +519,35 @@ Contact changes during an interrupted submission are refused. Changing the actua
 application/readme inside the LHA requires a reviewed rebuild and correction, not
 an edit to frozen files. Preserve original submissions and resolve recovery
 separately with Aminet when necessary.
+
+## Packaged plugin health
+
+The build checks every bundled plugin after extracting the new LHA. It uses the
+same C manifest parser and artwork validation as Preferences, checks the native
+executable, and rejects missing or changed manifests, duplicate IDs, unsupported
+ABIs and missing, damaged or newer required artwork. Optional artwork may be
+absent. Any failure stops the build before the archive is moved into the output
+release directory. The validator needs a host C compiler (`CC`, default `cc`).
+
+To repeat this check on an unpacked build:
+
+```sh
+python3 tools/check_plugin_health.py /path/to/NovaDock
+```
+
+This validates package health; native runtime checks remain part of the release
+checklist.
+
+### NovaDock 0.5 and AmiHASS 0.2 pairing
+
+Run `python3 tools/check_amihass_pair.py --bridge ../AmiHASS` before final
+packaging. Keep AmiHASS independent: test its own packaged Installer lifecycle
+and standalone SDK, then run NovaDock sample controls against that exact service
+payload. Record both archive hashes and all native reports. Local development
+archive checks do not replace clean-source, source-bound publication readiness.
+
+The NovaDock native Installer fixture uses Previous/Current aliases and derives
+versions from each supplied executable. For 0.5, supply published 0.4 as
+`--previous` and the final candidate as `--current`; it records both hashes in
+`inputs.json` and names the test from those versions. Pass `--compiler "$VC"`
+to build its native harness into the prepared fixture automatically.

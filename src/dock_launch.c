@@ -88,7 +88,7 @@ ULONG icon_stack(const char *path)
 void get_program_dir(struct NDDock *dock)
 {
     static const char *candidates[]={
-        "NovaDock:",              /* installed elsewhere (Install-NovaDock) */
+        "NovaDock:",              /* installed elsewhere (Install) */
         "SYS:NovaDock",
         "SYS:Resources/NovaDock",
         "SYS:Utilities/NovaDock",

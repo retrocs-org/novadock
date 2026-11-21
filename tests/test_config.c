@@ -31,7 +31,7 @@ int main(void)
     recovered=cfg;nd_config_set_theme(&recovered,"Classic");
     assert(!nd_config_can_update_live(&cfg,&recovered));
     assert(!nd_config_can_update_live(NULL,&cfg));
-    assert(cfg.count == 13);
+    assert(cfg.count == 14);
     assert(cfg.side == ND_SIDE_BOTTOM);
     assert(cfg.position == ND_POSITION_CENTER);
     assert(cfg.font_mode == ND_FONT_WORKBENCH);
@@ -50,7 +50,7 @@ int main(void)
     assert(!strcmp(cfg.items[3].id,"CPU"));
     assert(!strcmp(cfg.items[4].id,"RAM"));
     assert(!strcmp(cfg.items[5].id,"CLOCK"));
-    for (i=0;i<cfg.count;++i) assert(cfg.items[i].enabled==(i<6));
+    for (i=0;i<cfg.count;++i) assert(cfg.items[i].enabled==(i<6 || !strcmp(cfg.items[i].id,"TRASH")));
 
     assert(cfg.tooltips == 1);
     /* Keyboard-control hot key: optional, kept verbatim, bounded, and it
@@ -143,9 +143,9 @@ int main(void)
         cfg.items[n].enabled=1;
         ++cfg.count;
     }
-    assert(cfg.count==26);
+    assert(cfg.count==27);
     assert(nd_add_plugin_instance(&cfg,7));
-    assert(cfg.count==27 && !strcmp(cfg.items[26].id,"EYES"));
+    assert(cfg.count==28 && !strcmp(cfg.items[27].id,"EYES"));
     nd_default_config(&cfg); /* keep the fixed catalogue indexes below */
     assert(strcmp(cfg.items[8].id, "DOPUS4") == 0 && !cfg.items[8].enabled);
     assert(strcmp(cfg.items[9].id,"ARCHIVE")==0 && !cfg.items[9].enabled);
@@ -331,7 +331,7 @@ int main(void)
     assert(nd_parse_line(&cfg, "Side=Left") == 1 && cfg.side == ND_SIDE_LEFT);
     assert(nd_parse_line(&cfg, "TOOLTIPS=no") == 1 && cfg.tooltips == 0);
     assert(nd_load_config(&cfg, "novadock.cfg") == 0);
-    assert(cfg.count == 32); /* six active tiles plus optional definitions */
+    assert(cfg.count == 32); /* seven active tiles plus optional definitions */
     assert(!cfg.items[29].enabled && !strcmp(cfg.items[29].id,"AMIROCKET"));
     assert(!cfg.items[17].enabled && !strcmp(cfg.items[17].id,"TIMER"));
     assert(!cfg.items[18].enabled && !strcmp(cfg.items[18].id,"NOTES"));
@@ -340,7 +340,7 @@ int main(void)
     assert(!cfg.items[15].enabled && !strcmp(cfg.items[15].id,"CLIPBOARD"));
     assert(!cfg.items[19].enabled && !strcmp(cfg.items[19].id,"MUSICLIB"));
     assert(!cfg.items[20].enabled && !strcmp(cfg.items[20].id,"SENSORS"));
-    for (i=0;i<cfg.count;++i) assert(cfg.items[i].enabled==(i<6));
+    for (i=0;i<cfg.count;++i) assert(cfg.items[i].enabled==(i<6 || !strcmp(cfg.items[i].id,"TRASH")));
     assert(cfg.theme==ND_THEME_NORD && cfg.shape==ND_SHAPE_ROUNDED);
     assert(!strcmp(cfg.items[0].command,"SYS:"));
     assert(!strcmp(cfg.items[1].command,"NewShell"));
@@ -395,7 +395,7 @@ int main(void)
     remove("tests/known-good.cfg.good");
     remove("tests/known-good.cfg.bak");
     assert(nd_load_config(&cfg, "this-file-does-not-exist.cfg") == -1);
-    assert(cfg.count == 13);
+    assert(cfg.count == 14);
     puts("Config tests passed.");
     return 0;
 }

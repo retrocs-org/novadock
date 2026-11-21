@@ -1,8 +1,8 @@
-; $VER: Install-NovaDock 0.4 (18.11.2026)
+; $VER: Install 0.5 (21.11.2026)
 ;
-; GUI installer for NovaDock 0.4, for the Commodore Installer (V42 and
-; later, as shipped with AmigaOS 3.x).  Double-click the Install-NovaDock
-; icon, or from a Shell:  Installer Install-NovaDock APPNAME NovaDock
+; GUI installer for NovaDock 0.5, for the Commodore Installer (V42 and
+; later, as shipped with AmigaOS 3.x).  Double-click the Install
+; icon, or from a Shell:  Installer Install APPNAME NovaDock
 ;
 ; Installed binaries go directly in selected app and Preferences drawers.
 ; Defaults: SYS:Utilities/NovaDock + .info, SYS:Prefs/NovaDockPrefs
@@ -11,7 +11,7 @@
 ; Binary and shared-data assignments persist in S:User-Startup.
 
 (set @app-name "NovaDock")
-(set #version "0.4")
+(set #version "0.5")
 (set #standard-dest "SYS:NovaDock")
 (set #appdir "SYS:Utilities")
 (set #app "SYS:Utilities/NovaDock")
@@ -625,14 +625,14 @@
     (
         (set #settings
             (askbool
-                (prompt "Also remove your NovaDock settings and saved Notes?\n\n"
-                        "Keep settings preserves your configuration and Notes.\n"
-                        "Remove settings deletes saved settings, default Notes and shelves.\n\n"
+                (prompt "Also remove your NovaDock settings, saved Notes and tasks?\n\n"
+                        "Keep settings preserves your configuration, Notes and tasks.\n"
+                        "Remove settings deletes saved settings, default Notes, shelves and Agenda tasks.\n\n"
                         "Notes stored in a custom drawer are kept.")
                 (help "Keep them if you may install NovaDock again: it "
                       "will then start with your dock exactly as before.\n\n"
                       "Removing settings also removes Notes in the default "
-                      "ENVARC:NovaDock/Notes drawer, including deleted-note backups, and default Shelves. "
+                      "ENVARC:NovaDock/Notes drawer, including deleted-note backups, default Shelves and Agenda tasks. "
                       "Notes in a separately configured drawer are not removed.\n\n"
                       @askbool-help)
                 (choices "Keep settings" "Remove settings")
@@ -714,7 +714,7 @@
 
 (if (<> (exists (tackon #src "NovaDock")) 1)
     (abort "The NovaDock program was not found beside this installer.\n\n"
-           "Start Install-NovaDock from the unpacked NovaDock drawer."))
+           "Start Install from the unpacked NovaDock drawer."))
 
 (welcome)
 

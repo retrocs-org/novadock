@@ -18,6 +18,8 @@ static int send_packet(const char *name,struct NDTaskPacket *m)
 {struct MsgPort *p;Forbid();p=FindPort((STRPTR)name);if(p)PutMsg(p,(struct Message *)m);Permit();return p!=NULL;}
 void nd_task_close(struct NDTask *j)
 {struct NDTaskPacket *m;if(j->port){Forbid();RemPort(j->port);Permit();while((m=(struct NDTaskPacket *)GetMsg(j->port))!=NULL){if(m->kind==1 && m->message.mn_ReplyPort){m->kind=-1;nd_reply_finish((struct Message *)m);}else FreeVec(m);}DeleteMsgPort(j->port);}if(j->request)FreeVec(j->request);memset(j,0,sizeof(*j));}
+void nd_task_stage(const char *parent,unsigned int stage)
+{struct NDTaskProgress *m;if(!parent)return;m=AllocVec(sizeof(*m),MEMF_PUBLIC|MEMF_CLEAR);if(!m)return;m->magic=TASK_MAGIC;m->kind=3;m->stage=stage;m->message.mn_Length=sizeof(*m);if(!send_packet(parent,(struct NDTaskPacket *)m))FreeVec(m);}
 void nd_task_cancel(struct NDTask *j){j->cancelled=1;}
 unsigned long nd_task_signals(const struct NDTask *j){return j->port ? 1UL<<j->port->mp_SigBit:0;}
 int nd_task_start(struct NDTask *j,const char *program,const char *guard,unsigned int action,const void *data,unsigned int bytes)
@@ -38,6 +40,7 @@ struct NDTaskPacket *nd_task_poll(struct NDTask *j)
  struct NDTaskPacket *m;struct MsgPort *guard;
  if(!j->port)return NULL;
  while((m=(struct NDTaskPacket *)GetMsg(j->port))!=NULL){
+  if(m->message.mn_Length==sizeof(struct NDTaskProgress)&&m->magic==TASK_MAGIC&&m->kind==3){j->stage=((struct NDTaskProgress *)m)->stage;FreeVec(m);continue;}
   if(m->message.mn_Length!=sizeof(*m) || m->magic!=TASK_MAGIC){if(m->message.mn_ReplyPort)ReplyMsg((struct Message *)m);continue;}
   if(m->kind==1){if(j->cancelled)m->kind=-1;else{m->action=j->request->action;m->bytes=j->request->bytes;strcpy(m->guard,j->guard);memcpy(m->data,j->request->data,m->bytes);}nd_reply_finish((struct Message *)m);if(j->cancelled){nd_task_close(j);return NULL;}}
   else{int cancelled=j->cancelled;nd_task_close(j);if(cancelled){FreeVec(m);return NULL;}return m;}

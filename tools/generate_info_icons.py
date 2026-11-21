@@ -512,7 +512,7 @@ def main(check=False):
         if not CHECK_ONLY: print('Created', path)
     # The GUI installer: a project icon that Workbench opens with Installer.
     # The local launcher selects the supported system Installer and stack.
-    installer = ROOT / 'Install-NovaDock.info'
+    installer = ROOT / 'Install.info'
     write_asset(installer, generic_icon(
         'Install.info', kind=4, default_tool='StartInstaller',
         tool_types=('APPNAME=NovaDock', 'MINUSER=NOVICE',
@@ -523,6 +523,14 @@ def main(check=False):
     write_asset(guide, disk_object(guide_art(), kind=4,
                                   default_tool='SYS:Utilities/MultiView'))
     if not CHECK_ONLY: print('Created', guide)
+    # New plugin banks supply their own matching Workbench launch icons.
+    from generate_05_plugin_art import pixels
+    for program,kind in [('Bench','bench'),('QR','qr'),('Moon','moon'),('Colour','colour'),('Agenda','agenda'),('Pictures','pictures')]:
+        canvas=Canvas(32,32)
+        for y,row in enumerate(pixels(kind,0)):
+            for x,colour in enumerate(row): canvas.pixel(x,y,min(colour,3))
+        write_asset(ROOT/'Plugins'/(program+'.info'),disk_object(canvas))
+
     if CHECK_ONLY:
         if STALE:
             raise SystemExit('Workbench icons out of date: ' + ', '.join(STALE) +

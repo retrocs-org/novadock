@@ -31,8 +31,10 @@
 #define nd_hass_start amihass_start
 #define nd_hass_worker amihass_worker
 int nd_hass_picker_selftest(void);
+int nd_hass_room_picker_selftest(void);
 int nd_hass_choose_target_area(const char *domain,char area[96],char device[96],char name[64],struct NDHassEntity *entity);
 int nd_hass_choose_target(const char *domain,char device[96],char name[64],struct NDHassEntity *entity);
+int nd_hass_choose_room(char area[96],char name[64]);
 int nd_hass_choose_device(const char *domain,char device[96],char name[64]);
 int nd_hass_choose(const char *device,const char *domain,char entity[96]);
 #endif

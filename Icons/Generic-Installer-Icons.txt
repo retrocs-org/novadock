@@ -1,5 +1,10 @@
-SoftwarePackage.info and Install.info use the artwork supplied by the project
-owner in Generic-Amiga-Installer-Icons.zip on 2026-11-02. The normal and selected
-planar images are retained. tools/generate_info_icons.py adapts only metadata:
-DrawerData for the drawer, and StartInstaller plus NovaDock tool types for the
-Install-NovaDock project icon.
+SoftwarePackage.info and Install.info reuse the matching drawer and installer
+artwork from AmiRocket/installer/AmiRocketDrawer.info and Install.info, copied
+on 2026-11-20 at the project owner's request. Both normal and selected planar
+images are retained. The drawer already shared this package artwork.
+
+tools/generate_info_icons.py adapts Workbench metadata for NovaDock: DrawerData
+and view settings for the package drawer, and StartInstaller plus NovaDock tool
+types for Install. AmiRocket's default tool and application name are not used.
+The icon assets are included here; building NovaDock does not require an
+AmiRocket checkout.

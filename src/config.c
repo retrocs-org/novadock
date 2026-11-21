@@ -940,7 +940,7 @@ int nd_option_set(struct NDConfig *cfg, const char *id, const char *key,
     built=nd_builtin_options(&n);
     schema=nd_option_schema_id(cfg,id);
     for (i=0; i<n; ++i)
-        if (!strcmp(built[i].id,schema) && !strcmp(built[i].key,key)) spec=&built[i];
+        if (!strcmp(built[i].id,schema) && !strcmp(built[i].key,key)) {spec=&built[i];break;}
     for (i=0; i<cfg->def_count; ++i)
         if (!strcmp(cfg->defs[i].id,id) && !strcmp(cfg->defs[i].key,key))
             spec=&cfg->defs[i];
@@ -1096,6 +1096,7 @@ void nd_default_config(struct NDConfig *cfg)
              "RUNNINGAPPS", NULL, 0, 0, 0);
     add_item(cfg,ND_ITEM_PLUGIN,"Timer","Plugins/Timer","TIMER",NULL,0,0,0);
     add_item(cfg,ND_ITEM_PLUGIN,"Notes","Plugins/Notes","NOTES",NULL,0,0,0);
+    add_item(cfg,ND_ITEM_PLUGIN,"Trash","Plugins/Trash","TRASH",NULL,0,1,0);
 }
 const char *nd_theme_name(int theme)
 {

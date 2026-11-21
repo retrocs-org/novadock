@@ -33,6 +33,7 @@
 #include "nd_manifest.h"
 #include "nd_options.h"
 #include "nd_plugin_discovery.h"
+#include "nd_catalog_job.h"
 #include "nd_package_install.h"
 #include "nd_plugin_health.h"
 #include "nd_prefs_help.h"
@@ -73,7 +74,7 @@ struct ManagerPage {
     struct NDConfig *cfg,*owned;
     struct Screen *screen;
     struct Window *win;
-    struct Gadget *gadgets,*last,*list,*remove,*detail[D_LINES];
+    struct Gadget *gadgets,*last,*list,*remove,*refresh,*import,*detail[D_LINES];
     APTR vi;
     struct NDPrefsLayout layout;
     struct List rows;
@@ -83,6 +84,9 @@ struct ManagerPage {
     char text[ND_MAX_ITEMS][64];
     struct NDPluginSummary installed[ND_PLUGIN_CATALOG_MAX];
     int installed_count;
+    struct NDTask catalog_job;
+    int catalog_loading,detail_ready,detail_found;
+    char select_id[20],detail_id[20];
     int row_installed[ND_MAX_ITEMS];
     struct NDPluginCatalogEntry entry;   /* full manifest of the selection */
     struct NDPluginCatalogEntry other;   /* import: installed plugin with the same ID */
@@ -233,6 +237,7 @@ static void wrap_two(const char *text,char *one,char *two,int width)
     strncpy(two,text+cut,(size_t)width);two[width]=0;
 }
 
+static int manager_manifest(struct ManagerPage *p,const char *id);
 static void show_details(struct ManagerPage *p)
 {
     struct NDManifest *m=&p->entry.manifest;
@@ -242,6 +247,7 @@ static void show_details(struct ManagerPage *p)
     struct NDOptionDef def;
     for (i=0;i<D_LINES;++i) p->detail_text[i][0]=0;
     p->can_add=0;p->can_remove=0;p->has_settings=0;
+    if(p->catalog_loading){strcpy(p->detail_text[D_ABOUT],"Loading installed plugins...");goto render_details;}
     if (p->selected>=0 && p->selected<p->count) {
         id=p->ids[p->selected];
         i=p->row_installed[p->selected];
@@ -255,10 +261,10 @@ static void show_details(struct ManagerPage *p)
         }
         /* Bundled plugins describe themselves from the built-in table;
          * third-party ones from their installed manifest. */
-        if (nd_manifest_builtin(nd_option_schema_id(p->cfg,id),m)) have=1;
-        else if (nd_plugin_catalog_lookup(id,&p->entry)) {
-            have=1;command=p->entry.command;
-        } else nd_manifest_init(m,p->names[p->selected]);
+        have=manager_manifest(p,id);
+        if(have<0){strcpy(p->detail_text[D_ABOUT],"Loading plugin details...");goto render_details;}
+        if(have)command=p->entry.command;
+        else nd_manifest_init(m,p->names[p->selected]);
         tiles=dock_tiles(p,id,&multiple,&command);
         if (tiles<0) multiple=m->multiple_instances;
         p->has_settings=tiles>=0 ? nd_option_collect(p->cfg,id,&def,1)>0 :
@@ -318,20 +324,18 @@ static void say(struct ManagerPage *p,const char *text,int beep)
     if (beep) DisplayBeep(p->screen);
 }
 
+static void catalog_controls(struct ManagerPage *p)
+{int busy=p->catalog_job.port!=NULL;if(!p->win)return;GT_SetGadgetAttrs(p->refresh,p->win,NULL,GA_Disabled,(ULONG)busy,TAG_DONE);GT_SetGadgetAttrs(p->import,p->win,NULL,GA_Disabled,(ULONG)busy,TAG_DONE);GT_SetGadgetAttrs(p->list,p->win,NULL,GA_Disabled,(ULONG)p->catalog_loading,TAG_DONE);}
+static int manager_manifest(struct ManagerPage *p,const char *id)
+{if(nd_manifest_builtin(nd_option_schema_id(p->cfg,id),&p->entry.manifest)){p->entry.command[0]=0;return 1;}if(p->detail_ready&&!strcmp(p->detail_id,id)){if(p->detail_found)p->entry=p->other;return p->detail_found;}if(p->catalog_job.port)return -1;strncpy(p->detail_id,id,19);p->detail_id[19]=0;p->detail_ready=0;if(!nd_catalog_job_start(&p->catalog_job,ND_CATALOG_LOOKUP,id,0)){say(p,"NovaDock Plugins - cannot start details worker; retry Refresh",0);return 0;}catalog_controls(p);return -1;}
 static void rescan(struct ManagerPage *p,const char *select_id)
-{
-    int i;
-    p->installed_count=nd_plugin_catalog_inventory(p->installed,
-                                                   ND_PLUGIN_CATALOG_MAX);
-    GT_SetGadgetAttrs(p->list,p->win,NULL,GTLV_Labels,(ULONG)~0,TAG_DONE);
-    build_rows(p);
-    if (select_id)
-        for (i=0;i<p->count;++i) if (!strcmp(p->ids[i],select_id)) p->selected=i;
-    GT_SetGadgetAttrs(p->list,p->win,NULL,GTLV_Labels,(ULONG)&p->rows,
-        GTLV_Selected,(ULONG)(p->selected<0 ? ~0UL : (ULONG)p->selected),
-        GTLV_MakeVisible,(ULONG)(p->selected<0 ? 0 : p->selected),TAG_DONE);
-    show_details(p);
-}
+{if(select_id){strncpy(p->select_id,select_id,19);p->select_id[19]=0;}else if(p->selected>=0&&p->selected<p->count){strncpy(p->select_id,p->ids[p->selected],19);p->select_id[19]=0;}nd_task_close(&p->catalog_job);p->detail_ready=0;p->catalog_loading=1;GT_SetGadgetAttrs(p->list,p->win,NULL,GTLV_Labels,(ULONG)~0,TAG_DONE);NewList(&p->rows);p->count=0;p->selected=-1;GT_SetGadgetAttrs(p->list,p->win,NULL,GTLV_Labels,(ULONG)&p->rows,TAG_DONE);show_details(p);if(!nd_catalog_job_start(&p->catalog_job,ND_CATALOG_INVENTORY,NULL,1)){p->catalog_loading=0;say(p,"NovaDock Plugins - scan could not start; retry Refresh",0);}else say(p,"NovaDock Preferences - Plugins - Loading...",0);catalog_controls(p);}
+static void catalog_result(struct ManagerPage *p)
+{struct NDTaskPacket *reply;struct NDCatalogWork *work;int i,had=p->catalog_job.port!=NULL;reply=nd_task_poll(&p->catalog_job);if(!reply){if(had&&!p->catalog_job.port){p->catalog_loading=0;p->detail_ready=1;p->detail_found=0;catalog_controls(p);say(p,"NovaDock Plugins - worker did not reply; retry Refresh",0);show_details(p);}return;}work=(struct NDCatalogWork *)reply->data;
+ if(reply->result||reply->bytes!=sizeof(*work)||(reply->action!=ND_CATALOG_INVENTORY&&reply->action!=ND_CATALOG_LOOKUP)||work->count<0||(reply->action==ND_CATALOG_LOOKUP&&work->count>1)||(reply->action==ND_CATALOG_INVENTORY&&work->count>ND_PLUGIN_CATALOG_MAX)){p->catalog_loading=0;p->detail_ready=1;p->detail_found=0;say(p,"NovaDock Plugins - scan failed; retry Refresh",0);}
+ else if(reply->action==ND_CATALOG_INVENTORY){p->installed_count=work->count;memcpy(p->installed,work->value.rows,(size_t)work->count*sizeof(*p->installed));p->catalog_loading=0;GT_SetGadgetAttrs(p->list,p->win,NULL,GTLV_Labels,(ULONG)~0,TAG_DONE);build_rows(p);for(i=0;i<p->count;++i)if(!strcmp(p->ids[i],p->select_id))p->selected=i;GT_SetGadgetAttrs(p->list,p->win,NULL,GTLV_Labels,(ULONG)&p->rows,GTLV_Selected,(ULONG)(p->selected<0 ? ~0UL:(ULONG)p->selected),GTLV_MakeVisible,(ULONG)(p->selected<0 ? 0:p->selected),TAG_DONE);say(p,"NovaDock Preferences - Plugins",0);}
+ else if(reply->action==ND_CATALOG_LOOKUP){p->detail_found=work->count==1;p->detail_ready=1;if(p->detail_found)p->other=work->value.entry;}
+ FreeVec(reply);catalog_controls(p);show_details(p);}
 
 /* AmigaDOS file names compare without regard to case. */
 static int same_name(const char *a,const char *b)
@@ -594,9 +598,11 @@ static int open_manager(struct ManagerPage *p)
         !detail_line(p,135,D_PROGRAM,"Program:") ||
         !detail_line(p,147,D_ABOUT,"About:") ||
         !detail_line(p,159,D_ABOUT2,NULL)) return 0;
-    if (!m_button(p,150,181,100,M_REFRESH,"Refresh") ||
-        !m_button(p,386,181,100,M_IMPORT,"Import...") ||
-        !m_button(p,492,181,100,M_REMOVE,"Remove...")) return 0;
+    if (!m_button(p,150,181,100,M_REFRESH,"Refresh")) return 0;
+    p->refresh=p->last;
+    if (!m_button(p,386,181,100,M_IMPORT,"Import...")) return 0;
+    p->import=p->last;
+    if (!m_button(p,492,181,100,M_REMOVE,"Remove...")) return 0;
     p->remove=p->last;
     if (!m_button(p,414,205,90,M_USE,"Use") ||
         !m_button(p,510,205,90,M_SAVE,"Save")) return 0;
@@ -627,21 +633,22 @@ int nd_pluginmanager_prefs_run(int argc,char **argv,char *plugin,int plugin_size
         if (!p->owned || nd_load_effective(p->owned)>0) goto done;
         p->cfg=p->owned;
     }
-    p->installed_count=nd_plugin_catalog_inventory(p->installed,
-                                                   ND_PLUGIN_CATALOG_MAX);
+    p->catalog_loading=1;
     p->selected=-1;p->output=plugin;p->output_size=plugin_size;
     /* Return to the plugin that was being looked at. */
-    build_rows(p);
-    if (plugin && plugin[0])
-        for (i=0;i<p->count;++i) if (!strcmp(p->ids[i],plugin)) p->selected=i;
+    NewList(&p->rows);
+    if(plugin&&plugin[0]){strncpy(p->select_id,plugin,19);p->select_id[19]=0;}
     IntuitionBase=(struct IntuitionBase *)OpenLibrary("intuition.library",39);
     GadToolsBase=OpenLibrary("gadtools.library",39);
     AslBase=OpenLibrary("asl.library",37); /* optional: Import... only */
     if (!IntuitionBase || !GadToolsBase) goto done;
     p->screen=LockPubScreen("Workbench");
     if (!p->screen || !open_manager(p)) goto done;
+    if(!nd_catalog_job_start(&p->catalog_job,ND_CATALOG_INVENTORY,NULL,0)){p->catalog_loading=0;say(p,"NovaDock Plugins - scan could not start; retry Refresh",0);}else say(p,"NovaDock Preferences - Plugins - Loading...",0);
+    catalog_controls(p);
     while (!p->done) {
-        Wait(1UL<<p->win->UserPort->mp_SigBit);
+        Wait((1UL<<p->win->UserPort->mp_SigBit)|nd_task_signals(&p->catalog_job));
+        catalog_result(p);
         while ((msg=GT_GetIMsg(p->win->UserPort))!=NULL) {
             cls=msg->Class;code=msg->Code;
             id=msg->IAddress ? ((struct Gadget *)msg->IAddress)->GadgetID : 0;
@@ -653,7 +660,7 @@ int nd_pluginmanager_prefs_run(int argc,char **argv,char *plugin,int plugin_size
             } else if (cls==IDCMP_GADGETUP) {
                 if (id==M_LIST) {
                     if ((int)code<p->count) {p->selected=(int)code;show_details(p);}
-                } else if (id==M_REFRESH) rescan(p,NULL);
+                } else if (id==M_REFRESH && !p->catalog_job.port) {rescan(p,NULL);}
                 else if (id==M_IMPORT) import_plugin(p);
                 else if (id==M_REMOVE) remove_plugin(p);
                 else if (id==M_USE) {
@@ -673,6 +680,7 @@ int nd_pluginmanager_prefs_run(int argc,char **argv,char *plugin,int plugin_size
     }
     result=p->result;
 done:
+    nd_task_close(&p->catalog_job);
     if (p->win) CloseWindow(p->win);
     if (p->gadgets) FreeGadgets(p->gadgets);
     if (p->vi) FreeVisualInfo(p->vi);

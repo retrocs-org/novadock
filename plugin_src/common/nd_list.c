@@ -60,7 +60,7 @@ void nd_list_title(struct NDList *p,const char *status){char title[112];if(p && 
 void nd_list_select(struct NDList *p,int index){if(p)p->selected=index;}
 void nd_list_raise(struct NDList *p){if(p && p->win){WindowToFront(p->win);ActivateWindow(p->win);}}
 void nd_list_rows(struct NDList *p,const char *const *rows,unsigned int count)
-{unsigned int i;int changed=0;if(!p)return;if(count>ND_LIST_MAX)count=ND_LIST_MAX;if((int)count!=p->count)changed=1;for(i=0;i<count;++i){if(strncmp(p->rows[i],rows[i],159))changed=1;}if(changed && p->win)GT_SetGadgetAttrs(p->list,p->win,NULL,GTLV_Labels,~0UL,TAG_DONE);for(i=0;i<count;++i){strncpy(p->rows[i],rows[i],159);p->rows[i][159]=0;}p->count=(int)count;if(changed)rebuild(p);}
+{unsigned int i;int changed=0;if(!p)return;if(count>ND_LIST_MAX)count=ND_LIST_MAX;if((int)count!=p->count)changed=1;for(i=0;i<count;++i){if(strncmp(p->rows[i],rows[i],159))changed=1;}if(!changed)return;if(p->win)GT_SetGadgetAttrs(p->list,p->win,NULL,GTLV_Labels,~0UL,TAG_DONE);for(i=0;i<count;++i){strncpy(p->rows[i],rows[i],159);p->rows[i][159]=0;}p->count=(int)count;if(changed)rebuild(p);}
 int nd_list_event(struct NDList *p)
 {
  struct IntuiMessage *m;ULONG cls;UWORD code,id;ULONG sec,micro;int action=0;struct StringInfo *si;

@@ -399,14 +399,18 @@ void process_ipc(struct NDDock *dock, int quitting)
             ext = m->version==ND_EXT_ABI_VERSION ? (struct NDExtMessage *)m : NULL;
             /* Capabilities describe the host, not this message's command.
              * Badge/notice replies must not revoke negotiated artwork support. */
-            if (ext) ext->event2=ND_EVENT2_HOST_ALERTS|ND_EVENT2_HOST_ARTWORK|ND_EVENT2_HOST_ARTWORK_META;
+            if (ext) ext->event2=ND_EVENT2_HOST_THUMBNAIL|ND_EVENT2_HOST_ALERTS|ND_EVENT2_HOST_ARTWORK|ND_EVENT2_HOST_ARTWORK_META;
             has_graph = m->version==ND_GRAPH_ABI_VERSION ||
                         (ext && (ext->flags&ND_EXT_HAS_GRAPH));
             has_media = m->version==ND_MEDIA_ABI_VERSION ||
                         (ext && (ext->flags&ND_EXT_HAS_MEDIA));
             if (item) {
                 m->event = ND_EVENT_NONE;
-                if(m->command==ND_MSG_NOTICE){
+                if(m->command==ND_MSG_THUMBNAIL){
+                    index=(int)(item-dock->conf.items);
+                    if(!ext||m->exec_msg.mn_Length<sizeof(struct NDThumbnailMessage)||!nd_thumbnail_valid(&((struct NDThumbnailMessage *)m)->picture))m->event=ND_EVENT_QUIT;
+                    else if(receive_thumbnail(dock,index,&((struct NDThumbnailMessage *)m)->picture))mark_tile_dirty(dock,index);
+                }else if(m->command==ND_MSG_NOTICE){
                     dock_alert(dock,m->id,m->caption,m->value,m->meter);
                 } else if (m->command == ND_MSG_UPDATE) {
                     packet_abandoned=0;
@@ -602,6 +606,7 @@ void process_ipc(struct NDDock *dock, int quitting)
                     item->media_event = 0;
                     item->media_volume_request = ND_MEDIA_VOLUME_UNKNOWN;
                     index = (int)(item - dock->conf.items);
+                    release_thumbnail(dock,index);
                     dock->plugin_task[index]=NULL;
                     dock->plugin_woken[index]=0;
                     dock->plugin_wake_port[index]=0;

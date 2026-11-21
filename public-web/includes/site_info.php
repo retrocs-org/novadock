@@ -18,8 +18,10 @@ function site_is_development(): bool {
     $release = site_release();
     return $release === null || version_compare(NOVADOCK_VERSION, $release['version'], '>');
 }
-function site_plugin_is_upcoming(array $plugin): bool {
-    if (!isset($plugin['added'])) return false;
+function site_version_is_upcoming(string $version): bool {
     $release = site_release();
-    return $release === null || version_compare($plugin['added'], $release['version'], '>');
+    return $release === null || version_compare($version, $release['version'], '>');
+}
+function site_plugin_is_upcoming(array $plugin): bool {
+    return isset($plugin['added']) && site_version_is_upcoming($plugin['added']);
 }

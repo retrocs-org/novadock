@@ -51,7 +51,7 @@ struct NDClient {UWORD host_artwork,host_artwork_meta,art_sending,art_state,art_
 static char shown[32];
 static unsigned int nd_client_update_quiet(struct NDClient *c,const char *caption,const char *value,unsigned int meter,unsigned int elapsed,unsigned int heartbeat){(void)c;assert(!strcmp(value,"off")&&meter==65535U&&elapsed==50&&heartbeat==500);strcpy(shown,caption);return 123;}
 '''
-s=(ROOT/'plugin_src/common/nd_client.c').read_text();program+=s[s.index('unsigned int nd_client_update_art_quiet('):]
+s=(ROOT/'plugin_src/common/nd_client.c').read_text();program+=s[s.index('unsigned int nd_client_update_art_quiet('):s.index('unsigned int nd_client_thumbnail(')]
 program+=r'''
 int main(int argc,char **argv){struct NDArtwork a;struct NDClient c;unsigned char *d;unsigned int n,state;unsigned long i;char path[520],caption[32],name[24];const unsigned char *off,*on;
  assert(argc==5);memset(&a,0,sizeof(a));assert(nd_artwork_load(&a,argv[1]));

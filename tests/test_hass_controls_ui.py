@@ -24,13 +24,15 @@ typedef unsigned long ULONG;typedef unsigned short UWORD;typedef char *STRPTR;
 #define TRUE 1
 #define TAG_DONE 0
 #define ND_PANEL_PERCENT 65535U
+#define ND_PANEL_SWATCH 65534U
 '''+ '\n'.join(f'#define {t} {i+10}' for i,t in enumerate(tags))+r'''
 struct Font{int ta_YSize;};struct Screen{int WBorTop,Height,BarHeight;struct Font *Font;};
 struct Window{void *UserPort;};
 struct NewGadget{int ng_LeftEdge,ng_TopEdge,ng_Width,ng_Height,ng_GadgetID,ng_Flags;char *ng_GadgetText;};
 struct Gadget{int GadgetID,Flags,level,disabled;struct NewGadget position;};
 struct NDPanelField{const char *label,*value;unsigned int limit;};
-struct NDPanel{struct Screen *screen;struct Window *window;struct Gadget *fields[12];unsigned char percentage[12],percent_dragging[12];unsigned int count;char labels[12][32],text[12][160];};
+struct NDPanel{struct Screen *screen;struct Window *window;struct Gadget *fields[12];unsigned char percentage[12],percent_dragging[12];unsigned int count,limits[12],button_count;unsigned char swatch[12];struct Gadget *buttons[4];char button_text[4][32];char labels[12][32],text[12][160];};
+static void draw_swatches(struct NDPanel *p){(void)p;}
 static struct Gadget gadgets[20];static int created,level_sets,disabled_sets;static struct IntuiMessage{ULONG Class;UWORD Code;void *IAddress;} message;static int queued,replied;
 static void *CreateGadget(int kind,void *last,struct NewGadget *ng,...){
  struct Gadget *g=&gadgets[created++];va_list ap;ULONG tag,v;g->GadgetID=ng->ng_GadgetID;g->position=*ng;(void)last;

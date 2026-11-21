@@ -150,6 +150,7 @@ struct NDDock {
     int action_count;
     struct NDThemeSpec theme_spec;
     struct NDArtwork *plugin_artwork[ND_MAX_ITEMS];
+    struct NDThumbnailCache *thumbnails[ND_MAX_ITEMS];
     ULONG plugin_art_key[ND_MAX_ITEMS];
     UWORD plugin_art_state[ND_MAX_ITEMS];
     struct DiskObject *icons[ND_MAX_ITEMS];
@@ -524,4 +525,7 @@ int rexx_add_launcher(struct NDDock *dock,const char *path);
 void start_rexx(struct NDDock *dock);
 void stop_rexx(struct NDDock *dock);
 void process_rexx(struct NDDock *dock);
+int receive_thumbnail(struct NDDock *dock,int index,const struct NDThumbnail *picture);
+void release_thumbnail(struct NDDock *dock,int index);
+struct BitMap *thumbnail_bitmap(struct NDDock *dock,int index,int tiny);
 #endif

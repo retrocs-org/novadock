@@ -35,7 +35,7 @@ static void show(struct Chooser *p)
   if(m->devices==2)sprintf(status,"%d rooms; page %d. Choose a room or All rooms.",m->total,m->offset/m->capacity+1);
   else if(!m->count)strcpy(status,m->devices ? "No devices found. Try Refresh or another filter.":"No matching entities. Try Refresh or another filter.");
   else sprintf(status,"%d %s; page %d. Select a row, then Choose.",m->total,m->devices ? "devices":"entities",m->offset/m->capacity+1);
- }else if(m->result==ND_HASS_UNSUPPORTED)strcpy(status,"Room/device browsing requires an updated AmiHASS service.");
+ }else if(m->result==ND_HASS_UNSUPPORTED)strcpy(status,"Room/device browsing requires AmiHASS 0.2+ features.");
  else strcpy(status,nd_hass_problem(m->result));
  GT_SetGadgetAttrs(p->status,p->window,NULL,GTTX_Text,(ULONG)status,TAG_DONE);m->dirty=0;
 }
@@ -53,7 +53,7 @@ static void chooser_mode(struct Chooser *p,int mode,const char *device,const cha
 static int choose(int devices,const char *device,const char *domain,char area[96],struct NDHassEntity *chosen)
 {
  struct Chooser *p;struct NewGadget ng;struct Gadget *last;struct IntuiMessage *im;struct TextAttr font={(STRPTR)"topaz.font",8,0,0};
- char filter[64]="",saved_filter[64]="",selected_room[96],title[96];int capacity,test_ticks=0,i,w,h,top,result=0,done=0,button_count=nd_hass_global_type(domain) ? 5:6;ULONG cls;UWORD id,code;static const char *buttons[]={"Previous","Next","Choose","Refresh","Cancel","Devices..."};
+ char filter[64]="",saved_filter[64]="",selected_room[96],title[96];int capacity,test_ticks=0,i,w,h,top,result=0,done=0,button_count=devices==2 || nd_hass_global_type(domain) ? 5:6;ULONG cls;UWORD id,code;static const char *buttons[]={"Previous","Next","Choose","Refresh","Cancel","Devices..."};
  p=AllocVec(sizeof(*p),MEMF_PUBLIC|MEMF_CLEAR);if(!p)return 0;
  if(!nd_hass_picker_init(&p->model,devices,device,domain) || !nd_hass_picker_scope(&p->model,area,"")){FreeVec(p);return 0;}
  strcpy(selected_room,area);(void)nd_hass_start(NULL);
@@ -70,22 +70,24 @@ static int choose(int devices,const char *device,const char *domain,char area[96
  p->list=last=CreateGadget(LISTVIEW_KIND,last,&ng,GTLV_Labels,(ULONG)&p->labels,GTLV_ShowSelected,0,TAG_DONE);if(!last)goto finished;
  ng.ng_TopEdge=h-68;ng.ng_Height=16;ng.ng_GadgetID=3;p->status=last=CreateGadget(TEXT_KIND,last,&ng,GTTX_Text,(ULONG)"Loading from AmiHASS...",TAG_DONE);if(!last)goto finished;
  for(i=0;i<button_count;++i){ng.ng_LeftEdge=12+i*(w-24)/button_count;ng.ng_TopEdge=h-42;ng.ng_Width=(w-24)/button_count-5;ng.ng_Height=20;ng.ng_GadgetID=100+i;ng.ng_GadgetText=(STRPTR)(i==5 && devices ? "Entities":buttons[i]);ng.ng_Flags=PLACETEXT_IN;last=CreateGadget(BUTTON_KIND,last,&ng,TAG_DONE);if(!last)goto finished;if(i==5)p->extra=last;}
- if(nd_hass_global_type(domain))sprintf(title,"AmiHASS - choose %s",domain);else if(devices && domain && *domain && strcmp(domain,"All"))sprintf(title,"AmiHASS - choose %s device",domain);else strcpy(title,devices ? "AmiHASS - choose device":"AmiHASS - choose entity on device");
+ if(devices==2)strcpy(title,"AmiHASS - choose room");else if(nd_hass_global_type(domain))sprintf(title,"AmiHASS - choose %s",domain);else if(devices && domain && *domain && strcmp(domain,"All"))sprintf(title,"AmiHASS - choose %s device",domain);else strcpy(title,devices ? "AmiHASS - choose device":"AmiHASS - choose entity on device");
  strcpy(p->normal_title,title);p->window=OpenWindowTags(NULL,WA_Title,(ULONG)title,WA_PubScreen,(ULONG)p->screen,WA_Left,(p->screen->Width-w)/2,WA_Top,p->screen->BarHeight+4,WA_Width,w,WA_Height,h,WA_Flags,WFLG_CLOSEGADGET|WFLG_DRAGBAR|WFLG_DEPTHGADGET|WFLG_ACTIVATE|WFLG_SMART_REFRESH,WA_IDCMP,LISTVIEWIDCMP|STRINGIDCMP|BUTTONIDCMP|IDCMP_CLOSEWINDOW|IDCMP_RAWKEY,WA_Gadgets,(ULONG)p->gadgets,TAG_DONE);if(!p->window)goto finished;GT_RefreshWindow(p->window,NULL);
+ if(devices==2)chooser_mode(p,2,NULL,domain,selected_room,"",capacity);
  if(picker_selftest && devices)chooser_mode(p,2,NULL,domain,selected_room,"",capacity);
  while(!done){
   nd_hass_picker_step(&p->model);if(p->model.dirty)show(p);
   if(picker_selftest){if(++test_ticks>600)done=1;if(p->model.result==ND_HASS_OK){
-   if(p->model.devices==2){for(i=0;i<p->model.count;++i)if(!strcmp(p->model.items[i].name,"Study")){strcpy(selected_room,p->model.items[i].id);picker_rooms_seen=1;break;}if(!picker_rooms_seen)done=1;else chooser_mode(p,devices,device,domain,selected_room,"",capacity);}
+   if(p->model.devices==2){for(i=0;i<p->model.count;++i)if(!strcmp(p->model.items[i].name,"Study")){strcpy(selected_room,p->model.items[i].id);picker_rooms_seen=1;break;}if(!picker_rooms_seen)done=1;else if(devices==2){for(i=0;i<p->model.count;++i)if(!strcmp(p->model.items[i].id,selected_room)){*chosen=p->model.items[i];break;}strcpy(area,selected_room);result=1;done=1;}else chooser_mode(p,devices,device,domain,selected_room,"",capacity);}
    else {if(p->model.count){*chosen=p->model.items[0];strcpy(area,p->model.area);result=1;}done=1;}
   }else if(p->model.result!=ND_HASS_WAIT && p->model.result!=ND_HASS_BUSY)done=1;}
   while((im=GT_GetIMsg(p->window->UserPort))!=NULL){cls=im->Class;code=im->Code;id=cls==IDCMP_GADGETUP && im->IAddress ? ((struct Gadget *)im->IAddress)->GadgetID:0;GT_ReplyIMsg(im);
    if(cls==IDCMP_CLOSEWINDOW || (cls==IDCMP_RAWKEY && code==0x45) ){done=1;break;}
-   if(id==104){if(p->model.devices==2){strcpy(filter,saved_filter);chooser_mode(p,devices,device,domain,selected_room,filter,capacity);continue;}done=1;break;}
+   if(id==104){if(devices==2){done=1;break;}if(p->model.devices==2){strcpy(filter,saved_filter);chooser_mode(p,devices,device,domain,selected_room,filter,capacity);continue;}done=1;break;}
    if(cls==IDCMP_REFRESHWINDOW){GT_BeginRefresh(p->window);GT_EndRefresh(p->window,TRUE);}
    if(id==5){strncpy(saved_filter,((struct StringInfo *)p->filter->SpecialInfo)->Buffer,63);saved_filter[63]=0;chooser_mode(p,2,NULL,domain,selected_room,"",capacity);continue;}
    if(p->model.devices==2){
     if(id==2)p->model.selected=!p->model.offset && code==0 ? -2:(int)code-(!p->model.offset ? 1:0);
+    if(id==102 && p->model.result==ND_HASS_OK && devices==2){if(p->model.selected>=0 && p->model.selected<p->model.count){*chosen=p->model.items[p->model.selected];strcpy(area,chosen->id);result=1;done=1;}continue;}
     if(id==102 && p->model.result==ND_HASS_OK){if(p->model.selected==-2)selected_room[0]=0;else if(p->model.selected>=0 && p->model.selected<p->model.count)strcpy(selected_room,p->model.items[p->model.selected].id);else continue;strcpy(filter,saved_filter);chooser_mode(p,devices,device,domain,selected_room,filter,capacity);continue;}
     if(id==100 && p->model.offset>=p->model.capacity)nd_hass_picker_request(&p->model,"",p->model.offset-p->model.capacity,0);
     if(id==101 && p->model.offset+p->model.count<p->model.total)nd_hass_picker_request(&p->model,"",p->model.offset+p->model.capacity,0);
@@ -137,3 +139,9 @@ int nd_hass_choose_target(const char *domain,char device[96],char name[64],struc
 {char area[96]="";return nd_hass_choose_target_area(domain,area,device,name,entity);}
 int nd_hass_picker_selftest(void)
 {char area[96]="Study",device[96]="",name[64]="";struct NDHassEntity e;int result;memset(&e,0,sizeof(e));picker_selftest=1;picker_rooms_seen=0;result=nd_hass_choose_target_area("light",area,device,name,&e);picker_selftest=0;return result && picker_rooms_seen && !strcmp(area,"study") && !strcmp(e.id,"light.amihass_sample_desk") ? 0:10;}
+
+int nd_hass_choose_room(char area[96],char name[64])
+{struct NDHassEntity e;if(choose(2,NULL,NULL,area,&e)!=1)return 0;nd_hass_device_name(name,e.name);return 1;}
+
+int nd_hass_room_picker_selftest(void)
+{char area[96]="",name[64]="";int ok;picker_selftest=1;picker_rooms_seen=0;ok=nd_hass_choose_room(area,name);picker_selftest=0;return ok&&!strcmp(area,"study")&&!strcmp(name,"Study") ? 0:10;}

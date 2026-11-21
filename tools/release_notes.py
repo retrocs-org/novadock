@@ -111,7 +111,7 @@ def aminet(root=ROOT, uploader=None, author=None):
         'Distribution: Aminet', 'URL:          '+WEBSITE, '', DESCRIPTION, '', 'FEATURES', '',
         *[wrap(entry, bullet=True) for entry in FEATURES], '',
         wrap('Bundled plugins: '+', '.join(plugin_names(root))+'.'), '', 'INSTALLATION', '',
-        wrap('Unpack novadock.lha, open the NovaDock drawer and double-click Install-NovaDock. The graphical installer requires Installer 42 or newer, included with AmigaOS 3.1 and later. It supports installation, updating and removal; updates preserve settings.'), '',
+        wrap('Unpack novadock.lha, open the NovaDock drawer and double-click Install. The graphical installer requires Installer 42 or newer, included with AmigaOS 3.1 and later. It supports installation, updating and removal; updates preserve settings.'), '',
         wrap('For a standard-location Shell install, run "Execute install.amiga" in the NovaDock drawer. Help is installed as HELP:NovaDock.guide. Settings and permanent Notes use ENVARC:NovaDock by default. Weather updates need internet access and an HTTPS-capable curl or Wget. Other integrations require their corresponding applications.'), '',
         'SOURCE AND LICENCE', '', REPOSITORY, REPOSITORY+'/releases/tag/'+quote(v, safe=''), WEBSITE,
         'MIT licence; see LICENSE in the archive.', '', 'VERSION CHANGELOG', '', '  '+v,

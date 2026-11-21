@@ -39,7 +39,7 @@ static unsigned long ticks(void){return now;}
 #include "nd_task.h"
 #include "nd_interaction.h"
 '''
-base+='\n'.join(function(task,x) for x in ('static int send_packet(', 'void nd_task_close(', 'void nd_task_cancel(', 'int nd_task_start(', 'struct NDTaskPacket *nd_task_poll('))+'\n'
+base+='\n'.join(function(task,x) for x in ('static int send_packet(', 'void nd_task_close(', 'void nd_task_stage(', 'void nd_task_cancel(', 'int nd_task_start(', 'struct NDTaskPacket *nd_task_poll('))+'\n'
 # Compile the actual LOGS resident completion path, including generation checks.
 base+='#define MONITOR_ID \"LOGS\"\n#define ND_MONITOR_LOGS\n#include "nd_monitor.h"\n'+monitor[monitor.index('#define MONITOR_MAGIC'):monitor.index('static unsigned long ticks(void)')]
 base+='\n'+function(monitor,'static void close_job(')+'\n'+function(monitor,'static unsigned int receive_job(')
@@ -47,7 +47,7 @@ base+=r'''
 static struct NDTaskPacket *hello(struct NDTask *j,struct MsgPort **reply){struct NDTaskPacket *m=AllocVec(sizeof(*m),MEMF_PUBLIC|MEMF_CLEAR);*reply=nd_reply_port();m->message.mn_Length=sizeof(*m);m->message.mn_ReplyPort=*reply;m->magic=TASK_MAGIC;m->kind=1;PutMsg(j->port,(struct Message *)m);return m;}
 static void clean(void){assert(!allocations&&!signals&&!forbid);}
 int main(void){struct NDTask j;struct NDTaskPacket *m,*answer;struct MsgPort *reply,*guard;struct MonitorMessage *old;char data[]="new-target";int i;memset(&j,0,sizeof(j));
- for(i=0;i<1000;++i){now=10;assert(nd_task_start(&j,"C:True","QA.Guard",7,data,sizeof(data)));assert(!nd_task_start(&j,"C:True","QA.Guard",7,data,sizeof(data)));m=hello(&j,&reply);assert(!nd_task_poll(&j));assert(GetMsg(reply)==(struct Message *)m&&m->action==7&&!strcmp((char *)m->data,data));nd_reply_delete(reply);m->message.mn_ReplyPort=NULL;
+ for(i=0;i<1000;++i){now=10;assert(nd_task_start(&j,"C:True","QA.Guard",7,data,sizeof(data)));assert(!nd_task_start(&j,"C:True","QA.Guard",7,data,sizeof(data)));nd_task_stage(j.name,2);assert(!nd_task_poll(&j)&&j.port&&j.stage==2);m=hello(&j,&reply);assert(!nd_task_poll(&j));assert(GetMsg(reply)==(struct Message *)m&&m->action==7&&!strcmp((char *)m->data,data));nd_reply_delete(reply);m->message.mn_ReplyPort=NULL;
   if(i%3==0){nd_task_close(&j);m->kind=2;assert(!send_packet(j.name,m));FreeVec(m);}
   else{if(i%3==1)nd_task_cancel(&j);m->kind=2;m->result=1;PutMsg(j.port,(struct Message *)m);answer=nd_task_poll(&j);if(i%3==1)assert(!answer);else{assert(answer==m);FreeVec(answer);}}
   clean();

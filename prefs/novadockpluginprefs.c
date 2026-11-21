@@ -1,3 +1,4 @@
+#include "../plugin_src/moon/nd_moon.h"
 #include "../plugin_src/hass/nd_hass_native.h"
 /* Plugin settings page for NovaDock Preferences 0.1. Native GadTools.
  * Plugins identify settings through built-in schemas or OPTIONDEF lines in
@@ -36,6 +37,7 @@
 #include "nd_prefs_help.h"
 #include "nd_manifest.h"
 #include "../plugin_src/hass/nd_hass_selection.h"
+#include "../plugin_src/hass/nd_hass_actions.h"
 
 #define PP_ROWS 12
 #define PP_PAGE_ROWS 5
@@ -74,7 +76,11 @@ struct PluginPrefs {
     int icon_preview_kind,icon_preview_custom;
     unsigned long sensor_available;
     char sensor_status[32];
-    char choices[PP_ROWS][96];
+    struct NDHassClient hass_client;
+    struct AHControls hass_controls;
+    char hass_target[96],hass_values[128];
+    int hass_known,hass_attempts;unsigned int hass_wait;
+    char choices[PP_ROWS][128];
     STRPTR choice_labels[PP_ROWS][18];
 };
 static void collection_preview_load(struct PluginPrefs *p);
@@ -143,6 +149,34 @@ static int hass_selection(const struct PluginPrefs *p,const struct NDOptionDef *
 {return hass_settings(p) && (!strcmp(d->key,"DEVICE") || !strcmp(d->key,"ENTITY"));}
 static const char *hass_edit(const struct PluginPrefs *p,const char *key)
 {int i=network_option_index(p,key);return i>=0 ? p->edits[i]:"";}
+static const char *hass_action_choices(struct PluginPrefs *p)
+{const char *entity=hass_edit(p,"ENTITY");if(!entity[0]||!strcmp(hass_edit(p,"READONLY"),"YES")){strcpy(p->hass_values,"Show controls");return p->hass_values;}
+ nd_hass_action_choices(entity,&p->hass_controls,p->hass_known==1&&!strcmp(entity,p->hass_target),p->hass_values);return p->hass_values;}
+static int hass_capabilities_step(struct PluginPrefs *p)
+{struct NDHassMessage *m;const char *entity;int changed=0,pending,result;if(!hass_settings(p))return 0;entity=hass_edit(p,"ENTITY");
+ if(strcmp(entity,p->hass_target)){nd_hass_client_close(&p->hass_client);memset(&p->hass_controls,0,sizeof(p->hass_controls));p->hass_known=p->hass_attempts=p->hass_wait=0;strncpy(p->hass_target,entity,95);p->hass_target[95]=0;changed=1;}
+ if(strncmp(entity,"lock.",5)&&strncmp(entity,"cover.",6)&&strncmp(entity,"media_player.",13))return changed;
+ pending=p->hass_client.pending!=NULL;m=nd_hass_reply(&p->hass_client);if(m){result=m->result;if(result==ND_HASS_OK&&!strcmp(m->item.id,entity)){amihass_controls_items(m->items,(unsigned int)m->count,&p->hass_controls);p->hass_known=1;changed=1;}
+ else if((result==ND_HASS_WAIT||result==ND_HASS_BUSY)&&p->hass_attempts<3)p->hass_wait=20;else{p->hass_known=-1;changed=1;}FreeVec(m);}
+ else if(pending&&!p->hass_client.pending){p->hass_known=-1;changed=1;}
+ if(p->hass_wait)--p->hass_wait;
+ if(!p->hass_known&&!p->hass_wait&&!p->hass_client.pending){++p->hass_attempts;if(!nd_hass_send(&p->hass_client,ND_HASS_QUERY,"HASS.Prefs",entity,NULL,0,AMIHASS_QUERY_ONCE,NULL,NULL)){p->hass_known=-1;changed=1;}}
+ return changed;}
+/* Keep room summaries compact, retaining hidden transport fields and edits. */
+static void hass_layout(struct PluginPrefs *p)
+{
+    static const char *normal[]={"LABEL","TYPE","AREA","ENTITY","ACTION","READONLY","REFRESH","DISPLAY","TIMESTAMP"};
+    static const char *room[]={"LABEL","TYPE","ENTITY","REFRESH","TIMESTAMP"};
+    const char *const *keys;int count,j,k,i,is_room=!strcmp(hass_edit(p,"TYPE"),"room");
+    struct NDOptionDef def;char value[ND_OPT_VALUE_LEN];
+    keys=is_room ? room:normal;count=is_room ? 5:9;
+    for(j=0;j<count;++j)for(k=j;k<p->total_count;++k)if(!strcmp(p->definitions[k].key,keys[j])){
+        def=p->definitions[k];strcpy(value,p->edits[k]);for(i=k;i>j;--i){p->definitions[i]=p->definitions[i-1];strcpy(p->edits[i],p->edits[i-1]);}p->definitions[j]=def;strcpy(p->edits[j],value);break;
+    }
+    i=network_option_index(p,"ENTITY");if(i>=0)strcpy(p->definitions[i].label,is_room ? "Room":"Device");
+    p->basic_count=count;p->count=p->advanced ? p->total_count:count;p->page=p->top=0;
+}
+
 static int picker_disabled(const struct PluginPrefs *p,const struct NDOptionDef *d)
 {return sampling_field_disabled(p,d);}
 static int has_picker(const struct PluginPrefs *p,const struct NDOptionDef *d)
@@ -173,6 +207,7 @@ static void open_choices(struct PluginPrefs *p,int row,const char *values)
 static int collect_page(struct PluginPrefs *p)
 {
     int i,at=visible_start(p);
+    p->save_error="NovaDock - invalid setting";
     for (i=0;i<page_rows(p) && at+i<p->count;++i) {
         const struct NDOptionDef *def=&p->definitions[at+i];
         if(hass_selection(p,def))continue;
@@ -192,6 +227,11 @@ static int collect_page(struct PluginPrefs *p)
             strcpy(p->edits[at+i],s);
         }
         if (!nd_option_validate(def,p->edits[at+i])) return 0;
+        if(!strcmp(p->id,"MOON")){long coordinate;int minutes;
+            if(!strcmp(def->key,"LATITUDE")&&!nd_moon_coordinate(p->edits[at+i],90,&coordinate)){p->save_error="MOON - latitude must be -90 to +90 degrees";return 0;}
+            if(!strcmp(def->key,"LONGITUDE")&&!nd_moon_coordinate(p->edits[at+i],180,&coordinate)){p->save_error="MOON - longitude must be -180 to +180 degrees";return 0;}
+            if(!strcmp(def->key,"UTC_OFFSET")&&!nd_moon_offset(p->edits[at+i],&minutes)){p->save_error="MOON - UTC offset must be +/-HH:MM, at most 14 hours";return 0;}
+        }
     }
     return 1;
 }
@@ -269,7 +309,7 @@ static int open_ui(struct PluginPrefs *p)
             p->active[i]=!strcmp(p->edits[current],"YES");
             p->fields[i]=p->last=CreateGadget(CHECKBOX_KIND,p->last,&ng,GTCB_Checked,(ULONG)p->active[i],TAG_DONE);
         }else if (!strcmp(d->type,"BOOL") || !strcmp(d->type,"CHOICE")) {
-            open_choices(p,i,hass_settings(p) && !strcmp(d->key,"ACTION") ? (hass_edit(p,"ENTITY")[0] ? nd_hass_click_choices(hass_edit(p,"ENTITY")):nd_hass_type_choices(hass_edit(p,"TYPE"))):!strcmp(d->type,"BOOL") ? "NO,YES" : d->choices);
+            open_choices(p,i,hass_settings(p) && !strcmp(d->key,"ACTION") ? hass_action_choices(p):!strcmp(d->type,"BOOL") ? "NO,YES" : d->choices);
             p->active[i]=choice_index(p,i,p->edits[current]);
             p->fields[i]=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
                        GTCY_Labels,(ULONG)p->choice_labels[i],
@@ -344,6 +384,15 @@ static void choose_file(struct PluginPrefs *p,int row)
         if(!collect_page(p)){DisplayBeep(p->screen);return;}
         if(!amihass_area_valid(hass_edit(p,"AREA"))){SetWindowTitles(p->win,(STRPTR)"Room: use a name or ID up to 95 characters",(STRPTR)-1);DisplayBeep(p->screen);return;}
         device_id[0]=0;if(nd_hass_picker_device_id(hass_edit(p,"DEVICE")))strcpy(device_id,hass_edit(p,"DEVICE"));nd_hass_device_name(name,hass_edit(p,"DEVICE_NAME"));strcpy(room,hass_edit(p,"AREA"));
+        if(!strcmp(hass_edit(p,"TYPE"),"room")){
+            int area=network_option_index(p,"AREA"),ro=network_option_index(p,"READONLY");
+            if(!nd_hass_choose_room(room,name))return;
+            if(area>=0)strcpy(p->edits[area],room);if(entity>=0)p->edits[entity][0]=0;if(device>=0)p->edits[device][0]=0;
+            if(entity_name>=0)strcpy(p->edits[entity_name],name);if(device_name>=0)p->edits[device_name][0]=0;
+            if(action>=0)strcpy(p->edits[action],"Show controls");if(ro>=0)strcpy(p->edits[ro],"YES");
+            if(label>=0&&!strcmp(p->edits[label],"HASS")){strncpy(p->edits[label],name,31);p->edits[label][31]=0;}
+            close_ui(p);if(!open_ui(p))p->done=1;return;
+        }
         if(!nd_hass_choose_target_area(hass_edit(p,"TYPE"),room,device_id,name,&chosen))return;
         {int area=network_option_index(p,"AREA");if(area>=0)strcpy(p->edits[area],room);}
         strcpy(p->edits[device],device_id);if(device_name>=0)strcpy(p->edits[device_name],name);
@@ -357,7 +406,7 @@ static void choose_file(struct PluginPrefs *p,int row)
     }
     if(whdload_settings(p) && !strcmp(p->definitions[at].key,"ICON")){choose_collection_icon(p,row);return;}
     kind=network_picker(p,&p->definitions[at]);
-    folder_only=(!strcmp(nd_option_schema_id(p->config,p->id),"WATCH") && !strcmp(p->definitions[at].key,"DRAWER")) || ((whdload_settings(p) || !strcmp(p->id,"DOWNLOAD") || !strcmp(p->id,"AMINET")) && !strcmp(p->definitions[at].key,"DRAWER")) || (!strcmp(p->id,"PLACES") && !strncmp(p->definitions[at].key,"BOOKMARK",8));
+    folder_only=((!strcmp(nd_option_schema_id(p->config,p->id),"WATCH") || !strcmp(nd_option_schema_id(p->config,p->id),"PICTURES")) && !strcmp(p->definitions[at].key,"DRAWER")) || ((whdload_settings(p) || !strcmp(p->id,"DOWNLOAD") || !strcmp(p->id,"AMINET")) && !strcmp(p->definitions[at].key,"DRAWER")) || (!strcmp(p->id,"PLACES") && !strncmp(p->definitions[at].key,"BOOKMARK",8));
     if(kind==1){choose_network_profile(p,row);return;}
     if(!AslBase){
         SetWindowTitles(p->win,(STRPTR)"ASL requester unavailable; type the path",(STRPTR)-1);
@@ -478,14 +527,6 @@ static int start(struct PluginPrefs *p,const char *id)
     }
     p->total_count=p->basic_count=p->count;
     p->basic_count=nd_option_group_settings(id,p->definitions,p->total_count);
-    if(hass_settings(p)){
-        static const char *visible[]={"LABEL","TYPE","AREA","ENTITY","ACTION","READONLY","REFRESH","DISPLAY","TIMESTAMP"};int j,k;
-        /* Keep transport identifiers and artwork metadata out of the UI. */
-        for(j=0;j<9;++j)for(k=j;k<p->total_count;++k)if(!strcmp(p->definitions[k].key,visible[j])){
-            struct NDOptionDef chosen=p->definitions[k];for(i=k;i>j;--i)p->definitions[i]=p->definitions[i-1];p->definitions[j]=chosen;break;
-        }
-        p->basic_count=9;
-    }
     for (i=0;i<p->total_count;++i) {
         const char *value=nd_option_get(p->config,id,p->definitions[i].key);
         if (!value) value=p->definitions[i].default_value;
@@ -494,6 +535,7 @@ static int start(struct PluginPrefs *p,const char *id)
     }
     p->count=p->basic_count;
     if(hass_settings(p)){
+        hass_layout(p);
         int icon=network_option_index(p,"ICON"),file=network_option_index(p,"ICONFILE");
         if(icon>=0)strcpy(p->edits[icon],"Auto");if(file>=0)p->edits[file][0]=0;
     }
@@ -530,7 +572,12 @@ int nd_plugin_prefs_run(int argc,char **argv)
     if(p->rows>PP_ROWS)p->rows=PP_ROWS;
     if (!open_ui(p)) goto done;
     while (!p->done) {
-        Wait(1UL<<p->win->UserPort->mp_SigBit);
+        if(hass_capabilities_step(p)){
+            int at=network_option_index(p,"ACTION"),row=at-visible_start(p);
+            if(row>=0&&row<page_rows(p)&&at<p->count&&p->fields[row]){open_choices(p,row,hass_action_choices(p));p->active[row]=choice_index(p,row,p->edits[at]);if(p->hass_known)strcpy(p->edits[at],p->choice_labels[row][p->active[row]]);GT_SetGadgetAttrs(p->fields[row],p->win,NULL,GTCY_Labels,(ULONG)p->choice_labels[row],GTCY_Active,p->active[row],TAG_DONE);}
+        }
+        if(p->hass_client.pending||p->hass_wait)Delay(5);
+        else Wait(1UL<<p->win->UserPort->mp_SigBit);
         while (p->win && (im=GT_GetIMsg(p->win->UserPort))!=NULL) {
             kind=im->Class;
             id=kind==IDCMP_GADGETUP && im->IAddress ? ((struct Gadget *)im->IAddress)->GadgetID : 0;
@@ -579,6 +626,7 @@ int nd_plugin_prefs_run(int argc,char **argv)
                              if(device>=0)p->edits[device][0]=0;if(dn>=0)p->edits[dn][0]=0;
                              if(action>=0){while(choices[n] && choices[n]!=',' && n<19){p->edits[action][n]=choices[n];++n;}p->edits[action][n]=0;}}
 
+                            {int ro=network_option_index(p,"READONLY");if(ro>=0&&!strcmp(hass_edit(p,"TYPE"),"room"))strcpy(p->edits[ro],"YES");}hass_layout(p);
                             close_ui(p);if(!open_ui(p))p->done=1;
                         }else if(hass_settings(p) && !strcmp(p->definitions[at].key,"READONLY")){
                             if(!collect_page(p)){DisplayBeep(p->screen);continue;}
@@ -596,7 +644,7 @@ int nd_plugin_prefs_run(int argc,char **argv)
                     if(whdload_settings(p)){collection_preview_load(p);collection_preview_paint(p);}
                 } else if (id==G_SCROLL && p->focused && p->scroll) {
                     ULONG new_top=(ULONG)p->top;
-                    if (!collect_page(p)) {DisplayBeep(p->screen);continue;}
+                    if (!collect_page(p)) {SetWindowTitles(p->win,(STRPTR)p->save_error,(STRPTR)-1);DisplayBeep(p->screen);continue;}
                     GT_GetGadgetAttrs(p->scroll,p->win,NULL,
                                       GTSC_Top,(ULONG)&new_top,TAG_DONE);
                     if ((int)new_top>p->count-page_rows(p))
@@ -608,14 +656,14 @@ int nd_plugin_prefs_run(int argc,char **argv)
                         if (!open_ui(p)) p->done=1;
                     }
                 } else if (id==G_NEXT || id==G_PREV) {
-                    if (!collect_page(p)) {DisplayBeep(p->screen);continue;}
+                    if (!collect_page(p)) {SetWindowTitles(p->win,(STRPTR)p->save_error,(STRPTR)-1);DisplayBeep(p->screen);continue;}
                     if (id==G_NEXT && (p->page+1)*PP_PAGE_ROWS<p->count) ++p->page;
                     else if (id==G_PREV && p->page>0) --p->page;
                     close_ui(p);
                     if (!open_ui(p)) p->done=1;
                 } else if (id==G_USE || id==G_SAVE) {
                     if (!collect_page(p)) {
-                        SetWindowTitles(p->win,(STRPTR)"NovaDock - invalid setting",(STRPTR)-1);
+                        SetWindowTitles(p->win,(STRPTR)p->save_error,(STRPTR)-1);
                         DisplayBeep(p->screen);
                     } else if (!save(p,id==G_SAVE)) {
                         SetWindowTitles(p->win,(STRPTR)p->save_error,(STRPTR)-1);
@@ -629,6 +677,7 @@ done:
     /* Do not keep the preferences window open while waiting for NovaDock to
      * recreate its window and plugins. Saved settings are authoritative even
      * when no dock is currently running. */
+    nd_hass_client_close(&p->hass_client);
     close_ui(p);
     if (p->screen) {UnlockPubScreen(NULL,p->screen);p->screen=NULL;}
     if (notify_reload) {

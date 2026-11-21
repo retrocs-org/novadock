@@ -26,7 +26,19 @@ python3 tests/test_worker_lifecycle.py
 python3 tests/test_list_layout.py
 $CC -std=c89 -Wall -Wextra -Iplugin_src/calc -Iplugin_src/tooltypes -Iplugin_src/monitor tests/test_utilities.c plugin_src/calc/nd_calc.c plugin_src/tooltypes/nd_tooltypes.c plugin_src/monitor/nd_monitor.c -o "$REGRESSION_TMP/utilities"
 "$REGRESSION_TMP/utilities"
+python3 tests/test_catalog_cache.py
+python3 tests/test_catalog_jobs.py
+python3 tests/test_prepare_release_qa.py
+python3 tests/test_performance_gate.py
+python3 tests/test_agenda_pictures.py
+python3 tests/test_05_tools.py
+python3 tests/test_export.py
+python3 tests/test_hass_docs.py
+python3 tests/test_hass_room_summary.py
+python3 tools/generate_05_plugin_art.py --check
 python3 tests/test_hass_extended.py
+python3 tests/test_hass_locks.py
+python3 tests/test_hass_prefs_actions.py
 $CC -std=c99 -Wall -Wextra -Iinclude tests/test_monitor_config.c src/config.c src/nd_options.c src/nd_manifest.c -o "$REGRESSION_TMP/monitor_config"
 (cd "$REGRESSION_TMP" && ./monitor_config)
 $CC -std=c99 -Wall -Wextra -pedantic -Iinclude -Iplugin_src/hass tests/test_hass.c plugin_src/hass/nd_hass.c src/config.c src/nd_options.c src/nd_manifest.c -o "$REGRESSION_TMP/hass"
@@ -55,6 +67,10 @@ python3 tests/test_hass_capabilities.py
 python3 tests/test_plugin_artwork.py
 python3 tools/generate_bundled_plugin_art.py --check
 python3 tests/test_artwork_discovery.py
+python3 tests/test_artwork_validation.py
+python3 tests/test_option_lookup.py
+python3 tests/test_plugin_release_health.py
+python3 tests/test_prefs_startup.py
 python3 tests/test_artwork_render.py
 python3 tests/test_artwork_palette.py
 python3 tests/test_compile_workspace.py
@@ -219,6 +235,7 @@ fi
 "$PYTHON" tests/test_release_notes.py
 "$PYTHON" tests/test_release_tool.py
 "$PYTHON" tests/test_release_provenance.py
+"$PYTHON" tests/test_archive_timestamps.py
 "$PYTHON" tests/test_release_integration.py
 "$PYTHON" tests/test_release_catalog.py
 "$PYTHON" tests/test_graph_scroll.py
@@ -430,7 +447,7 @@ grep -q 'IECLASS_DISKINSERTED' "$DOCK_ALL" && grep -q 'ND_MEDIA_SCAN_TICKS' "$DO
 grep -q 'G_MEDIA,"Media:"' prefs/novadockprefs.c ||
   fail_review "Preferences must expose the removable-media switch."
 grep -q 'nd_discover_plugins(session' prefs/novadockprefs.c ||
-  fail_review "Preferences must discover self-describing plugins at startup."
+  fail_review "Preferences must retain on-demand self-describing plugin discovery."
 sed -n '/^\(static \)*void about_field/,/^}/p' prefs/novadockaboutprefs.c |
   grep -q 'ng->ng_VisualInfo=p->vi' ||
   fail_review "the About section must pass visual info to every GadTools gadget."

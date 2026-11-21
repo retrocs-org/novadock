@@ -1,7 +1,7 @@
 #!/bin/sh
 # Build a ready-to-run NovaDock release for AmigaOS users:
 #
-#   OUTPUT/NovaDock-<version>.lha     unpack anywhere, double-click Install-NovaDock
+#   OUTPUT/NovaDock-<version>.lha     unpack anywhere, double-click Install
 #   OUTPUT/NovaDock-<version>.readme  Aminet-format description
 #
 #   sh scripts/make-release.sh OUTPUT_DIR [--aminet | --upload-aminet]
@@ -108,6 +108,10 @@ for name in programs:
 print('NovaDock: verified %d Amiga programs.' % len(programs))
 CHECK
 
+# Copying with cp -p retains old checkout dates. Stamp only the private
+# staging tree (including drawer icons) with the current packaging clock.
+package_epoch=$("$PYTHON" "$project_root/tools/archive_timestamps.py" "$drawer" "$work/NovaDock.info")
+
 # Explicit LH5 compression and level-1 headers for classic Amiga extractors.
 archive="$work/$name.lha"
 (cd "$work" && "$lha" -a1o5 "$archive" NovaDock NovaDock.info >/dev/null)
@@ -119,7 +123,10 @@ mkdir -p "$check"
 (cd "$check" && "$lha" -x "$archive" >/dev/null)
 diff -r "$drawer" "$check/NovaDock" >/dev/null
 cmp -s "$work/NovaDock.info" "$check/NovaDock.info"
+"$PYTHON" "$project_root/tools/archive_timestamps.py" --check "$package_epoch" \
+    "$check/NovaDock" "$check/NovaDock.info"
 "$PYTHON" "$project_root/tools/check_package_assets.py" --runtime-drawer "$check/NovaDock"
+"$PYTHON" "$project_root/tools/check_plugin_health.py" "$check/NovaDock"
 
 "$PYTHON" - "$archive" <<'CHECK'
 from pathlib import Path

@@ -75,6 +75,12 @@ Plugins/Logs
 Plugins/Watch
 Plugins/ToolTypes
 Plugins/Calc
+Plugins/Bench
+Plugins/QR
+Plugins/Moon
+Plugins/Colour
+Plugins/Agenda
+Plugins/Pictures
 Plugins/SensorsI2C
 Plugins/BitSkim
 Plugins/Clipboard
@@ -142,10 +148,12 @@ cp -p "$project_root/Plugins/Sensors.ndplugin" \
 cp -p "$project_root/Plugins/Christmas.ndplugin" \
     "$destination/Plugins/Christmas.ndplugin"
 cp -p "$project_root/install.amiga" "$destination/install.amiga"
-# The GUI installer (double-click Install-NovaDock) and the AmigaGuide
+# The GUI installer (double-click Install) and the AmigaGuide
 # manual that Help in Preferences opens (PROGDIR:NovaDock.guide here).
-cp -p "$project_root/Install-NovaDock" "$destination/Install-NovaDock"
-cp -p "$project_root/Install-NovaDock.info" "$destination/Install-NovaDock.info"
+cp -p "$project_root/Install" "$destination/Install"
+cp -p "$project_root/Install.info" "$destination/Install.info"
+# Remove the previous names only after both renamed files are staged.
+rm -f "$destination/Install-NovaDock" "$destination/Install-NovaDock.info"
 cp -p "$project_root/Icons/SoftwarePackage.info" "$destination/Icons/SoftwarePackage.info"
 cp -p "$project_root/NovaDock.guide" "$destination/NovaDock.guide"
 cp -p "$project_root/NovaDock.guide.info" "$destination/NovaDock.guide.info"
@@ -221,5 +229,5 @@ fi
 
 echo "NovaDock: staged runnable AmigaOS files in:"
 echo "  $destination"
-echo "NovaDock: from AmigaOS, double-click NovaDock/Install-NovaDock to install,"
+echo "NovaDock: from AmigaOS, double-click NovaDock/Install to install,"
 echo "NovaDock: or run NovaDock/NovaDock directly from the staged drawer."

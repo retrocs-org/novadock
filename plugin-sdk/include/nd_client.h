@@ -15,6 +15,7 @@ struct NDClient {
         struct NDGraphMessage graph;
         struct NDMediaMessage media;
         struct NDExtMessage ext;
+        struct NDThumbnailMessage thumbnail;
     } packet;
     char quiet_caption[ND_TEXT_LEN];
     char quiet_value[ND_TEXT_LEN];
@@ -48,7 +49,7 @@ struct NDClient {
     UWORD host_abi;
     UWORD host_artwork;
     UWORD host_artwork_meta;
-    UWORD host_alerts;
+    UWORD host_alerts,host_thumbnail;
     UWORD art_sending,art_state,art_mode;
     ULONG art_key;
     UWORD wake_owned;
@@ -129,5 +130,6 @@ unsigned int nd_client_wait_signals(struct NDClient *c,unsigned int ticks,unsign
 unsigned long nd_client_events2(struct NDClient *c);
 /* Optional session alert history. Older docks safely ignore this API. */
 unsigned int nd_client_notify(struct NDClient *c,const char *title,const char *text,unsigned int severity);
+unsigned int nd_client_thumbnail(struct NDClient *c,const struct NDThumbnail *picture);
 void nd_client_close(struct NDClient *c);
 #endif

@@ -8,7 +8,7 @@ other software; their help pages describe those requirements.
 ## Install, update or remove
 
 Unpack the application archive, open its drawer and double-click
-**Install-NovaDock**. The installer needs Commodore Installer version 42 or
+**Install**. The installer needs Commodore Installer version 42 or
 newer. Keep the supplied StartInstaller launcher beside the installer.
 
 - **Novice** uses the standard locations, keeps existing settings and starts
@@ -52,8 +52,8 @@ also replaced. The installer handles this when updating the application.
 
 ## First use
 
-A fresh configuration uses the Nord theme and six tiles: System, Shell,
-Music, CPU, RAM and Clock. Existing installations retain their layout.
+A fresh configuration uses the Nord theme and seven tiles: System, Shell,
+Music, CPU, RAM, Clock and Trash. Existing installations retain their layout.
 
 Click a launcher to open its application or drawer. Plugin clicks perform
 their own actions: the clock opens a calendar, Notes opens its collection,
@@ -137,7 +137,7 @@ Use a destination drawer whose path is at most 100 characters long.
 
 NovaDock keeps the archive only when its size and SHA-256 match the release
 metadata and checksum. Downloading does not install or run anything. Unpack
-the saved archive and run **Install-NovaDock -> Update** when ready. Your saved
+the saved archive and run **Install -> Update** when ready. Your saved
 settings are retained by the installer.
 
 Text configuration uses `CHECK_UPDATES_STARTUP=YES|NO`,
@@ -216,3 +216,10 @@ its runtime status. The details distinguish a missing heartbeat from setup,
 connection and dependency problems, and suggest a next step. Check Diagnostics
 for unresponsive processes and AmiHASSPrefs for HASS connection errors. Empty
 collections, idle tools and lights reporting off are normal states.
+
+## Additional 0.5 tools
+
+BENCH, QR, MOON and COLOUR are available under Add Item → Plugin. See the
+[benchmark](BENCH_PLUGIN.md), [QR](QR_PLUGIN.md), [moon](MOON_PLUGIN.md) and
+[colour](COLOUR_PLUGIN.md) chapters for use, settings and limits. HASS Type room
+adds read-only room summaries through AmiHASS; see [HASS](HASS_PLUGIN.md).

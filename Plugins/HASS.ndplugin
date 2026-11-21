@@ -1,7 +1,7 @@
 NOVADOCK_ID=HASS
 NOVADOCK_PROGRAM=HASS
 NOVADOCK_NAME=HASS
-NOVADOCK_VERSION=0.1
+NOVADOCK_VERSION=0.2
 NOVADOCK_AUTHOR=NovaDock
 NOVADOCK_DESCRIPTION=Home Assistant tiles using the separately installed AmiHASS service.
 NOVADOCK_LICENSE=MIT
@@ -10,10 +10,10 @@ NOVADOCK_ABI=1
 NOVADOCK_MULTIPLE=YES
 NOVADOCK_OPTION=LABEL|Tile label|TEXT||HASS
 NOVADOCK_OPTION=DEVICE|Device|TEXT||
-NOVADOCK_OPTION=TYPE|Type|CHOICE|All,light,switch,scene,script,group,sensor,binary_sensor,cover,climate,fan,media_player,lock|light
+NOVADOCK_OPTION=TYPE|Type|CHOICE|All,light,switch,scene,script,group,sensor,binary_sensor,cover,climate,fan,media_player,lock,room|light
 NOVADOCK_OPTION=AREA|Room (blank = all)|TEXT||
 NOVADOCK_OPTION=ENTITY|Device|TEXT||
-NOVADOCK_OPTION=ACTION|Click Action|CHOICE|Toggle,Turn on,Turn off,Activate,Show controls,Open cover,Close cover,Stop cover|Toggle
+NOVADOCK_OPTION=ACTION|Click Action|CHOICE|Toggle,Turn on,Turn off,Activate,Show controls,Open cover,Close cover,Stop cover,Play,Pause,Previous,Next,Lock,Unlock,Open lock|Toggle
 NOVADOCK_OPTION=ICON|Tile icon|TEXT||Auto
 NOVADOCK_OPTION=ICONFILE|Custom icon or picture|FILE||
 NOVADOCK_OPTION=DEVICE_NAME|Device name|TEXT||

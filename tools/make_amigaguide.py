@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'NovaDock.guide'
 WIDTH = 76
 # Curated user and SDK topics. Repository/operator documents stay source-only.
-SOURCE_ONLY_DOCS = {"README.md", "docs/RELEASING.md", "docs/RELEASE_CHECKLIST.md", "docs/RELEASE-NOTES.md", "docs/TODO.md"}
+SOURCE_ONLY_DOCS = {"README.md", "docs/RELEASING.md", "docs/RELEASE_CHECKLIST.md", "docs/RELEASE-NOTES.md", "docs/TODO.md", "docs/QA_PERFORMANCE.md"}
 GROUPS = (
     ('Using NovaDock', (
         ('docs/USING_NOVADOCK.md', 'Getting started and installation'),
@@ -43,6 +43,12 @@ GROUPS = (
         ('docs/WATCH_PLUGIN.md', 'Watch'),
         ('docs/LOGS_PLUGIN.md', 'Logs'),
         ('docs/CALC_PLUGIN.md', 'Calculator'),
+        ('docs/AGENDA_PLUGIN.md', 'Tasks and reminders'),
+        ('docs/PICTURES_PLUGIN.md', 'Picture slideshow'),
+        ('docs/BENCH_PLUGIN.md', 'Benchmarks'),
+        ('docs/QR_PLUGIN.md', 'QR codes'),
+        ('docs/MOON_PLUGIN.md', 'Moon and solar estimates'),
+        ('docs/COLOUR_PLUGIN.md', 'Colour sampler'),
         ('docs/TOOLTYPES_PLUGIN.md', 'ToolTypes'),
         ('docs/VOLUME_SPACE.md', 'Volume space'),
         ('docs/BITSKIM_PLUGIN.md', 'BitSkim'),

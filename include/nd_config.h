@@ -147,7 +147,7 @@ struct NDItem {
 struct NDHook { char event[ND_HOOK_EVENT_LEN]; char command[ND_HOOK_COMMAND_LEN]; };
 struct NDOption { char id[20]; char key[ND_OPT_KEY_LEN]; char value[ND_OPT_VALUE_LEN]; };
 struct NDOptionDef { char id[20]; char key[ND_OPT_KEY_LEN]; char label[32];
-    char type[12]; char choices[96]; char default_value[ND_OPT_VALUE_LEN]; };
+    char type[12]; char choices[128]; char default_value[ND_OPT_VALUE_LEN]; };
 struct NDConfig {
     int option_count;
     int def_count;

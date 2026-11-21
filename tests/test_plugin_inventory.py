@@ -14,6 +14,7 @@ def function(source, name):
 s=(ROOT/'prefs/novadockdiscovery.c').read_text()
 m=(ROOT/'prefs/novadockmanagerprefs.c').read_text()
 h=r'''#include <assert.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,8 +22,11 @@ h=r'''#include <assert.h>
 #include "nd_manifest.h"
 #include "nd_options.h"
 #include "nd_artwork.h"
+#include "nd_manifest_file.h"
 #include "nd_plugin_health.h"
 #include "nd_plugin_discovery.h"
+#include "nd_catalog_cache.h"
+static int catalog_force;static int (*catalog_watch)(void *,int);static void *catalog_watch_context;static unsigned long cache_hits,cache_misses;
 #define ND_CONTROL_OK 0
 #define ND_CONTROL_NOHOST -4
 #define ND_CONTROL_TIMEOUT -5
@@ -50,18 +54,19 @@ static void GT_SetGadgetAttrs(void *g,void *w,void *r,...){(void)g;(void)w;(void
 static int is_file(const char *p){struct stat st;return !stat(p,&st)&&S_ISREG(st.st_mode);}
 static int read_icon_manifest(const char *p,struct NDManifest *m){(void)p;(void)m;return -1;}
 '''+function(s,'read_text_manifest(')
-a=s.index('typedef int (*NDCatalogSink)');b=s.index('static void catalog_drawer(',a)
+a=s.index('typedef int (*NDCatalogSink)');b=s.index('static void catalog_drawer_legacy(',a)
 h+='\n'+s[a:b]+'\nstruct SummarySink {struct NDPluginSummary *out;int count;};\n'+function(s,'summary_sink(')
 h+=r'''
 struct ManagerPage {
  struct NDConfig *cfg;struct NDPluginSummary installed[ND_PLUGIN_CATALOG_MAX];
- int installed_count,row_installed[ND_MAX_ITEMS],count,selected,can_add,can_remove,has_settings;
+ int catalog_loading,installed_count,row_installed[ND_MAX_ITEMS],count,selected,can_add,can_remove,has_settings;
  char ids[ND_MAX_ITEMS][20],names[ND_MAX_ITEMS][ND_LABEL_LEN],text[ND_MAX_ITEMS][64];
  struct Node nodes[ND_MAX_ITEMS];struct List rows;struct NDPluginCatalogEntry entry;
  char detail_text[D_LINES][D_TEXT];void *win,*detail[D_LINES],*remove;
 };
 int nd_plugin_catalog_lookup(const char *id,struct NDPluginCatalogEntry *out){(void)id;(void)out;return 0;}
 '''
+h+='\nstatic int manager_manifest(struct ManagerPage *p,const char *id){return nd_manifest_builtin(nd_option_schema_id(p->cfg,id),&p->entry.manifest); }\n'
 for name in ('installed_summary(','dock_tiles(','plugin_version(','tile_status(','add_row(','build_rows(','wrap_two(','show_details('): h+='\n'+function(m,name)
 h+=r'''
 static struct NDPluginSummary inventory[48];static int count;
@@ -69,6 +74,7 @@ static int collect(void *ctx,const struct NDPluginCatalogEntry *e){
  struct SummarySink sink;(void)ctx;sink.out=inventory;sink.count=count;
  summary_sink(&sink,e);count=sink.count;return 1;
 }
+static int abort_catalog(void *context,int count){(void)context;(void)count;return 0;}
 static void scan(int diagnostics){
  struct CatalogWalk *w=(struct CatalogWalk *)calloc(1,sizeof(*w));assert(w);
  count=0;w->maximum=48;w->sink=collect;w->diagnostics=diagnostics;
@@ -114,6 +120,23 @@ int main(int argc,char **argv){
  /* No-ID faults stay distinct and never hide a healthy plugin with the same ID. */
  for(j=0;j<page.count;++j)if(page.row_installed[j]==0)break;
  assert(j<page.count&&!strstr(page.text[j],"Needs repair"));
+ {struct CatalogWalk *w=calloc(1,sizeof(*w));assert(w);w->maximum=48;w->sink=collect;catalog_watch=abort_catalog;catalog_consider(w,".","Good",1);assert(w->stop&&!w->count&&!w->pending);catalog_watch=NULL;free(w);}
+ /* Cache records become visible only after a matching second source snapshot. */
+ {struct CatalogWalk *w=calloc(1,sizeof(*w));struct NDCatalogFile files[2];
+  struct NDPluginCatalogEntry e,out;struct NDCacheStamp stamps[4];char cache[80];
+  assert(w);memset(files,0,sizeof(files));memset(&e,0,sizeof(e));
+  strcpy(files[0].name,"Good");strcpy(files[1].name,"Good.ndplugin");
+  assert(nd_cache_stamp("./Good",&files[0].stamp));
+  assert(nd_cache_stamp("./Good.ndplugin",&files[1].stamp));
+  w->files=files;w->file_count=2;w->file_index=calloc(1024,sizeof(*w->file_index));assert(w->file_index);catalog_index(w);assert(catalog_file(w,"gOoD")==&files[0].stamp&&catalog_file(w,"GOOD.NDPLUGIN")==&files[1].stamp&&!catalog_file(w,"absent"));strcpy(e.command,"./Good");strcpy(e.manifest.id,"GOOD");
+  assert(catalog_sources(w,"./Good",stamps));nd_cache_name("./Good",cache);remove(cache);
+  catalog_remember(w,"./Good",&e,stamps);assert(w->pending);
+  ++files[1].stamp.size;catalog_commit_pending(w,1);assert(!w->pending&&!is_file(cache));
+  --files[1].stamp.size;catalog_remember(w,"./Good",&e,stamps);
+  catalog_commit_pending(w,1);assert(!w->pending&&nd_catalog_cached("./Good",&out,stamps));
+  remove(cache);catalog_remember(w,"./Good",&e,stamps);catalog_commit_pending(w,0);
+  assert(!w->pending&&!is_file(cache));free(w->file_index);free(w);
+ }
  printf("All %d bundled manifests parsed; invalid, incompatible, missing and duplicate-ID files remain visible only in repair inventory.\n",checked);
  return 0;
 }

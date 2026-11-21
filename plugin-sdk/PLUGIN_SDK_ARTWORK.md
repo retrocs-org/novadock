@@ -99,3 +99,15 @@ capability receive the legacy text fallback or reserved ART caption.
 Preferences marks a required missing, invalid or newer-format bank as
 **Needs repair** and excludes that package from Add Item. Reinstall/update the
 complete plugin package, or update NovaDock for a newer artwork format.
+
+## Dynamic thumbnails (NovaDock 0.5)
+
+For changing local content, `nd_client_thumbnail` sends a bounded 32×32 indexed
+frame with sixteen RGB colours. `nd_client.h` includes its portable
+`nd_thumbnail.h` definition. The helper negotiates
+`ND_EVENT2_HOST_THUMBNAIL` before sending; older hosts receive no new command.
+A zero-size frame clears the thumbnail. No plugin-supplied paths or decoder
+calls execute in the dock. The host validates indices, caches screen bitmaps
+and uses existing Workbench pens. Keep normal status/heartbeat updates running
+and resend a frame after settings changes or screen reloads. Package static
+artwork as the fallback for hosts without this optional capability.

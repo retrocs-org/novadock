@@ -27,9 +27,12 @@
 #include "nd_protocol.h"
 #include "nd_prefs_nav.h"
 #include "nd_prefs_session.h"
+#include "nd_prefs_snapshot.h"
+#include "nd_options.h"
 #include "nd_numeric_gadget.h"
 #include "nd_prefs_layout.h"
 #include "nd_plugin_discovery.h"
+#include "nd_catalog_job.h"
 #include "nd_prefs_help.h"
 
 /* Version string for the AmigaDOS Version command (kept global so the
@@ -710,6 +713,28 @@ static int command_page(int argc, char **argv, char *plugin, int plugin_size)
     return page;
 }
 
+/* General, Appearance, Updates and bundled plugin settings do not need a
+ * disk-wide plugin scan. Organize discovers additions once, when requested;
+ * a focused third-party editor refreshes only its own installed schema. */
+static int session_discovered;
+static void prepare_plugin_page(int page,struct NDConfig *session,const char *plugin)
+{
+    if(page==1 && !session_discovered){
+        (void)nd_discover_plugins(session,&nd_prefs_discovery);
+        session_discovered=1;
+    }else if(page==4 && plugin && *plugin &&
+             !nd_manifest_bundled_id(nd_option_schema_id(session,plugin)) &&
+             strcmp(nd_option_schema_id(session,plugin),ND_SCRIPT_SCHEMA)){
+        struct NDPluginCatalogEntry *entry;
+        entry=(struct NDPluginCatalogEntry *)AllocVec(sizeof(*entry),MEMF_PUBLIC);
+        if(entry){
+            if(nd_plugin_catalog_lookup(nd_option_schema_id(session,plugin),entry))
+                (void)nd_manifest_merge(session,&entry->manifest,entry->command);
+            FreeVec(entry);
+        }
+    }
+}
+
 static int run_child_pages(int page,int argc,char **argv,char *plugin)
 {
     int result,defined_index=-1,return_from_add=0,ran_page;
@@ -718,6 +743,7 @@ static int run_child_pages(int page,int argc,char **argv,char *plugin)
     char *plugin_argv[3],*launcher_argv[3],*spacer_argv[3],*add_argv[3];
     while (page) {
         ran_page=page;
+        prepare_plugin_page(page,nd_prefs_shared_config,plugin);
         if (page==1) {
             result=nd_dockitems_prefs_run(argc,argv,plugin,20,&defined_index);
         } else if (page==2) {
@@ -840,17 +866,17 @@ finish:
  * GadTools, ASL and the plugin catalogue scan all run on the main task. */
 long __stack=32768;
 
-/* Leaving Preferences after Test restores the settings it started with.
- * They are kept as text in T: (a few KB of RAM) rather than as a second
- * 92 KB configuration; only if that file cannot be written is the old
- * in-memory copy used. */
-#define ND_REVERT_PATH "T:NovaDockPrefs.revert"
+/* Test/Cancel restores an exact, checksummed private snapshot. Avoid the
+ * permanent-save machinery (and its repeated parsing) for this temporary
+ * copy. Fall back to memory if T: cannot be written. */
+static char nd_revert_path[80];
+#define ND_REVERT_PATH nd_revert_path
 static void revert_files(int remove_them,int *written,const struct NDConfig *cfg)
 {
     static const char *suffixes[]={"",".bak",".old",".new",NULL};
     struct Process *self=(struct Process *)FindTask(NULL);
     APTR requesters=self->pr_WindowPtr;
-    char path[64];
+    char path[96];
     int i;
     self->pr_WindowPtr=(APTR)-1L; /* T: may not be assigned */
     if (remove_them) {
@@ -858,7 +884,7 @@ static void revert_files(int remove_them,int *written,const struct NDConfig *cfg
             sprintf(path,"%s%s",ND_REVERT_PATH,suffixes[i]);
             (void)DeleteFile((STRPTR)path);
         }
-    } else *written=nd_control_write_config(cfg,ND_REVERT_PATH);
+    } else *written=nd_prefs_snapshot_save(cfg,ND_REVERT_PATH);
     self->pr_WindowPtr=requesters;
 }
 
@@ -867,6 +893,7 @@ int main(int argc, char **argv)
     struct NDConfig *session,*original=NULL;
     int result=20,parsing,page,snapshot=0;
     char plugin[20];
+    if(argc==3&&!strcmp(argv[1],"TASK"))return nd_catalog_worker(argv[2]);
     session=(struct NDConfig *)AllocVec(sizeof(*session),MEMF_PUBLIC|MEMF_CLEAR);
     if (!session) return 20;
     (void)nd_control_sync_settings();
@@ -875,10 +902,9 @@ int main(int argc, char **argv)
         Printf("NovaDockPrefs: configuration has %ld invalid line(s).\n",(LONG)parsing);
         FreeVec(session);return 20;
     }
-    /* Self-describing plugins in the Plugins drawer join Organize's
-     * Available list (disabled) for this session; nothing is written until
-     * the user adds one and chooses Use or Save. */
-    (void)nd_discover_plugins(session,&nd_prefs_discovery);
+    sprintf(nd_revert_path,"T:NovaDockPrefs-%08lx.snapshot",(unsigned long)FindTask(NULL));
+    session_discovered=0;
+    memset(&nd_prefs_discovery,0,sizeof(nd_prefs_discovery));
     revert_files(0,&snapshot,session);
     if (!snapshot) {
         original=(struct NDConfig *)AllocVec(sizeof(*original),MEMF_PUBLIC);
@@ -907,7 +933,7 @@ int main(int argc, char **argv)
         /* The session is finished with, so its buffer can hold the
          * restored settings. */
         const struct NDConfig *restore=original;
-        if (!restore && nd_load_config(session,ND_REVERT_PATH)==0)
+        if (!restore && nd_prefs_snapshot_load(session,ND_REVERT_PATH))
             restore=session;
         create_settings_dir("ENV:NovaDock");
         if (restore && nd_control_write_config(restore,"ENV:NovaDock/novadock.cfg"))

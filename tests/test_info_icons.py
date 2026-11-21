@@ -54,7 +54,7 @@ assert struct.unpack_from('>IH',(root/'Icons/SoftwarePackage.info').read_bytes()
 assert struct.unpack_from('>II',data,58)==(0x80000000,0x80000000)
 assert images==image_bytes((root/'Icons/SoftwarePackage.info').read_bytes())[0]
 assert struct.unpack_from('>I',data,26)[0] # supplied selected image retained
-installer=(root/'Install-NovaDock.info').read_bytes()
+installer=(root/'Install.info').read_bytes()
 assert installer[48]==4 and struct.unpack_from('>I',installer,66)[0]==0
 assert image_bytes(installer)[0]==image_bytes((root/'Icons/Install.info').read_bytes())[0]
 assert b'StartInstaller\0' in installer and b'APPNAME=NovaDock\0' in installer

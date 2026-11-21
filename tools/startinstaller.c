@@ -1,4 +1,4 @@
-/* Workbench entry point for Install-NovaDock. Run the system Installer as
+/* Workbench entry point for Install. Run the system Installer as
  * a synchronous CLI tool with an explicit stack and package directory. */
 #ifndef ND_INSTALLER_TEST
 #include <exec/types.h>
@@ -52,7 +52,7 @@ static int quoted(char *out,int size,const char *in)
 static int script_in_drawer(char *out,int size,const char *drawer)
 {
     int n=(int)strlen(drawer);
-    const char *name="Install-NovaDock";
+    const char *name="Install";
     int separator=n && drawer[n-1]!=':' && drawer[n-1]!='/';
     if (!n || n+separator+(int)strlen(name)+1>size) return 0;
     strcpy(out,drawer);

@@ -5,7 +5,7 @@
  * Standalone compatibility editors continue to load their own copy. */
 #ifdef ND_PREFS_EMBEDDED
 extern struct NDConfig *nd_prefs_shared_config;
-/* NULL when the starting settings are kept as text in T: instead. */
+/* NULL when the starting settings are kept in a private temporary snapshot instead. */
 extern struct NDConfig *nd_prefs_shared_original;
 extern int nd_prefs_shared_dirty;
 extern int nd_prefs_preview_active;

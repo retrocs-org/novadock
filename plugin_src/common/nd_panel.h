@@ -2,14 +2,19 @@
 #define ND_PANEL_H
 /* A non-modal native panel: the owner keeps serving dock messages. */
 #define ND_PANEL_PERCENT 65535U
+#define ND_PANEL_SWATCH 65534U
 struct NDPanel;
 /* Percentage sliders emit their field ID only when released. */
 int nd_panel_percent_get(struct NDPanel *panel,unsigned int index);
 void nd_panel_percent_set(struct NDPanel *panel,unsigned int index,int value,int enabled);
 struct NDPanelField {const char *label,*value;unsigned int limit;};
+/* Supports up to five action buttons, including on 640-pixel screens. */
 struct NDPanel *nd_panel_open(const char *title,const struct NDPanelField *fields,
                               unsigned int count,const char **buttons,unsigned int buttons_count);
 void nd_panel_close(struct NDPanel *panel);
+int nd_panel_replace_string(struct NDPanel *panel,unsigned int index,const char *value);
+void nd_panel_button(struct NDPanel *panel,unsigned int index,const char *label,int enabled);
+void nd_panel_swatch(struct NDPanel *panel,unsigned int index,unsigned long rgb);
 void nd_panel_raise(struct NDPanel *panel);
 unsigned long nd_panel_signals(const struct NDPanel *panel);
 /* 0 no action, -1 close/Escape, 100+button index, 1+field index on Return/Tab. */

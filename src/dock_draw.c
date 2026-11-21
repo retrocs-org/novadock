@@ -1521,6 +1521,10 @@ void draw_tile(struct NDDock *dock, int index)
     if(item->kind==ND_ITEM_PLUGIN && (!strcmp(item->id,"AMINET") || nd_actions_plugin_path(item->command))){
         draw_plugin_launcher_artwork(dock,index,item->label,x,y,tw,th);return;
     }
+    if(item->kind==ND_ITEM_PLUGIN&&item->online&&dock->thumbnails[index]){
+        int tiny=dock->conf.item_size==ND_ITEM_SIZE_TINY,side=tiny ? 16:32;struct BitMap *image=thumbnail_bitmap(dock,index,tiny);
+        if(image){BltBitMapRastPort(image,0,0,dock->window->RPort,x+(tw-side)/2,nd_icon_art_top(y,th,side,tiny),side,side,0xC0);if(!tiny)centered_text(dock,ND_TEXT,item->label,x,y+th-9,tw);(void)draw_plugin_badge(dock,item,x,y,tw);return;}
+    }
     if(draw_plugin_bank(dock,index,item,x,y,tw,th))return;
     if(item->kind==ND_ITEM_PLUGIN && nd_shelf_plugin_path(item->command)){draw_plugin_launcher_artwork(dock,index,item->label,x,y,tw,th);(void)draw_plugin_badge(dock,item,x,y,tw);return;}
     if(item->kind==ND_ITEM_PLUGIN && nd_collection_plugin_path(item->command)){

@@ -15,12 +15,13 @@ rewritten from the previous version when VERSION changes.
 """
 from pathlib import Path
 import re
+import json
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 HEADER = ROOT / 'include' / 'nd_version.h'
 # Current build mentions. Screenshot captions retain the captured release version.
-TEXT_FILES = ['README.md', 'Install-NovaDock', 'novadock.cfg'] + \
+TEXT_FILES = ['README.md', 'Install', 'novadock.cfg'] + \
     sorted(str(p.relative_to(ROOT)) for p in (ROOT / 'public-web').glob('*.php')
            if p.name != 'features.php')
 MENTION = re.compile(r'(NovaDock[ -])(\d+\.\d+(?:\.\d+)?)\b')
@@ -58,6 +59,13 @@ def previous_version():
     return found.group(1) if found else None
 
 
+def checklist_text(text,version,previous):
+    text=re.sub(r'(## Prepare the )\d+\.\d+(?:\.\d+)?( candidate)',lambda m:m[1]+version+m[2],text)
+    text=re.sub(r'(current changelog and release notes at )\d+\.\d+(?:\.\d+)?',lambda m:m[1]+version,text)
+    text=re.sub(r'(exact tag )\d+\.\d+(?:\.\d+)?',lambda m:m[1]+version,text)
+    if previous:text=re.sub(r'(Upgrade from published )\d+\.\d+(?:\.\d+)?',lambda m:m[1]+previous,text)
+    return text
+
 def main():
     check = '--check' in sys.argv[1:]
     version, date = read_version()
@@ -69,14 +77,14 @@ def main():
         problems.append('include/nd_version.h')
         if not check:
             HEADER.write_text(header, 'ascii')
-    installer = ROOT / 'Install-NovaDock'
+    installer = ROOT / 'Install'
     script = installer.read_text('latin-1')
-    managed = re.sub(r'; \$VER: Install-NovaDock \S+ \(\S+\)',
-                     f'; $VER: Install-NovaDock {version} ({date})', script)
+    managed = re.sub(r'; \$VER: Install \S+ \(\S+\)',
+                     f'; $VER: Install {version} ({date})', script)
     managed = re.sub(r'\(set #version "[^"]*"\)', f'(set #version "{version}")',
                      managed)
     if managed != script:
-        problems.append('Install-NovaDock ($VER / #version)')
+        problems.append('Install ($VER / #version)')
         if not check:
             installer.write_text(managed, 'latin-1')
     for name in TEXT_FILES:
@@ -90,13 +98,22 @@ def main():
                         if m.group(2) != version})
         if wrong:
             problems.append(f'{name} ({", ".join(wrong)})')
+    checklist=ROOT/'docs/RELEASE_CHECKLIST.md'
+    catalog=json.loads((ROOT/'public-web/releases.json').read_text())
+    key=lambda v:tuple(map(int,v.split('.')))
+    released=[r['version'] for r in catalog if r.get('status')=='published' and key(r['version'])<key(version)]
+    previous=max(released,key=key) if released else None
+    wanted=checklist_text(checklist.read_text(),version,previous)
+    if wanted!=checklist.read_text():
+        problems.append('docs/RELEASE_CHECKLIST.md')
+        if not check:checklist.write_text(wanted)
     if check:
         if problems:
             print(f'Not version {version}: ' + '; '.join(problems))
             sys.exit(1)
         print(f'Version {version} ({date}) is consistent everywhere.')
     else:
-        remaining = [p for p in problems if not p.startswith(('include/', 'Install-NovaDock ('))]
+        remaining = [p for p in problems if not p.startswith(('include/', 'Install (', 'docs/RELEASE_CHECKLIST.md'))]
         if remaining:
             print('Please update by hand: ' + '; '.join(remaining))
             sys.exit(1)

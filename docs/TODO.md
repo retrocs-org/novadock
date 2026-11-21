@@ -1,10 +1,31 @@
 # Future work
 
+## 0.5 release preflight
+
+- [x] Add BENCH save retry for retained results without rerunning measurements.
+- [x] Verify installer custom paths containing spaces on system and secondary volumes, upgrade preservation, both removal modes and startup assignments/shortcut targets.
+
+- [x] Correct HASS setup to AmiHASS 0.2 / Install and enforce SDK/documentation consistency.
+- [x] Test packaged 0.4-to-0.5 Installer lifecycle and settings/Notes/imported-component preservation at standard locations, including both removal modes.
+- [x] Verify native COLOUR/QR/BENCH write-protection recovery and host-injected write/close/rename failures; use classic-filesystem-safe staging filenames.
+
+## 0.5 Preferences performance
+
+- [x] Defer plugin discovery until a page needs it; skip unrelated artwork for focused plugin settings.
+- [x] Use a lightweight temporary preview snapshot while retaining validated Use/Save and Test/Cancel restoration.
+- [x] Speed up animated-artwork validation, avoid repeated artwork-file opens and stop option lookup at its matching definition.
+- [x] Cache validated package inventory with source-change invalidation and forced Refresh.
+- [x] Open Plugins before discovery finishes; validate background Refresh, detail selection and cancellation on native 68000/68060 guests.
+- [x] Remove idle list rebuilding, preserve result windows/edits and share room aggregations.
+- [x] Add native startup/window/idle/memory regression budgets and swatch/stage/input feedback.
+- [ ] Compare Preferences opening times on physical 68000/68060 systems after the native emulator checks.
+
+
 ## Home Assistant plugin
 
 - [x] Separate AmiHASS application, background service, public IPC SDK and installer.
 - [x] Validate the NovaDock client and shared sample controls on Workbench.
-- [ ] Complete AmiHASS's independent installer release checks in its own project.
+- [x] Validate the paired AmiHASS 0.2 candidate's independent Installer modes and standalone packaged SDK; rerun source-bound readiness when freezing that project.
 
 Status: the AmiHASS-backed HASS plugin is implemented for 0.4;
 mock-server tests, native compilation and live read-only API/paging checks pass.
@@ -30,13 +51,16 @@ resource measurements remain pending.
 
 ### Follow-up
 
+- [x] Capability-filtered smart locks and motorised doors, explicit confirmation and sample-only integration checks.
+
 - [x] Validate authentication and paged queries against a 3,000+ entity live server.
 - [x] Validate native Workbench windows and controls using sample devices.
 - [ ] Compare real device control/readback on physical hardware.
 - [ ] Measure idle CPU, memory and responsiveness on supported Amiga configurations.
 - [x] Dimmable-light brightness slider through the C SDK, with confirmed readback.
 - [x] Richer detail popups for thermostat targets, fan speed and cover position/actions.
-- [ ] Custom multi-entity selection and grouped status counts; current groups come from Home Assistant.
+- [x] Grouped counts for complete rooms, with bounded paged aggregation.
+- [ ] Custom hand-picked multi-entity selections; existing groups come from Home Assistant.
 - [ ] Evaluate a persistent WebSocket connection and selected-entity event subscriptions.
 - [x] Page/filter large catalogues on the server instead of loading all state attributes.
 - [ ] Add IPv6 and subpath URLs.
@@ -44,11 +68,11 @@ resource measurements remain pending.
 ### Later possibilities
 
 - [x] Door/window status and open/closed artwork.
-- [ ] Lists of open contacts.
+- [x] Lists of open contacts in read-only room summaries.
 - [x] Capability-gated thermostat target controls.
-- [ ] Room summaries.
+- [x] Read-only room summaries, light/open-contact counts and unavailable totals through the AmiHASS SDK.
 - [ ] Energy summaries and electricity price tiles.
-- [ ] Media-player track information, playback and volume controls.
+- [x] Media-player track information, playback and volume controls through the AmiHASS SDK.
 - [ ] Appliance status and remaining-time displays where exposed by Home Assistant.
 
 ### Validation and documentation
@@ -79,9 +103,9 @@ Planned tile/package management; NovaDock already has app update checks in Prefe
 
 ### AGENDA
 
-- [ ] Save tasks, dated reminders and recurring events permanently.
-- [ ] Show a badge for items due today and open an agenda on click.
-- [ ] Provide completion, editing and reminder controls.
+- [x] Save tasks, dated reminders and recurring events permanently.
+- [x] Show a badge for items due today and open an agenda on click.
+- [x] Provide completion, editing and reminder controls.
 
 ### CALC
 
@@ -104,9 +128,9 @@ Planned tile/package management; NovaDock already has app update checks in Prefe
 
 ### MOON
 
-- [ ] Display the current moon phase with a changing tile icon.
-- [ ] Open a detailed view with moon-phase and sunrise/sunset information.
-- [ ] Configure location and time zone, and refresh only as often as needed.
+- [x] Display the current moon phase with a changing tile icon.
+- [x] Open a detailed view with moon-phase and sunrise/sunset information.
+- [x] Configure location and time zone, and refresh only as often as needed.
 
 ### TOOLTYPES
 
@@ -116,9 +140,9 @@ Planned tile/package management; NovaDock already has app update checks in Prefe
 
 ### COLOUR
 
-- [ ] Pick a colour from the screen and display its RGB and hexadecimal values.
-- [ ] Copy colour values to the clipboard.
-- [ ] Keep a small saved palette for theme development.
+- [x] Pick a colour from the screen and display its RGB and hexadecimal values.
+- [x] Copy colour values to the clipboard.
+- [x] Keep a small saved palette for theme development.
 
 ### ALERTS
 
@@ -129,9 +153,9 @@ Planned tile/package management; NovaDock already has app update checks in Prefe
 
 ### PICTURES
 
-- [ ] Cycle through supported images from a selected drawer in a picture-frame tile.
-- [ ] Open a larger image viewer on click.
-- [ ] Configure the slideshow interval and keep image decoding and memory use bounded.
+- [x] Cycle through supported images from a selected drawer in a picture-frame tile.
+- [x] Open a larger image viewer on click.
+- [x] Configure the slideshow interval and keep image decoding and memory use bounded.
 
 ### WATCH
 
@@ -149,15 +173,15 @@ Planned tile/package management; NovaDock already has app update checks in Prefe
 
 ### BENCH
 
-- [ ] Run short CPU, memory and graphics benchmarks on demand.
-- [ ] Save dated results with configuration details for comparisons between Amiga setups.
-- [ ] Keep the UI responsive and allow tests to be stopped.
+- [x] Run short CPU, memory and graphics benchmarks on demand.
+- [x] Save dated results with configuration details for comparisons between Amiga setups.
+- [x] Keep the UI responsive and allow tests to be stopped.
 
 ### QR
 
-- [ ] Generate QR codes locally from clipboard text or an entered URL.
-- [ ] Display codes at a readable size for scanning with a phone.
-- [ ] Offer image export without requiring an external service.
+- [x] Generate QR codes locally from clipboard text or an entered URL.
+- [x] Display codes at a readable size for scanning with a phone.
+- [x] Offer image export without requiring an external service.
 
 ### TRANSIT
 

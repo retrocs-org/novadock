@@ -123,17 +123,17 @@ int main(void)
     assert(nd_parse_line(&cfg,"PLUGIN=Roadshow|Plugins/Roadshow|ROADSHOW|METER|ON"));
     assert(nd_option_set(&cfg,"ROADSHOW","INTERFACE","legacy.device"));
     nd_upgrade_network_config(&cfg);
-    assert(!strcmp(cfg.items[nd_visible_to_full(&cfg,6)].id,"NET"));
+    assert(!strcmp(cfg.items[nd_visible_to_full(&cfg,7)].id,"NET"));
     for(i=0;i<cfg.count;++i)assert(strcmp(cfg.items[i].id,"ROADSHOW"));
     assert(!strcmp(nd_option_get(&cfg,"ROADSHOW","INTERFACE"),"legacy.device"));
     previous=cfg;nd_upgrade_network_config(&cfg);assert(nd_config_runtime_equal(&cfg,&previous));
     nd_default_config(&cfg);cfg.items[net].enabled=1;
     assert(nd_parse_line(&cfg,"PLUGIN=Roadshow|Plugins/Roadshow|ROADSHOW|METER|ON"));
-    cfg.rows=2;cfg.row_layout=1;cfg.row_counts[0]=4;cfg.row_counts[1]=4;
+    cfg.rows=2;cfg.row_layout=1;cfg.row_counts[0]=4;cfg.row_counts[1]=5;
     nd_upgrade_network_config(&cfg);
     for(i=0;i<cfg.count;++i){assert(strcmp(cfg.items[i].id,"ROADSHOW"));if(cfg.items[i].enabled && !strcmp(cfg.items[i].id,"NET"))++enabled;}
     assert(enabled==1 && cfg.items[net].enabled);
-    assert(cfg.row_counts[0]==4 && cfg.row_counts[1]==3);
+    assert(cfg.row_counts[0]==4 && cfg.row_counts[1]==4);
     memset(&cfg,0,sizeof(cfg));cfg.rows=1;
     assert(nd_parse_line(&cfg,"PLUGIN=Roadshow|Plugins/Roadshow|ROADSHOW|GRAPH|ON"));
     nd_upgrade_network_config(&cfg);

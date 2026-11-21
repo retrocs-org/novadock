@@ -23,6 +23,11 @@ struct NDDiscovery {
     char problem[96]; /* first rejected plugin and why */
 };
 extern struct NDDiscovery nd_prefs_discovery;
+/* Refresh bypasses cached health/metadata for the next complete scan. */
+void nd_plugin_catalog_refresh(void);
+/* Worker-only cooperative cancellation/progress; NULL restores normal scans. */
+void nd_plugin_catalog_watch(int (*keep_scanning)(void *,int),void *context);
+void nd_plugin_catalog_metrics(unsigned long *hits,unsigned long *misses);
 int nd_discover_plugins(struct NDConfig *cfg,struct NDDiscovery *out);
 /* Plugin lists retain small summaries instead of full option schemas. */
 struct NDPluginSummary {

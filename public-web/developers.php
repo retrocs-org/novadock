@@ -15,7 +15,7 @@ site_header('Developers', 'Developers', 'Choose a guide to creating NovaDock plu
 <p>These links use the latest published tag. Unpack the ZIP and open its source directory, or clone that tag:</p>
 <pre class="code">git clone --branch <?= site_escape(site_release_tag()) ?> https://github.com/retrocs-org/novadock.git
 cd novadock</pre>
-<p>For the 0.4 development features, use the <a href="https://github.com/retrocs-org/novadock/tree/main">main branch</a> and its matching documentation and SDK. Development builds are separate from published downloads.</p></div>
+<p>For work on the next version, use the <a href="https://github.com/retrocs-org/novadock/tree/main">main branch</a> and its matching documentation and SDK. Development builds are separate from published downloads.</p></div>
 <div class="dev-section"><h3>2. Compile</h3>
 <p>You need vbcc for m68k-amigaos, vasm, vlink and compatible Amiga NDK headers. The code targets a 68000 and AmigaOS 3.0 or later.</p>
 <h4>On the Amiga</h4><p>Configure your vbcc installation, then run this from the source drawer:</p>
@@ -28,7 +28,7 @@ sh scripts/build-amiga.sh -B</pre>
 <pre class="code">sh scripts/setup-vbcc-toolchain.sh ~/amiga-toolchain</pre>
 <p>This builds NovaDock, Preferences, the bundled plugins and installation tools.</p></div>
 <div class="dev-section"><h3>3. Install on your Amiga</h3>
-<p>From the compiled source drawer, double-click <b>Install-NovaDock</b>. The graphical installer requires Installer 42 or newer.</p>
+<p>From the compiled source drawer, double-click <b>Install</b> (<b>Install-NovaDock</b> in older archives). The graphical installer requires Installer 42 or newer.</p>
 <p>For a Shell installation, run:</p>
 <pre class="code">Execute install.amiga</pre>
 <p>Built on another computer? Copy a ready-to-install drawer to your transfer volume:</p>

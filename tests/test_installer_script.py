@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static checks for the Install-NovaDock Installer script.
+"""Static checks for the Install Installer script.
 
 The Commodore Installer cannot run on the build host, so this parses the
 script and checks what would otherwise only fail on an Amiga: balanced
@@ -13,7 +13,7 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / 'Install-NovaDock'
+SCRIPT = ROOT / 'Install'
 
 FUNCTIONS = {
     # control flow and data
@@ -317,7 +317,7 @@ def check_installation_levels(nodes):
     assert prompts == ['Start NovaDock automatically with Workbench?', 'Start NovaDock when installation finishes?']
     launcher = (ROOT/'tools/startinstaller.c').read_text()
     assert 'MINUSER NOVICE DEFUSER NOVICE' in launcher
-    icon = (ROOT/'Install-NovaDock.info').read_bytes()
+    icon = (ROOT/'Install.info').read_bytes()
     assert b'MINUSER=NOVICE\0' in icon and b'DEFUSER=NOVICE\0' in icon
     print('Installer levels: 0/2/3 path questions; independent boot/launch choices checked in all 12 scenarios.')
 
@@ -579,7 +579,7 @@ def main():
     assert text.index('(set #del "ENV:NovaDock/novadock.cfg")') < text.index('Delete ENVARC:NovaDock ALL')
     # The project uses the package launcher, which selects the system Installer.
     assert SOURCE_ONLY or (ROOT / "StartInstaller").exists()
-    icon = (ROOT / 'Install-NovaDock.info').read_bytes()
+    icon = (ROOT / 'Install.info').read_bytes()
     assert icon[48] == 4 and b'StartInstaller\0' in icon and b'APPNAME=NovaDock\0' in icon
     print(f'Installer script: syntax, functions, questions, variables and '
           f'{checked} package files checked.')
@@ -589,5 +589,5 @@ if __name__ == '__main__':
     try:
         main()
     except AssertionError as error:
-        print(f'Install-NovaDock: {error}', file=sys.stderr)
+        print(f'Install: {error}', file=sys.stderr)
         sys.exit(1)

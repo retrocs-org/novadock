@@ -212,7 +212,7 @@ static void download(const char *program,const struct NDUpdateRelease *release,c
   if(verified<0){result=0;strcpy(message,"Cancelled.");}
   else if(!verified)strcpy(message,"Verification failed; archive discarded.");
   else if(file_exists(target) || !Rename(part,target))strcpy(message,"Could not save; destination may already exist.");
-  else strcpy(message,"Saved. Unpack and run Install-NovaDock.");
+  else strcpy(message,"Saved. Unpack and run Install.");
  }else strcpy(message,"Download failed; no archive was kept.");
  close_job(&job);
  nd_panel_close(panel);panel=NULL;

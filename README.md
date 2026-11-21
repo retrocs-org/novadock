@@ -1,14 +1,18 @@
-# NovaDock 0.4
+# NovaDock 0.5
 
 NovaDock is a lightweight, extensible dock for Classic AmigaOS Workbench 3.x.
 
-**0.4 is in development.** The latest published release is 0.3.
+**0.5 is in development.** The latest published release is 0.4.
 
 [Website](https://novadock.retrocs.org) | [Downloads](https://novadock.retrocs.org/get.php) | [Changelog](CHANGELOG.md) | [Source](https://github.com/retrocs-org/novadock)
 
 AmiRocket integration shows aggregate unread counts and connection status, with a click to start or restore the client. Configure its executable in the tile settings; accounts remain in AmiRocket. See [AmiRocket plugin](docs/AMIROCKET_PLUGIN.md).
 
 ## Features
+
+- Keep tasks and recurring reminders in [AGENDA](docs/AGENDA_PLUGIN.md), and run a bounded local [PICTURES](docs/PICTURES_PLUGIN.md) slideshow.
+- Compare performance with [BENCH](docs/BENCH_PLUGIN.md), create local [QR codes](docs/QR_PLUGIN.md), sample [COLOUR](docs/COLOUR_PLUGIN.md) and follow offline [MOON phases](docs/MOON_PLUGIN.md).
+- Review read-only [HASS room summaries](docs/HASS_PLUGIN.md) for lights and open contacts through AmiHASS.
 
 - Calculate decimal/hex/binary expressions with [CALC](docs/CALC_PLUGIN.md), or edit Workbench icon metadata with backup protection in [TOOLTYPES](docs/TOOLTYPES_PLUGIN.md).
 - Monitor drawer changes with [WATCH](docs/WATCH_PLUGIN.md) and follow warning/error lines with [LOGS](docs/LOGS_PLUGIN.md), using bounded histories and unread badges.
@@ -30,7 +34,7 @@ MUSIC and SENSOR, plus independent WHDLoad instances, improved forecasts and
 network reconnects. See [CHANGELOG.md](CHANGELOG.md) for the complete changes.
 Plugins keep their own version numbers independently of NovaDock.
 
-In-development 0.4 adds native Warp1260 Wi-Fi and CPU clock controls, plus a
+Version 0.4 adds native Warp1260 Wi-Fi and CPU clock controls, plus a
 Prism Wi-Fi chooser with scanning and WirelessManager profiles. HASS adds
 Home Assistant tiles through the independent AmiHASS service, with room/type/search
 filters, selected-entity subscriptions, read-only tiles and confirmed light,
@@ -38,6 +42,10 @@ thermostat, fan and cover controls. Automatic update checks remain off by defaul
 HASS sample controls are tested on Workbench; physical-device and physical-card
 validation remain pending. See
 [Network](docs/NETWORK_PLUGIN.md) and [CPU controls](docs/USING_NOVADOCK.md).
+
+Version 0.5 opens the Plugins page while inventory loads in the background, caches validated plugin inventory, updates tool windows in place
+and shares HASS room snapshots. Performance comparisons and regression budgets
+are documented in [native performance QA](docs/QA_PERFORMANCE.md).
 
 Preferences uses compact layouts on 640x256 screens with the standard 8-point
 Workbench font. Longer plugin settings scroll; APPS and icon pickers use pages.
@@ -61,7 +69,7 @@ instance, including stopped services, missing setup and unavailable readings.
 
 Download the latest published LHA from [Downloads](https://novadock.retrocs.org/get.php),
 unpack it and open the **NovaDock** drawer.
-Double-click **Install-NovaDock**. All installation modes include every bundled
+Double-click **Install**. All installation modes include every bundled
 plugin; add the tiles you want afterward in Preferences.
 
 - **Novice** uses standard locations, enables Workbench startup and opens the dock.
@@ -75,8 +83,8 @@ imported plugins and themes. New bundled plugins are installed automatically.
 Uninstall asks for confirmation and whether to keep settings and saved Notes.
 Reinstalling after keeping settings restores that configuration.
 
-Fresh installs use Nord with six tiles: the boot disk (`SYS:`), the installation's
-default shell (`NewShell`), MusicPlayer, CPU, RAM and Clock. Right-click the dock
+Fresh installs use Nord with seven tiles: the boot disk (`SYS:`), the installation's
+default shell (`NewShell`), MusicPlayer, CPU, RAM, Clock and Trash. Right-click the dock
 to add items, open Preferences, restart or quit. Right-click a plugin for its settings.
 
 Default installed locations:
@@ -108,7 +116,7 @@ shows when the last attempt ran, its result and a live checking status.
 
 A newer version opens a **Download... / Later** popup. Choose a destination;
 the LHA is checked against its SHA-256 checksum before it is kept. Unpack it
-and run **Install-NovaDock -> Update** yourself. Nothing installs automatically.
+and run **Install -> Update** yourself. Nothing installs automatically.
 This optional feature requires an HTTPS-capable **C:curl** with working CA
 certificates. See [usage](docs/USING_NOVADOCK.md#update-notifications-04).
 
@@ -143,7 +151,7 @@ packaging requires FlexCat and refuses to omit these translations.
 
 Start plugin development with the [SDK quick start](docs/PLUGIN_SDK_QUICKSTART.md),
 [protocol reference](docs/PLUGIN_API.md) and [standalone SDK source](plugin-sdk/README.md).
-NovaDock 0.4 also supports [plugin-owned artwork and state icons](docs/PLUGIN_SDK_ARTWORK.md),
+NovaDock 0.5 also supports [plugin-owned artwork and state icons](docs/PLUGIN_SDK_ARTWORK.md),
 with an ArtHello example and a standalone artwork packer.
 For verified release builds, the four repository assets and Aminet submission,
 use `scripts/release.py` as described in [docs/RELEASING.md](docs/RELEASING.md).

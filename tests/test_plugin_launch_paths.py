@@ -33,7 +33,7 @@ with tempfile.TemporaryDirectory() as tmp:
 # Exercise the real discovery walk too: process-local aliases must never be
 # stored as commands, and several aliases of one drawer are scanned once.
 s=(ROOT/'prefs/novadockdiscovery.c').read_text()
-a=s.index('static int catalog_walk_mode(');b=s.index('\nstruct ArraySink',a)
+a=s.index('static int catalog_walk_filtered(');b=s.index('\nstruct ArraySink',a)
 harness=r'''#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,7 +46,8 @@ typedef long BPTR;typedef char *STRPTR;typedef void *APTR;
 struct Process {APTR pr_WindowPtr;};static struct Process self;
 static int scan_count,resolve_failure;static void *IconBase;
 typedef int (*NDCatalogSink)(void *,void *);
-struct CatalogWalk {int maximum,stop,count,diagnostics;NDCatalogSink sink;void *ctx;char seen[6][256];};
+static int catalog_force;static int (*catalog_watch)(void *,int);static void *catalog_watch_context;
+struct CatalogWalk {int maximum,stop,count,diagnostics;const char *wanted;NDCatalogSink sink;void *ctx;char seen[6][256];};
 static void *FindTask(void *name){(void)name;return &self;}
 static void *AllocVec(unsigned long size,int flags){(void)flags;return calloc(1,size);}
 static void FreeVec(void *p){free(p);}

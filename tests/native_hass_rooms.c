@@ -43,6 +43,7 @@ int main(void)
  lock=CreateDir("ENVARC:AmiHASS");if(lock)UnLock(lock);
  f=fopen("ENVARC:AmiHASS/AmiHASS.cfg","wb");if(!f)return 10;configured=1;
  rc=fputs("AMIHASSCFG1\n\n30 0 0 1 60 0 1\n\nBridge:\nSYS:Prefs\nSYS:WBStartup\n",f);if(fclose(f)||rc<0)goto finished;
+ {struct NDHassSource missing;memset(&missing,0,sizeof(missing));nd_hass_source_poll(&missing,"HASS.RoomQA",0);if(missing.client.pending||!strstr(nd_hass_source_label(&missing),"Start AmiHASS 0.2"))goto finished;nd_hass_source_close(&missing);puts("PASS: missing bridge gives AmiHASS 0.2+ startup guidance without sending an action.");}
  if(!start_service())goto finished;owned=1;
  m=exchange(&observer,AMIHASS_STATUS,0);if(!m)goto finished;
  rc=m->result==AMIHASS_OK&&!strcmp(m->item.state,AMIHASS_SERVER_SAMPLE);FreeVec(m);if(!rc){puts("FAIL: only sample controls are permitted.");goto finished;}
@@ -54,7 +55,20 @@ int main(void)
  if(!nd_hass_picker_init(&picker,0,"","scene")||!nd_hass_picker_scope(&picker,"House","")||!page(&picker)||picker.count<1)goto finished;
  for(i=0;i<picker.count;++i)if(strncmp(picker.items[i].id,"scene.",6))goto finished;nd_hass_client_close(&picker.client);
  puts("PASS: room, type, device and search scopes combine; unknown room is empty; scenes stay filtered.");
+ if(!state(&tile,"media_player.amihass_sample_living_room","playing")||!tile.controls.media_volume||strcmp(tile.controls.media_title,"Amiga radio"))goto finished;
+ {const char *commands[]={"Pause","Play","Volume 43","Next","Previous"};const char *states[]={"paused","playing","playing","playing","playing"};for(i=0;i<5;++i){nd_hass_bridge_action(&tile,"HASS_QA","media_player.amihass_sample_living_room",commands[i]);if(!state(&tile,"media_player.amihass_sample_living_room",states[i]))goto finished;if(i==2&&tile.controls.volume!=43)goto finished;if(i==3&&strcmp(tile.controls.media_title,"Next sample track"))goto finished;if(i==4&&strcmp(tile.controls.media_title,"Previous sample track"))goto finished;}}
+ nd_hass_bridge_close(&tile);puts("PASS: media title/artist, Play/Pause/Previous/Next and volume 43 use the independent sample service through Exec SDK.");
+
+ if(!native_ui("QATests:LockUICheck"))goto finished;
+ if(!state(&tile,"lock.amihass_sample_front_door","unlocked")||!tile.controls.lock||!tile.controls.unlock||!tile.controls.lock_open)goto finished;
+ {const char *commands[]={"Lock","Unlock","Open lock"};const char *states[]={"locked","unlocked","open"};for(i=0;i<3;++i){nd_hass_bridge_action(&tile,"HASS_QA","lock.amihass_sample_front_door",commands[i]);if(!state(&tile,"lock.amihass_sample_front_door",states[i])||tile.action_stage!=3)goto finished;}}
+ nd_hass_bridge_close(&tile);
+ if(!state(&tile,"cover.amihass_sample_garage","closed"))goto finished;
+ {const char *commands[]={"Open cover","Stop cover","Close cover"};const char *states[]={"open","open","closed"};for(i=0;i<3;++i){nd_hass_bridge_action(&tile,"HASS_QA","cover.amihass_sample_garage",commands[i]);if(!state(&tile,"cover.amihass_sample_garage",states[i])||tile.action_stage!=3)goto finished;}}
+ nd_hass_bridge_close(&tile);puts("PASS: sample lock/unlock/latch and garage open/stop/close confirm readback through the independent bridge.");
  if(!native_ui("QATests:HASS PICKER-SELFTEST")||!native_ui("QATests:HASS CONTROL-SELFTEST"))goto finished;
+ if(!native_ui("QATests:HASS ROOM-SELFTEST")||!native_ui("QATests:HASS ROOM-PICKER-SELFTEST")||!native_ui("QATests:HASS ROOM-SHARE-SELFTEST"))goto finished;
+ puts("PASS: room summary and room-only chooser use sample service through Exec SDK.");
  puts("PASS: native room picker and light/climate/fan/cover/read-only panels open correctly.");
  if(!leases(&observer,0))goto finished;
  if(!nd_hass_picker_init(&picker,1,NULL,NULL)||!page(&picker)||picker.count<1)goto finished;

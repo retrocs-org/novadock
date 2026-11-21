@@ -95,3 +95,11 @@ __pycache__/
 /Plugins/Calc
 
 /Plugins/ToolTypes
+
+# NovaDock 0.5 native plugin executables
+/Plugins/Bench
+/Plugins/QR
+/Plugins/Moon
+/Plugins/Colour
+/Plugins/Agenda
+/Plugins/Pictures

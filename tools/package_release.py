@@ -8,8 +8,11 @@ import argparse
 import hashlib
 import re
 import shutil
+import sys
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from archive_timestamps import current_epoch, zip_datetime
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / 'public-web'
@@ -20,8 +23,8 @@ ROOT_FILES = ('Plugins/SensorsI2C.LICENSE', 'Aminet-parser-LICENSE.txt', '.gitig
               'Plugins/BitSkim.ndplugin', 'Plugins/BitSkim.info', 'Plugins/AmIRC.ndplugin', 'Plugins/AmIRC.info',
               'Plugins/Clipboard.ndplugin', 'Plugins/Clipboard.info',
               'Plugins/Network.ndplugin', 'Plugins/Network.info', 'Plugins/RunningApps.ndplugin', 'Plugins/Trash.ndplugin', 'Plugins/Games.ndplugin', 'Plugins/MusicLibrary.ndplugin', 'Plugins/Sensors.ndplugin', 'Plugins/Christmas.ndplugin', 'Plugins/Aquarium.ndplugin', 'Plugins/Places.ndplugin', 'Plugins/Saver.ndplugin', 'Plugins/Download.ndplugin', 'Plugins/System.ndplugin', 'Plugins/Actions.ndplugin',
-              'Plugins/Mixer.ndplugin', 'Plugins/Screenshot.ndplugin', 'Plugins/ScreenMode.ndplugin', 'Install-NovaDock',
-              'Install-NovaDock.info', 'NovaDock.guide', 'NovaDock.guide.info',
+              'Plugins/Mixer.ndplugin', 'Plugins/Screenshot.ndplugin', 'Plugins/ScreenMode.ndplugin', 'Install',
+              'Install.info', 'NovaDock.guide', 'NovaDock.guide.info',
               'BitSkim-icon-LICENSE.txt', 'VERSION')
 SOURCE_DIRS = ('Rexx', 'src', 'prefs', 'plugin_src', 'include', 'Icons', 'Backgrounds', 'Themes', 'Music',
                'docs', 'tests', 'tools', 'catalogs', 'scripts', 'plugin-sdk', 'examples')
@@ -36,6 +39,7 @@ SDK_FILES = (
     ('PLUGIN_SDK_SETTINGS.md', 'docs/PLUGIN_SDK_SETTINGS.md'),
     ('Makefile', 'plugin_src/template/Makefile.sdk'),
     ('include/nd_protocol.h', 'include/nd_protocol.h'),
+    ('include/nd_thumbnail.h', 'include/nd_thumbnail.h'),
     ('include/nd_reply.h', 'include/nd_reply.h'),
     ('include/nd_artwork.h', 'include/nd_artwork.h'),
     ('PLUGIN_SDK_ARTWORK.md', 'docs/PLUGIN_SDK_ARTWORK.md'),
@@ -96,13 +100,14 @@ def source_files():
             yield path
 
 
-def zip_bytes(entries):
-    """Entries are (ZIP member name, file bytes). Constant metadata for repeatability."""
+def zip_bytes(entries, timestamp=None):
+    """Entries share the packaging time, independent of old source-file dates."""
     from io import BytesIO
     stream = BytesIO()
+    stamp = zip_datetime(current_epoch() if timestamp is None else timestamp)
     with ZipFile(stream, 'w', compression=ZIP_DEFLATED, compresslevel=9) as archive:
         for name, payload in sorted(entries):
-            info = ZipInfo(name, date_time=(2020, 1, 1, 0, 0, 0))
+            info = ZipInfo(name, date_time=stamp)
             info.compress_type = ZIP_DEFLATED
             info.external_attr = 0o644 << 16
             archive.writestr(info, payload, compress_type=ZIP_DEFLATED, compresslevel=9)
@@ -144,6 +149,7 @@ def main():
     parser.add_argument('--release-dir', type=Path, default=ROOT.parent / 'dist' / 'fixed',
                         help='Optional verified LHA/readme directory for site binary downloads')
     args = parser.parse_args()
+    packaged_at = current_epoch()
     args.out.mkdir(parents=True, exist_ok=True)
 
     # The site's source download deliberately excludes public-web to avoid recursion.
@@ -154,14 +160,14 @@ def main():
         target = ROOT/'plugin-sdk'/member
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((ROOT/source_name).read_bytes())
-    source = zip_bytes(archive_entries(source_files(), 'NovaDock/')+[drawer_entry])
+    source = zip_bytes(archive_entries(source_files(), 'NovaDock/')+[drawer_entry], timestamp=packaged_at)
     download = WEB / 'downloads' / f'NovaDock-{VERSION}-source.zip'
     download.parent.mkdir(parents=True, exist_ok=True)
     # Keep the generated website package free of prior-version downloads.
     prune_downloads(download.parent, VERSION)
     download.write_bytes(source)
     checksum = hashlib.sha256(source).hexdigest()
-    sdk = zip_bytes(sdk_entries())
+    sdk = zip_bytes(sdk_entries(), timestamp=packaged_at)
     sdk_download = WEB / 'downloads' / f'NovaDock-{VERSION}-plugin-sdk.zip'
     sdk_download.write_bytes(sdk)
     sdk_checksum = hashlib.sha256(sdk).hexdigest()
@@ -187,13 +193,13 @@ def main():
     web_entries = [(p.relative_to(WEB).as_posix(), p.read_bytes())
                    for p in website_files()]
     web_archive = args.out / f'NovaDock-{VERSION}-public-web-updated.zip'
-    web_archive.write_bytes(zip_bytes(web_entries))
+    web_archive.write_bytes(zip_bytes(web_entries, timestamp=packaged_at))
 
     full_entries = archive_entries(source_files(), 'NovaDock/')+[drawer_entry]
     full_entries.extend(('NovaDock/public-web/' + name, data)
                         for name, data in web_entries)
     full_archive = args.out / f'NovaDock-{VERSION}-continued-source-and-site.zip'
-    full_archive.write_bytes(zip_bytes(full_entries))
+    full_archive.write_bytes(zip_bytes(full_entries, timestamp=packaged_at))
     print(f'Website source download: {download}')
     print(f'SHA-256: {checksum}')
     print(f'Plugin SDK download: {sdk_download}')

@@ -720,6 +720,7 @@ void release_icons(struct NDDock *dock)
     release_plugin_artwork(dock);
     if (GfxBase) WaitBlit();
     for (i = 0; i < ND_MAX_ITEMS; ++i) {
+        release_thumbnail(dock,i);
         if (dock->scaled_icon_bitmaps[i])
             FreeBitMap(dock->scaled_icon_bitmaps[i]);
         dock->scaled_icon_bitmaps[i] = NULL;

@@ -175,7 +175,7 @@ int nd_manifest_bundled_id(const char *id)
 {
     static const char *bundled[]={"CLOCK","CPU","RAM","CHIPRAM","FASTRAM",
         "NET","ROADSHOW","MUSIC","EYES","DOPUS4","ARCHIVE","RUNNINGAPPS",
-        "COMMAND","TRASH","WHDLOAD","MUSICLIB","SENSORS","CHRISTMAS","AQUARIUM","PLACES","SAVER","AMINET","DOWNLOAD","SYSTEM","HASS","ACTIONS","SHELF","CALC","TOOLTYPES","WATCH","LOGS","ALERTS","AMIROCKET","AMIRC","CLIPBOARD","BITSKIM",
+        "BENCH","QR","MOON","COLOUR","AGENDA","PICTURES","COMMAND","TRASH","WHDLOAD","MUSICLIB","SENSORS","CHRISTMAS","AQUARIUM","PLACES","SAVER","AMINET","DOWNLOAD","SYSTEM","HASS","ACTIONS","SHELF","CALC","TOOLTYPES","WATCH","LOGS","ALERTS","AMIROCKET","AMIRC","CLIPBOARD","BITSKIM",
         "MIXER","SCREENSHOT","SCREENMODE","TIMER","NOTES","SCREENSWITCHER","WEATHER",
         NULL};
     int i;
@@ -283,6 +283,12 @@ struct BuiltinPlugin {
     int multiple;
 };
 static const struct BuiltinPlugin builtin_plugins[]={
+    {"AGENDA","AGENDA","click,popup,badge,artwork","Persistent tasks and recurring reminders with a due badge.",ND_PLUGIN_VERSION_AGENDA,1},
+    {"PICTURES","PICTURES","click,popup,artwork","Local picture slideshow and larger previews with bounded background decoding.",ND_PLUGIN_VERSION_PICTURES,1},
+    {"BENCH","BENCH","click,popup,artwork","Cancellable CPU, memory-copy and planar drawing benchmarks with saved comparisons.",ND_PLUGIN_VERSION_BENCH,0},
+    {"QR","QR","click,popup,artwork","Offline text and clipboard QR codes with native ILBM export.",ND_PLUGIN_VERSION_QR,0},
+    {"MOON","MOON","click,popup,artwork","Offline approximate moon phase and location-based sunrise/sunset.",ND_PLUGIN_VERSION_MOON,0},
+    {"COLOUR","COLOUR","click,popup,artwork","Workbench colour sampler, RGB/hex clipboard and saved palette.",ND_PLUGIN_VERSION_COLOUR,0},
     {"HASS","HASS","click,popup,badge,artwork","Home Assistant entities, scenes and groups with shared authentication.",ND_PLUGIN_VERSION_HASS,1},
     {"BITSKIM","BitSkim","meter,click,drop,badge",
      "Transfer speed/results and stable-ID file sending; starts or restores BitSkim.",ND_PLUGIN_VERSION_BITSKIM,0},

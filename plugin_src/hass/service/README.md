@@ -1,6 +1,6 @@
 # AmiHASS client interface
 
-Vendored public headers from AmiHASS 0.1, local ABI 1.
+Vendored public headers from AmiHASS 0.2, local ABI 1.
 The SDK client implementation is ../nd_hass_client.c; only its header include
 is adapted to NovaDock. Per-tile UI and dock IPC remain in the HASS plugin.
 AmiHASSService and credential storage are separate, in the AmiHASS project.
@@ -21,3 +21,11 @@ requires the matching service build. The dock has no credential or HTTP transpor
 The final 0.4 client also checks STATUS feature.areas,
 feature.catalogue_filters and feature.subscriptions metadata. Discovery fails
 closed for unadvertised support. AMIHASS_AREAS supplies the paged room picker.
+
+NovaDock 0.5 is paired with AmiHASS 0.2. Newer services remain compatible when
+they advertise the required features; version strings alone do not grant support.
+Run `python3 tools/check_amihass_pair.py --bridge ../AmiHASS` before packaging.
+
+The current 0.5 snapshot includes lock/unlock/latch capabilities, friendly door
+state labels and stricter cover-stop readback. Confirmation UI remains in the
+dock client. PIN-protected locks remain read-only. Wire ABI 1 is unchanged.

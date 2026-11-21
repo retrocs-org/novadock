@@ -28,10 +28,11 @@ int amihass_catalog(const char *json,struct AmiHASSEntity *items,unsigned int ca
 int amihass_matches(const struct AmiHASSEntity *entity,const char *domain,const char *filter);
 int amihass_action(const char *entity,const char *action,char path[96],char body[180]);
 const char *amihass_icon(const struct AmiHASSEntity *entity);
+const char *amihass_display_state(const struct AmiHASSEntity *entity);
 int amihass_available(const struct AmiHASSEntity *entity);
 /* QUERY replies include optional control metadata in items[]; ABI 1 is unchanged.
  * Numeric temperature values are hundredths of the server's native unit. */
-struct AHControls {int brightness,color,temperature,level,level_known,color_known;unsigned long rgb;long target,minimum,maximum,step;char unit[16];int fan_speed,speed,speed_known,position,position_value,position_known,cover_open,cover_close,cover_stop;};
+struct AHControls {int brightness,color,temperature,level,level_known,color_known;unsigned long rgb;long target,minimum,maximum,step;char unit[16];int fan_speed,speed,speed_known,position,position_value,position_known,cover_open,cover_close,cover_stop;int media_play,media_pause,media_previous,media_next,media_volume,volume,volume_known;char media_title[64],media_artist[64];int lock,unlock,lock_open;};
 int amihass_number(const char *text,long *value);
 void amihass_number_text(long value,char out[40]);
 void amihass_controls(const char *json,struct AHControls *controls);

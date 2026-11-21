@@ -1,20 +1,20 @@
 # HASS: Home Assistant
 
-HASS connects NovaDock 0.4 to the separate AmiHASS background service. Add
+HASS connects NovaDock 0.5 to the separate AmiHASS background service. Add
 independent tiles for lights, switches, groups, scenes, scripts or sensor readings.
 AmiHASS owns the Home Assistant connection and credentials. The dock uses its
 C SDK through Exec message ports for discovery, cached readings and controls.
 
 Native builds, mock-server requests and sample-service IPC checks cover the
-integration. Live read-only API and paging checks have also passed. Interactive
-UI validation, physical-device controls and idle-resource measurements remain
-release checks. WebSocket events and custom multi-entity selections remain future work for the dock.
+integration. Live read-only API and paging checks have also passed. Native sample controls, room filtering and service restart recovery pass on
+Workbench. Physical-device controls and physical-system resource measurements
+remain release checks. WebSocket events and custom multi-entity selections remain future work for the dock.
 Native sample tests cover brightness, RGB and climate target readback plus the
 plugin control-panel inputs. Physical-device testing remains a separate release check.
 
 ## Connect through AmiHASS
 
-1. Install the separate **AmiHASS 0.1** package using **Install-AmiHASS**.
+1. Install the separate **AmiHASS 0.2** package using **Install**.
 2. Configure AmiHASS's networking requirements (`C:curl`, CA certificates for HTTPS and your TCP/IP stack). The dock plugin itself makes no HTTP requests.
 3. Open **SYS:Prefs/AmiHASSPrefs**, choose **Server Settings**, enter your server origin and enter a long-lived Home Assistant token or import it from a local text file. Credentials stay in AmiHASS.
 4. Save Server Settings. Set the polling interval in General settings (10 to 3600 seconds, default 30), then Save the main Preferences.
@@ -73,7 +73,7 @@ settings never send a control action to Home Assistant.
 Each tile saves its device ID, readable names, entity and action independently.
 Existing entity-only tiles keep working after an update; choose a device when
 changing their entity. New device-based selections require the updated AmiHASS
-0.1 service with device discovery support. An older service shows an update
+0.2 service with device discovery support. An older service shows an update
 message rather than silently browsing the whole server.
 
 With **Toggle** selected, clicking requests a toggle. The tile shows the state reported by Home
@@ -123,7 +123,7 @@ the confirmed state. Release the slider to send one request through AmiHASS;
 
 The slider appears only when AmiHASS reports brightness support. Older service
 builds without control metadata, on/off-only lights and other entity types keep
-their existing controls. Use an updated AmiHASS 0.1 service for dimming.
+their existing controls. Use an updated AmiHASS 0.2 service for dimming.
 
 The dock reads the confirmed level after a request and picks up changes made by
 other clients. The slider is disabled while awaiting a reply or while data is
@@ -179,7 +179,7 @@ not follow redirects to another origin.
 
 Other local Amiga programs can access local files; the OS provides no isolation.
 Uninstalling NovaDock does not stop AmiHASS or remove its connection settings.
-Use **Install-AmiHASS -> Uninstall** to stop/remove the separate service; choose
+Use **Install -> Uninstall** to stop/remove the separate service; choose
 whether to keep or remove its token. NovaDock's removal only affects tile settings.
 
 Open **NovaDock Preferences -> Plugins**, select the affected instance and
@@ -224,7 +224,7 @@ status/shutdown operations, ownership and a read-only C example.
 
 ## Integration checks
 
-The public AmiHASS 0.1/ABI 1 snapshot is recorded in
+The public AmiHASS 0.2/ABI 1 snapshot is recorded in
 `plugin_src/hass/service/sdk.json`, including hashes for the protocol, client
 and portable request/metadata decoder. Optional `QUERY.items[]` control
 metadata extends ABI 1 without changing its message size. Older replies remain
@@ -267,7 +267,7 @@ Open cover, Close cover and Stop cover buttons. Unsupported controls are omitted
 
 All actions still go to the Amiga AmiHASS service through structured Exec
 messages. The plugin does not connect to Home Assistant. Fan and cover controls
-require the matching updated AmiHASS 0.1 service; optional metadata extends the
+require the matching updated AmiHASS 0.2 service; optional metadata extends the
 existing ABI 1 message without changing its layout. Older bridges leave these
 controls unavailable. Locks remain read-only.
 
@@ -319,10 +319,92 @@ Push transport remains future work; the new subscriptions use shared polling.
 
 ## Bridge compatibility
 
+The tested release pair is **NovaDock 0.5 with AmiHASS 0.2**. Install and
+configure the bridge separately; no credentials belong in NovaDock. A missing
+service shows **Start AmiHASS 0.2+ service** and connection failures must not
+retain a successful Sample data label. Newer bridges are accepted by their
+advertised capabilities, rather than rejected for an unfamiliar version.
+
 Discovery checks the service's advertised room/filter features before sending
 catalogue requests. An older AmiHASS 0.1 build that does not advertise these
-features shows **Update AmiHASS service**, rather than ignoring a room/type
+features shows **Update to AmiHASS 0.2+**, rather than ignoring a room/type
 filter. Refresh after updating the bridge. ABI 1 and packet sizes are unchanged.
 Configured entity tiles can retain legacy cached QUERY support, while their
 detail window identifies the need to update the bridge. Optional controls still
 require their own capability metadata; missing support never becomes a zero.
+
+## Read-only room summaries (0.5)
+
+Set Type to room and use Select beside Room. The chooser lists rooms supplied
+by AmiHASS; a specific room is required. HASS obtains all room entities through
+the same public Exec-port SDK, without connecting directly to Home Assistant.
+
+The tile reports light entities switched on and open contacts/covers. Click for
+on/off light counts, open/closed door and window contacts/covers, unavailable
+entities and a room total. Lights and Open contacts show matching entries.
+Motion sensors are not counted as open doors. Opening/closing covers count as
+open until fully closed. These summaries send no control commands.
+
+Refresh defaults to sixty seconds. A complete paged snapshot is required before
+counts become current. On failure the previous counts remain explicitly stale
+and the badge clears. Summaries support at most 1,024 distinct room entities,
+with up to sixty list details visible; counts include the full supported room.
+Oversized, inconsistent or duplicate pages produce a refresh error. AmiHASS
+must advertise room and filter support. Custom hand-picked entity sets remain
+future work.
+
+Tiles for the same room share one paged aggregation and one duplicate-check
+workspace. The fastest requested interval applies to that room; repeated Refresh
+requests are combined. Different rooms start their reads at staggered times.
+Closing the tile performing the read lets a remaining tile take over. A stalled
+owner is reported as stale rather than displaying its counts as current.
+
+## Media players
+
+Choose Type media_player and select a device/entity through AmiHASS. Show
+controls opens only the actions advertised by that entity: Previous, Play,
+Pause, Next and a confirmed Volume slider. Track and artist appear when the
+bridge reports them. The default State tile display shows track information.
+Read-only tiles show metadata and Refresh but expose no mutating controls.
+
+Playback and volume commands use the public Exec-port C SDK. The updated
+AmiHASS 0.2 service owns all network calls, validates advertised capabilities
+and supplies sample media playback, volume and track changes for offline tests.
+Older service builds without media metadata safely leave these controls absent.
+Commands are not replayed after outages; volume and playback use confirmed
+readback, and track navigation waits for an updated state timestamp.
+
+Feature flags and service names follow the official Home Assistant
+[media-player entity API](https://contributors.home-assistant.io/core/entities/media-player/).
+
+## Locks and motorised doors
+
+Choose Type lock and select a device/entity. The click-action picker and control
+popup offer Lock, Unlock and Open lock only when AmiHASS reports those controls.
+Open lock releases the latch; it is distinct from Unlock. A lock that requires a
+keypad code stays read-only because NovaDock does not collect or send PINs.
+Door contact sensors also remain read-only and display Open/Closed. Lock states
+display Locked, Unlocked or Latch open without changing the raw SDK state.
+
+Cover entities retain their advertised Open cover, Close cover, Stop cover and
+position controls. Stop is confirmed only by an Open or Closed state, not by an
+unknown, jammed or moving state. The tile artwork follows confirmed raw states.
+
+Unlocking, releasing a latch, opening a cover, or increasing its position opens
+a separate confirmation window with the device name, entity ID and action.
+Confirmations also apply to sample devices. Cancel, Escape and closing the
+confirmation send nothing. The dialog expires after 30 seconds; a settings,
+source, capability or availability change invalidates it. Confirm checks the
+current state again, and the plugin does not replay an accepted action after
+a connection loss. Read-only mode blocks actions below the UI as well.
+
+The settings window opens immediately, then queries the selected lock, cover or
+media player's capabilities asynchronously through the Exec SDK. Until the
+capabilities are verified, its action picker offers Show controls. Unsupported
+actions are removed; failed queries leave the picker read-only. No Home
+Assistant credentials or HTTP calls are handled by the dock.
+
+These controls require the current AmiHASS 0.2 build with lock metadata. Older
+ABI 1 services remain usable for supported existing entities; missing lock
+metadata never enables an action. Integration QA uses only the bridge's shared
+sample front-door lock and garage door, with no real lock or door commands.

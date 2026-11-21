@@ -2,6 +2,9 @@
 #define ND_HASS_COMPAT_H
 #include "nd_hass_native.h"
 #include <string.h>
+#define ND_HASS_BRIDGE_RELEASE "0.2"
+#define ND_HASS_BRIDGE_UPDATE "Update to AmiHASS 0.2+"
+#define ND_HASS_BRIDGE_START "Start AmiHASS 0.2+ service"
 #define ND_HASS_FEATURE_AREAS 1U
 #define ND_HASS_FEATURE_FILTERS 2U
 #define ND_HASS_FEATURE_SUBSCRIPTIONS 4U

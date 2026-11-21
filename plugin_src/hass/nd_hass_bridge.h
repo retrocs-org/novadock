@@ -47,6 +47,7 @@ static int nd_hass_bridge_match(const struct NDHassBridge *b)
 {
  if(!strcmp(b->expected,"Turn on"))return !strcmp(b->entity.state,"on");
  if(!strcmp(b->expected,"Turn off"))return !strcmp(b->entity.state,"off");
+ if(!strcmp(b->expected,"Next")||!strcmp(b->expected,"Previous"))return b->entity.updated[0]&&strcmp(b->entity.updated,b->previous_update);
  if(!strcmp(b->expected,"Activate"))return b->entity.updated[0] && strcmp(b->entity.updated,b->previous_update);
  return amihass_control_matches(&b->controls,b->entity.state,b->expected);
 }

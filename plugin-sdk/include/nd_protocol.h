@@ -19,6 +19,7 @@
 #define ND_TEXT_LEN 32
 #define ND_NO_METER 65535U
 
+#define ND_MSG_THUMBNAIL 5U /* negotiated bounded bitmap payload */
 #define ND_MSG_UPDATE 1U
 #define ND_MSG_GOODBYE 2U
 /* Badges (dock ABI 4): a small label on the tile's corner, for example an
@@ -108,6 +109,7 @@ struct NDMediaMessage {
 #define ND_EXT_HAS_GRAPH 1U
 #define ND_EXT_HAS_MEDIA 2U
 #define ND_EXT_HAS_ARTWORK 4U /* reserved2[0]: name key; reserved: state */
+#define ND_EVENT2_HOST_THUMBNAIL 32UL
 #define ND_EVENT2_HOST_ALERTS 16UL /* accepts ND_MSG_NOTICE */
 #define ND_EVENT2_HOST_ARTWORK_META 8UL /* separate art metadata; captions stay readable */
 #define ND_EVENT2_HOST_ARTWORK 4UL /* host can render plugin-owned artwork banks */
@@ -122,4 +124,6 @@ struct NDExtMessage {
     ULONG event2;                /* reply: bitmask of ND_EVENT2_* */
     ULONG reserved2[2];
 };
+#include "nd_thumbnail.h"
+struct NDThumbnailMessage {struct NDExtMessage base;struct NDThumbnail picture;};
 #endif

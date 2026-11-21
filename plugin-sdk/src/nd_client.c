@@ -145,7 +145,7 @@ static unsigned int exchange(struct NDClient *c, unsigned short cmd, int extensi
             ext->reserved=0;ext->event2=0;
             ext->reserved2[0]=ext->reserved2[1]=0;
             if(cmd==ND_MSG_UPDATE && c->art_sending && c->host_artwork_meta){ext->flags|=ND_EXT_HAS_ARTWORK;ext->reserved=c->art_state;ext->reserved2[0]=c->art_key;}
-            message_size=sizeof(struct NDExtMessage);
+            message_size=cmd==ND_MSG_THUMBNAIL ? sizeof(struct NDThumbnailMessage):sizeof(struct NDExtMessage);
         } else {
             msg->version = (UWORD)(extension == 2 ? ND_MEDIA_ABI_VERSION :
                                    extension == 1 ? ND_GRAPH_ABI_VERSION :
@@ -181,8 +181,8 @@ static unsigned int exchange(struct NDClient *c, unsigned short cmd, int extensi
         }
         return ND_EVENT_QUIT;
     }
-    if (!use_ext){c->host_alerts=0;c->host_artwork=0;c->host_artwork_meta=0;}
-    if (use_ext){c->host_alerts=(UWORD)((ext->event2&ND_EVENT2_HOST_ALERTS)!=0);c->host_artwork=(UWORD)((ext->event2&ND_EVENT2_HOST_ARTWORK)!=0);c->host_artwork_meta=(UWORD)((ext->event2&ND_EVENT2_HOST_ARTWORK_META)!=0);c->event2|=ext->event2&~(ND_EVENT2_HOST_ARTWORK|ND_EVENT2_HOST_ARTWORK_META|ND_EVENT2_HOST_ALERTS);}
+    if (!use_ext){c->host_thumbnail=0;c->host_alerts=0;c->host_artwork=0;c->host_artwork_meta=0;}
+    if (use_ext){c->host_thumbnail=(UWORD)((ext->event2&ND_EVENT2_HOST_THUMBNAIL)!=0);c->host_alerts=(UWORD)((ext->event2&ND_EVENT2_HOST_ALERTS)!=0);c->host_artwork=(UWORD)((ext->event2&ND_EVENT2_HOST_ARTWORK)!=0);c->host_artwork_meta=(UWORD)((ext->event2&ND_EVENT2_HOST_ARTWORK_META)!=0);c->event2|=ext->event2&~(ND_EVENT2_HOST_ARTWORK|ND_EVENT2_HOST_ARTWORK_META|ND_EVENT2_HOST_ALERTS|ND_EVENT2_HOST_THUMBNAIL);}
     memcpy(&c->packet,wire,sizeof(c->packet));
     event=c->packet.graph.base.event;
     c->throttled=(UWORD)((event&ND_EVENT_THROTTLE)!=0);
@@ -525,3 +525,6 @@ unsigned int nd_client_update_art_quiet(struct NDClient *c,const char *caption,
  event=nd_client_update_quiet(c,shown,value,ND_NO_METER,elapsed_ticks,heartbeat_ticks);
  if(c)c->art_sending=0;return event;
 }
+
+unsigned int nd_client_thumbnail(struct NDClient *c,const struct NDThumbnail *picture)
+{struct NDExtMessage saved;unsigned int event;if(!c||!c->host_thumbnail||!nd_thumbnail_valid(picture))return ND_EVENT_NONE;saved=c->packet.ext;c->packet.thumbnail.picture=*picture;event=exchange(c,ND_MSG_THUMBNAIL,0);c->packet.ext=saved;return event;}

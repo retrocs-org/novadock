@@ -116,7 +116,7 @@ with tempfile.TemporaryDirectory() as t:
 print('HASS bridge ABI, deferred startup, rate limiting, query/action readback, timeout and reconnect passed.')
 
 snapshot=json.loads((ROOT/'plugin_src/hass/service/sdk.json').read_text())
-assert snapshot['version']=='0.1' and snapshot['abi']==1
+assert snapshot['version']=='0.2' and snapshot['abi']==1
 for name,digest in snapshot['files'].items():
  if name=='amihass_client.c':
   data=(ROOT/'plugin_src/hass/nd_hass_client.c').read_text().replace('"nd_hass_native.h"','"amihass.h"').replace('"service/amihass_config.h"','"amihass_config.h"').encode()

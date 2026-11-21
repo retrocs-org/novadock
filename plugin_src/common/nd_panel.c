@@ -21,12 +21,15 @@ struct NDPanel {
     struct Gadget *gadgets,*fields[12];APTR visual;
     UWORD background;
     unsigned char percentage[12],percent_dragging[12];
-    unsigned int count;char title[128],text[12][160],labels[12][32];
+    unsigned int count,button_count,limits[12];struct Gadget *buttons[5];char button_text[5][32];
+    LONG swatch_pen[12];unsigned long swatch_rgb[12];unsigned char swatch[12],swatch_valid[12];
+    char title[128],text[12][160],labels[12][32];
 };
 void nd_panel_close(struct NDPanel *p)
 {
     if(!p)return;
     {
+        {unsigned int i;for(i=0;i<p->count;++i)if(p->swatch_valid[i])ReleasePen(p->screen->ViewPort.ColorMap,p->swatch_pen[i]);}
         if(p->window)CloseWindow(p->window);
         if(p->gadgets)FreeGadgets(p->gadgets);
         if(p->visual)FreeVisualInfo(p->visual);
@@ -44,7 +47,7 @@ struct NDPanel *nd_panel_open(const char *title,const struct NDPanelField *field
     struct NDPanel *p;struct Gadget *last;
     struct NewGadget ng;struct TextAttr font={(STRPTR)"topaz.font",8,0,0};
     unsigned int i;int w,top,bw,label_x=92;
-    if(!count || count>12 || buttons_count>4 || !buttons_count)return NULL;
+    if(!count || count>12 || buttons_count>5 || !buttons_count)return NULL;
     p=(struct NDPanel *)AllocVec(sizeof(*p),MEMF_PUBLIC|MEMF_CLEAR);if(!p)return NULL;
     if(!panel_users++){
     IntuitionBase=(struct IntuitionBase *)OpenLibrary("intuition.library",39);
@@ -68,7 +71,9 @@ struct NDPanel *nd_panel_open(const char *title,const struct NDPanelField *field
         ng.ng_LeftEdge=label_x;ng.ng_TopEdge=top+(int)i*20;ng.ng_Width=w-label_x-16;ng.ng_Height=16;
         strncpy(p->labels[i],fields[i].label,sizeof(p->labels[i])-1);
         ng.ng_GadgetText=p->labels[i];ng.ng_Flags=PLACETEXT_LEFT;ng.ng_GadgetID=i+1;
-        if(fields[i].limit==ND_PANEL_PERCENT){
+        p->limits[i]=fields[i].limit;
+        if(fields[i].limit==ND_PANEL_SWATCH){p->swatch[i]=1;last=CreateGadget(TEXT_KIND,last,&ng,GTTX_Text,(ULONG)"",TAG_DONE);}
+        else if(fields[i].limit==ND_PANEL_PERCENT){
             int level=atoi(fields[i].value);if(level<0)level=0;if(level>100)level=100;
             p->percentage[i]=1;ng.ng_Width-=56;
             last=CreateGadget(SLIDER_KIND,last,&ng,GTSL_Min,0,GTSL_Max,100,GTSL_Level,level,
@@ -85,12 +90,13 @@ struct NDPanel *nd_panel_open(const char *title,const struct NDPanelField *field
         }
         if(!last)goto fail;p->fields[i]=last;
     }
+    p->button_count=buttons_count;
     bw=(w-32)/(int)buttons_count;
     for(i=0;i<buttons_count;++i){
         ng.ng_LeftEdge=12+(int)i*bw;ng.ng_TopEdge=top+(int)count*20+6;
         ng.ng_Width=bw-6;ng.ng_Height=20;ng.ng_GadgetID=100+i;
-        ng.ng_GadgetText=(STRPTR)buttons[i];ng.ng_Flags=PLACETEXT_IN;
-        last=CreateGadget(BUTTON_KIND,last,&ng,TAG_DONE);if(!last)goto fail;
+        strncpy(p->button_text[i],buttons[i],31);ng.ng_GadgetText=p->button_text[i];ng.ng_Flags=PLACETEXT_IN;
+        last=CreateGadget(BUTTON_KIND,last,&ng,TAG_DONE);if(!last)goto fail;p->buttons[i]=last;
     }
     p->window=OpenWindowTags(NULL,WA_Title,(ULONG)p->title,WA_PubScreen,(ULONG)p->screen,
         WA_Left,(p->screen->Width-w)/2,WA_Top,p->screen->BarHeight+10,WA_Width,w,
@@ -102,6 +108,14 @@ struct NDPanel *nd_panel_open(const char *title,const struct NDPanelField *field
     if(fields[0].limit && fields[0].limit!=ND_PANEL_PERCENT)ActivateGadget(p->fields[0],p->window,NULL);return p;
 fail:nd_panel_close(p);return NULL;
 }
+static void draw_swatches(struct NDPanel *p)
+{unsigned int i;struct RastPort *rp=p->window->RPort;UWORD pen=rp->FgPen;for(i=0;i<p->count;++i)if(p->swatch_valid[i]){struct Gadget *g=p->fields[i];SetAPen(rp,p->swatch_pen[i]);RectFill(rp,g->LeftEdge+2,g->TopEdge+2,g->LeftEdge+g->Width-3,g->TopEdge+g->Height-3);}SetAPen(rp,pen);}
+void nd_panel_swatch(struct NDPanel *p,unsigned int index,unsigned long rgb)
+{LONG pen;if(!p||index>=p->count||!p->swatch[index]||(p->swatch_valid[index]&&p->swatch_rgb[index]==rgb))return;pen=ObtainBestPen(p->screen->ViewPort.ColorMap,((rgb>>16)&255)*0x01010101UL,((rgb>>8)&255)*0x01010101UL,(rgb&255)*0x01010101UL,TAG_DONE);if(pen<0)return;if(p->swatch_valid[index])ReleasePen(p->screen->ViewPort.ColorMap,p->swatch_pen[index]);p->swatch_pen[index]=pen;p->swatch_rgb[index]=rgb;p->swatch_valid[index]=1;draw_swatches(p);}
+int nd_panel_replace_string(struct NDPanel *p,unsigned int index,const char *value)
+{if(!p||index>=p->count||!p->limits[index]||p->limits[index]>=ND_PANEL_SWATCH||!value||strlen(value)>=p->limits[index])return 0;if(strcmp(nd_panel_get(p,index),value))GT_SetGadgetAttrs(p->fields[index],p->window,NULL,GTST_String,(ULONG)value,TAG_DONE);strncpy(p->text[index],value,sizeof(p->text[index])-1);p->text[index][sizeof(p->text[index])-1]=0;return 1;}
+void nd_panel_button(struct NDPanel *p,unsigned int index,const char *label,int enabled)
+{struct Gadget *g;if(!p||index>=p->button_count||!label)return;g=p->buttons[index];if(strcmp(p->button_text[index],label)){strncpy(p->button_text[index],label,31);p->button_text[index][31]=0;if(g->GadgetText){g->GadgetText->IText=p->button_text[index];g->GadgetText->LeftEdge=(g->Width-(int)strlen(p->button_text[index])*8)/2;}RefreshGList(g,p->window,NULL,1);}if(((g->Flags&GFLG_DISABLED)!=0)!=(!enabled))GT_SetGadgetAttrs(g,p->window,NULL,GA_Disabled,(ULONG)!enabled,TAG_DONE);}
 void nd_panel_raise(struct NDPanel *p)
 {if(p && p->window){WindowToFront(p->window);ActivateWindow(p->window);}}
 int nd_panel_event(struct NDPanel *p)
@@ -113,7 +127,7 @@ int nd_panel_event(struct NDPanel *p)
         id=(cls==IDCMP_GADGETUP || cls==IDCMP_GADGETDOWN) && msg->IAddress ? ((struct Gadget *)msg->IAddress)->GadgetID:0;
         GT_ReplyIMsg(msg);
         if(cls==IDCMP_CLOSEWINDOW || (cls==IDCMP_RAWKEY && code==0x45))return -1;
-        if(cls==IDCMP_REFRESHWINDOW){GT_BeginRefresh(p->window);GT_EndRefresh(p->window,TRUE);}
+        if(cls==IDCMP_REFRESHWINDOW){GT_BeginRefresh(p->window);GT_EndRefresh(p->window,TRUE);draw_swatches(p);}
         if(id && id<=p->count && p->percentage[id-1]){
             if(cls==IDCMP_GADGETDOWN){p->percent_dragging[id-1]=1;continue;}
             p->percent_dragging[id-1]=0;

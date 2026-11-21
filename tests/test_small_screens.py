@@ -250,7 +250,7 @@ with tempfile.TemporaryDirectory() as t:
 aminet=(ROOT/'plugin_src/aminet/nd_aminet_ui.h').read_text()
 am_fragment=aminet[aminet.index(' top=ui->screen->WBorTop'):aminet.index(' ui->window=OpenWindowTags(')].replace('goto fail','return 0')
 hass=(ROOT/'plugin_src/hass/nd_hass_ui.c').read_text()
-ha_fragment=hass[hass.index(' memset(&ng,0,sizeof(ng));'):hass.index(' if(nd_hass_global_type(domain))sprintf(title,')].replace('goto finished','return 0')
+ha_fragment=hass[hass.index(' memset(&ng,0,sizeof(ng));'):hass.index(' if(devices==2)strcpy(title,')].replace('goto finished','return 0')
 all_tags=sorted(set(re.findall(r'\b(?:GTTX_\w+|GTST_\w+|GTLV_\w+|\w+_KIND|TAG_DONE)\b',am_fragment+ha_fragment)))
 browser_code=pre+'\n'.join(f'#define {tag} {i+10}' for i,tag in enumerate(all_tags))+r'''
 struct TextAttr {int ta_YSize;};struct BrowserScreen {int WBorTop;struct TextAttr *Font;};

@@ -241,12 +241,20 @@ with tempfile.TemporaryDirectory() as temp:
     assert 'Coming in 0.4' in published['marketplace']
     assert '/download/0.3/NovaDock-0.3-plugin-sdk.zip' in published['plugin-sdk']
     assert '/download/0.3/NovaDock-0.4-' not in published['plugin-sdk']
-    assert 'NovaDock 0.4 (in development)' in published['index']
+    development = next(line.split('=', 1)[1].strip() for line in (root/'VERSION').read_text().splitlines() if line.startswith('VERSION='))
+    assert f'NovaDock {development} (in development)' in published['index']
     future = render_saved('0.4')
-    assert f'Explore {len(catalog)} released plugins' in future['index']
+    released_04 = sum('added' not in p or tuple(map(int,p['added'].split('.'))) <= (0,4) for p in catalog)
+    assert f'Explore {released_04} released plugins' in future['index']
     assert 'Coming in 0.4' not in future['marketplace']
     assert '/download/0.4/NovaDock-0.4-plugin-sdk.zip' in future['plugin-sdk']
-    assert 'NovaDock 0.4 (in development)' not in future['index']
+    if development != '0.4':
+        assert f'NovaDock {development} (in development)' in future['index']
+    else:
+        assert '(in development)' not in future['index']
+    current = render_saved(development)
+    assert f'NovaDock {development} (in development)' not in current['index']
+    assert f'/download/{development}/NovaDock-{development}-plugin-sdk.zip' in current['plugin-sdk']
 print('Website release status, published SDK filenames and released/upcoming plugin counts passed.')
 
 
