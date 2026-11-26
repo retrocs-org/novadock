@@ -9,7 +9,7 @@ banks=sorted((ROOT/'Plugins').glob('*.assets/Artwork.ndart'))
 # Every bundled plugin has bank artwork or a dedicated live/launcher renderer.
 covered={'CLOCK','EYES','CPU','RAM','NET','DOPUS4','RUNNINGAPPS','ACTIONS','CLIPBOARD','BITSKIM','SCREENSWITCHER','AMINET'}
 inventory=json.loads((ROOT/'tests/plugin_qa.json').read_text())['plugins']
-assert len(inventory)==46
+assert len(inventory)==47
 for plugin in inventory:
  assert (ROOT/(plugin['program']+'.assets/Artwork.ndart')).is_file() or plugin['id'] in covered,plugin['id']
 # The EYES live renderer must precede the Tiny fallback too.
