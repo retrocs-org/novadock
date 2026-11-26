@@ -29,6 +29,9 @@
 #include "nd_option_runtime.h"
 #include "nd_shotfile.h"
 #include "nd_cybergraphics.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 
 const char nd_version[]=ND_PLUGIN_VER_STRING(SCREENSHOT,"Screenshot");
 long __stack=16384;

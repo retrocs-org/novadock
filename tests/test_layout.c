@@ -9,7 +9,31 @@ int main(void)
     struct NDConfig c;
     struct NDLayout l;
     int width, height, row, column, span;
+    nd_factory_config(&c);assert(c.drag_bar);
+    assert(nd_parse_line(&c,"DRAG_BAR=NO") && !c.drag_bar);
+    assert(!nd_parse_line(&c,"DRAG_BAR=MAYBE"));
+    assert(nd_parse_line(&c,"DRAG_BAR=YES") && c.drag_bar);
+    {
+        struct NDLayout plain;int side;
+        for(side=ND_SIDE_BOTTOM;side<=ND_SIDE_RIGHT;++side){
+            c.side=side;c.drag_bar=0;assert(nd_layout_fit(&c,1024,768,11,&plain));
+            c.drag_bar=1;assert(nd_layout_fit(&c,1024,768,11,&l));
+            assert(l.width<=1014 && l.height<=747);
+            if(side==ND_SIDE_LEFT || side==ND_SIDE_RIGHT)assert(l.width==plain.width);
+            else assert(l.height==plain.height);
+            assert(nd_layout_fit(&c,320,200,11,&l));
+            assert(l.width<=310 && l.height<=179);
+        }
+    }
+    /* A small rightward drag of a wide dock must never snap it left. */
+    assert(nd_drag_snap(ND_POSITION_CENTER,10,1024,980)==ND_POSITION_END);
+    assert(nd_drag_snap(ND_POSITION_CENTER,-10,1024,980)==ND_POSITION_START);
+    assert(nd_drag_snap(ND_POSITION_CENTER,0,1024,980)==ND_POSITION_CENTER);
+    assert(nd_drag_snap(ND_POSITION_START,350,1024,300)==ND_POSITION_CENTER);
+    assert(nd_drag_snap(ND_POSITION_END,-700,1024,300)==ND_POSITION_START);
+    assert(nd_drag_snap(ND_POSITION_CENTER,500,100,100)==ND_POSITION_CENTER);
     populated_dock(&c);
+    assert(!c.drag_bar); /* omitted keys in existing files preserve layout */
     assert(c.count == 12);
     assert(nd_compact_enabled(&c)==10);
     assert(nd_layout_fit(&c, 640, 200, 11, &l));
@@ -142,6 +166,29 @@ int main(void)
     assert(width == 50 && height == 25);
     nd_icon_fit(0, 50, 50, 50, &width, &height);
     assert(width == 0 && height == 0);
+    width=32;height=24;
+    assert(nd_icon_hover_size(86,76,0,&width,&height));
+    assert(width==40 && height==30);
+    width=40;height=40;
+    assert(nd_icon_hover_size(86,66,0,&width,&height));
+    assert(width==42 && height==42);
+    assert(!nd_icon_hover_size(44,38,1,&width,&height));
+    assert(width==42 && height==42);
+    width=56;height=56;
+    assert(nd_icon_hover_size(100,100,0,&width,&height));
+    assert(width==70 && height==70);
+    width=40;height=40;
+    assert(nd_icon_wave_size(0,180,86,90,&width,&height));
+    assert(width==86 && height==86);
+    width=40;height=40;
+    assert(nd_icon_wave_size(90,180,86,90,&width,&height));
+    assert(width>40 && width<86);
+    width=40;height=40;
+    assert(!nd_icon_wave_size(180,180,86,90,&width,&height));
+    width=86;height=76;
+    assert(nd_icon_wave_size(0,182,256,177,&width,&height));
+    assert(width>128 && height>76 && height<=177);
+    assert(width*76-height*86>=-172 && width*76-height*86<=172);
     puts("Responsive dock layout tests passed.");
     return 0;
 }

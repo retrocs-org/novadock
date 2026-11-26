@@ -12,6 +12,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include "nd_panel.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct IntuitionBase *IntuitionBase=NULL;
 struct Library *GadToolsBase=NULL;
 struct GfxBase *GfxBase=NULL;
@@ -138,7 +141,7 @@ int nd_panel_event(struct NDPanel *p)
 }
 const char *nd_panel_get(struct NDPanel *p,unsigned int index)
 {return p && index<p->count && p->fields[index]->SpecialInfo ?
-    ((struct StringInfo *)p->fields[index]->SpecialInfo)->Buffer:"";}
+    (const char *)((struct StringInfo *)p->fields[index]->SpecialInfo)->Buffer:"";}
 void nd_panel_set_label(struct NDPanel *p,unsigned int index,const char *label)
 {
     struct Gadget *g;struct RastPort *rp;UWORD pen,mode;
@@ -172,13 +175,20 @@ int nd_panel_percent_get(struct NDPanel *p,unsigned int index)
 }
 void nd_panel_percent_set(struct NDPanel *p,unsigned int index,int value,int enabled)
 {
+ ULONG level=0;int enable_changed;
  if(!p || index>=p->count || !p->percentage[index])return;
  if(value>100)value=100;
  if(!enabled)p->percent_dragging[index]=0;
- /* Never reset the knob while its user is dragging it. */
- if(value>=0 && !p->percent_dragging[index] && !(p->fields[index]->Flags&GFLG_SELECTED))
-  GT_SetGadgetAttrs(p->fields[index],p->window,NULL,GTSL_Level,value,GA_Disabled,(ULONG)!enabled,TAG_DONE);
- else GT_SetGadgetAttrs(p->fields[index],p->window,NULL,GA_Disabled,(ULONG)!enabled,TAG_DONE);
+ enable_changed=((p->fields[index]->Flags&GFLG_DISABLED)!=0)!=(!enabled);
+ /* Never reset a dragged knob. Reading the actual level also notices user
+  * changes, while an unchanged remote value needs no gadget redraw. */
+ if(value>=0 && !p->percent_dragging[index] && !(p->fields[index]->Flags&GFLG_SELECTED)){
+  GT_GetGadgetAttrs(p->fields[index],p->window,NULL,GTSL_Level,(ULONG)&level,TAG_DONE);
+  if(level!=(ULONG)value){
+   GT_SetGadgetAttrs(p->fields[index],p->window,NULL,GTSL_Level,value,GA_Disabled,(ULONG)!enabled,TAG_DONE);return;
+  }
+ }
+ if(enable_changed)GT_SetGadgetAttrs(p->fields[index],p->window,NULL,GA_Disabled,(ULONG)!enabled,TAG_DONE);
 }
 
 void nd_panel_enable(struct NDPanel *p,unsigned int index,int enabled)

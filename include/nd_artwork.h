@@ -12,12 +12,13 @@
 #define ND_ARTWORK_VALUE 1U
 #define ND_ARTWORK_LARGE 2U
 #define ND_ARTWORK_DURATION 4U
+#define ND_ARTWORK_HEADING 8U /* live caption above value; independent of footer */
 #define ND_ARTWORK_MAX_BYTES 262144UL
 #define ND_ARTWORK_MAX_FRAMES 256U
 #define ND_ARTWORK_RECORD 32U
 #define ND_ARTWORK_NAME 24U
 #define ND_ARTWORK_PATH 520U
-struct NDArtwork {unsigned char owned_pens[16];unsigned char *data;unsigned long size,mapped[16],*keys;char path[ND_ARTWORK_PATH];};
+struct NDArtwork {unsigned char bounds[ND_ARTWORK_MAX_FRAMES][4];int palette_ready;unsigned char owned_pens[16];unsigned char *data;unsigned long size,mapped[16],*keys;char path[ND_ARTWORK_PATH];};
 static unsigned long nd_artwork_u32(const unsigned char *p)
 {return ((unsigned long)p[0]<<24)|((unsigned long)p[1]<<16)|((unsigned long)p[2]<<8)|p[3];}
 static unsigned int nd_artwork_u16(const unsigned char *p)
@@ -49,7 +50,8 @@ static int nd_artwork_validate(const unsigned char *d,unsigned long size)
  frames=nd_artwork_u16(d+6);if(!frames || frames>ND_ARTWORK_MAX_FRAMES)return 0;table=(unsigned long)header+(unsigned long)frames*ND_ARTWORK_RECORD;if(table>size)return 0;
  memset(names,0,sizeof(names));memset(states,0,sizeof(states));
  for(i=0;i<frames;++i){r=d+header+(unsigned long)i*ND_ARTWORK_RECORD;
-  if(!memchr(r,0,ND_ARTWORK_NAME) || !nd_artwork_name((const char *)r) || (d[5]==1 ? r[25]!=0:(r[25]&~7U)!=0))return 0;
+  if(!memchr(r,0,ND_ARTWORK_NAME) || !nd_artwork_name((const char *)r) || (d[5]==1 ? r[25]!=0:(r[25]&~15U)!=0))return 0;
+  if((r[25]&ND_ARTWORK_HEADING) && !(r[25]&ND_ARTWORK_VALUE))return 0;
   keys[i]=nd_artwork_key((const char *)r);
   /* Bounded hash tables replace comparisons against every earlier frame.
    * Check name-hash collisions independently from duplicate name/state pairs. */
@@ -69,7 +71,7 @@ static int nd_artwork_validate(const unsigned char *d,unsigned long size)
  return 1;
 }
 static void nd_artwork_close(struct NDArtwork *a)
-{if(a){free(a->data);free(a->keys);a->data=NULL;a->keys=NULL;a->size=0;}}
+{if(a){free(a->data);free(a->keys);a->data=NULL;a->keys=NULL;a->size=0;a->palette_ready=0;}}
 static unsigned char *nd_artwork_read_data(FILE *f,unsigned long *length)
 {
  long size;unsigned char *d;
@@ -78,6 +80,46 @@ static unsigned char *nd_artwork_read_data(FILE *f,unsigned long *length)
  if(fread(d,1,(unsigned long)size,f)!=(unsigned long)size || ferror(f) || !nd_artwork_validate(d,(unsigned long)size)){free(d);return NULL;}
  *length=(unsigned long)size;return d;
 }
+/* Cache one stable opaque envelope per artwork key, across all states.
+ * Animation never changes scale because a limb or light moved in one frame. */
+static void nd_artwork_measure(struct NDArtwork *a)
+{
+    unsigned int i,j,n=nd_artwork_u16(a->data+6);const unsigned char *record,*p;int l,t,r,b;
+    for(i=0;i<n;++i){
+        record=a->data+nd_artwork_header(a->data)+(unsigned long)i*ND_ARTWORK_RECORD;
+        p=a->data+nd_artwork_u32(record+28);l=t=32;r=b=0;
+        for(j=0;j<nd_artwork_u16(record+26);++j,p+=5){
+            if(p[0]<l)l=p[0];if(p[1]<t)t=p[1];if(p[0]+p[2]>r)r=p[0]+p[2];if(p[1]+p[3]>b)b=p[1]+p[3];
+        }
+        a->bounds[i][0]=l;a->bounds[i][1]=t;a->bounds[i][2]=r-l;a->bounds[i][3]=b-t;
+    }
+    for(i=0;i<n;++i)for(j=i+1;j<n;++j)if(a->keys[i]==a->keys[j]){
+        l=a->bounds[i][0]<a->bounds[j][0] ? a->bounds[i][0]:a->bounds[j][0];
+        t=a->bounds[i][1]<a->bounds[j][1] ? a->bounds[i][1]:a->bounds[j][1];
+        r=a->bounds[i][0]+a->bounds[i][2];b=a->bounds[i][1]+a->bounds[i][3];
+        if(a->bounds[j][0]+a->bounds[j][2]>r)r=a->bounds[j][0]+a->bounds[j][2];
+        if(a->bounds[j][1]+a->bounds[j][3]>b)b=a->bounds[j][1]+a->bounds[j][3];
+        a->bounds[i][0]=a->bounds[j][0]=l;a->bounds[i][1]=a->bounds[j][1]=t;
+        a->bounds[i][2]=a->bounds[j][2]=r-l;a->bounds[i][3]=a->bounds[j][3]=b-t;
+    }
+    /* Propagate the complete union back to earlier states. */
+    for(i=0;i<n;++i)for(j=0;j<i;++j)if(a->keys[i]==a->keys[j])memcpy(a->bounds[j],a->bounds[i],4);
+}
+static const unsigned char *nd_artwork_bounds(const struct NDArtwork *a,const unsigned char *runs)
+{
+    static const unsigned char full[4]={0,0,32,32};unsigned int i,n=nd_artwork_u16(a->data+6);
+    for(i=0;i<n;++i){const unsigned char *r=a->data+nd_artwork_header(a->data)+(unsigned long)i*ND_ARTWORK_RECORD;
+        if(a->data+nd_artwork_u32(r+28)==runs)return a->bounds[i][2] && a->bounds[i][3] ? a->bounds[i]:full;
+    }
+    return full;
+}
+static void nd_artwork_scaled_rect(const unsigned char *bounds,const unsigned char *r,int size,int *x1,int *y1,int *x2,int *y2)
+{
+    int span=bounds[2]>bounds[3] ? bounds[2]:bounds[3];
+    int x=2*((int)r[0]-bounds[0])+span-bounds[2],y=2*((int)r[1]-bounds[1])+span-bounds[3];
+    *x1=x*size/(2*span);*y1=y*size/(2*span);
+    *x2=(x+2*r[2])*size/(2*span);*y2=(y+2*r[3])*size/(2*span);
+}
 static int nd_artwork_load(struct NDArtwork *a,const char *path)
 {
  FILE *f;unsigned char *d;unsigned long size=0;int ok;unsigned int i,n;if(!a || !path || strlen(path)>=sizeof(a->path))return 0;
@@ -85,7 +127,7 @@ static int nd_artwork_load(struct NDArtwork *a,const char *path)
  d=nd_artwork_read_data(f,&size);ok=fclose(f)==0;if(!d || !ok){free(d);return 0;}
  n=nd_artwork_u16(d+6);a->keys=(unsigned long *)malloc(n*sizeof(*a->keys));if(!a->keys){free(d);return 0;}
  for(i=0;i<n;++i)a->keys[i]=nd_artwork_key((const char *)(d+nd_artwork_header(d)+(unsigned long)i*ND_ARTWORK_RECORD));
- a->data=d;a->size=size;return 1;
+ a->data=d;a->size=size;nd_artwork_measure(a);return 1;
 }
 static const unsigned char *nd_artwork_frame(const struct NDArtwork *a,const char *name,unsigned int state,unsigned int *count)
 {

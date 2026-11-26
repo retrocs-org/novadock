@@ -1,23 +1,29 @@
 # Release checklist
 
-## Prepare the 0.5 candidate
+## Prepare the 0.6 candidate
 
-- Keep VERSION, the application, current changelog and release notes at 0.5.
+- Keep VERSION, the application, current changelog and release notes at 0.6.
 - Check the AmiHASS STATUS feature declarations against the bundled HASS SDK;
   verify that an older service offers an explicit upgrade message.
-- Pair with AmiHASS 0.2 for room/filter/subscription support; record its independent installer and SDK checks.
+- Pair with AmiHASS 0.3; run `tools/run_hass_qa.py` against its actual service and record its independent installer and SDK checks.
 - Check independent plugin versions and the bundled manifest inventory.
 - Regenerate the user/SDK guide; keep planning and publishing material source-only.
-- Compile German and Swedish catalogs with FlexCat and include them in the LHA.
+- Compile the Danish, German, Italian and Swedish catalogs with FlexCat and include them in the LHA.
 - Run the full host suite with memory checks, then build all native programs.
+- Generate the deterministic source build ID; verify the same ID in About, the
+  report system details, trace headers and the recording header.
 - Verify the LHA extracts correctly, all files match the staged drawer and the SDK is complete.
 - Review the four release assets, checksums, licences and public uploader contact.
 
 ## Test on Workbench
 
 - Fresh install: check every bundled plugin, Help, artwork, themes and catalogs.
-- Upgrade from published 0.4 with custom paths, Notes, imported plugins/themes
+- Test the dock background on a classic planar screen and RTG. Check all dock
+  edges, multiple rows, missing artwork, and Test/Cancel restoration.
+- Upgrade from published 0.5 with custom paths, Notes, imported plugins/themes
   and several WHDLoad/MUSIC/SENSOR instances. Check preservation and new plugins.
+- Run the installer, UI/font and real 30-minute soak cases documented in
+  [QA_PERFORMANCE.md](QA_PERFORMANCE.md). Retain exact candidate hashes and logs.
 - Uninstall keeping settings, reinstall and verify restoration; then uninstall
   removing settings. Unrelated files and explicitly external Notes must survive.
 - Check Novice always offers Update/Uninstall; verify Average/Expert path choices.
@@ -38,7 +44,7 @@
   unpublished package as available.
 - Review source for sensitive files and commit the exact release inputs.
 - Build and prepare in a fresh output directory from the clean committed checkout.
-- Review the manifest, exact tag 0.5 and destinations before explicitly publishing.
+- Review the manifest, exact tag 0.6 and destinations before explicitly publishing.
 - Publish a normal latest release with the same four assets on both repositories.
 - Verify the public downloads; submit the same LHA and matching readme to Aminet.
 
@@ -134,3 +140,7 @@ The HASS UI test requires the ISOLATED-QA-ONLY marker and a verified sample
 service. It may stop an autostarted NovaDock only in the disposable test guest
 before creating its simulated dock host. Physical-hardware checks remain
 unverified; these results do not claim live lock/door integration testing.
+
+Plugin release QA: run `python3 tools/run_plugin_qa.py --output outputs/plugin-qa-new-run` before packaging. The release workflow requires passing evidence for all bundled plugins. See [Plugin QA](PLUGIN_QA.md) and the [performance audit](PERFORMANCE_AUDIT_2026-11-23.md).
+
+- Artwork plugins: run the SDK size-policy validator, then verify every emitted state in Tiny and Normal, idle and magnified, including sad/error/offline and animations. Use `tools/run_plugin_icon_qa.py` for the bundled banks on isolated RTG and planar FS-UAE profiles.

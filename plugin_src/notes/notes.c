@@ -16,6 +16,9 @@
 #include "nd_note_editor.h"
 #include "nd_markdown.h"
 #include "../clipboard/nd_clipboard_popup.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 const char nd_version[]=ND_PLUGIN_VER_STRING(NOTES,"Notes");
 long __stack=32768;
 struct IntuitionBase *IntuitionBase=NULL;struct GfxBase *GfxBase=NULL;

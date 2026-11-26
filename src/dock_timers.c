@@ -1,5 +1,8 @@
+#include "nd_aminotis.h"
 /* NovaDock: Timer-driven work: auto-hide, hover, tooltips, feedback, media and task scans. */
+#include "nd_trace.h"
 #include "dock_internal.h"
+#include "nd_render_policy.h"
 #include "nd_volume.h"
 #include "nd_whdload_status.h"
 #include "nd_weather_codes.h"
@@ -33,7 +36,7 @@ static int dock_covered(const struct NDDock *dock)
     if (a==INVALID_ID || b==INVALID_ID ||
         (a&MONITOR_ID_MASK)!=(b&MONITOR_ID_MASK)) return 0;
     return front->TopEdge+front->Height >=
-           dock->screen->TopEdge+dock->window->TopEdge+dock->window->Height;
+           dock->screen->TopEdge+dock_top(dock)+dock_height(dock);
 }
 
 /* Reload from ENV:/ENVARC:/PROGDIR: transactionally. The running dock
@@ -65,11 +68,15 @@ static void arm_timer(struct NDDock *dock)
             mx<dock->full_box.left+dock->full_box.width &&
             my>=dock->full_box.top &&
             my<dock->full_box.top+dock->full_box.height;
-        fast=pointer_inside || dock->hidden || dock->conf.auto_hide ||
+        /* Auto-hide counts idle time in quanta, so 1 Hz is enough until the
+         * last second before the dock hides. */
+        fast=pointer_inside || dock->hidden ||
+             nd_autohide_needs_fast_timer(dock->conf.auto_hide,dock->idle_ticks,
+                                          dock->conf.hide_delay,(int)ND_TIMER_IDLE_QUANTA) ||
              dock->box_pending || dock->activate_popup_pending ||
-             dock->press_item>=0 || dock->is_drag || dock->popup ||
+             dock->press_item>=0 || dock->grip_drag || dock->is_drag || dock->popup ||
              dock->calendar || dock->folder_popup || dock->tooltip ||
-             dock->icons_pending;
+             dock->icons_pending || dock->rexx_apply_pending;
         index=eyes_index(dock);
         if (index>=0 && !dock->hidden && !dock->covered &&
             dock->conf.items[index].online)
@@ -77,14 +84,36 @@ static void arm_timer(struct NDDock *dock)
     }
     dock->timer_quanta=fast ? 1 : ND_TIMER_IDLE_QUANTA;
     interval=ND_TIMER_MICROSECONDS*(ULONG)dock->timer_quanta;
+    /* Keep animation CPU cost bounded; fast systems retain a 40 ms wait.
+     * process_timer() carries actual elapsed time for housekeeping. */
+    dock->timer_anim=dock->hover_animating && dock->hover_headroom && dock->window &&
+                     !dock->hidden && !dock->box_pending;
+    if (dock->timer_anim) {
+        dock->timer_quanta=1;dock->timer_frame_ms=nd_frame_interval(dock->frame_average_us);
+        interval=(ULONG)dock->timer_frame_ms*1000UL;
+    }
     dock->timer_req->tr_node.io_Command = TR_ADDREQUEST;
     dock->timer_req->tr_time.tv_secs = interval/1000000UL;
     dock->timer_req->tr_time.tv_micro = interval%1000000UL;
     SendIO((struct IORequest *)dock->timer_req);
     dock->timer_pending = 1;
 }
+/* A magnification transition has started: switch the timer to animation
+ * frames now instead of after the pending (up to one second) wait.  The
+ * interrupted wait's housekeeping simply happens a little earlier. */
+void kick_animation_timer(struct NDDock *dock)
+{
+    if (!dock->timer_open || dock->timer_anim) return;
+    if (dock->timer_pending) {
+        AbortIO((struct IORequest *)dock->timer_req);
+        WaitIO((struct IORequest *)dock->timer_req);
+        dock->timer_pending=0;
+    }
+    arm_timer(dock);
+}
 void stop_timer(struct NDDock *dock)
 {
+    dock->timer_clock.valid=0;dock->timer_clock.carry=0;
     if (dock->timer_pending) {
         AbortIO((struct IORequest *)dock->timer_req);
         WaitIO((struct IORequest *)dock->timer_req);
@@ -162,22 +191,25 @@ int inside_rect(const struct NDRect *r, int x, int y)
 }
 void set_hidden(struct NDDock *dock, int hide)
 {
-    const struct NDRect *r;
+    const struct NDRect *r;struct NDRect target;
     if (!dock->window || dock->box_pending || hide == dock->hidden) return;
-    r = hide ? &dock->tab_box : &dock->full_box;
+    dock_window_box(dock,hide,&target);r=&target;
+    dock->window_box_target=target;dock->viewport_pending=0;
     /* ChangeWindowBox is asynchronous: don't paint in the new geometry
      * until the IDCMP_CHANGEWINDOW acknowledgement has arrived. */
     dock->drop_preview=0;
-    dock->box_pending = 1;
+    dock->box_pending = 1;dock->box_pending_ticks=0;
     dock->box_target_hidden = hide;
     dock->idle_ticks = 0;
+    dock->box_origin_x=dock->window->LeftEdge;dock->box_origin_y=dock->window->TopEdge;
     ChangeWindowBox(dock->window, r->left, r->top, r->width, r->height);
 }
 void show_dock(struct NDDock *dock)
 {
     if (!dock->window) return;
     set_hidden(dock,0);
-    WindowToFront(dock->window);
+    if(dock->conf.always_on_top)WindowToFront(dock->window);
+    if(!dock->box_pending)draw_all(dock);
 }
 void hide_dock(struct NDDock *dock)
 {
@@ -201,7 +233,7 @@ static void auto_hide_tick(struct NDDock *dock,int quantum)
     }
     pointer_inside = inside_rect(&dock->full_box, mx, my);
     blocked = dock->popup || dock->calendar || dock->folder_popup ||
-              dock->tooltip || dock->press_item >= 0 || dock->is_drag ||
+              dock->tooltip || dock->press_item >= 0 || dock->grip_drag || dock->is_drag ||
               dock->keyboard;
     if (pointer_inside || blocked) dock->idle_ticks = 0;
     else if (dock->idle_ticks < 300) {
@@ -218,13 +250,13 @@ static void eyes_timer_tick(struct NDDock *dock,int quantum)
     int blink_changed;
     if (index<0 || dock->hidden || dock->box_pending || dock->covered ||
         !dock->window) return;
-    interval=eyes_option_num(dock,"POLL_TICKS",10);
+    interval=DOCK_OPTS(dock)->eyes_poll_ticks;
     if (interval<20) interval=20;
     dock->eyes_timer_ticks+=quantum;
     if (dock->eyes_timer_ticks*10<interval) return;
     dock->eyes_timer_ticks=0;
     ++dock->eyes_blink_counter;
-    blink=eyes_option_yes(dock,"BLINK") &&
+    blink=dock->opts.eyes_blink &&
           (dock->eyes_blink_counter%40==0);
     blink_changed=blink!=dock->eyes_blink;
     dock->eyes_blink=blink;
@@ -242,6 +274,73 @@ static void eyes_timer_tick(struct NDDock *dock,int quantum)
         draw_tile(dock,index);
     }
 }
+/* A press whose release never arrived (its window was replaced, or the
+ * message was lost) must not keep the dock "pressed": that blocks auto-hide
+ * and snapshot refreshes and pins the fast timer.  Cancel it, without any
+ * action, once the button has been up for three ticks with no queued input. */
+/* Intuition normally acknowledges a ChangeWindowBox() within a frame or
+ * two.  If the exact target is never reported (the box was clamped, or a
+ * screen change superseded it) accept the geometry the window really has
+ * after about two seconds instead of ignoring input and paints forever. */
+#define ND_BOX_PENDING_TIMEOUT_TICKS 10
+static void box_pending_tick(struct NDDock *dock)
+{
+    if(!dock->window || !dock->box_pending){dock->box_pending_ticks=0;return;}
+    if(++dock->box_pending_ticks<ND_BOX_PENDING_TIMEOUT_TICKS)return;
+    ND_TRACE_NOTE("box change timed out",dock->window->Width,dock->window->Height,
+                  dock->window_box_target.width,dock->window_box_target.height);
+    /* A slow (not lost) acknowledgement may still follow: window_events()
+     * then installs the geometry the window really ended up with. */
+    if(!complete_window_box(dock))dock->box_late_ack=1;
+}
+static void orphan_press_tick(struct NDDock *dock);
+/* Without timer.device, Intuition ticks (about 10 Hz while the dock is
+ * active) drive the same recovery at the timer's 5 Hz rate. */
+void fallback_recovery_tick(struct NDDock *dock)
+{
+    if(dock->timer_open || (dock->fallback_tick_phase^=1))return;
+    box_pending_tick(dock);
+    orphan_press_tick(dock);
+}
+static void orphan_press_tick(struct NDDock *dock)
+{
+    int held,waiting;
+    if(!dock->window || dock->box_pending || dock->deferred_buttons.count){dock->orphan_press_ticks=0;return;}
+    held=!InputBase || (PeekQualifier()&IEQUALIFIER_LEFTBUTTON)!=0;
+    Forbid();
+    waiting=dock->window->UserPort->mp_MsgList.lh_Head->ln_Succ!=NULL;
+    Permit();
+    if(nd_press_orphaned(dock->press_item>=0 || dock->grip_drag || dock->is_drag || dock->music_press_action!=0,
+                         held,waiting,&dock->orphan_press_ticks,3)){
+        cancel_dock_grip(dock);
+        dock->press_item=-1;dock->drag_to=-1;dock->drag_after=0;
+        dock->is_drag=0;dock->grip_drag=0;dock->music_press_action=0;
+        draw_all(dock);
+    }
+}
+/* True when a layer in front of the dock, other than the dock's own
+ * popups, intersects it.  Layer links change only under the layer lock in
+ * other tasks, so a short Forbid() walk is consistent. */
+static int foreign_layer_overlaps(struct NDDock *dock)
+{
+    struct Layer *own=dock->window->WLayer,*l;
+    int overlap=0;
+    /* Walk the chain under the screen's layer lock: Forbid() does not stop
+     * Intuition's input task from relinking layers on another CPU-less but
+     * preemptive path, and a window closed mid-walk leaves a dangling
+     * front pointer.  Forbid() remains the fallback without layers.library. */
+    if(LayersBase)LockLayerInfo(&dock->screen->LayerInfo);else Forbid();
+    for(l=own->front;l && !overlap;l=l->front){
+        struct Window *w=(struct Window *)l->Window;
+        if(w && (w==dock->caption_popup || w==dock->tooltip || w==dock->popup ||
+                 w==dock->calendar || w==dock->folder_popup || w==dock->about ||
+                 w==dock->feedback))continue;
+        overlap=nd_rect_overlap(own->bounds.MinX,own->bounds.MinY,own->bounds.MaxX,own->bounds.MaxY,
+                                l->bounds.MinX,l->bounds.MinY,l->bounds.MaxX,l->bounds.MaxY);
+    }
+    if(LayersBase)UnlockLayerInfo(&dock->screen->LayerInfo);else Permit();
+    return overlap;
+}
 void always_on_top_tick(struct NDDock *dock,int quantum)
 {
     if (!dock->conf.always_on_top) {
@@ -258,8 +357,11 @@ void always_on_top_tick(struct NDDock *dock,int quantum)
     if (dock->window && !dock->hidden && !dock->box_pending &&
         !dock->popup && !dock->calendar && !dock->folder_popup &&
         !dock->tooltip && !dock->feedback &&
-        dock->window->WLayer && dock->window->WLayer->front)
-        /* Skip the layer operation when nothing overlaps the dock. */
+        dock->window->WLayer && foreign_layer_overlaps(dock))
+        /* Skip the layer operation when nothing in front overlaps the dock:
+         * WLayer->front alone is set by any window, anywhere on screen, and
+         * a pointless raise every second can ping-pong with an application
+         * that fronts itself, repainting both each time. */
         WindowToFront(dock->window);
 }
 /* Workbench owns the mouse during an incoming icon drag, so ordinary dock
@@ -273,10 +375,10 @@ void update_drop_preview(struct NDDock *dock)
         !dock->popup && !dock->calendar && !dock->folder_popup &&
         dock->press_item<0 && !dock->is_drag &&
         (PeekQualifier() & IEQUALIFIER_LEFTBUTTON)) {
-        mx=dock->screen->MouseX-dock->window->LeftEdge;
-        my=dock->screen->MouseY-dock->window->TopEdge;
-        if (mx>=0 && my>=0 && mx<dock->window->Width &&
-            my<dock->window->Height) {
+        mx=dock->screen->MouseX-dock_left(dock);
+        my=dock->screen->MouseY-dock_top(dock);
+        if (mx>=0 && my>=0 && mx<dock_width(dock) &&
+            my<dock_height(dock)) {
             count=nd_media_persistent_count(&dock->conf);
             index=hovered_tile(dock,mx,my);
             if (index>=0) {
@@ -308,13 +410,62 @@ void update_drop_preview(struct NDDock *dock)
     /* Repaint only when the insertion edge changes, never every idle tick. */
     draw_all(dock);
 }
+/* A backdrop dock must not react through an application window. Rectangles
+ * suffice here: every ordinary window is above the backdrop group. */
+static int dock_pointer_visible(struct NDDock *dock)
+{
+    struct Window *w;ULONG lock;int visible=1,x=dock->screen->MouseX,y=dock->screen->MouseY;
+    /* Moving a foreign window or dragging a Workbench icon must not expand
+     * the topmost canvas under the drag. Dock-owned tile drags remain live. */
+    if(InputBase && (PeekQualifier()&IEQUALIFIER_LEFTBUTTON) &&
+       dock->press_item<0 && IntuitionBase->ActiveWindow!=dock->window)return 0;
+    if(dock->canvas_view && (x<dock->window->LeftEdge || y<dock->window->TopEdge ||
+       x>=dock->window->LeftEdge+dock->window->Width || y>=dock->window->TopEdge+dock->window->Height))return 0;
+    if(!(dock->window->Flags&WFLG_BACKDROP))return 1;
+    lock=LockIBase(0);
+    for(w=dock->screen->FirstWindow;w;w=w->NextWindow){
+        if(w==dock->window || w==dock->tooltip || w==dock->caption_popup ||
+           (w->Flags&WFLG_BACKDROP))continue;
+        if(x>=w->LeftEdge && x<w->LeftEdge+w->Width &&
+           y>=w->TopEdge && y<w->TopEdge+w->Height){visible=0;break;}
+    }
+    UnlockIBase(lock);return visible;
+}
+void update_hover_pointer(struct NDDock *dock)
+{
+    int x,y,index,axis,previous,focus_changed;
+    if(!dock->window || !dock->screen || dock->hidden || dock->screen_closed ||
+       dock->covered || dock->box_pending || dock->popup || dock->calendar ||
+       dock->folder_popup || dock->grip_drag || dock->is_drag || dock->music_press_action || !dock->conf.hover_magnification)return;
+    if(dock->keyboard){
+        if(dock->screen->MouseX==dock->keyboard_mouse_x &&
+           dock->screen->MouseY==dock->keyboard_mouse_y)return;
+        dock->keyboard=0;
+    }
+    x=dock->screen->MouseX-dock_left(dock);
+    y=dock->screen->MouseY-dock_top(dock);
+    index=dock_pointer_visible(dock) ? pointer_hover_target(dock,x,y):-1;axis=nd_hover_axis(vertical(dock) ? y:x,dock->hover_pointer);
+    previous=dock->hover;
+    focus_changed=update_music_control_hover(dock,index,x,y);
+    if(index!=previous){
+        close_tooltip(dock);dock->hover=index;dock->hover_ticks=0;
+    }
+    if(focus_changed || index!=previous || (index>=0 && axis!=dock->hover_pointer)){
+        dock->hover_pointer=axis;
+        if(dock->hover_headroom)draw_hover(dock);
+        else if(focus_changed || index!=previous)redraw_changed_tiles(dock,previous,index,-1);
+    }
+}
+
 void hover_tick(struct NDDock *dock,int tip_delay)
 {
     int ax,ay,index;
     update_drop_preview(dock);
+    if(!dock->conf.tooltips && dock->tooltip)close_tooltip(dock);
     if (!dock->window || !dock->screen || dock->hidden || dock->box_pending)
         return;
-    if (dock->drop_preview) return;
+    if (dock->drop_preview || dock->grip_drag) return;
+    update_hover_pointer(dock); /* low-rate fallback if Commodities is unavailable */
     if (dock->keyboard) {
         /* The keys own the highlight until the pointer moves. */
         if (dock->screen->MouseX==dock->keyboard_mouse_x &&
@@ -327,9 +478,9 @@ void hover_tick(struct NDDock *dock,int tip_delay)
         }
         dock->keyboard=0;
     }
-    ax=dock->screen->MouseX-dock->window->LeftEdge;
-    ay=dock->screen->MouseY-dock->window->TopEdge;
-    index=hovered_tile(dock,ax,ay);
+    ax=dock->screen->MouseX-dock_left(dock);
+    ay=dock->screen->MouseY-dock_top(dock);
+    index=dock_pointer_visible(dock) ? pointer_hover_target(dock,ax,ay):-1;
     if (index != dock->hover) {
         int old_hover=dock->hover;
         close_tooltip(dock);dock->hover=index;
@@ -387,9 +538,16 @@ void process_timer(struct NDDock *dock)
 {
     if (!dock->timer_port) return;
     while (GetMsg(dock->timer_port) != NULL) {
-        int ax,ay,index,quantum=dock->timer_quanta;
-        if (quantum<1) quantum=1;
+        int ax,ay,index,quantum;ULONG seconds,micros,fallback;
+        fallback=dock->timer_anim ? (ULONG)dock->timer_frame_ms*1000UL:
+            ND_TIMER_MICROSECONDS*(ULONG)(dock->timer_quanta>0?dock->timer_quanta:1);
+        CurrentTime(&seconds,&micros);
+        quantum=(int)nd_timer_quanta(&dock->timer_clock,seconds,micros,fallback);
         dock->timer_pending = 0;
+        if (dock->timer_anim && dock->hover_animating && dock->window && !dock->hidden && !dock->box_pending)
+            draw_hover(dock);
+        if(quantum<1)continue;
+        nd_aminotis_tick(dock->conf.send_alerts_aminotis,(unsigned int)quantum*200U);
         nd_update_tick(&dock->updates,dock->conf.check_updates,dock->conf.check_updates_running,(unsigned int)dock->conf.update_interval_hours,dock->directory,(unsigned long)quantum*10UL);
         dock->alerts_update_tick+=(ULONG)quantum;
         if(dock->alerts_update_tick>=25UL){struct NDUpdateStatus status;int active;dock->alerts_update_tick=0;
@@ -403,11 +561,11 @@ void process_timer(struct NDDock *dock)
             if (dock->suspend_ticks<=0) dock->suspended=0;
         }
         if (dock->screen_closed && !dock->window && !dock->suspended &&
-            (dock->volume_timer_ticks+=quantum)>=5) {
+            (dock->reopen_timer_ticks+=quantum)>=5) {
             /* Workbench reopened but the dock could not: retry each second. */
-            dock->volume_timer_ticks=0;
+            dock->reopen_timer_ticks=0;
             Forbid();
-            ax=FindPort((STRPTR)"Workbench")!=NULL;
+            ax=FindPort((STRPTR)"WORKBENCH")!=NULL;
             Permit();
             if (ax) (void)reopen_dock_ui(dock);
         }
@@ -430,10 +588,10 @@ void process_timer(struct NDDock *dock)
             !dock->hidden && !dock->box_pending && !dock->popup) {
             /* Relative mouse coordinates can update after IDCMP_ACTIVEWINDOW.
              * The independent timer sees the settled Intuition coordinates. */
-            ax=dock->screen->MouseX-dock->window->LeftEdge;
-            ay=dock->screen->MouseY-dock->window->TopEdge;
+            ax=dock->screen->MouseX-dock_left(dock);
+            ay=dock->screen->MouseY-dock_top(dock);
             dock->activate_popup_pending=0;
-            index=hovered_tile(dock,ax,ay);
+            index=dock_pointer_visible(dock) ? pointer_hover_target(dock,ax,ay):-1;
             open_popup(dock,index>=0 ? index : -2,ax,ay);
         }
         {int was_covered=dock->covered;dock->covered=dock_covered(dock);
@@ -445,6 +603,8 @@ void process_timer(struct NDDock *dock)
          * and stays responsive while icons arrive. */
         if (dock->icons_pending) (void)load_pending_icons(dock,4);
         folder_icons_tick(dock);
+        box_pending_tick(dock);
+        orphan_press_tick(dock);
         auto_hide_tick(dock,quantum);
         always_on_top_tick(dock,quantum);
         eyes_timer_tick(dock,quantum);
@@ -463,6 +623,8 @@ void process_timer(struct NDDock *dock)
             if (dock->feedback_ticks<=0) close_feedback(dock);
         }
         settings_save_tick(dock,quantum,0);
+        if (dock->rexx_apply_pending &&
+            (dock->rexx_apply_ticks-=quantum)<=0) flush_rexx_settings(dock);
         dock->media_scan_ticks-=quantum;
         if (dock->media_scan_ticks<=0) {
             dock->media_scan_ticks=ND_MEDIA_SCAN_TICKS;
@@ -470,6 +632,8 @@ void process_timer(struct NDDock *dock)
                 media_rescan(dock);
         }
         flush_dirty_tiles(dock);
+        desktop_scene_tick(dock,quantum*200);
+        desktop_startup_tick(dock,quantum*200);
     }
     arm_timer(dock);
 }
@@ -503,10 +667,10 @@ void show_feedback(struct NDDock *dock,const char *text,int error)
     w=(int)TextLength(dock->window->RPort,(STRPTR)text,len)+20;
     if (w<120) w=120;
     if (w>dock->screen->Width) w=dock->screen->Width;
-    x=dock->window->LeftEdge+(dock->window->Width-w)/2;
-    y=dock->window->TopEdge-h-3;
+    x=dock_left(dock)+(dock_width(dock)-w)/2;
+    y=dock_top(dock)-h-3;
     if (y<dock->screen->BarHeight)
-        y=dock->window->TopEdge+dock->window->Height+3;
+        y=dock_top(dock)+dock_height(dock)+3;
     if (y+h>dock->screen->Height) y=dock->screen->Height-h;
     if (x<0) x=0;
     if (x+w>dock->screen->Width) x=dock->screen->Width-w;
@@ -535,10 +699,10 @@ static void show_tooltip_window(struct NDDock *dock, int index)
 {
     struct RastPort *rp;
     const struct NDItem *it;
-    const char *name,*second_line=NULL;
-    char volume_name[48],ram_chip[80],ram_fast[80],plugin_detail[80];
+    const char *name,*second_line=NULL,*third_line=NULL;
+    char volume_name[192],ram_chip[80],ram_fast[80],plugin_detail[80],heading[96];
     unsigned long incoming,outgoing;
-    int x,y,w,h=21,tw,th,tx,ty,len,len2=0,text_w,text_w2=0;
+    int x,y,w,h=21,tw,th,tx,ty,len,len2=0,len3=0,text_w,text_w2=0,text_w3=0,row_height;
     if (!dock->conf.tooltips || dock->edit_mode || dock->tooltip || !dock->window ||
         dock->popup || index < 0 || index >= dock->conf.count) return;
     it = &dock->conf.items[index];
@@ -605,12 +769,35 @@ static void show_tooltip_window(struct NDDock *dock, int index)
         second_line=plugin_detail;h=35;
     } else if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"BITSKIM")){
         name="BitSkim";second_line=it->value;h=35;
-    } else if (nd_item_supports_space_meter(it) && it->show_volume_meter &&
-        it->meter <= 100U) {
-        sprintf(volume_name, "%s: %u%% used", it->label,
-                (unsigned int)it->meter);
-        name = volume_name;{static char capacity[100];struct NDVolumeSpace space;space.total=it->volume_total;space.used=it->volume_used;space.block_bytes=it->volume_block_bytes;nd_volume_summary(&space,capacity);second_line=capacity;h=35;}
+    } else if (nd_item_supports_space_meter(it) && it->show_volume_meter) {
+        struct NDVolumeStatus status;int known=nd_volume_meters_status(it->command,&status);
+        if(it->meter<=100U){sprintf(volume_name,nd_trf("%s: %u%% used%s"),it->label,(unsigned int)it->meter,known && status.state==ND_VOLUME_STALE ? nd_tr(" (cached)"):"");name=volume_name;}
+        else name=it->label;
+        {static char capacity[100];struct NDVolumeSpace space;space.total=it->volume_total;space.used=it->volume_used;space.block_bytes=it->volume_block_bytes;nd_volume_summary(&space,capacity);second_line=capacity;}
+        if(!known)strcpy(plugin_detail,nd_tr("Waiting for disk reading"));
+        else if(status.state==ND_VOLUME_UNAVAILABLE)sprintf(plugin_detail,nd_trf("Disk unavailable (DOS error %lu)"),status.error);
+        else if(status.error)sprintf(plugin_detail,nd_trf("Cached: %lus old; DOS error %lu"),status.age_seconds,status.error);
+        else sprintf(plugin_detail,nd_trf("Last updated %lus ago%s"),status.age_seconds,status.state==ND_VOLUME_STALE ? nd_tr(" (stale)"):"");
+        third_line=plugin_detail;
+
     }
+    if(it->kind==ND_ITEM_PLUGIN){
+        const char *schema=nd_option_schema_id(&dock->conf,it->id);
+        int state=nd_tile_state(schema,it->online,it->value);
+        if(state){
+            sprintf(heading,"%.31s - %s",it->label,nd_tile_state_name(state));name=heading;h=35;
+            if(!strcmp(it->value,"STARTING"))second_line="Waiting for the plugin's first reading.";
+            else if(!strcmp(it->value,"MISSING PLUGIN"))second_line="Plugin executable is missing. Check Plugins or reinstall it.";
+            else if(!strcmp(it->value,"FAILED TO START"))second_line="Could not start the plugin. Check Diagnostics and available memory.";
+            else if(!strcmp(it->value,"NOT RESPONDING"))second_line="Plugin stopped responding. Open Diagnostics.";
+            else if(!it->online)second_line="Plugin is not running. Check Plugins or Diagnostics.";
+            else{struct NDPluginHealth health=nd_plugin_health(schema,1,0,it->value);
+                second_line=strcmp(health.label,"Running") ? health.help:it->value;}
+        }else if(strcmp(name,it->label)){
+            third_line=second_line;second_line=name;name=it->label;
+        }
+    }
+    if(dock->caption_popup && dock->caption_index==index && !second_line)return;
     len=(int)strlen(name);
     if (len > 78) len = 78;
     text_w=(int)TextLength(dock->window->RPort,(STRPTR)name,len);
@@ -618,7 +805,11 @@ static void show_tooltip_window(struct NDDock *dock, int index)
         len2=(int)strlen(second_line);if (len2>78) len2=78;
         text_w2=(int)TextLength(dock->window->RPort,(STRPTR)second_line,len2);
     }
-    w=(text_w>text_w2 ? text_w : text_w2)+18;
+    if(third_line){len3=strlen(third_line);if(len3>78)len3=78;
+        text_w3=TextLength(dock->window->RPort,(STRPTR)third_line,len3);}
+    w=text_w>text_w2 ? text_w:text_w2;if(text_w3>w)w=text_w3;w+=18;
+    row_height=dock->window->RPort->TxHeight+5;
+    h=(third_line ? 3:second_line ? 2:1)*row_height+8;
     if (w < 70) w=70;
     if (w > dock->screen->Width) {
         w=dock->screen->Width;
@@ -626,13 +817,18 @@ static void show_tooltip_window(struct NDDock *dock, int index)
                (STRPTR)name,len)>w-18) --len;
         while (len2>0 && (int)TextLength(dock->window->RPort,
                (STRPTR)second_line,len2)>w-18) --len2;
+        while(len3>0 && TextLength(dock->window->RPort,(STRPTR)third_line,len3)>w-18)--len3;
     }
     tile_coords(dock,index,&x,&y);
     tile_dimensions(dock,index,&tw,&th);
-    tx=dock->window->LeftEdge+x+(tw-w)/2;
-    ty=dock->window->TopEdge+y-h-3;
+    /* Attach to the artwork's current bounds, not the reserved hover canvas. */
+    {struct NDRect box;visible_tile_rect(dock,index,&box);
+     x=box.left;y=box.top;tw=box.width;th=box.height;}
+    tx=dock_left(dock)+x+(tw-w)/2;
+    ty=dock_top(dock)+y-h-4;
+    if(dock->caption_popup && dock->caption_index==index)ty=dock->caption_popup->TopEdge-h-4;
     if (ty < dock->screen->BarHeight)
-        ty=dock->window->TopEdge+y+th+3;
+        ty=dock_top(dock)+y+th+3;
     if (ty+h > dock->screen->Height) ty=dock->screen->Height-h;
     if (tx < 0) tx=0;
     if (tx+w > dock->screen->Width) tx=dock->screen->Width-w;
@@ -644,17 +840,23 @@ static void show_tooltip_window(struct NDDock *dock, int index)
     if (!dock->tooltip) return;
     dock->tip_item=index;
     rp=dock->tooltip->RPort;
+    SetFont(rp,dock->window->RPort->Font);
+    SetSoftStyle(rp,dock->conf.font_mode==ND_FONT_BOLD ? FSF_BOLD:FS_NORMAL,0xff);
     SetAPen(rp,pen(dock,ND_BG)); RectFill(rp,0,0,w-1,h-1);
     SetAPen(rp,pen(dock,ND_ACCENT));
     Move(rp,0,0); Draw(rp,w-1,0); Draw(rp,w-1,h-1);
     Draw(rp,0,h-1); Draw(rp,0,0);
     SetDrMd(rp,JAM1); SetAPen(rp,pen(dock,ND_TEXT));
     Move(rp,(w-(int)TextLength(rp,(STRPTR)name,len))/2,
-         second_line ? 13 : 14);
+         4+rp->TxBaseline);
     Text(rp,(STRPTR)name,len);
     if (second_line) {
-        Move(rp,(w-(int)TextLength(rp,(STRPTR)second_line,len2))/2,28);
+        Move(rp,(w-(int)TextLength(rp,(STRPTR)second_line,len2))/2,4+rp->TxBaseline+row_height);
         Text(rp,(STRPTR)second_line,len2);
+    }
+    if(third_line){
+        Move(rp,(w-(int)TextLength(rp,(STRPTR)third_line,len3))/2,4+rp->TxBaseline+2*row_height);
+        Text(rp,(STRPTR)third_line,len3);
     }
 }
 /* Volume part of SYS: (without colon); its medium is never shown as a

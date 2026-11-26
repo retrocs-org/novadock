@@ -16,6 +16,8 @@ struct NDClient {
         struct NDMediaMessage media;
         struct NDExtMessage ext;
         struct NDThumbnailMessage thumbnail;
+        struct NDPluginSupportMessage support;
+        struct NDNoticeMessage notice;
     } packet;
     char quiet_caption[ND_TEXT_LEN];
     char quiet_value[ND_TEXT_LEN];
@@ -45,17 +47,22 @@ struct NDClient {
     UWORD host_badges;
     /* ABI 5: second event word collected from replies, and the public
      * wake port (see ND_WAKE_PORT_PREFIX). */
+    UWORD host_support,support_mode,support_sending,support_active;
+    ULONG support_stamp;
     ULONG event2;
     UWORD host_abi;
     UWORD host_artwork;
     UWORD host_artwork_meta;
-    UWORD host_alerts,host_thumbnail;
+    UWORD host_alerts,host_thumbnail,host_long_notice;
     UWORD art_sending,art_state,art_mode;
     ULONG art_key;
     UWORD wake_owned;
     struct MsgPort *wake_port;
     char wake_name[ND_ID_LEN+16];
 };
+/* Fixed numeric operations only: never log paths, values, names or credentials.
+ * phase 1 begin, 2 complete, 3 failed. Host owns output and shared policy. */
+void nd_client_activity(struct NDClient *,unsigned int,unsigned int,LONG,LONG);
 int nd_client_init(struct NDClient *c, const char *id);
 /* Shows TEXT (up to 7 characters, e.g. an unread count) as a badge on the
  * plugin's tile; "" removes it and "*" shows a plain dot.  Safe with any
@@ -80,6 +87,10 @@ unsigned int nd_client_update_quiet(struct NDClient *c,const char *caption,
 unsigned int nd_client_update_art_quiet(struct NDClient *c,const char *caption,
  const char *value,const char *name,unsigned int state,unsigned int elapsed_ticks,
  unsigned int heartbeat_ticks);
+/* Preserve a live meter/graph reading alongside state artwork. */
+unsigned int nd_client_update_art_meter_quiet(struct NDClient *c,const char *caption,
+ const char *value,const char *name,unsigned int state,unsigned int meter,
+ unsigned int elapsed_ticks,unsigned int heartbeat_ticks);
 /* Sends independent normalized series. b=ND_GRAPH_NO_SAMPLE for one line.
  * Neither graph channel changes the existing text/progress meter.
  */

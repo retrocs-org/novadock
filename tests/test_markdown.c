@@ -9,6 +9,14 @@ static struct NDMDStyle style(unsigned int n)
 int main(void)
 {
     struct NDNoteText edit;unsigned int a,b,i;struct NDMDStyle f;
+    /* A heading marker at the very end of the note: the parser must stop at
+     * the terminator, not read the stale bytes behind it. */
+    {static char stale[64];size_t k;strcpy(stale,"old deleted secret line");strcpy(stale,"# ");
+     memset(&v,0,sizeof(v));nd_md_parse(stale,&v,0,0);
+     for(k=0;k+6<=sizeof(v.text);++k)assert(memcmp(v.text+k,"secret",6));
+     strcpy(stale,"x\n#### tail");strcpy(stale,"x\n#### ");
+     memset(&v,0,sizeof(v));nd_md_parse(stale,&v,0,0);
+     for(k=0;k+4<=sizeof(v.text);++k)assert(memcmp(v.text+k,"tail",4));}
     nd_md_parse("Alpha beta\ngamma",&v,0,0);edit.anchor=0;edit.cursor=5;nd_md_format(&v,&edit,1,0);
     edit.anchor=6;edit.cursor=10;nd_md_format(&v,&edit,3,2);nd_md_format(&v,&edit,4,1);nd_md_format(&v,&edit,2,0);
     edit.anchor=edit.cursor=12;nd_md_format(&v,&edit,5,2);

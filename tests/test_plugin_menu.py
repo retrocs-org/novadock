@@ -23,6 +23,13 @@ class PluginMenuTests(unittest.TestCase):
         setup = source[start:end]
         harness = r"""
 #include <assert.h>
+#define dock_left(d) ((d)->window->LeftEdge)
+#define dock_top(d) ((d)->window->TopEdge)
+#define dock_width(d) ((d)->window->Width)
+#define dock_height(d) ((d)->window->Height)
+#define dock_view_x(d) 0
+#define dock_view_y(d) 0
+
 #include <string.h>
 #define IX_VERSION 2
 #define IECLASS_RAWMOUSE 2
@@ -59,6 +66,12 @@ int main(void)
         source = (ROOT / 'src/dock_menu.c').read_text()
         harness = r"""
 #include <assert.h>
+#define dock_left(d) ((d)->window->LeftEdge)
+#define dock_top(d) ((d)->window->TopEdge)
+#define dock_width(d) ((d)->window->Width)
+#define dock_height(d) ((d)->window->Height)
+#define dock_view_x(d) 0
+#define dock_view_y(d) 0
 #include <stdio.h>
 #include <string.h>
 #include "nd_config.h"
@@ -69,8 +82,16 @@ int main(void)
 #define ND_EVENT_BITSKIM_CANCEL 8
 #define ND_EVENT_MANAGE_HISTORY 16
 #define ND_EVENT2_NOTE_NEW 2UL
-struct NDDock {struct NDConfig conf; unsigned long plugin_event2[48]; int popup_item,edit_mode,popup_network_online,popup_warp_present,popup_prism_present; void *screen;};
+#define ND_EVENT2_SENSOR_PREVIOUS 2048UL
+#define ND_EVENT2_SENSOR_NEXT 4096UL
+#define ND_EVENT2_SENSOR_DETAILS 8192UL
+#define ND_MENU_PROFILES 4
+struct NDDock {struct NDConfig conf; unsigned long plugin_event2[48]; int popup_item,edit_mode,popup_network_online,popup_warp_present,popup_prism_present; void *screen; int undo_kind; void *undo_config; char menu_profiles[ND_MENU_PROFILES][ND_PROFILE_LEN]; int menu_profile_count;};
+#define ND_UNDO_NONE 0
+#define ND_UNDO_MOVE 1
+#define ND_UNDO_REMOVE 2
 static int launches,removed,beeps,allow_launch=1;
+static const char *nd_option_schema_id(const struct NDConfig *c,const char *id){return strstr(c->items[0].command,"Plugins/Sensors") ? "SENSORS":id;}
 static const char *music="";
 static char arguments[80];
 const char *nd_option_get(const struct NDConfig *c,const char *id,const char *key)
@@ -92,9 +113,13 @@ static int launch_default_music_application(struct NDDock *d) {(void)d;return 1;
             'static int plugin_can_launch(const struct NDDock *dock,\n                             const struct NDItem *item)',
             'int is_trash_tile(const struct NDDock *dock,int index)',
             'static int plugin_settings_action(const struct NDDock *dock,const struct NDItem *item)',
-            'static int popup_count_for(const struct NDDock *dock)',
+            'static int dock_has_undo(const struct NDDock *dock)',
         ]:
             harness += '\n' + function(source, signature)
+        start = source.index('/* The background (dock) menu, top to bottom.')
+        harness += '\n' + source[start:source.index('static int popup_count_for(', start)]
+        harness += '\n' + function(source, 'static int popup_count_for(const struct NDDock *dock)')
+        harness += '\nconst char *nd_trf(const char *english_format) {return english_format;}\n'
         start = source.index('static const char *launcher_actions[]')
         end = source.index('static const char *popup_label(', start)
         harness += '\n' + source[start:end]
@@ -126,6 +151,11 @@ int main(void)
         assert(plugin_popup_action(&dock,0,count-1)==1);
         assert(removed==before+1);
     }
+    strcpy(dock.conf.items[0].command,"Plugins/Sensors");strcpy(dock.conf.items[0].id,"SENSORS_2");
+    assert(popup_count_for(&dock)==5 && !strcmp(popup_label_en(&dock,0),"Sensor readings..."));
+    plugin_popup_action(&dock,0,1);assert(dock.plugin_event2[0]&ND_EVENT2_SENSOR_NEXT);
+    plugin_popup_action(&dock,0,2);assert(dock.plugin_event2[0]&ND_EVENT2_SENSOR_PREVIOUS);
+    plugin_popup_action(&dock,0,0);assert(dock.plugin_event2[0]&ND_EVENT2_SENSOR_DETAILS);
     strcpy(dock.conf.items[0].command,"Plugins/HASS");strcpy(dock.conf.items[0].id,"HASS_2");
     assert(popup_count_for(&dock)==2);assert(!strcmp(popup_label_en(&dock,0),"Edit settings..."));
     assert(!strcmp(popup_label_en(&dock,1),"Remove"));
@@ -176,6 +206,12 @@ int main(void)
         source = (ROOT/'src/dock_events.c').read_text()
         harness = r"""
 #include <assert.h>
+#define dock_left(d) ((d)->window->LeftEdge)
+#define dock_top(d) ((d)->window->TopEdge)
+#define dock_width(d) ((d)->window->Width)
+#define dock_height(d) ((d)->window->Height)
+#define dock_view_x(d) 0
+#define dock_view_y(d) 0
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -190,7 +226,7 @@ int main(void)
 struct Message {int dummy;};
 struct WBArg {int number;};
 struct AppMessage {int am_Type,am_UserData,am_MouseX,am_MouseY,am_NumArgs;struct WBArg *am_ArgList;};
-struct NDDock {struct NDConfig conf;int edit_mode,action_count,action_items[1],overflow,view_start,visible_count,drop_preview;void *drop_port,*screen;};
+struct NDDock {struct NDConfig conf;int edit_mode,action_count,action_items[1],overflow,view_start,visible_count,drop_preview;void *drop_port,*screen,*write_owner;};
 static struct AppMessage message;
 static int pending,replies,actions,added,position[4],hover=0,last_archive_count;
 static void draw_all(struct NDDock *d) {(void)d;}

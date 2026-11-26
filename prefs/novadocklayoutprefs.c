@@ -300,7 +300,7 @@ int nd_layout_prefs_run(struct NDConfig *cfg,struct Screen *screen)
             cls=msg->Class;code=msg->Code;
             id=msg->IAddress ? ((struct Gadget *)msg->IAddress)->GadgetID:0;
             GT_ReplyIMsg(msg);
-            if (cls==IDCMP_CLOSEWINDOW) p->done=1;
+            if (cls==IDCMP_CLOSEWINDOW || (cls==IDCMP_RAWKEY && code==0x45)) p->done=1;
             else if (cls==IDCMP_RAWKEY && code==ND_HELP_KEY) nd_prefs_help(p->screen);
             else if (cls==IDCMP_REFRESHWINDOW) {
                 GT_BeginRefresh(p->win);GT_EndRefresh(p->win,TRUE);

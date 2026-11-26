@@ -3,7 +3,7 @@
 /* ANSI-C data/config layer; deliberately independent from AmigaOS. */
 /* The catalogue and active dock share one conservative Classic-Amiga limit.
  * Overflow paging keeps all active entries reachable on smaller screens. */
-#define ND_MAX_ITEMS 48
+#define ND_MAX_ITEMS 64
 #define ND_MAX_DOCK_ITEMS ND_MAX_ITEMS
 /* Bounded storage for independent collections/actions and player profiles.
  * Editors save changed values only; older explicit defaults remain readable. */
@@ -13,6 +13,7 @@
 #define ND_OPT_KEY_LEN 32
 #define ND_LABEL_LEN 32
 #define ND_COMMAND_LEN 240
+#define ND_PROFILE_LEN 25   /* profile names: up to 24 characters */
 #define ND_HOTKEY_LEN 64
 #define ND_MATCH_LEN 64
 /* Unrecognised KEY=value lines kept verbatim for forward compatibility. */
@@ -36,6 +37,9 @@
  * bytes for them whether used or not (47 KB per configuration); real
  * configurations need a few KB in total. */
 #define ND_TEXT_POOL_SIZE 12288
+/* Preserve the legacy capacity: 512 independent 95-character values plus
+ * their terminators and the reserved empty string. Offsets still fit UWORD. */
+#define ND_OPTION_POOL_SIZE 49153
 /* Runtime-only tiles appended after the configured items. */
 #define ND_TRANSIENT_NONE 0
 #define ND_TRANSIENT_MEDIA 1 /* inserted removable medium (drawer tile) */
@@ -47,7 +51,9 @@
 #define ND_POSITION_START 0
 #define ND_POSITION_CENTER 1
 #define ND_POSITION_END 2
-#define ND_POSITION_COUNT 3
+#define ND_POSITION_CUSTOM 3
+#define ND_POSITION_COUNT 4
+#define ND_POSITION_OFFSET_MAX 32767
 #define ND_FONT_WORKBENCH 0
 #define ND_FONT_TOPAZ 1
 #define ND_FONT_BOLD 2
@@ -77,7 +83,9 @@
 #define ND_THEME_NORD 10
 #define ND_THEME_VAPOR 11
 #define ND_THEME_CHRISTMAS 12
-#define ND_THEME_COUNT 13
+#define ND_THEME_MACMODERN 13
+#define ND_THEME_MACGLASS 14
+#define ND_THEME_COUNT 15
 #define ND_THEME_ID_LEN 32
 #define ND_SHAPE_ROUNDED 0
 #define ND_SHAPE_SQUARE 1
@@ -145,7 +153,10 @@ struct NDItem {
 #define ND_HOOK_EVENT_LEN 16
 #define ND_HOOK_COMMAND_LEN 96
 struct NDHook { char event[ND_HOOK_EVENT_LEN]; char command[ND_HOOK_COMMAND_LEN]; };
-struct NDOption { char id[20]; char key[ND_OPT_KEY_LEN]; char value[ND_OPT_VALUE_LEN]; };
+/* VALUE is an offset into NDConfig.option_pool (0 is the empty string); read
+ * it with nd_option_value().  Values were inline 96-byte arrays, which made
+ * the 512-entry table alone about 74 KB. */
+struct NDOption { char id[20]; char key[ND_OPT_KEY_LEN]; unsigned short value; };
 struct NDOptionDef { char id[20]; char key[ND_OPT_KEY_LEN]; char label[32];
     char type[12]; char choices[128]; char default_value[ND_OPT_VALUE_LEN]; };
 struct NDConfig {
@@ -154,9 +165,11 @@ struct NDConfig {
     struct NDOption options[ND_MAX_OPTIONS];
     struct NDOptionDef defs[ND_MAX_OPTION_DEFS];
     int side;
-    int position; /* alignment along the selected screen edge */
+    int position; /* preset or a freely placed position along the screen edge */
+    int position_offset; /* CUSTOM: pixels from the usable edge origin */
     int font_mode; /* Workbench, fixed Topaz 8, or Workbench bold */
-    int label_mode; /* launcher/drawer names: always, hover, or hidden */
+    int colourful_icons; /* preserve artwork RGB instead of theme roles */
+    int label_mode; /* tile captions: always, hover, or hidden */
     int item_size; /* normal detail, or half-size compact tile rendering */
     int theme;
     /* Stable folder identifier below Themes/.  The numeric value remains for
@@ -175,9 +188,13 @@ struct NDConfig {
     int tooltips; /* draw a small hover label after a short delay */
     int always_on_top; /* periodically keep the borderless dock layer in front */
     int running_apps; /* show running marks and bring an existing app forward */
+    int hover_magnification; /* 0 disables; 1..100 sets hover strength */
+    int background_transparency; /* 0 solid, 100 desktop only */
+    int theme_artwork; /* use the selected theme's optional dock backdrop */
     int refresh_mode; /* low-memory simple refresh, or smoother smart refresh */
     int auto_hide; /* collapse to a reveal tab when pointer leaves */
     int hide_delay; /* idle seconds (1..60), checked by timer.device */
+    int send_alerts_aminotis; /* opt-in forwarding of new internal alerts */
     int check_updates; /* opt-in startup release check */
     int check_updates_running; /* opt-in periodic checks */
     int update_interval_hours; /* 2, 4 or 6; default 4 */
@@ -185,6 +202,13 @@ struct NDConfig {
     /* Commodities hot key for keyboard control of the dock ("" = none),
      * for example "ctrl alt d". */
     char dock_hotkey[ND_HOTKEY_LEN];
+    /* Name of the dock profile this configuration was last saved as or
+     * switched to ("" = none); see nd_profile_path(). */
+    char profile[ND_PROFILE_LEN];
+    int hover_cache_kb; /* 0 automatic, otherwise 128..8192 KB of derived caches */
+    int drag_bar; /* dedicated leading grip; DRAG_BAR=YES/NO */
+    int hover_animation; /* 1: magnified sizes ease in and out over a few frames */
+    int wallpaper_match; /* 1: solid dock colours follow the desktop behind it (DOCK_BACKGROUND=WALLPAPER) */
     int running_section; /* legacy config field; always disabled */
     int folder_view;     /* drawer popups: 0 icon grid, 1 list (ND_FOLDER_VIEW_*) */
     int folder_sort;     /* drawer popups: ND_FOLDER_SORT_* */
@@ -199,6 +223,10 @@ struct NDConfig {
      * zeroed configuration is valid; text_used counts bytes in use. */
     unsigned int text_used;
     char text_pool[ND_TEXT_POOL_SIZE];
+    /* Option values, appended and compacted when full like the text pool.
+     * option_pool[0] is '\0'; option_used counts bytes in use. */
+    unsigned int option_used;
+    char option_pool[ND_OPTION_POOL_SIZE];
 };
 /* Pooled item texts.  Setters always append (never rewrite in place), so
  * copies of an item made within the same configuration stay valid until the
@@ -218,6 +246,10 @@ int nd_item_set_texts(struct NDConfig *cfg, struct NDItem *item, int count,
 void nd_text_pool_compact(struct NDConfig *cfg, struct NDItem *extra);
 /* Bound-checked option access and editable plugin descriptors. */
 const char *nd_option_get(const struct NDConfig *cfg, const char *id, const char *key);
+/* The stored value of option O of CFG (never NULL). */
+const char *nd_option_value(const struct NDConfig *cfg,const struct NDOption *o);
+/* Repack the option pool; offsets change, pointers into it go stale. */
+void nd_option_pool_compact(struct NDConfig *cfg);
 int nd_options_changed(const struct NDConfig *old, const struct NDConfig *next, const char *id);
 int nd_option_set(struct NDConfig *cfg, const char *id, const char *key, const char *value);
 int nd_option_define(struct NDConfig *cfg, const char *id, const char *key,
@@ -268,7 +300,10 @@ int nd_item_supports_space_meter(const struct NDItem *item);
  * distinct so Preferences can describe and edit them as groups. */
 int nd_item_is_group(const struct NDItem *item);
 unsigned int nd_used_percent(unsigned long used, unsigned long total);
+/* Omitted keys in existing profiles retain their legacy defaults. */
 void nd_default_config(struct NDConfig *config);
+/* Appearance for a fresh installation without a saved profile. */
+void nd_factory_config(struct NDConfig *config);
 const char *nd_theme_name(int theme);
 const char *nd_config_theme_id(const struct NDConfig *config);
 int nd_config_set_theme(struct NDConfig *config,const char *theme_id);
@@ -276,6 +311,7 @@ const char *nd_shape_name(int shape);
 const char *nd_position_name(int position);
 const char *nd_font_name(int mode);
 const char *nd_label_mode_name(int mode);
+int nd_label_visible(int mode,int tiny,int hovered);
 const char *nd_item_size_name(int mode);
 const char *nd_refresh_mode_name(int mode);
 const char *nd_spacer_color_name(int color);
@@ -300,6 +336,20 @@ int nd_hook_event_valid(const char *event);
  * that cannot rename over an existing file use a recoverable backup swap;
  * the destination is never rewritten in place. */
 int nd_write_config(const struct NDConfig *config, const char *filename);
+/* Global settings by configuration key (and OPTION.<id>.<key>), formatted as
+ * the file stores them; 0 for an unknown key or a too-small buffer. */
+#define ND_CONFIG_VALUE_LEN 260
+extern const char *const nd_config_keys[];
+int nd_config_get(const struct NDConfig *config,const char *key,char *out,unsigned int size);
+int nd_config_settable(const struct NDConfig *config,const char *key);
+/* KEY in its stored spelling (case-insensitive match); 0 if unknown. */
+int nd_config_canonical_key(const struct NDConfig *config,const char *key,char *out,unsigned int size);
+/* Dock profiles are complete configurations saved as
+ * ENVARC:NovaDock/Profiles/<name>.cfg.  A name is 1-24 letters, digits,
+ * spaces, '-' or '_', not starting or ending with a space. */
+#define ND_PROFILE_DIR "ENVARC:NovaDock/Profiles"
+int nd_profile_name_valid(const char *name);
+int nd_profile_path(const char *name,char *out,unsigned int size);
 /* ENV: session, then ENVARC: permanent, with built-in defaults as fallback. */
 int nd_load_effective(struct NDConfig *config);
 /* Fold legacy Roadshow tiles into the unified Network tile on effective load. */

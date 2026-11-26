@@ -75,7 +75,7 @@ static void about_text(struct AboutPage *p,const char *text,int x,int y)
 static void draw_about(struct AboutPage *p)
 {
     about_text(p,ND_ABOUT_NAME,170,35);
-    about_text(p,"Version " ND_ABOUT_VERSION,170,53);
+    about_text(p,"Version " ND_ABOUT_VERSION " / " ND_BUILD_SHORT,170,53);
     about_text(p,ND_ABOUT_DESCRIPTION_1,170,77);
     about_text(p,ND_ABOUT_DESCRIPTION_2,170,93);
     about_text(p,"License: " ND_ABOUT_LICENSE,170,117);
@@ -103,7 +103,7 @@ static int open_about_page(struct AboutPage *p)
         !about_button(p,10,45,118,B_APPEARANCE,"Appearance") ||
         !about_button(p,10,69,118,B_ORGANIZE,"Organize") ||
         !about_button(p,10,93,118,B_PLUGIN_MANAGER,"Plugins") ||
-        !about_button(p,10,117,118,B_DIAGNOSTICS,"Diagnostics") ||
+        !about_button(p,10,117,118,B_DIAGNOSTICS,"Support") ||
         !about_button(p,10,141,118,B_UPDATES,"Update") ||
         !about_button(p,10,165,118,B_ABOUT,"> About") ||
         /* The manual; the Help key opens it from every window too. */
@@ -138,7 +138,7 @@ int nd_about_prefs_run(int argc,char **argv)
             cls=msg->Class;rawcode=msg->Code;
             id=msg->IAddress ? ((struct Gadget *)msg->IAddress)->GadgetID : 0;
             GT_ReplyIMsg(msg);
-            if (cls==IDCMP_CLOSEWINDOW) {p->done=1;p->result=0;}
+            if (cls==IDCMP_CLOSEWINDOW || (cls==IDCMP_RAWKEY && rawcode==0x45)) {p->done=1;p->result=0;}
             else if (cls==IDCMP_RAWKEY && rawcode==ND_HELP_KEY) nd_prefs_help(p->screen);
             else if (cls==IDCMP_REFRESHWINDOW) {
                 GT_BeginRefresh(p->win);draw_about(p);GT_EndRefresh(p->win,TRUE);

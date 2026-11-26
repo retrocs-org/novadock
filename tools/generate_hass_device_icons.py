@@ -5,6 +5,7 @@ import argparse
 from generate_collection_icons import Canvas,artwork as collection_art,png,ilbm,PALETTE
 from generate_hass_icons import artwork as bridge_art,rectangles
 from pack_plugin_art import build_bank
+from artifact_compare import same_artifact
 ROOT=Path(__file__).resolve().parents[1]
 KINDS=('Bulb','LightStrip','LightGroup','ChristmasLights','CeilingLight','FloorLamp','ShelfLamp','Switch','Fan','TV','AC','Heater','Door','FrontDoor','Garage','WindowSensor','DoorSensor','Thermometer','Moisture','Leak','FireAlarm','Sensor','Scene','HASS')
 STATES=('Off','On','Unknown')
@@ -47,7 +48,7 @@ def main():
         for name,pixels in old:
             for extension,encode in [('png',png),('iff',ilbm)]:
                 p=args.clean_legacy/(name+'.'+extension)
-                if p.is_file() and p.read_bytes()==encode(pixels):p.unlink();removed+=1
+                if p.is_file() and same_artifact(p.read_bytes(),encode(pixels)):p.unlink();removed+=1
         print(f'Removed {removed} unchanged legacy HASS icon copies.');return
     frames=[{'name':kind,'state':i,'pixels':artwork(kind,i)} for kind in KINDS for i in range(3)]
     frames += [{'name':'SadHASS','state':0,'pixels':bridge_art(True)},{'name':'default','state':0,'pixels':artwork('HASS',2)}]
@@ -57,7 +58,7 @@ def main():
             pixels=artwork(kind,i)
             for extension,encode in [('png',png),('iff',ilbm)]:files[ROOT/'plugin_src/hass/artwork'/f'{kind}{state}.{extension}']=encode(pixels)
     for path,data in files.items():
-        if args.check:assert path.read_bytes()==data,str(path)+' needs regeneration'
+        if args.check:assert same_artifact(path.read_bytes(),data),str(path)+' needs regeneration'
         else:path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
     print(f'{len(KINDS)} automatic HASS device icons with off/on/unknown states are current.')
 if __name__=='__main__':main()

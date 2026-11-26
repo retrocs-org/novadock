@@ -30,6 +30,10 @@ static int nd_cache_stamp(const char *path,struct NDCacheStamp *s)
  {struct stat st;if(stat(path,&st)){return errno==ENOENT||errno==ENOTDIR;}s->kind=(long)st.st_mode;s->size=(long)st.st_size;s->key=(long)st.st_ino;s->day=(long)st.st_mtime;
 #if defined(__APPLE__)
  s->tick=(long)st.st_mtimespec.tv_nsec;
+#elif defined(__linux__) && defined(__USE_XOPEN2K8)
+ s->tick=(long)st.st_mtim.tv_nsec;
+#elif defined(__linux__)
+ s->tick=(long)st.st_mtimensec;
 #endif
  }
 #endif

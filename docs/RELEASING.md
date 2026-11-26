@@ -5,8 +5,9 @@ Use Python 3.9+ from the project root. The entry point is `scripts/release.py`;
 manifest, then publish those same verified bytes. Review the notes, destinations
 and four download files before publishing.
 
-NovaDock **0.5** is in development and is not authorized for publication yet. Published tags through 0.4
-already exist; the new-release examples below do not authorize replacing them.
+The candidate named in VERSION remains in development until publication is
+explicitly authorized. The examples below do not authorize replacing an existing
+published tag or release.
 Normal release commands never move tags, overwrite conflicting assets, create
 repositories, deploy the website or roll back another service's release. Source
 branch pushes are a separate, explicitly confirmed command.
@@ -32,13 +33,13 @@ branch pushes are a separate, explicitly confirmed command.
 - VERSION, the application, Preferences, package metadata and current release
   notes must agree. Plugins have independent versions: update a changed plugin's
   own version and metadata rather than copying the dock version to every plugin.
-- Use the exact version as the public tag, such as `0.5`, without a `v` prefix.
+- Use the exact version as the public tag, such as `0.6`, without a `v` prefix.
   New preparations default to the bare VERSION. Pass `--tag` explicitly to pin
   the intended tag; subsequent commands reuse an existing manifest's tag.
 - Both repositories receive the same annotated tag object and source commit.
   Never force-push, move or recreate a published tag through the normal workflow.
-- Release titles use the application and version, for example **NovaDock 0.5**;
-  the Git tag remains **0.5**. Publish normal releases, including versions
+- Release titles use the application and version, for example **NovaDock 0.6**;
+  the Git tag remains **0.6**. Publish normal releases, including versions
   below 1.0. GitHub uses `prerelease: false` and explicitly selects Latest with
   `make_latest: "true"` after all assets verify. A draft is only an upload stage.
 - GitLab uses its ordinary published-release API, with no future release date or
@@ -56,6 +57,7 @@ committing release inputs:
 ```sh
 python3 tools/release_notes.py --write
 python3 tools/release_notes.py --check
+python3 tools/build_identity.py
 ```
 
 Use this structure on both services:
@@ -96,10 +98,10 @@ manifests or publication receipts to disguise a metadata-only update.
 Upload exactly these four files, substituting the agreed VERSION:
 
 ```text
-NovaDock-0.5.lha
-NovaDock-0.5.lha.sha256
-NovaDock-0.5-plugin-sdk.zip
-NovaDock-0.5-plugin-sdk.zip.sha256
+NovaDock-0.6.lha
+NovaDock-0.6.lha.sha256
+NovaDock-0.6-plugin-sdk.zip
+NovaDock-0.6-plugin-sdk.zip.sha256
 ```
 
 The LHA contains the installable application, all bundled plugins, themes, help
@@ -127,17 +129,17 @@ Hosted CI configuration is not a release prerequisite. Checks run locally.
 5. Publish explicitly using the same output directory and tag. Preserve receipts
    and verify the release links. Website deployment remains a separate manual task.
 
-Example for a new 0.5 tag:
+Example for a new 0.6 tag:
 
 ```sh
 python3 scripts/release.py source --to gitlab,github --dry-run
 python3 scripts/release.py source --to gitlab,github --confirm-push
-python3 scripts/release.py build --output outputs/release-0.5-new
-python3 scripts/release.py check --output outputs/release-0.5-new
-python3 scripts/release.py prepare --output outputs/release-0.5-new \
-  --tag 0.5 --tag-message "NovaDock 0.5 release" --notes docs/RELEASE-NOTES.md
-python3 scripts/release.py publish --output outputs/release-0.5-new \
-  --tag 0.5 --to gitlab,github --confirm-publish
+python3 scripts/release.py build --output outputs/release-0.6-new
+python3 scripts/release.py check --output outputs/release-0.6-new
+python3 scripts/release.py prepare --output outputs/release-0.6-new \
+  --tag 0.6 --tag-message "NovaDock 0.6 release" --notes docs/RELEASE-NOTES.md
+python3 scripts/release.py publish --output outputs/release-0.6-new \
+  --tag 0.6 --to gitlab,github --confirm-publish
 ```
 
 `--notes` belongs to `prepare` or the combined `release` command, not `publish`.
@@ -296,9 +298,9 @@ Review independent plugin versions with
 
 ```sh
 python3 scripts/release.py plan
-python3 scripts/release.py build --output outputs/release-0.5-new
-python3 scripts/release.py check --output outputs/release-0.5-new
-python3 scripts/release.py prepare --output outputs/release-0.5-new --tag 0.5
+python3 scripts/release.py build --output outputs/release-0.6-new
+python3 scripts/release.py check --output outputs/release-0.6-new
+python3 scripts/release.py prepare --output outputs/release-0.6-new --tag 0.6
 ```
 
 Use the same output directory on publication. Default output is `outputs/release`;
@@ -386,10 +388,10 @@ access. Repositories must already exist with the intended visibility and GitLab
 package registry enabled. The tool does not configure hosting or access policies.
 
 ```sh
-python3 scripts/release.py publish --output outputs/release-0.5-new \
-  --tag 0.5 --to gitlab,github --confirm-publish
-python3 scripts/release.py publish --output outputs/release-0.5-new \
-  --tag 0.5 --to aminet --confirm-publish
+python3 scripts/release.py publish --output outputs/release-0.6-new \
+  --tag 0.6 --to gitlab,github --confirm-publish
+python3 scripts/release.py publish --output outputs/release-0.6-new \
+  --tag 0.6 --to aminet --confirm-publish
 ```
 
 Choose distinct destinations, optionally `--to gitlab,github,aminet`. Default is
@@ -437,6 +439,14 @@ Use a new output directory for subsequent builds; retain old bundles as evidence
 There is no automatic retry or cross-service transaction.
 
 ## Testing and limits
+
+The LHA packager requires level-1 headers with LH5 compression (or stored files) and checks the
+header checksums, extension bounds and path encoding before accepting an archive.
+Keep `0xff` separators in level-1 directory extensions; they must not appear in
+basenames. This avoids the level-0 path mismatch seen with OLHa 0.4.4. Payload
+integrity and a complete extraction comparison are checked separately by LHa.
+Run `python3 tests/test_lha_compatibility.py` for the regression tests or
+`python3 tools/check_lha_compatibility.py PATH.lha` to check an existing package.
 
 ```sh
 python3 tests/test_release_notes.py
@@ -548,16 +558,20 @@ python3 tools/check_plugin_health.py /path/to/NovaDock
 This validates package health; native runtime checks remain part of the release
 checklist.
 
-### NovaDock 0.5 and AmiHASS 0.2 pairing
+### NovaDock 0.6 and AmiHASS 0.3 pairing
 
 Run `python3 tools/check_amihass_pair.py --bridge ../AmiHASS` before final
 packaging. Keep AmiHASS independent: test its own packaged Installer lifecycle
 and standalone SDK, then run NovaDock sample controls against that exact service
-payload. Record both archive hashes and all native reports. Local development
+payload. `python3 tools/run_hass_qa.py --bridge ../AmiHASS` repeats the
+offline sample-adapter check in its own hidden guest. Record both archive
+hashes and all native reports. Local development
 archive checks do not replace clean-source, source-bound publication readiness.
 
 The NovaDock native Installer fixture uses Previous/Current aliases and derives
-versions from each supplied executable. For 0.5, supply published 0.4 as
+versions from each supplied executable. For 0.6, supply the verified 0.5 archive as
 `--previous` and the final candidate as `--current`; it records both hashes in
 `inputs.json` and names the test from those versions. Pass `--compiler "$VC"`
 to build its native harness into the prepared fixture automatically.
+
+Plugin release QA: run `python3 tools/run_plugin_qa.py --output outputs/plugin-qa-new-run` before packaging. The release workflow requires passing evidence for all bundled plugins. See [Plugin QA](PLUGIN_QA.md) and the [performance audit](PERFORMANCE_AUDIT_2026-11-23.md).

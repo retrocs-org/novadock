@@ -1,6 +1,6 @@
-; $VER: Install 0.5 (21.11.2026)
+; $VER: Install 0.6 (24.11.2026)
 ;
-; GUI installer for NovaDock 0.5, for the Commodore Installer (V42 and
+; GUI installer for NovaDock 0.6, for the Commodore Installer (V42 and
 ; later, as shipped with AmigaOS 3.x).  Double-click the Install
 ; icon, or from a Shell:  Installer Install APPNAME NovaDock
 ;
@@ -11,7 +11,7 @@
 ; Binary and shared-data assignments persist in S:User-Startup.
 
 (set @app-name "NovaDock")
-(set #version "0.5")
+(set #version "0.6")
 (set #standard-dest "SYS:NovaDock")
 (set #appdir "SYS:Utilities")
 (set #app "SYS:Utilities/NovaDock")
@@ -282,8 +282,15 @@
     (P_STOP_DOCK)
 
     ; Preserve the old Utilities drawer before replacing it with the application.
+    ; AmigaDOS cannot rename onto an existing name, and Novice installs never
+    ; offer to remove the copy kept by the previous update, so an older
+    ; .previous drawer (two versions back) is removed first.
     (if (= (exists #app (noreq)) 2)
     (
+        (if (= (exists (cat #app ".previous") (noreq)) 2)
+            (run (cat "Delete \"" #app ".previous\" ALL QUIET FORCE")))
+        (if (exists (cat #app ".previous.info") (noreq))
+            (run (cat "Delete \"" #app ".previous.info\" QUIET FORCE")))
         (if (= #current (expandpath #app))
             (set #current (cat (expandpath #app) ".previous")))
         (rename #app (cat #app ".previous"))
@@ -313,6 +320,22 @@
         (dest #appdir)
         (infos)
         (optional "force"))
+
+    (if (and (<> #current "") (<> #current (expandpath #dest))
+             (= (exists (tackon #current "SupportLogs") (noreq)) 2))
+        (copyfiles (prompt "Preserving support recordings") (help @copyfiles-help)
+            (source (tackon #current "SupportLogs")) (dest (tackon #dest "SupportLogs"))
+            (all) (optional "force")))
+    (if (and (<> #current "") (<> #current (expandpath #dest))
+             (= (exists (tackon #current "SupportBundles") (noreq)) 2))
+        (copyfiles (prompt "Preserving support recordings") (help @copyfiles-help)
+            (source (tackon #current "SupportBundles")) (dest (tackon #dest "SupportBundles"))
+            (all) (optional "force")))
+    (if (and (<> #current "") (<> #current (expandpath #dest))
+             (= (exists (tackon #current "TraceLogs") (noreq)) 2))
+        (copyfiles (prompt "Preserving support recordings") (help @copyfiles-help)
+            (source (tackon #current "TraceLogs")) (dest (tackon #dest "TraceLogs"))
+            (all) (optional "force")))
 
     ; Preserve imported components when moving the shared drawer.
     (if (and (<> #current "") (<> #current (expandpath #dest)))
@@ -410,6 +433,17 @@
                                 "theme.cfg"))
                 (dest #themedir)
                 (optional "force"))
+            (set #sourceimages (tackon (tackon (tackon #src "Themes") @each-name) "Images"))
+            (if (= (exists (tackon #sourceimages "Backdrop.iff") (noreq)) 1)
+            (
+                (set #themeimages (tackon #themedir "Images"))
+                (if (<> (exists #themeimages) 2) (makedir #themeimages))
+                (copyfiles
+                    (prompt "Copying background artwork")
+                    (help @copyfiles-help)
+                    (source #sourceimages) (dest #themeimages)
+                    (pattern "Backdrop#?.iff") (optional "force"))
+            ))
         )))
 
     ; Preferences
@@ -452,6 +486,24 @@
     (set #del (tackon #dest "Plugins/Roadshow.info")) (P_DELETE)
     (set #del (tackon #dest "Plugins/Roadshow.ndplugin")) (P_DELETE)
 
+    ; Retired notification plugins move to the independent AmiNotis service.
+    (set #del (tackon #dest "Plugins/Alerts")) (P_DELETE)
+    (set #del (tackon #dest "Plugins/Alerts.info")) (P_DELETE)
+    (set #del (tackon #dest "Plugins/Alerts.ndplugin")) (P_DELETE)
+    (if (= (exists (tackon #dest "Plugins/Alerts.assets") (noreq)) 2)
+        (run (cat "Delete \"" (tackon #dest "Plugins/Alerts.assets") "\" ALL QUIET FORCE")))
+    (set #del (tackon #dest "Plugins/AmIRC")) (P_DELETE)
+    (set #del (tackon #dest "Plugins/AmIRC.info")) (P_DELETE)
+    (set #del (tackon #dest "Plugins/AmIRC.ndplugin")) (P_DELETE)
+    (if (= (exists (tackon #dest "Plugins/AmIRC.assets") (noreq)) 2)
+        (run (cat "Delete \"" (tackon #dest "Plugins/AmIRC.assets") "\" ALL QUIET FORCE")))
+    (set #del (tackon #dest "Plugins/AmiRocket")) (P_DELETE)
+    (set #del (tackon #dest "Plugins/AmiRocket.info")) (P_DELETE)
+    (set #del (tackon #dest "Plugins/AmiRocket.ndplugin")) (P_DELETE)
+    (if (= (exists (tackon #dest "Plugins/AmiRocket.assets") (noreq)) 2)
+        (run (cat "Delete \"" (tackon #dest "Plugins/AmiRocket.assets") "\" ALL QUIET FORCE")))
+    (set #del (tackon #dest "Rexx/NovaDockNotify.amirx")) (P_DELETE)
+
     ; Plugin icons are prebuilt on the host and copied with the plugins.
     (complete 75)
 
@@ -470,6 +522,14 @@
         (prompt "Copying NovaDock licence") (help @copyfiles-help)
         (source (tackon #src "LICENSE"))
         (dest #dest) (optional "force"))
+
+    ; Runtime support capture and local bundle collector.
+    (copyfiles (prompt "Copying support tools") (help @copyfiles-help)
+        (source (tackon #src "SupportLog")) (dest #dest) (optional "force"))
+    (copyfiles (prompt "Copying support tools") (help @copyfiles-help)
+        (source (tackon #src "SupportReport")) (dest #dest) (optional "force"))
+    (copyfiles (prompt "Copying support tools") (help @copyfiles-help)
+        (source (tackon #src "SupportReport.info")) (dest #dest) (optional "force"))
 
     ; The AmigaGuide manual (Help in Preferences opens it from here)
     (complete 80)

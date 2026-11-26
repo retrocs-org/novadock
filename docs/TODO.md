@@ -1,5 +1,17 @@
 # Future work
 
+## Dock appearance
+
+- [x] Add an opt-in ILBM background for dock themes.
+- [x] Add an image picker and import artwork with third-party theme packages.
+- [x] Prototype a wallpaper-matched background on classic Workbench.
+- [x] Add optional in-tile hover magnification to Appearance.
+- [x] Cache hover rendering, coalesce redraws and magnify CPU/RAM/Clock/network widgets.
+- [x] Track inactive hover through Commodities and support magnification with separated rows in multi-row docks.
+- [x] Stabilize hover targets across gaps and reflows; align artwork, captions and state markers across tiles.
+- [x] Add opt-in animated magnification transitions (adaptive cadence only while easing; measure with `STATUS DETAIL` on real hardware).
+- [x] Save and switch named dock profiles from the dock menu or ARexx `PROFILE`.
+
 ## 0.5 release preflight
 
 - [x] Add BENCH save retry for retained results without rerunning measurements.
@@ -122,9 +134,9 @@ Planned tile/package management; NovaDock already has app update checks in Prefe
 
 ### PET
 
-- [ ] Add a small animated companion to a dock tile.
-- [ ] React to clicks with playful animations.
-- [ ] Offer appearance and animation-speed settings, with a low CPU cost when idle.
+- [x] Add a small animated companion to a dock tile.
+- [x] React to clicks with playful animations.
+- [x] Offer name, animation-speed and nap settings, with a low CPU cost when idle.
 
 ### MOON
 

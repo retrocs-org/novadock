@@ -13,6 +13,9 @@
 #include "nd_weather_window.h"
 #include "nd_weather_codes.h"
 #include "nd_weather_art.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct IntuitionBase *IntuitionBase=NULL;struct GfxBase *GfxBase=NULL;struct Library *GadToolsBase=NULL;
 struct NDWeatherView {
  struct Screen *screen;struct Window *window;struct Gadget *gadgets;APTR visual;

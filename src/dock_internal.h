@@ -1,7 +1,13 @@
 #ifndef ND_DOCK_INTERNAL_H
 #define ND_DOCK_INTERNAL_H
 #include "nd_save.h"
+#include "nd_volume_worker.h"
+#include "nd_async_io.h"
+#include "nd_hover_policy.h"
+#include "nd_tile_state.h"
 #include "nd_options.h"
+#include "nd_input_policy.h"
+#include "nd_hover_dirty.h"
 /* NovaDock dock internals shared by src/novadock.c and src/dock_*.c.
  * Not a public interface: plugins use include/nd_protocol.h. */
 #include <graphics/gfxmacros.h>
@@ -45,6 +51,8 @@
 #include <proto/dos.h>
 #include <proto/intuition.h>
 #include <proto/graphics.h>
+#include <proto/layers.h>
+#include <graphics/layers.h>
 #include <proto/datatypes.h>
 #include <proto/input.h>
 #include <proto/commodities.h>
@@ -70,10 +78,13 @@
 #include "nd_autohide.h"
 #include "nd_eyes.h"
 #include "nd_theme.h"
+#include "nd_backdrop.h"
+#include "nd_transparency.h"
 #include "nd_watchdog.h"
 #include "nd_archive.h"
 #include "nd_option_runtime.h"
 #include "nd_control_client.h"
+#include "nd_render_policy.h"
 #include "nd_screennotify.h"
 #include "nd_locale.h"
 #include "nd_media.h"
@@ -89,7 +100,8 @@
 #define ND_MAX_STACK 1048576UL
 /* ENVARC: write after a CPU/RAM view toggle is deferred (~10 s). */
 #define ND_ENVARC_DELAY_TICKS 50
-#define ND_TIMER_MICROSECONDS 200000UL /* responsive: five checks per second */
+#define ND_MENU_PROFILES 4   /* profiles listed on the dock menu */
+#define ND_TIMER_MICROSECONDS 200000UL
 #define ND_TIP_TIMER_TICKS 2 /* about 0.4 seconds at five checks/sec */
 #define ND_TIP_INTUI_TICKS 4 /* fallback: about 0.4 seconds at 10 ticks/sec */
 #define ND_DOCK_IDCMP_BASE (IDCMP_REFRESHWINDOW | IDCMP_CHANGEWINDOW | \
@@ -98,7 +110,19 @@
                            IDCMP_ACTIVEWINDOW | IDCMP_INACTIVEWINDOW)
 #define ND_BORDER ND_LAYOUT_BORDER
 #define ND_SCREEN_MARGIN ND_LAYOUT_MARGIN
-#define ND_COLOR_COUNT 8
+#define ND_COLOR_COUNT 33
+#define ND_METRIC_COLORS 13
+#define ND_ICON_DARK 8
+#define ND_ICON_CASE 9
+#define ND_ICON_LIGHT 10
+#define ND_ICON_ACCENT 11
+#define ND_ICON_SECONDARY 12
+#define dock_left(d) ((d)->window->LeftEdge-((d)->canvas_view && !(d)->hidden ? (d)->viewport.left:0))
+#define dock_top(d) ((d)->window->TopEdge-((d)->canvas_view && !(d)->hidden ? (d)->viewport.top:0))
+#define dock_width(d) ((d)->canvas_view && !(d)->hidden ? (d)->width:(d)->window->Width)
+#define dock_height(d) ((d)->canvas_view && !(d)->hidden ? (d)->height:(d)->window->Height)
+#define dock_view_x(d) ((d)->canvas_view && !(d)->hidden ? (d)->viewport.left:0)
+#define dock_view_y(d) ((d)->canvas_view && !(d)->hidden ? (d)->viewport.top:0)
 #define ND_BG 0
 #define ND_TILE 1
 #define ND_HOVER 2
@@ -108,6 +132,7 @@
 #define ND_BAR_BG 6
 #define ND_ACCENT2 7
 #define ND_CX_RBUTTON_ID 30000L
+#define ND_CX_POINTER_ID 30003L
 #define ND_CX_DISK_ID 30001L
 #define ND_CX_FOCUS_ID 30002L   /* DOCK_HOTKEY: keyboard control */
 /* Removable media: rescan the DOS volume list every 2 s (timer ticks of
@@ -135,8 +160,35 @@ struct NDGraphView {
     ULONG painted;            /* graph_samples[] value at that paint */
 };
 
+#define ND_HOVER_CACHE_SLOTS 8
+#define ND_HOVER_WIDGET_LIMIT 256
+struct NDHoverScale {
+    struct BitMap *bitmap,*mask,*source,*source_mask;
+    ULONG used,serial;
+    int index,width,height,source_width,source_height,valid;
+};
+struct NDHoverBank {
+    struct BitMap *bitmap,*mask;
+    const unsigned char *runs;
+    ULONG serial;
+    int size,online;
+};
+struct NDCaption {
+    int x,baseline,width,color,tight;
+    char text[ND_LABEL_LEN];
+};
+struct NDHoverWidget {
+    struct BitMap *bitmap,*mask;
+    ULONG serial,used;
+    int width,height,capacity_width,capacity_height;
+    int content_left,content_top,content_width,content_height;
+};
+/* Width of a hover label, remembered for the font it was measured with. */
+struct NDLabelWidth {const void *font;int width;char text[ND_LABEL_LEN];};
 struct NDArtwork;
 struct NDDock {
+    struct NDBackdrop background;
+    struct NDTransparency transparency;
     struct NDUpdateSchedule updates;
     unsigned long alerts_started,alerts_update_tick,alerts_update_checked;
     int alerts_update_waiting;
@@ -154,12 +206,45 @@ struct NDDock {
     ULONG plugin_art_key[ND_MAX_ITEMS];
     UWORD plugin_art_state[ND_MAX_ITEMS];
     struct DiskObject *icons[ND_MAX_ITEMS];
+    struct NDHoverScale hover_icons[ND_HOVER_CACHE_SLOTS];
+    struct NDHoverBank hover_banks[ND_MAX_ITEMS];
+    ULONG hover_cache_clock,hover_cache_budget,hover_cache_evictions;
+    ULONG frame_average_us,frame_peak_us,frame_samples;
+    int timer_frame_ms;
+    struct BitMap *hover_shelf,*hover_widget_mask,*hover_frame;
+    int hover_frame_width,hover_frame_height;
+    int painting_mask;
+    struct NDHoverWidget hover_widgets[ND_MAX_ITEMS];
+    struct NDCaption hover_captions[ND_MAX_ITEMS];
+    ULONG hover_shelf_serial;
+    struct NDLabelWidth hover_label_width[ND_MAX_ITEMS];
+    /* The frame last presented by draw_hover(): what it was composed from,
+     * so a pointer move recomposes only the span that changed. */
+    int hover_prev_valid;
+    long hover_prev_key[12];
+    struct NDRect hover_prev_rects[ND_MAX_ITEMS],hover_prev_shelf;
+    /* Everything drawn for each tile (artwork, label, dot, meter, badge):
+     * this frame's and the presented frame's, and the presented hover. */
+    struct NDRect hover_ext[ND_MAX_ITEMS],hover_prev_ext[ND_MAX_ITEMS];
+    int hover_prev_index;
+    /* Animated magnification: the displayed size of each tile eases toward
+     * its target; draw_hover() advances one step per frame. */
+    short hover_anim_w[ND_MAX_ITEMS],hover_anim_h[ND_MAX_ITEMS];
+    int hover_anim_valid,hover_anim_advance,hover_animating,hover_box_paint;
+    int hover_anim_row,hover_anim_pointer,timer_anim;
+    struct NDFrameClock timer_clock;
+    /* While set, paint_hover_wave() skips tiles outside [lo,hi). */
+    int wave_span_active,wave_span_lo,wave_span_hi;
+    unsigned char wave_draw[ND_MAX_ITEMS],hover_visible[ND_MAX_ITEMS];
+    unsigned char hover_tile_changed[ND_MAX_ITEMS];
+    int hover_shelf_width,hover_shelf_height,hover_shelf_valid;
     struct BitMap *scaled_icon_bitmaps[ND_MAX_ITEMS];
     struct BitMap *scaled_icon_masks[ND_MAX_ITEMS];
     int scaled_icon_width[ND_MAX_ITEMS];
     int scaled_icon_height[ND_MAX_ITEMS];
     char datatype_icon_paths[ND_MAX_ITEMS][ND_COMMAND_LEN];
     struct NDILBM *brushes[ND_MAX_ITEMS];
+    struct NDIconPicture *picture_sources[ND_MAX_ITEMS];
     struct BitMap *brush_bitmaps[ND_MAX_ITEMS];
     struct BitMap *brush_masks[ND_MAX_ITEMS];
     LONG brush_pens[ND_MAX_ITEMS][ND_ICON_MAX_COLORS];
@@ -177,6 +262,9 @@ struct NDDock {
     CxObj *hotkey_broker;
     struct Window *popup;
     struct Window *tooltip;
+    struct Window *caption_popup;
+    int caption_dirty,caption_index,caption_x,caption_y;
+    char caption_text[ND_TEXT_LEN];
     struct Window *feedback;
     struct Window *calendar;
     struct Window *about;
@@ -190,6 +278,25 @@ struct NDDock {
     int timer_open, timer_pending, timer_quanta;
     int drop_attach_ticks;
     int hidden, box_pending, box_target_hidden;
+    /* Button events received while box_pending, replayed on completion. */
+    struct NDDeferredButtons deferred_buttons;
+    /* Pointer messages generated at or before this time predate the current
+     * window geometry or activation (see nd_pointer_event_stale). */
+    ULONG pointer_epoch_secs, pointer_epoch_micros;
+    int orphan_press_ticks;
+    /* Window origin before the pending box change: button events processed
+     * while box_pending were generated relative to it. */
+    int box_origin_x, box_origin_y;
+    /* Housekeeping ticks spent waiting for IDCMP_CHANGEWINDOW; a MENUDOWN
+     * received meanwhile opens its menu once the box change completes. */
+    int box_pending_ticks, deferred_menu, box_late_ack, fallback_tick_phase;
+    /* Edit-mode undo: the configuration before the last move or removal. */
+    struct NDConfig *undo_config;
+    int undo_kind,undo_keep;
+    /* Profiles offered on the dock menu, listed when it opens. */
+    char menu_profiles[ND_MENU_PROFILES][ND_PROFILE_LEN];
+    int menu_profile_count;
+    char undo_label[ND_LABEL_LEN];
     /* Another screen in front hides the dock completely (dock_timers.c):
      * tile paints wait and plugins are throttled as while hidden. */
     int covered;
@@ -198,6 +305,7 @@ struct NDDock {
     int idle_ticks;
     int eyes_timer_ticks, eyes_blink_counter, eyes_blink;
     int volume_timer_ticks;
+    int reopen_timer_ticks;   /* Workbench-reopen retries, separate from meters */
     int running_timer_ticks;
     int watchdog_timer_ticks;
     int top_timer_ticks;
@@ -205,13 +313,28 @@ struct NDDock {
     int eyes_last_x[ND_MAX_ITEMS][2], eyes_last_y[ND_MAX_ITEMS][2];
     unsigned char eyes_last_valid[ND_MAX_ITEMS];
 
+    struct BitMap *hover_desktop;
+    int hover_desktop_width, hover_desktop_height; /* allocated size */
+    ULONG desktop_scene_stamp;
+    int desktop_scene_valid,desktop_scene_dirty,desktop_scene_age;
+    int desktop_refresh_pending,desktop_ready_ms,desktop_probe_ms;
+    int canvas_view,viewport_pending;
+    struct NDRect viewport,window_box_target;
+    int hover_headroom,hover_pointer,painting_shelf,painting_wave;
+    int hover_pad_x,hover_pad_y,hover_axis_padding,hover_plan_ready,painting_item;
+    struct NDHoverLayoutItem hover_layout[ND_MAX_ITEMS];
+    struct NDRect hover_rects[ND_MAX_ITEMS],hover_shelf_rect;
     struct NDRect full_box, tab_box;
     int rexx_public;
     int hover_ticks;
     int tip_item;
     int popup_item, popup_hot, popup_network_online, popup_warp_present, popup_prism_present;
     int activate_popup_pending;
+    ULONG popup_opened; /* queued dock activation may land after menu open */
     int press_item, press_x, press_y, drag_to, drag_after, is_drag;
+    int grip_drag,grip_start,grip_position;
+    int grip_offset,grip_origin,grip_length,grip_moved;
+    unsigned int music_press_action,music_hover_action;
     int drop_preview, drop_preview_item, drop_preview_after;
     int edit_mode;
     int view_start, visible_count, layout_slots, layout_rows;
@@ -239,6 +362,7 @@ struct NDDock {
     int tile_height;
     int gap;
     int hover;
+    int hover_pick_valid,hover_pick_x,hover_pick_y,hover_pick_index;
     /* Keyboard control (DOCK_HOTKEY, cursor keys): hover follows the keys
      * until the pointer moves; KEYBOARD_MOUSE_* is where it was. */
     int keyboard;
@@ -252,6 +376,7 @@ struct NDDock {
     ULONG diagnostic_wakes;
     ULONG diagnostic_full_paints;
     ULONG diagnostic_tile_paints;
+    ULONG diagnostic_hover_full,diagnostic_hover_partial,diagnostic_hover_skipped;
     ULONG diagnostic_updates;
     ULONG diagnostic_reclaimed_replies;
     ULONG diagnostic_unchanged_updates;
@@ -280,8 +405,16 @@ struct NDDock {
     /* Asynchronous ARexx Launcher Actions: replies arrive on this port. */
     struct MsgPort *rexx_reply;
     int rexx_pending;
+    struct NDRexxTrack rexx_track[ND_REXX_TRACK_MAX];
     /* Plugin wake-ups: the reply port's task from the latest exchange. */
     struct Task *plugin_task[ND_MAX_ITEMS];
+    struct NDPluginSupportStats plugin_support[ND_MAX_ITEMS];
+    char plugin_support_id[ND_MAX_ITEMS][ND_ID_LEN];
+    ULONG plugin_support_stamp[ND_MAX_ITEMS];
+    struct NDPluginSampler *plugin_sampler;
+    ULONG plugin_cpu_samples,plugin_cpu_hits[ND_MAX_ITEMS],plugin_cpu_stamp;
+    char plugin_cpu_id[ND_MAX_ITEMS][ND_ID_LEN];
+
     unsigned char plugin_woken[ND_MAX_ITEMS];
     /* The plugin published ND_WAKE_PORT_PREFIX<ID> for PLUGIN_TASK: wake it
      * only through that port.  0 = legacy plugin (task-pointer wake-up). */
@@ -290,10 +423,27 @@ struct NDDock {
     ULONG plugin_event2[ND_MAX_ITEMS];
     /* NET/ROADSHOW tiles: 0 unknown, 1 online, 2 offline (event hooks). */
     unsigned char net_state[ND_MAX_ITEMS];
+    /* Per-tile ID classes for the plugin packet path, recomputed only when
+     * the tile's ID differs from the one they were derived from. */
+    char ipc_kind_id[ND_MAX_ITEMS][ND_ID_LEN];
+    unsigned char ipc_kind[ND_MAX_ITEMS];
+    /* Parsed Eyes/Clock options for the paint and timer paths, which used to
+     * search the option table up to nine times per animated frame.  Filled
+     * on first use; invalidate_settings_cache() whenever CONF is replaced. */
+    struct {
+        int valid;
+        int eyes_poll_ticks,eyes_sensitivity,eyes_radius;
+        int eyes_show_label,eyes_blink,eyes_sclera,eyes_pupil;
+        int clock_seconds,clock_analog;
+    } opts;
     /* EDIT_CONFIG: the newest unsaved configuration.  SAVE_SNAPSHOT: the
      * buffer being written; it is the edit buffer itself until a later edit
      * replaces that, and is lent (not copied) to SaveConfig when SAVE_LENT. */
     struct NDConfig *edit_config,*save_snapshot;
+    /* ARexx SET/THEME queue their edit in EDIT_CONFIG and apply it to the
+     * live dock once the script pauses (REXX_APPLY_TICKS timer quanta), so a
+     * run of SETs costs one reload instead of one each. */
+    int rexx_apply_pending,rexx_apply_ticks,rexx_apply_failures;
     int save_lent;
     struct MsgPort *save_port;
     char save_port_name[64];
@@ -339,6 +489,7 @@ extern const struct NDDock *text_owner;
 struct NDIconStash {
     struct DiskObject *icons[ND_MAX_ITEMS];
     struct NDILBM *brushes[ND_MAX_ITEMS];
+    struct NDIconPicture *pictures[ND_MAX_ITEMS];
     ULONG fingerprint[ND_MAX_ITEMS];
     UBYTE usable[ND_MAX_ITEMS];
     int live;
@@ -361,6 +512,11 @@ void close_dock_ui(struct NDDock *dock);
 void dock_alert(struct NDDock *dock,const char *source,const char *title,const char *text,unsigned int severity);
 void fire_hook(struct NDDock *dock,const char *event,const char *detail);
 /* dock_draw.c */
+void prepare_transparency(struct NDDock *dock);
+void prepare_dock_background(struct NDDock *dock);
+void desktop_scene_tick(struct NDDock *dock,int milliseconds);
+void desktop_startup_tick(struct NDDock *dock,int milliseconds);
+int refresh_dock_desktop(struct NDDock *dock);
 void alloc_colors(struct NDDock *dock);
 void free_colors(struct NDDock *dock);
 void release_dock_font(struct NDDock *dock);
@@ -376,17 +532,29 @@ void refresh_running_items(struct NDDock *dock);
 void slot_coords(struct NDDock *dock, int slot, int *x, int *y);
 void tile_dimensions(struct NDDock *dock,int index,int *w,int *h);
 void tile_coords(struct NDDock *dock, int index, int *x, int *y);
+int dock_grip_rect(struct NDDock *dock,struct NDRect *rect);
+int hovered_grip(struct NDDock *dock,int mx,int my);
+ULONG hover_cache_bytes(struct NDDock *dock);
+int hover_cache_reserve(struct NDDock *dock,ULONG bytes,int widget,int icon);
 int eyes_index(const struct NDDock *dock);
-int eyes_option_num(struct NDDock *dock,const char *key,int fallback);
-int eyes_option_yes(struct NDDock *dock,const char *key);
+/* Cached Eyes/Clock settings (see NDDock.opts). */
+void invalidate_settings_cache(struct NDDock *dock);
+void load_settings_cache(struct NDDock *dock);
+#define DOCK_OPTS(d) (((d)->opts.valid ? (void)0 : load_settings_cache(d)),&(d)->opts)
 void eyes_positions(struct NDDock *dock,int index, int xp[2],int yp[2],int *rx,int *ry,int *pr);
 int format_ram_tooltip(const char *value,char *chip_text, unsigned int chip_size,char *fast_text, unsigned int fast_size);
 int queue_music_control(struct NDDock *dock,int index,int mx,int my);
+int update_music_control_hover(struct NDDock *dock,int index,int mx,int my);
+int begin_music_control(struct NDDock *dock,int index,int mx,int my);
+void drag_music_control(struct NDDock *dock,int mx);
+void finish_music_control(struct NDDock *dock,int mx,int my);
 void draw_tile(struct NDDock *dock, int index);
 void draw_all(struct NDDock *dock);
+void draw_hover(struct NDDock *dock);
 void redraw_changed_tiles(struct NDDock *dock, int a, int b, int c);
 void mark_tile_dirty(struct NDDock *dock, int index);
 void refresh_volume_meters(struct NDDock *dock);
+void process_volume_meters(struct NDDock *dock);
 void flush_dirty_tiles(struct NDDock *dock);
 void draw_graph_step(struct NDDock *dock,int index);
 /* dock_popups.c */
@@ -402,9 +570,13 @@ void folder_popup_events(struct NDDock *dock);
 /* dock_window.c */
 int open_window(struct NDDock *dock);
 void update_live_window(struct NDDock *dock);
+void update_grip_window(struct NDDock *dock);
+void move_dock_grip(struct NDDock *dock,int coordinate);
+void cancel_dock_grip(struct NDDock *dock);
 void remap_brush_colors(struct NDDock *dock);
 void remap_item_brush_colors(struct NDDock *dock,int index);
 int hovered_tile(struct NDDock *dock, int mx, int my);
+int pointer_hover_target(struct NDDock *dock,int mx,int my);
 int hovered_dock_row(struct NDDock *dock,int mx,int my);
 int hovered_scroll(struct NDDock *dock,int mx,int my);
 void scroll_view(struct NDDock *dock,int direction);
@@ -426,15 +598,27 @@ void stash_icon_sources(struct NDDock *dock,struct NDIconStash *stash);
 void free_icon_stash(struct NDIconStash *stash);
 void load_icons_reusing(struct NDDock *dock,struct NDIconStash *stash, const struct NDConfig *previous);
 void load_icons(struct NDDock *dock);
+void dock_window_box(struct NDDock *dock,int hidden,struct NDRect *box);
+int sync_dock_viewport(struct NDDock *dock);
+int ensure_desktop_snapshot(struct NDDock *dock,struct BitMap *friend_bitmap);
+void release_desktop_snapshot(struct NDDock *dock);
+void note_pointer_epoch(struct NDDock *dock,ULONG secs,ULONG micros);
+void note_pointer_epoch_now(struct NDDock *dock);
+void apply_dock_viewport(struct NDDock *dock);
+void map_plugin_artwork(struct NDDock *dock);
+void unmap_plugin_artwork(struct NDDock *dock);
 void load_plugin_artwork(struct NDDock *dock,int index);
 /* Cached artwork for a tile; pointer hover only shows a tooltip. */
 int tile_icon_art(const struct NDDock *dock,int index,struct BitMap **bitmap,
                   struct BitMap **mask,int *width,int *height);
 int load_pending_icons(struct NDDock *dock,int budget);
 int planar_icon_pixel(const struct Image *image,int x,int y);
+int magnify_icon(struct NDDock *dock,int index,struct BitMap **bitmap,struct BitMap **mask,
+                 int *width,int *height,int zoom_width,int zoom_height);
 void build_scaled_icon_bitmaps(struct NDDock *dock);
 void build_brush_bitmaps(struct NDDock *dock);
 void release_icons(struct NDDock *dock);
+void release_hover_graphics(struct NDDock *dock);
 /* dock_input.c */
 void detach_appmenus(struct NDDock *dock);
 void detach_appwindow(struct NDDock *dock);
@@ -477,14 +661,21 @@ void hide_dock(struct NDDock *dock);
 void always_on_top_tick(struct NDDock *dock,int quantum);
 void update_drop_preview(struct NDDock *dock);
 void hover_tick(struct NDDock *dock,int tip_delay);
+void update_hover_pointer(struct NDDock *dock);
 void process_timer(struct NDDock *dock);
 void close_tooltip(struct NDDock *dock);
+void close_caption_popup(struct NDDock *dock);
+void visible_tile_rect(struct NDDock *dock,int index,struct NDRect *rect);
+void update_caption_popup(struct NDDock *dock);
 void close_feedback(struct NDDock *dock);
 void show_feedback(struct NDDock *dock,const char *text,int error);
 void find_system_volume(struct NDDock *dock);
 int scan_media(struct NDDock *dock,struct NDMediaVolume *out);
 /* dock_reload.c */
 LONG reload_configuration(struct NDDock *dock);
+/* Apply ARexx SETs queued in EDIT_CONFIG now (no-op when none). */
+void flush_rexx_settings(struct NDDock *dock);
+#define ND_REXX_APPLY_QUIET 1   /* timer quanta (~200 ms) without a SET */
 void process_control(struct NDDock *dock, int quitting);
 void config_dir(const char *path);
 /* On success both take ownership of *FULL (an AllocVec'd NDConfig) and set
@@ -498,11 +689,34 @@ int remove_dragged_item(struct NDDock *dock, int visible);
 /* dock_menu.c */
 void close_popup(struct NDDock *dock);
 void open_popup(struct NDDock *dock, int item, int x, int y);
+int complete_window_box(struct NDDock *dock);
+void fallback_recovery_tick(struct NDDock *dock);
+void kick_animation_timer(struct NDDock *dock);
+#define ND_UNDO_NONE 0
+#define ND_UNDO_MOVE 1
+#define ND_UNDO_REMOVE 2
+int undo_last_edit(struct NDDock *dock);
+int list_profiles(char names[][ND_PROFILE_LEN],int max,const char *except);
+int save_profile(struct NDDock *dock,const char *name);
+int use_profile(struct NDDock *dock,const char *name);
+int delete_profile(struct NDDock *dock,const char *name);
+void release_undo(struct NDDock *dock);
 void process_rexx_replies(struct NDDock *dock,int report);
 void stop_rexx_replies(struct NDDock *dock);
+int queue_launcher(struct NDDock *dock,const struct NDItem *item);
+void process_launch_jobs(struct NDDock *dock);
+unsigned long launch_job_signals(void);
+void close_launch_jobs(void);
+void process_icon_jobs(struct NDDock *dock);
+unsigned long icon_job_signals(void);
+unsigned int active_icon_jobs(void);
+unsigned int active_launch_jobs(void);
 int launch_action(struct NDDock *dock,const struct NDItem *item);
 int launch_default_music_application(struct NDDock *dock);
 void folder_icons_tick(struct NDDock *dock);
+void process_folder_jobs(struct NDDock *dock);
+unsigned long folder_job_signals(void);
+void reload_artwork(struct NDDock *dock);
 void launch_item(struct NDDock *dock, int index);
 void request_dopus_action(struct NDDock *dock,int index);
 void set_edit_mode(struct NDDock *dock,int on);
@@ -511,6 +725,7 @@ void popup_events(struct NDDock *dock);
 int init_settings_writer(struct NDDock *dock);
 void process_settings_writer(struct NDDock *dock);
 void settings_save_tick(struct NDDock *dock,int quantum,int force);
+void release_saved_settings_edit(struct NDDock *dock);
 int finish_settings_saves(struct NDDock *dock);
 void close_settings_writer(struct NDDock *dock);
 void accept_settings_save(struct NDDock *dock,struct NDConfig *copy);
@@ -528,4 +743,9 @@ void process_rexx(struct NDDock *dock);
 int receive_thumbnail(struct NDDock *dock,int index,const struct NDThumbnail *picture);
 void release_thumbnail(struct NDDock *dock,int index);
 struct BitMap *thumbnail_bitmap(struct NDDock *dock,int index,int tiny);
+ULONG plugin_sampler_signal(struct NDDock *);
+ULONG plugin_sampler_remaining(struct NDDock *);
+int plugin_sampler_start(struct NDDock *);
+void plugin_sampler_service(struct NDDock *);
+void plugin_sampler_close(struct NDDock *);
 #endif

@@ -28,8 +28,8 @@ int main(int argc,char **argv)
     struct NDClient client;struct NDPanel *panel=NULL;struct NDCountdown timer;
     struct MsgPort *port;struct timerequest *request;struct EClockVal now;
     struct NDOptionString options[3];
-    char duration[16],message[80],beep[8],value[32],status[96],number[16];
-    unsigned long rate,previous,delta,seconds=300;unsigned int event,elapsed=0,wait,meter;
+    char duration[16],message[80],beep[8],value[32],status[96];
+    unsigned long rate,previous,delta,seconds=300;unsigned int event,elapsed=0,wait;
     int action,reread=1,clock_open=0,result=20;
     if(argc<2)return 20;
     port=CreateMsgPort();if(!port)return 20;
@@ -60,7 +60,6 @@ int main(int argc,char **argv)
         if(timer.running)sprintf(status,"Running: %s",value);
         else if(!timer.expired)strcpy(status,timer.started ? "Paused":"Ready");
         nd_panel_set(panel,1,status);
-        meter=(unsigned int)((timer.duration-timer.remaining)*100UL/timer.duration);
         event|=nd_client_update_art_quiet(&client,timer.running ? "TIMER":timer.expired ? "ALARM":timer.started ? "PAUSED":"TIMER",timer.expired && client.host_artwork_meta ? "DONE":value,"timer",timer.expired ? 2U:timer.started && !timer.running ? 1U:0U,elapsed,500U);
         if(event&ND_EVENT_QUIT)break;
         if(event&ND_EVENT_SETTINGS)reread=1;

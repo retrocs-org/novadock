@@ -2,6 +2,9 @@
 #include "nd_shotfile.h"
 #include <stdlib.h>
 #include <string.h>
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 
 static void be32(unsigned char *p,unsigned long v)
 {

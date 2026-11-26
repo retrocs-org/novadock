@@ -1,7 +1,7 @@
 #ifndef ND_COLLECTION_ICONS_H
 #define ND_COLLECTION_ICONS_H
 #include <string.h>
-#define ND_COLLECTION_ICON_COUNT 75
+#define ND_COLLECTION_ICON_COUNT 115
 struct NDCollectionIcon {const char *name,*path;};
 static const struct NDCollectionIcon nd_collection_icons[ND_COLLECTION_ICON_COUNT]={
  {"WHDLoad","Icons/WHDLoad.iff"},
@@ -79,6 +79,47 @@ static const struct NDCollectionIcon nd_collection_icons[ND_COLLECTION_ICON_COUN
  {"HueSyncBox","Icons/HueSyncBox.iff"},
  {"TheaterPC","Icons/TheaterPC.iff"},
  {"Thermostat","Icons/Thermostat.iff"},
+ /* Tilt set: tools/generate_tilt_icons.py */
+ {"Folder","Icons/Folder.iff"},
+ {"HardDisk","Icons/HardDisk.iff"},
+ {"Floppy","Icons/Floppy.iff"},
+ {"CD","Icons/CD.iff"},
+ {"Trash","Icons/Trash.iff"},
+ {"Settings","Icons/Settings.iff"},
+ {"Clock","Icons/Clock.iff"},
+ {"User","Icons/User.iff"},
+ {"Chat","Icons/Chat.iff"},
+ {"Notes","Icons/Notes.iff"},
+ {"Paint","Icons/Paint.iff"},
+ {"Picture","Icons/Picture.iff"},
+ {"Speaker","Icons/Speaker.iff"},
+ {"Keyboard","Icons/Keyboard.iff"},
+ {"Joystick","Icons/Joystick.iff"},
+ {"Mouse","Icons/Mouse.iff"},
+ {"Globe","Icons/Globe.iff"},
+ {"Server","Icons/Server.iff"},
+ {"Database","Icons/Database.iff"},
+ {"Lock","Icons/Lock.iff"},
+ {"Key","Icons/Key.iff"},
+ {"Archive","Icons/Archive.iff"},
+ {"Calculator","Icons/Calculator.iff"},
+ {"Clipboard","Icons/Clipboard.iff"},
+ {"Battery","Icons/Battery.iff"},
+ {"Power","Icons/Power.iff"},
+ {"Cloud","Icons/Cloud.iff"},
+ {"Weather","Icons/Weather.iff"},
+ {"Rocket","Icons/Rocket.iff"},
+ {"Chip","Icons/Chip.iff"},
+ {"Bug","Icons/Bug.iff"},
+ {"Help","Icons/Help.iff"},
+ {"Info","Icons/Info.iff"},
+ {"Headphones","Icons/Headphones.iff"},
+ {"Puzzle","Icons/Puzzle.iff"},
+ {"Trophy","Icons/Trophy.iff"},
+ {"Coffee","Icons/Coffee.iff"},
+ {"Bell","Icons/Bell.iff"},
+ {"Pencil","Icons/Pencil.iff"},
+ {"Script","Icons/Script.iff"},
 
 
 };

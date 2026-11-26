@@ -24,7 +24,7 @@ int main(void){static struct NDConfig cfg,back;struct NDOptionDef defs[8];int a,
  assert(nd_write_config(&cfg,"actions.cfg")&&nd_load_config(&back,"actions.cfg")==0);
  assert(!strcmp(nd_option_get(&back,"ACTIONS","ACTION"),"Open Shell")&&!strcmp(nd_option_get(&back,"ACTIONS","CONFIRM"),"YES"));
  assert(!strcmp(nd_option_get(&back,"ACTIONS_2","ACTION"),"Restart Amiga")&&!strcmp(nd_option_get(&back,"ACTIONS_2","CONFIRM"),"NO"));
- b=find(&back,"ACTIONS_2");assert(!strcmp(back.items[b].label,"Reboot"));
+ b=find(&back,"ACTIONS_2");assert(!strcmp(back.items[b].label,"REBOOT"));
  assert(nd_remove_visible_item(&back,visible(&back,b))&&find(&back,"ACTIONS_2")<0);
  a=find(&back,"ACTIONS");assert(nd_remove_visible_item(&back,visible(&back,a)));
  assert(!strcmp(nd_option_get(&back,"ACTIONS","ACTION"),"Restart Workbench")&&!strcmp(nd_option_get(&back,"ACTIONS","CONFIRM"),"YES"));

@@ -46,6 +46,9 @@ base+='\n'+function(monitor,'static void close_job(')+'\n'+function(monitor,'sta
 base+=r'''
 static struct NDTaskPacket *hello(struct NDTask *j,struct MsgPort **reply){struct NDTaskPacket *m=AllocVec(sizeof(*m),MEMF_PUBLIC|MEMF_CLEAR);*reply=nd_reply_port();m->message.mn_Length=sizeof(*m);m->message.mn_ReplyPort=*reply;m->magic=TASK_MAGIC;m->kind=1;PutMsg(j->port,(struct Message *)m);return m;}
 static void clean(void){assert(!allocations&&!signals&&!forbid);}
+static int disposed,progressed;
+static void dispose_result(void *data,unsigned int bytes){void *value;assert(bytes==sizeof(value));memcpy(&value,data,bytes);FreeVec(value);++disposed;}
+static void progress_result(const void *data,unsigned int bytes){assert(bytes==sizeof(int)&&*(const int *)data==9);++progressed;}
 int main(void){struct NDTask j;struct NDTaskPacket *m,*answer;struct MsgPort *reply,*guard;struct MonitorMessage *old;char data[]="new-target";int i;memset(&j,0,sizeof(j));
  for(i=0;i<1000;++i){now=10;assert(nd_task_start(&j,"C:True","QA.Guard",7,data,sizeof(data)));assert(!nd_task_start(&j,"C:True","QA.Guard",7,data,sizeof(data)));nd_task_stage(j.name,2);assert(!nd_task_poll(&j)&&j.port&&j.stage==2);m=hello(&j,&reply);assert(!nd_task_poll(&j));assert(GetMsg(reply)==(struct Message *)m&&m->action==7&&!strcmp((char *)m->data,data));nd_reply_delete(reply);m->message.mn_ReplyPort=NULL;
   if(i%3==0){nd_task_close(&j);m->kind=2;assert(!send_packet(j.name,m));FreeVec(m);}
@@ -55,6 +58,8 @@ int main(void){struct NDTask j;struct NDTaskPacket *m,*answer;struct MsgPort *re
  assert(nd_task_start(&j,"C:True","QA.Guard",7,data,sizeof(data)));m=hello(&j,&reply);nd_task_cancel(&j);assert(!nd_task_poll(&j)&&!j.port);assert(GetMsg(reply)==(struct Message *)m&&m->kind==-1);FreeVec(m);nd_reply_delete(reply);clean();
  assert(nd_task_start(&j,"C:True","QA.Guard",7,data,sizeof(data)));now=1000;assert(!nd_task_poll(&j)&&!j.port);clean();
  now=10;assert(nd_task_start(&j,"C:True","QA.Guard",7,data,sizeof(data)));guard=CreateMsgPort();guard->mp_Node.ln_Name="QA.Guard";AddPort(guard);now=1000;assert(!nd_task_poll(&j)&&j.port&&j.busy);nd_task_close(&j);RemPort(guard);DeleteMsgPort(guard);clean();
+ now=10;assert(nd_task_start(&j,"C:True","QA.Guard",7,data,sizeof(data)));j.dispose=dispose_result;m=AllocVec(sizeof(*m),MEMF_PUBLIC|MEMF_CLEAR);m->kind=2;m->magic=TASK_MAGIC;m->bytes=sizeof(void *);m->message.mn_Length=sizeof(*m);{void *value=AllocVec(16,MEMF_PUBLIC|MEMF_CLEAR);memcpy(m->data,&value,sizeof(value));}PutMsg(j.port,(struct Message *)m);nd_task_close(&j);assert(disposed==1);clean();
+ assert(nd_task_start(&j,"C:True","QA.Guard",7,data,sizeof(data)));j.progress=progress_result;m=AllocVec(sizeof(*m),MEMF_PUBLIC|MEMF_CLEAR);m->kind=4;m->magic=TASK_MAGIC;m->bytes=sizeof(int);m->message.mn_Length=offsetof(struct NDTaskPacket,data)+sizeof(int);{int value=9;memcpy(m->data,&value,sizeof(value));}PutMsg(j.port,(struct Message *)m);assert(!nd_task_poll(&j)&&progressed==1&&j.port);nd_task_close(&j);clean();
  launch_ok=0;assert(!nd_task_start(&j,"C:True","QA.Guard",7,data,sizeof(data)));clean();launch_ok=1;
  /* A settings/path change rejects the old request before it can read a path. */
  job_port=CreateMsgPort();job_port->mp_Node.ln_Name="Monitor.QA";AddPort(job_port);job_generation=1;generation=2;old=AllocVec(sizeof(*old),MEMF_PUBLIC|MEMF_CLEAR);reply=nd_reply_port();old->message.mn_Length=sizeof(*old);old->message.mn_ReplyPort=reply;old->magic=MONITOR_MAGIC;old->kind=1;PutMsg(job_port,(struct Message *)old);assert(!receive_job()&&!job_port);assert(GetMsg(reply)==(struct Message *)old&&old->kind==-1);FreeVec(old);nd_reply_delete(reply);clean();

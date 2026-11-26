@@ -7,6 +7,7 @@ same artwork is used on both old and new Workbench installations.
 """
 from pathlib import Path
 import struct
+from artifact_compare import same_artifact
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECK_ONLY = False
@@ -15,7 +16,7 @@ STALE = []
 
 def write_asset(path, payload):
     if CHECK_ONLY:
-        if not path.is_file() or path.read_bytes() != payload:
+        if not path.is_file() or not same_artifact(path.read_bytes(), payload):
             STALE.append(str(path.relative_to(ROOT)))
     else:
         path.write_bytes(payload)
@@ -78,17 +79,47 @@ def dock_art():
 
 
 def prefs_art():
-    c = Canvas()
-    # A compact preferences window with three clearly different sliders.
-    c.rect(3, 2, 50, 20, 1)
-    c.rect(5, 4, 48, 18, 3)
-    c.rect(5, 4, 48, 7, 2)
-    c.rect(44, 5, 47, 6, 1)
-    for y in (10, 14, 18):
-        c.line(9, y, 44, y, 1)
-    c.rect(15, 8, 19, 12, 2)
-    c.rect(34, 12, 38, 16, 2)
-    c.rect(24, 16, 28, 19, 2)
+    """Tall slider panel with transparent corners, fitted like other launchers."""
+    c = Canvas(40, 40)
+    c.rect(3, 2, 36, 37, 1)
+    c.rect(4, 3, 35, 36, 2)
+    c.line(5, 3, 34, 3, 3)
+    c.rect(6, 6, 33, 11, 3)
+    c.rect(29, 8, 31, 9, 1)
+    for y, knob in ((17, 11), (25, 25), (32, 18)):
+        c.line(8, y, 31, y, 1)
+        c.rect(knob - 2, y - 2, knob + 2, y + 2, 1)
+        c.rect(knob - 1, y - 2, knob + 1, y + 1, 3)
+    return c
+
+
+def support_art():
+    """Diagnostic report and lifebuoy, using the classic Workbench pens."""
+    c = Canvas(40, 40)
+    # Clipboard and a small pulse trace identify the local report tool.
+    c.rect(3, 3, 25, 35, 1)
+    c.rect(4, 4, 24, 34, 2)
+    c.line(5, 4, 23, 4, 3)
+    c.rect(9, 1, 19, 6, 1)
+    c.rect(10, 2, 18, 5, 3)
+    c.line(7, 11, 21, 11, 1)
+    c.line(7, 14, 18, 14, 1)
+    for a, b in (((7, 23), (10, 23)), ((10, 23), (12, 18)),
+                 ((12, 18), (15, 28)), ((15, 28), (18, 22)),
+                 ((18, 22), (22, 22))):
+        c.line(*a, *b, 3)
+    # Bold, stepped lifebuoy remains readable on older four-colour screens.
+    for y in range(15, 38):
+        for x in range(17, 40):
+            dx, dy = x - 28, y - 26
+            radius = dx*dx + dy*dy
+            if radius <= 121:
+                colour = 1
+                if 49 < radius <= 100:
+                    colour = 3 if abs(dx) > 4 and abs(dy) > 4 else 2
+                if radius < 36:
+                    colour = 0
+                c.pixel(x, y, colour)
     return c
 
 
@@ -231,7 +262,7 @@ def drawer_data():
                        0, 0)                  # dd_CurrentX, dd_CurrentY
 
 
-def disk_object(canvas, kind=3, default_tool=None, tool_types=()):
+def disk_object(canvas, kind=3, default_tool=None, tool_types=(), stack=16384):
     """KIND 3 is WBTOOL, 4 WBPROJECT, 2 WBDRAWER.  A project names the
     program that opens it (DEFAULT_TOOL) and may carry TOOL_TYPES; both are
     stored as length-prefixed strings after the image data.  A drawer
@@ -252,7 +283,7 @@ def disk_object(canvas, kind=3, default_tool=None, tool_types=()):
     if tool_types:
         struct.pack_into('>I', data, 54, 1)       # do_ToolTypes present
     struct.pack_into('>II', data, 58, 0x80000000, 0x80000000)
-    struct.pack_into('>I', data, 74, 16384)
+    struct.pack_into('>I', data, 74, stack)
     if kind == 2:
         struct.pack_into('>I', data, 66, 1)       # do_DrawerData present
         struct.pack_into('>I', data, 74, 0)       # drawers have no stack
@@ -501,14 +532,15 @@ def main(check=False):
     plugin_icons()
     outputs = ((ROOT / 'NovaDock.info', dock_art()),
                (ROOT / 'NovaDockPrefs.info', prefs_art()),
+               (ROOT / 'SupportReport.info', support_art()),
                (ROOT / 'Plugins' / 'MusicPlayer.info', music_art()),
                (ROOT / 'Plugins' / 'RunningApps.info', running_apps_art()),
-               (ROOT / 'Plugins' / 'AmIRC.info', amirc_art()),
+               (ROOT / 'plugin_src' / 'amirc' / 'legacy' / 'AmIRC.info', amirc_art()),
                (ROOT / 'Plugins' / 'Clipboard.info', clipboard_art()),
                (ROOT / 'Plugins' / 'Network.info', network_art()))
     for path, canvas in outputs:
         path.parent.mkdir(parents=True, exist_ok=True)
-        write_asset(path, disk_object(canvas))
+        write_asset(path, disk_object(canvas,stack=32768 if path.name=="SupportReport.info" else 16384))
         if not CHECK_ONLY: print('Created', path)
     # The GUI installer: a project icon that Workbench opens with Installer.
     # The local launcher selects the supported system Installer and stack.

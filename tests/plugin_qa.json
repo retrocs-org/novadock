@@ -1,0 +1,478 @@
+{
+  "schema": 1,
+  "plugins": [
+    {
+      "program": "Plugins/Clock",
+      "id": "CLOCK",
+      "host_tests": [
+        "tests/test_metrics.c"
+      ],
+      "scenario": "12/24-hour values and calendar formatting",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Eyes",
+      "id": "EYES",
+      "host_tests": [
+        "tests/test_eyes.c"
+      ],
+      "scenario": "pointer tracking and blink states",
+      "panel": false,
+      "idle_packet_budget": 120
+    },
+    {
+      "program": "Plugins/Activity",
+      "id": "CPU",
+      "host_tests": [
+        "tests/test_metrics.c"
+      ],
+      "scenario": "CPU idle sampling and normalization",
+      "panel": false,
+      "idle_packet_budget": 120
+    },
+    {
+      "program": "Plugins/Memory",
+      "id": "RAM",
+      "host_tests": [
+        "tests/test_metrics.c"
+      ],
+      "scenario": "Chip/Fast memory accounting",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Network",
+      "id": "NET",
+      "host_tests": [
+        "tests/test_network.c"
+      ],
+      "scenario": "interface counters and rates",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/MusicPlayer",
+      "id": "MUSIC",
+      "host_tests": [
+        "tests/test_musicplayer.c"
+      ],
+      "scenario": "player metadata and transport state",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/DOpus4",
+      "id": "DOPUS4",
+      "host_tests": [
+        "tests/test_unified.c",
+        "tests/test_plugin_shutdown.py"
+      ],
+      "scenario": "DOpus4 configuration, unavailable provider and shutdown",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/ArchiveExtractor",
+      "id": "ARCHIVE",
+      "host_tests": [
+        "tests/test_archiver_workflow.py"
+      ],
+      "scenario": "extract/archive jobs and destination failures",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Command",
+      "id": "COMMAND",
+      "host_tests": [
+        "tests/test_command.c"
+      ],
+      "scenario": "bounded command output and intervals",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/RunningApps",
+      "id": "RUNNINGAPPS",
+      "host_tests": [
+        "tests/test_tasks.c"
+      ],
+      "scenario": "task discovery and filtering",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Mixer",
+      "id": "MIXER",
+      "host_tests": [
+        "tests/test_newplugins.c"
+      ],
+      "scenario": "AHI preferences parsing and volume conversion",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Screenshot",
+      "id": "SCREENSHOT",
+      "host_tests": [
+        "tests/test_newplugins.c"
+      ],
+      "scenario": "image writer round trips",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/ScreenMode",
+      "id": "SCREENMODE",
+      "host_tests": [
+        "tests/test_newplugins.c"
+      ],
+      "scenario": "mode filtering and geometry",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Script",
+      "id": "SCRIPT",
+      "host_tests": [
+        "tests/test_script_hooks.c"
+      ],
+      "scenario": "script hooks and quoting",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Trash",
+      "id": "TRASH",
+      "host_tests": [
+        "tests/test_trash_notifications.py"
+      ],
+      "scenario": "trash notifications and unavailable drawers",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Games",
+      "id": "WHDLOAD",
+      "host_tests": [
+        "tests/test_games_scan.c",
+        "tests/test_games_cache.c"
+      ],
+      "scenario": "WHDLoad scanning and cache",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/MusicLibrary",
+      "id": "MUSICLIB",
+      "host_tests": [
+        "tests/test_games_instances.c"
+      ],
+      "scenario": "independent library configuration and cache",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Sensors",
+      "id": "SENSORS",
+      "host_tests": [
+        "tests/test_sensors.c"
+      ],
+      "scenario": "sensor values and availability",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Aquarium",
+      "id": "AQUARIUM",
+      "host_tests": [
+        "tests/test_aquarium.c"
+      ],
+      "scenario": "scene animation state",
+      "panel": false,
+      "idle_packet_budget": 120
+    },
+    {
+      "program": "Plugins/Pet",
+      "id": "PET",
+      "host_tests": [
+        "tests/test_pet.c"
+      ],
+      "scenario": "pet transitions and timing",
+      "panel": false,
+      "idle_packet_budget": 120
+    },
+    {
+      "program": "Plugins/Download",
+      "id": "DOWNLOAD",
+      "host_tests": [
+        "tests/test_download_jobs.py"
+      ],
+      "scenario": "transfer job ownership and errors",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/System",
+      "id": "SYSTEM",
+      "host_tests": [
+        "tests/test_system_info.c"
+      ],
+      "scenario": "64-bit uptime and CPU identification",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Actions",
+      "id": "ACTIONS",
+      "host_tests": [
+        "tests/test_actions_instances.c"
+      ],
+      "scenario": "per-tile action isolation",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Christmas",
+      "id": "CHRISTMAS",
+      "host_tests": [
+        "tests/test_christmas.c"
+      ],
+      "scenario": "seasonal animation states",
+      "panel": false,
+      "idle_packet_budget": 120
+    },
+    {
+      "program": "Plugins/Clipboard",
+      "id": "CLIPBOARD",
+      "host_tests": [
+        "tests/test_clipboard.c"
+      ],
+      "scenario": "bounded history and malformed input",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/BitSkim",
+      "id": "BITSKIM",
+      "host_tests": [
+        "tests/test_bitskim.c"
+      ],
+      "scenario": "application port protocol",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Timer",
+      "id": "TIMER",
+      "host_tests": [
+        "tests/test_timer.c"
+      ],
+      "scenario": "countdown state and one-shot alarms",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Notes",
+      "id": "NOTES",
+      "host_tests": [
+        "tests/test_notes.c"
+      ],
+      "scenario": "note store and persistence",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/ScreenSwitcher",
+      "id": "SCREENSWITCHER",
+      "host_tests": [
+        "tests/test_screen_switcher.py"
+      ],
+      "scenario": "screen selection and focus",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Weather",
+      "id": "WEATHER",
+      "host_tests": [
+        "tests/test_weather.c"
+      ],
+      "scenario": "weather parsing, units and bounds",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Places",
+      "id": "PLACES",
+      "host_tests": [
+        "tests/test_places.c"
+      ],
+      "scenario": "volume discovery and paths",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Saver",
+      "id": "SAVER",
+      "host_tests": [
+        "tests/test_saver_performance.py"
+      ],
+      "scenario": "frame pacing and cache bounds",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Aminet",
+      "id": "AMINET",
+      "host_tests": [
+        "tests/test_aminet.c"
+      ],
+      "scenario": "listing/search parsing and download validation",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/HASS",
+      "id": "HASS",
+      "host_tests": [
+        "tests/test_hass.c",
+        "tests/test_hass_service03.py"
+      ],
+      "scenario": "bridge data and capability handling",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Shelf",
+      "id": "SHELF",
+      "host_tests": [
+        "tests/test_collections_alerts_volume.c"
+      ],
+      "scenario": "shelf persistence and paths",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Watch",
+      "id": "WATCH",
+      "host_tests": [
+        "tests/test_monitors.c"
+      ],
+      "scenario": "directory change detection",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Logs",
+      "id": "LOGS",
+      "host_tests": [
+        "tests/test_monitors.c"
+      ],
+      "scenario": "bounded log tail and rotation",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Calc",
+      "id": "CALC",
+      "host_tests": [
+        "tests/test_utilities.c"
+      ],
+      "scenario": "calculator evaluation and formatting",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/ToolTypes",
+      "id": "TOOLTYPES",
+      "host_tests": [
+        "tests/test_utilities.c"
+      ],
+      "scenario": "ToolTypes validation and protected fields",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Bench",
+      "id": "BENCH",
+      "host_tests": [
+        "tests/test_05_tools.py"
+      ],
+      "scenario": "measurement and report math",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/QR",
+      "id": "QR",
+      "host_tests": [
+        "tests/test_05_tools.py"
+      ],
+      "scenario": "QR encoding and ILBM export",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Moon",
+      "id": "MOON",
+      "host_tests": [
+        "tests/test_05_tools.py"
+      ],
+      "scenario": "lunar and solar calculations",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Colour",
+      "id": "COLOUR",
+      "host_tests": [
+        "tests/test_05_tools.py"
+      ],
+      "scenario": "colour conversion and palette persistence",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Agenda",
+      "id": "AGENDA",
+      "host_tests": [
+        "tests/test_agenda_pictures.py"
+      ],
+      "scenario": "recurrence, reminders and persistence",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Pictures",
+      "id": "PICTURES",
+      "host_tests": [
+        "tests/test_agenda_pictures.py"
+      ],
+      "scenario": "image headers and thumbnails",
+      "panel": true,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/Preferences",
+      "id": "PREFERENCES",
+      "host_tests": [
+        "tests/test_plugin_click_actions.py"
+      ],
+      "scenario": "host Preferences action routing",
+      "panel": false,
+      "idle_packet_budget": 40
+    },
+    {
+      "program": "Plugins/AmiNotis",
+      "id": "AMINOTIS",
+      "host_tests": [
+        "tests/test_aminotis_plugin.py"
+      ],
+      "scenario": "service watch, offline recovery and inbox panel",
+      "panel": true,
+      "idle_packet_budget": 40
+    }
+  ]
+}

@@ -71,6 +71,9 @@ static int launch_bitskim(const char *program)
 }
 
 #include "nd_bitskim_ui.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 int main(int argc,char **argv)
 {
     struct NDClient client;struct NDBitSkimConfig cfg;struct NDBitSkimStatus status;

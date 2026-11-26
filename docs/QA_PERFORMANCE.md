@@ -47,3 +47,62 @@ profiles or interpreting emulator speed as physical Amiga speed. Physical
 The host suite tests budget failures and cache invalidation. Native runs remain
 explicit because they require a licensed Workbench installation and an idle
 emulator. They do not publish or upload anything.
+
+
+## Release polish checks
+
+`tools/run_release_polish_qa.py` validates an extracted candidate against the
+current native binary hashes and source build ID. Use a fresh output directory
+for each invocation. All guest drives are disposable; no user installation is
+mounted. `--hidden` keeps the host emulator window out of the way while
+preserving the guest display and normal rendering. Hidden runs also stay in the
+macOS background and disable host mouse integration/input grabbing; the harness
+injects its pointer and keyboard events through the guest input.device. Native
+runs are serialized because the bundled emulator can deliver
+Cocoa/SDL quit events across concurrent instances.
+
+Examples (substitute the exact current and previous archives):
+
+```sh
+python3 tools/run_release_polish_qa.py --candidate outputs/candidate/NovaDock-0.6.lha --previous outputs/previous/NovaDock-0.5.lha --check installer --output outputs/polish-installer
+python3 tools/run_release_polish_qa.py --candidate outputs/candidate/NovaDock-0.6.lha --check ui --variant RTG --output outputs/polish-rtg
+python3 tools/run_release_polish_qa.py --candidate outputs/candidate/NovaDock-0.6.lha --check ui --variant LARGE --output outputs/polish-large
+python3 tools/run_release_polish_qa.py --candidate outputs/candidate/NovaDock-0.6.lha --check ui --variant PLANAR --output outputs/polish-planar
+python3 tools/run_release_polish_qa.py --candidate outputs/candidate/NovaDock-0.6.lha --check soak --hidden --soak-seconds 1800 --output outputs/polish-soak
+```
+
+The UI cases check 640x480 RTG, larger 10x9 screen font metrics at 800x600,
+and a 640x256 planar 68000/8 MiB configuration. The planar profile runs at
+maximum emulation speed; it is an instruction and rendering compatibility
+check, not a cycle-exact performance measurement. They inspect window and
+gadget bounds for every main Preferences page, exercise supported 31-character
+labels, and inject guest keyboard events for typing, Tab, Shift-Tab, Enter and
+Escape in the guided report. Screenshots remain in the evidence directory.
+
+The Installer cases retain the real file, startup, upgrade and removal
+expressions while substituting question answers. Standard locations cover
+all three logical user levels; custom paths cover Average and Expert, spaces
+in paths, and shared data on a second volume. Interactive question selection
+and physical Amiga testing remain separate.
+
+The soak repeatedly starts the dock, opens and rescans WHDLoad and MUSIC
+collections, opens Appearance, changes the plugin set and dock side, moves the
+pointer over magnifying tiles, then shuts down. After warmup it checks public
+ports, task count, total free RAM and the largest free allocation. Its bounded
+allowances are 64 KiB total free RAM, 128 KiB largest-block change, and two
+ports/tasks above the warm baseline. It also requires every selected plugin
+wake port to disappear. The CSV preserves each sample, including CPU tile
+readings and dock wake, paint and update counts. These CPU readings describe
+the active workload; they are not per-plugin execution-time measurements.
+
+A successful release soak requires at least 1800 seconds in both the guest
+clock and host monotonic clock. A short `--soak-seconds 20` smoke run is marked
+as lacking release duration. An interrupted or timed-out run never passes.
+The complete all-plugin gate separately exercises SDK resource sampling,
+tracked allocations, logging/trace policy, events and shutdown for every client.
+
+A reboot marker now rejects a restarted soak immediately and preserves its earlier
+CSV samples. Cycles start at least ten seconds apart, exercising popup worker
+cleanup along with the existing workload; the full 1800 seconds remains required
+in both guest and host clocks. Accelerated reset-reproducer runs are recorded
+separately and never substitute for this duration check.

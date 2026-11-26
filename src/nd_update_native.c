@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "nd_wait.h"
 #include "nd_update.h"
 #include "nd_update_hash.h"
 #include "nd_config.h"
@@ -102,10 +103,12 @@ static void close_job(struct UpdateJob *job)
  if((!job->transferred || job->completed) && job->directory[0])fetch_clean(job->directory);
  memset(job,0,sizeof(*job));
 }
+/* 1 started; 0 failed; -1 an earlier transfer (for example a cancelled
+ * download, whose curl runs to its own timeout) still owns the fetcher. */
 static int start_job(struct UpdateJob *job,const char *program,const char *url,unsigned long limit,const char *parent)
 {
  BPTR lock,input,output;char self[520],quoted[1100],target[200],tool[260],qtool[540],qtarget[420],qurl[560],command[1300];LONG rc;int serial;
- if(guard_present(FETCH_GUARD))return 0;
+ if(guard_present(FETCH_GUARD))return -1;
  lock=Lock("C:curl",ACCESS_READ);if(!lock)return 0;rc=NameFromLock(lock,tool,sizeof(tool));UnLock(lock);if(!rc)return 0;
  memset(job,0,sizeof(*job));job->started=weather_ticks();
  for(serial=0;serial<20;++serial){sprintf(job->directory,FETCH_PREFIX"%08lx-%08lx-%d",(ULONG)FindTask(NULL),job->started,serial);
@@ -141,8 +144,12 @@ static int job_event(struct UpdateJob *job)
 }
 static int wait_job(struct UpdateJob *job)
 {
- int result=0;unsigned int ticks=0;
- while(!result){result=job_event(job);if(result)break;if(!(ticks++%50) && !guard_present(ND_PORT_NAME))return -1;Delay(2);}return result;
+ /* Sleep on the job port; wake every two seconds to check that the dock
+  * is still running (the job also times out inside job_event()). */
+ struct NDWaitTimer timer;int result=0;
+ timer.port=NULL;timer.io=NULL;timer.open=0;
+ while(!result){result=job_event(job);if(result)break;if(!guard_present(ND_PORT_NAME)){result=-1;break;}(void)nd_wait_port(&timer,job->port,100UL);}
+ nd_wait_timer_close(&timer);return result;
 }
 static char *response(struct UpdateJob *job,unsigned int limit)
 {
@@ -189,11 +196,13 @@ static void notice(const char *message)
 static void download(const char *program,const struct NDUpdateRelease *release,const char *expected)
 {
  struct UpdateJob job;struct NDPanel *panel=NULL;struct NDPanelField fields[3];static const char *buttons[]={"Cancel"};
- char target[520],parent[520],part[200],progress[80],message[128];struct FileInfoBlock *info;BPTR lock;unsigned long bytes=0;int result=0,action,verified;unsigned int polls=0;
+ char target[520],parent[520],part[200],progress[80],message[128];struct FileInfoBlock *info;BPTR lock;unsigned long bytes=0;int result=0,action,verified,started;unsigned int polls=0;
  if(!select_target(release->file,target))return;
  if(file_exists(target)){notice("That file already exists. Choose another name.");return;}
  strcpy(parent,target);*FilePart(parent)=0;
- memset(&job,0,sizeof(job));if(!start_job(&job,program,release->url,release->size,parent)){notice("Could not start download. Check C:curl and destination.");return;}
+ memset(&job,0,sizeof(job));started=start_job(&job,program,release->url,release->size,parent);
+ if(started<0){notice("An earlier download is still finishing. Try again in a few minutes.");return;}
+ if(!started){notice("Could not start download. Check C:curl and destination.");return;}
  fields[0].label="Version";fields[0].value=release->version;fields[0].limit=0;
  fields[1].label="Received";fields[1].value="Starting...";fields[1].limit=0;
  fields[2].label="Status";fields[2].value="Downloading securely";fields[2].limit=0;
@@ -234,11 +243,11 @@ static int check(const char *program,int reason)
  memset(&state,0,sizeof(state));memset(&job,0,sizeof(job));if(!enabled(reason,&hours))goto finished;
  now=seconds();state_read(&state);state.checked=now;state.result=5;state.next_attempt=now+ND_UPDATE_RETRY;
  if(!online()){state.result=4;state_write(&state);goto finished;}state_write(&state);
- if(!start_job(&job,program,ND_UPDATE_API,ND_UPDATE_JSON_LIMIT,NULL) || wait_job(&job)!=1)goto finished;
+ if(start_job(&job,program,ND_UPDATE_API,ND_UPDATE_JSON_LIMIT,NULL)!=1 || wait_job(&job)!=1)goto finished;
  data=response(&job,ND_UPDATE_JSON_LIMIT);if(!data || !nd_update_release(data,&release))goto finished;
  FreeVec(data);data=NULL;close_job(&job);state.next_attempt=seconds()+nd_update_interval(hours);state.result=nd_update_compare(release.version,ND_VERSION)==1 ? 2:1;strcpy(state.latest,release.version);state.checked=seconds();state_write(&state);
  if(nd_update_compare(release.version,ND_VERSION)!=1 || (reason!=3 && !nd_update_notice_due(&state,release.version,now)) || !enabled(reason,NULL))goto finished;
- if(!start_job(&job,program,release.checksum_url,160,NULL) || wait_job(&job)!=1)goto finished;
+ if(start_job(&job,program,release.checksum_url,160,NULL)!=1 || wait_job(&job)!=1)goto finished;
  data=response(&job,160);if(!data || !nd_update_checksum(data,release.file,checksum) || (release.digest[0] && strcmp(checksum,release.digest)))goto finished;
  FreeVec(data);data=NULL;close_job(&job);if(!enabled(reason,NULL))goto finished;
  fields[0].label="Installed";fields[0].value=ND_VERSION;fields[0].limit=0;

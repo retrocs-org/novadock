@@ -19,6 +19,9 @@
 #include "nd_note_editor.h"
 #include "nd_markdown.h"
 #include "../clipboard/nd_clipboard.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 extern struct IntuitionBase *IntuitionBase;
 extern struct GfxBase *GfxBase;
 extern struct Library *GadToolsBase,*KeymapBase,*DiskfontBase;
@@ -88,8 +91,9 @@ static unsigned int cursor_line(struct NDNoteEditor *e)
 static void layout(struct NDNoteEditor *e)
 {
     unsigned int pos=0,start=0,width=0,height=10,base=7,face,n;
+    struct NDMDStyle f;const char *text;
     if(!e->layout_dirty)return;e->layout_dirty=0;n=(unsigned int)strlen(document(e));
-    struct NDMDStyle f;const char *text=document(e);e->lines=0;
+    text=document(e);e->lines=0;
     while(pos<n && e->lines<2047){
         f=style_at(e,pos);face=face_for(f);
         if(text[pos]=='\n' || (width && width+glyph_width(e,pos)>(unsigned int)e->window->Width-58)){
@@ -251,7 +255,7 @@ struct NDNoteEditor *nd_note_editor_open(struct NDNote *note)
     static const char *buttons[]={"Save","Save/close","Delete","Discard"};
     static const unsigned char rgb[7][3]={{0,0,0},{178,34,34},{22,77,170},{20,107,56},{120,42,144},{102,102,102},{255,255,255}};
     struct NDNoteEditor *e;struct Gadget *last;struct NewGadget ng;
-    struct TextAttr attr={(STRPTR)"topaz.font",8,0,0};int w,h,top,i,active;LONG obtained;
+    struct TextAttr attr={(STRPTR)"topaz.font",8,0,0};int w,h,top,i;LONG obtained;
     e=(struct NDNoteEditor *)AllocVec(sizeof(*e),MEMF_PUBLIC|MEMF_CLEAR);if(!e)return NULL;
     e->view=AllocVec(sizeof(*e->view),MEMF_PUBLIC|MEMF_CLEAR);e->rollback=AllocVec(sizeof(*e->rollback),MEMF_PUBLIC);
     if(!e->view || !e->rollback)goto fail;

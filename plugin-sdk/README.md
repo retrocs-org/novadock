@@ -25,6 +25,7 @@ the public `NovaDock.1` Exec message port. NovaDock owns all tile drawing.
 - Classic AmigaOS 3.0 or newer.
 - vbcc configured with an AmigaOS m68k target and compatible NDK headers.
 - A running NovaDock installation for testing.
+- Artwork plugins: every visual state must have a recognizable icon in Tiny and Normal (large), including sad/error/offline states and all animation frames. A scalable 32×32 bank may serve both sizes. Run the SDK checks and verify both modes idle and magnified; see [Artwork requirements](PLUGIN_SDK_ARTWORK.md#required-tiny-and-normal-artwork-coverage).
 
 The API targets the baseline 68000 and uses C89. No MUI, Reaction, shared
 library, socket connection or NovaDock source build is required.
@@ -194,7 +195,8 @@ for the format, packaging, import/removal and state-update API.
 
 After a normal update negotiates host capabilities,
 `nd_client_notify(client, title, details, severity)` can add a notice to the
-ALERTS session history. Severity is 0 for information, 1 for warnings and 2
+dock session history. General Preferences can optionally forward new notices
+to the separately installed AmiNotis service. Severity is 0 for information, 1 for warnings and 2
 for errors. Keep details within 31 characters and omit credentials.
 
 OR the returned event bits into the normal update result so a simultaneous
@@ -202,3 +204,11 @@ click or settings action is retained. Read extended actions through
 `nd_client_events2()` as usual. The client waits for `ND_EVENT2_HOST_ALERTS`
 before sending notices and safely does nothing on older hosts. Send notices
 on meaningful transitions rather than on every sample.
+
+### Notification text sizes
+
+`nd_client_notify()` negotiates `ND_EVENT2_HOST_LONG_NOTICE` automatically. A capable host accepts `ND_MSG_NOTICE_LONG` with an unchanged v5 prefix, an 80-character title and a 512-character body (ISO-8859-1; array sizes include a terminating NUL). Legacy hosts still receive `ND_MSG_NOTICE` with 31-character title/body previews. Never send the extended command without the negotiated capability, and validate its complete message length before accessing the tail. Existing plugins and host ABI versions continue to work unchanged. AmiNotis receives the complete negotiated text; the legacy internal history API retains its bounded preview layout.
+
+## Shared diagnostics
+
+New plugins follow [the diagnostics policy](PLUGIN_SDK_DIAGNOSTICS.md). Use the SDK client, tracked allocation/I/O wrappers and fixed numeric activity events. The host controls Off, Logging and Detailed trace and collects the results. Do not create independent trace files.

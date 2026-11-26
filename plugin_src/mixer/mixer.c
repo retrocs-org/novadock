@@ -25,6 +25,9 @@
 #include "nd_ahiprefs.h"
 #include "nd_ahi.h"
 #include "nd_prefsave.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 
 const char nd_version[]=ND_PLUGIN_VER_STRING(MIXER,"Mixer");
 long __stack=16384;
@@ -198,7 +201,7 @@ static int open_window(struct Mixer *m)
 {
     struct NewGadget ng;
     struct Gadget *g;
-    int fy,top,left,width=300,height;
+    int fy,top,left,width=300,height,window_top;
     m->screen=LockPubScreen(NULL);
     if (!m->screen) return 0;
     m->visual=GetVisualInfo(m->screen,TAG_DONE);
@@ -229,9 +232,11 @@ static int open_window(struct Mixer *m)
     g=CreateGadget(BUTTON_KIND,g,&ng,TAG_DONE);
     if (!g) {close_window(m);return 0;}
     height=ng.ng_TopEdge+ng.ng_Height+6-m->screen->WBorTop-fy-1;
+    window_top=m->screen->MouseY-height-30;
+    if(window_top<m->screen->BarHeight)window_top=m->screen->BarHeight;
     m->win=OpenWindowTags(NULL,WA_PubScreen,(ULONG)m->screen,
         WA_Left,m->screen->MouseX-width/2>0 ? m->screen->MouseX-width/2 : 0,
-        WA_Top,m->screen->MouseY-height-30>0 ? m->screen->MouseY-height-30 : 0,
+        WA_Top,window_top,
         WA_InnerWidth,width,WA_InnerHeight,height,
         WA_Title,(ULONG)"NovaDock Mixer",WA_Gadgets,(ULONG)m->gadgets,
         WA_DragBar,TRUE,WA_DepthGadget,TRUE,WA_CloseGadget,TRUE,
@@ -307,9 +312,8 @@ int main(int argc,char **argv)
         else if (!m->have_prefs) strcpy(value,"NO AHI");
         else if (m->muted) strcpy(value,"MUTED");
         else sprintf(value,"%u%%",m->percent);
-        event=nd_client_update_quiet(&client,"VOLUME",value,
-                                     m->have_prefs ? m->percent : ND_NO_METER,
-                                     elapsed,500U);
+        event=nd_client_update_art_meter_quiet(&client,"VOLUME",value,"mixer",
+                                     m->save_failed || !m->have_prefs ? 2U:m->muted ? 1U:0U,m->have_prefs ? m->percent:ND_NO_METER,elapsed,500U);
         if (event&ND_EVENT_QUIT) break;
         if (event&ND_EVENT_SETTINGS) reread=1;
         events2=nd_client_events2(&client);
@@ -318,10 +322,11 @@ int main(int argc,char **argv)
             if (m->win) close_window(m);
             else {(void)read_prefs(m);(void)open_window(m);}
         }
-        if (m->win) {
-            if (!window_events(m)) close_window(m);
-            Delay(5);elapsed=5;
-        } else elapsed=nd_client_wait(&client,nd_client_delay_ticks(&client,poll_ticks));
+        if (m->win && !window_events(m)) close_window(m);
+        /* Sleep until the dock, the poll interval or the open window (slider
+         * drags, Mute, Close) needs attention, instead of waking 10x/s. */
+        elapsed=nd_client_wait_signals(&client,nd_client_delay_ticks(&client,poll_ticks),
+                                       m->win ? 1UL<<m->win->UserPort->mp_SigBit : 0UL);
         since_read+=elapsed;
     }
     close_window(m);

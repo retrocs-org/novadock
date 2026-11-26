@@ -1,3 +1,5 @@
+#include "nd_aminotis.h"
+#include "nd_trace.h"
 /* NovaDock - a dock for Classic AmigaOS Workbench.
  * Core: start-up, main loop, shutdown, library bases and diagnostics counters.
  * The rest of the dock lives in src/dock_*.c (see src/dock_internal.h). */
@@ -5,6 +7,7 @@
 
 struct IntuitionBase *IntuitionBase = NULL;
 struct GfxBase *GfxBase = NULL;
+struct Library *LayersBase = NULL;
 struct Library *IconBase = NULL;
 struct Library *WorkbenchBase = NULL;
 struct RxsLib *RexxSysBase = NULL;
@@ -114,10 +117,13 @@ ULONG diagnostic_ticks(void)
 }
 void reset_diagnostic_counters(struct NDDock *dock)
 {
+    nd_aminotis_reset_stats();
     dock->diagnostic_started=diagnostic_ticks();
     dock->diagnostic_wakes=0;
     dock->diagnostic_full_paints=0;
     dock->diagnostic_tile_paints=0;
+    dock->diagnostic_hover_full=dock->diagnostic_hover_partial=dock->diagnostic_hover_skipped=0;
+    dock->frame_peak_us=dock->frame_samples=dock->hover_cache_evictions=0;
     dock->diagnostic_updates=0;
     dock->diagnostic_reclaimed_replies=0;
     dock->diagnostic_unchanged_updates=0;
@@ -166,6 +172,7 @@ static void report_problem(const char *body)
 /* Release every Workbench-screen resource; the Exec ports stay public. */
 void close_dock_ui(struct NDDock *dock)
 {
+    close_caption_popup(dock);
     close_tooltip(dock);
     close_feedback(dock);
     close_popup(dock);
@@ -241,7 +248,7 @@ static void process_screennotify(struct NDDock *dock)
 static void run_loop(struct NDDock *dock)
 {
     ULONG signals, win_sig, ipc_sig, ctl_sig, drop_sig, popup_sig, rx_sig, timer_sig;
-    ULONG calendar_sig, about_sig, folder_sig, hotkey_sig, rexx_reply_sig, sn_sig, save_sig;
+    ULONG calendar_sig, about_sig, folder_sig, hotkey_sig, rexx_reply_sig, sn_sig, save_sig, resource_sig;
     ipc_sig = 1UL << dock->ipc->mp_SigBit;
     ctl_sig = 1UL << dock->control->mp_SigBit;
     dock->running = 1;
@@ -264,17 +271,24 @@ static void run_loop(struct NDDock *dock)
                          (1UL << dock->rexx_reply->mp_SigBit) : 0;
         sn_sig = dock->sn_port ? (1UL << dock->sn_port->mp_SigBit) : 0;
         save_sig=dock->save_port ? 1UL<<dock->save_port->mp_SigBit : 0;
-        signals = Wait(win_sig | ipc_sig | ctl_sig | drop_sig | popup_sig |
+        resource_sig=plugin_sampler_signal(dock);
+        signals = Wait(folder_job_signals() | icon_job_signals() | launch_job_signals() | nd_volume_meters_signals() | nd_aminotis_signals() | resource_sig | win_sig | ipc_sig | ctl_sig | drop_sig | popup_sig |
                        calendar_sig | about_sig | folder_sig | rx_sig | hotkey_sig | timer_sig |
                        rexx_reply_sig | sn_sig | save_sig | SIGBREAKF_CTRL_C);
+        { ND_TRACE_START(dispatch_start);
+        process_icon_jobs(dock);process_launch_jobs(dock);
+        process_volume_meters(dock);
+        nd_aminotis_tick(dock->conf.send_alerts_aminotis,0);
         ++dock->diagnostic_wakes;
+        if(signals&resource_sig)plugin_sampler_service(dock);
         if(signals&save_sig)process_settings_writer(dock);
         if (signals & popup_sig) popup_events(dock);
         if (signals & calendar_sig) calendar_events(dock);
         if (signals & about_sig) about_events(dock);
         if (signals & folder_sig) folder_popup_events(dock);
-        if ((signals & win_sig) && dock->window) window_events(dock);
-        if (signals & timer_sig) process_timer(dock);
+        process_folder_jobs(dock);
+        if ((signals & win_sig) && dock->window) { ND_TRACE_START(input_start);window_events(dock);ND_TRACE_END(NDT_INPUT,input_start); }
+        if (signals & timer_sig) { ND_TRACE_START(timer_start);process_timer(dock);ND_TRACE_END(NDT_TIMER,timer_start); }
         if (signals & rx_sig) process_rexx(dock);
         if (signals & hotkey_sig) process_hotkeys(dock);
         if (signals & drop_sig) dropped_icons(dock);
@@ -284,6 +298,16 @@ static void run_loop(struct NDDock *dock)
         if (signals & sn_sig) process_screennotify(dock);
         if (signals & SIGBREAKF_CTRL_C) dock->running = 0;
         wake_pending_plugins(dock);
+        update_caption_popup(dock);
+        ND_TRACE_END(NDT_LOOP,dispatch_start);
+        ND_TRACE_NOTE("dock hover,tooltip,box,magnify",dock->hover,dock->tooltip!=NULL,dock->box_pending,dock->conf.hover_magnification);
+#if defined(ND_TRACE) || defined(ND_RUNTIME_TRACE)
+        if(nd_trace_due()){int i,n=0;for(i=0;i<dock->conf.count;++i)if(dock->conf.items[i].enabled&&dock->conf.items[i].graph)++n;
+            nd_trace_options(dock->conf.count,n,dock->conf.label_mode,dock->conf.refresh_mode,dock->conf.background_transparency,dock->conf.colourful_icons);}
+#endif
+        ND_TRACE_SCENE(dock->screen,IntuitionBase);
+        ND_TRACE_PULSE();
+        }
     }
 }
 /* "NovaDock QUIT": ask a running dock to quit and wait until it has gone
@@ -335,6 +359,7 @@ int main(int argc, char **argv)
     update_helper=nd_update_helper_main(argc,argv);if(update_helper>=0)return update_helper;
     /* argc is 0 when started from Workbench (argv is then a WBStartup). */
     if (argc>1 && is_quit_argument(argv[1])) return quit_running_dock();
+    ND_TRACE_INIT("dock");
     dock = (struct NDDock *)alloc_data(sizeof(*dock));
     text_owner = dock;
     if (!dock) return 20;
@@ -350,6 +375,7 @@ int main(int argc, char **argv)
     if (!IntuitionBase) goto cleanup;
     GfxBase = (struct GfxBase *)OpenLibrary("graphics.library", 39);
     if (!GfxBase) goto cleanup;
+    LayersBase=OpenLibrary("layers.library",39); /* optional canvas coordinate translation */
     DataTypesBase = OpenLibrary("datatypes.library", 39); /* optional artwork */
     IconBase = OpenLibrary("icon.library", 36); /* optional */
     WorkbenchBase = OpenLibrary("workbench.library", 36); /* optional */
@@ -369,6 +395,7 @@ int main(int argc, char **argv)
     }
     (void)start_input_qualifier(dock);
     parsing = nd_load_effective(&dock->conf);
+    invalidate_settings_cache(dock);
     if (parsing > 0 &&
         !ask_user("No valid settings file was found.\n"
                   "ENV:, ENVARC: and the packaged novadock.cfg (and their\n"
@@ -381,7 +408,7 @@ int main(int argc, char **argv)
         !ask_user("The current settings could not be loaded.\n"
                   "A validated recovery copy is available.\n\n"
                   "Use recovered settings? Your files remain unchanged.\n"
-                  "Preferences > Diagnostics shows the recovery source;\n"
+                  "Preferences > Support shows the recovery source;\n"
                   "Save from Preferences repairs the current settings.",
                   "Use recovered|Quit")) goto cleanup;
     (void)nd_publish_config_source(ND_CONFIG_SOURCE_FILE);
@@ -445,12 +472,18 @@ int main(int argc, char **argv)
     fire_hook(dock,"QUIT","");
     result = 0;
 cleanup:
+    close_launch_jobs();
+    nd_volume_meters_close();
+    nd_aminotis_close();
+    plugin_sampler_close(dock);
     close_settings_writer(dock);
     stop_screennotify(dock);
     stop_rexx_replies(dock);
+    release_undo(dock);
     stop_timer(dock);
     stop_input_qualifier(dock);
     stop_rexx(dock);
+    close_caption_popup(dock);
     close_tooltip(dock);
     close_feedback(dock);
     close_popup(dock);
@@ -485,6 +518,7 @@ cleanup:
     if (WorkbenchBase) CloseLibrary(WorkbenchBase);
     if (IconBase) CloseLibrary(IconBase);
     if (DataTypesBase) CloseLibrary(DataTypesBase);
+    if (LayersBase) CloseLibrary(LayersBase);
     if (GfxBase) CloseLibrary((struct Library *)GfxBase);
     if (IntuitionBase) CloseLibrary((struct Library *)IntuitionBase);
     if (dock->action_items) FreeVec(dock->action_items);

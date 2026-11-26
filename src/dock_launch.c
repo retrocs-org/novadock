@@ -1,3 +1,4 @@
+#include "nd_trace.h"
 /* NovaDock: Starting programs and companions; quiet requesters. */
 #include "dock_internal.h"
 
@@ -6,8 +7,7 @@
  * Workbench-started NovaDock would otherwise run commands with 4 KB. */
 int launch_command_at(const char *cmd,const char *directory,ULONG stack)
 {
-    BPTR input, output, lock;
-    APTR requesters;
+    BPTR input, output;
     char prepared[ND_COMMAND_LEN*4+64];
     char quoted[ND_COMMAND_LEN*2+4];
     LONG rc;
@@ -19,12 +19,7 @@ int launch_command_at(const char *cmd,const char *directory,ULONG stack)
         if (!nd_quote_path(quoted,sizeof(quoted),directory)) return 0;
         /* A working directory on an absent volume must fail quietly, not
          * stop the dock behind a "Please insert volume" requester. */
-        requesters=quiet_requesters();
-        lock=Lock((STRPTR)directory,ACCESS_READ);
-        restore_requesters(requesters);
-        if (!lock) return 0;
-        UnLock(lock);
-        strcat(prepared,"CD ");strcat(prepared,quoted);strcat(prepared,"\n");
+        strcat(prepared,"CD ");strcat(prepared,quoted);strcat(prepared,"\nIf WARN\nQuit 10\nEndIf\n");
     }
     if (strlen(prepared)+strlen(cmd)+1>sizeof(prepared)) return 0;
     strcat(prepared,cmd);
@@ -35,9 +30,11 @@ int launch_command_at(const char *cmd,const char *directory,ULONG stack)
         if (output) Close(output);
         return 0;
     }
+    {ND_TRACE_PHASE_BEGIN(t,"dock.start_process");
     rc = SystemTags((STRPTR)prepared,
             SYS_Input,input,SYS_Output,output,
             SYS_Asynch,TRUE,NP_StackSize,stack,TAG_DONE);
+    ND_TRACE_PHASE_END(t,"dock.start_process");}
     /* On successful asynchronous SystemTags, the spawned shell owns handles. */
     if (rc == -1) { Close(input); Close(output); return 0; }
     return 1;
@@ -81,6 +78,44 @@ ULONG icon_stack(const char *path)
     }
     return stack;
 }
+/* An empty or metadata-only Plugins drawer can be left beside the installed
+ * executable in Utilities. It must not hide the shared NovaDock: drawer.
+ * Probe for one actual Amiga program (or DOS script), once at startup. */
+static int program_directory_has_plugins(const char *directory)
+{
+    struct FileInfoBlock *fib;
+    BPTR lock,file;
+    char plugins[360],path[480];
+    UBYTE header[4];
+    int found=0;
+    if (!directory || !*directory || strlen(directory)>=sizeof(plugins))
+        return 0;
+    strcpy(plugins,directory);
+    if (!AddPart(plugins,"Plugins",sizeof(plugins))) return 0;
+    lock=Lock(plugins,ACCESS_READ);
+    if (!lock) return 0;
+    fib=(struct FileInfoBlock *)AllocDosObject(DOS_FIB,NULL);
+    if (fib) {
+        if (Examine(lock,fib) && fib->fib_DirEntryType>0)
+            while (!found && ExNext(lock,fib)) {
+                if (fib->fib_DirEntryType>=0 || fib->fib_Size<=0) continue;
+                if (fib->fib_Protection & FIBF_SCRIPT) { found=1;break; }
+                if (fib->fib_Size<4) continue;
+                strcpy(path,plugins);
+                if (!AddPart(path,fib->fib_FileName,sizeof(path))) continue;
+                file=Open(path,MODE_OLDFILE);
+                if (!file) continue;
+                /* HUNK_HEADER, compared as bytes on both host and m68k. */
+                found=Read(file,header,sizeof(header))==sizeof(header) &&
+                    header[0]==0 && header[1]==0 &&
+                    header[2]==3 && header[3]==0xf3;
+                Close(file);
+            }
+        FreeDosObject(DOS_FIB,fib);
+    }
+    UnLock(lock);
+    return found;
+}
 /* The dock's own drawer comes first so a development copy uses its own
  * plugins and themes even when an installed copy exists.  The
  * install locations are only probes: with requesters quietened, a missing
@@ -97,28 +132,17 @@ void get_program_dir(struct NDDock *dock)
     };
     struct Process *self=(struct Process *)FindTask(NULL);
     APTR requesters=self->pr_WindowPtr;
-    BPTR lock,plugins;
-    char probe[360];
+    BPTR lock;
     int i;
     dock->directory[0] = '\0';
     self->pr_WindowPtr=(APTR)-1L;
     lock=GetProgramDir();
     if (lock && !NameFromLock(lock,dock->directory,sizeof(dock->directory)))
         dock->directory[0]='\0';
-    if (dock->directory[0]) {
-        strcpy(probe,dock->directory);
-        if (!AddPart(probe,"Plugins",sizeof(probe))) dock->directory[0]=0;
-        else {
-            plugins=Lock(probe,ACCESS_READ);
-            if (plugins) UnLock(plugins); else dock->directory[0]=0;
-        }
-    }
+    if (!program_directory_has_plugins(dock->directory))
+        dock->directory[0]='\0';
     for (i=0;!dock->directory[0] && candidates[i];++i) {
-        strcpy(probe,candidates[i]);
-        if (!AddPart(probe,"Plugins",sizeof(probe))) continue;
-        plugins=Lock(probe,ACCESS_READ);
-        if (!plugins) continue;
-        UnLock(plugins);
+        if (!program_directory_has_plugins(candidates[i])) continue;
         lock=Lock((STRPTR)candidates[i],ACCESS_READ);
         if (lock) {
             if (!NameFromLock(lock,dock->directory,sizeof(dock->directory)))
@@ -141,6 +165,7 @@ int launch_companion(struct NDDock *dock, const char *name,
     if (!dock || !name || !*name || strchr(name, '/') || strchr(name, ':') ||
         strlen(name) + 15 > sizeof(installed))
         return 0;
+    {ND_TRACE_PHASE_BEGIN(t,"dock.companion_lookup");
     requesters = quiet_requesters();
     /* Installed Preferences uses its recorded drawer (SYS:Prefs by default).
      * Keep the package-local
@@ -164,8 +189,9 @@ int launch_companion(struct NDDock *dock, const char *name,
             path = local;
         }
     }
-    if (!path) { restore_requesters(requesters); return 0; }
+    if (!path) { restore_requesters(requesters);ND_TRACE_PHASE_END(t,"dock.companion_lookup");return 0; }
     restore_requesters(requesters);
+    ND_TRACE_PHASE_END(t,"dock.companion_lookup");}
     if (!nd_quote_path(command, sizeof(command), path)) return 0;
     if (args && *args) {
         if (strlen(command) + strlen(args) + 2 >= sizeof(command)) return 0;
@@ -234,3 +260,36 @@ void fire_hook(struct NDDock *dock,const char *event,const char *detail)
                             event,detail))
             (void)launch_command(command);
 }
+
+#include "nd_task.h"
+#define ND_LAUNCH_JOBS 4
+static struct {struct NDTask task;char command[ND_COMMAND_LEN],arguments[ND_COMMAND_LEN],directory[ND_COMMAND_LEN],label[ND_LABEL_LEN];int mode;} launch_jobs[ND_LAUNCH_JOBS];
+int queue_launcher(struct NDDock *dock,const struct NDItem *item)
+{
+ struct NDIOJob request;char program[512],guard[64];int i,free_slot=-1;
+ if(!item->command[0])return 0;
+ for(i=0;i<ND_LAUNCH_JOBS;++i){if(!launch_jobs[i].task.port){int busy;sprintf(guard,"NovaDock.Launch.%d",i);Forbid();busy=FindPort(guard)!=NULL;Permit();if(!busy && free_slot<0)free_slot=i;continue;}if(!strcmp(launch_jobs[i].command,item->command) && !strcmp(launch_jobs[i].arguments,ITEM_TEXT(item,ND_TEXT_ARGS)) && !strcmp(launch_jobs[i].directory,ITEM_TEXT(item,ND_TEXT_WORKDIR)) && launch_jobs[i].mode==item->launch_mode)return 1;}
+ if(free_slot<0){show_feedback(dock,"Applications are still starting. Try again shortly.",1);return 0;}i=free_slot;
+ memset(&request,0,sizeof(request));strcpy(request.path,item->command);strcpy(request.arguments,ITEM_TEXT(item,ND_TEXT_ARGS));strcpy(request.directory,ITEM_TEXT(item,ND_TEXT_WORKDIR));request.mode=item->launch_mode;
+ strcpy(program,dock->directory);if(!AddPart(program,"SupportLog",sizeof(program)))return 0;sprintf(guard,"NovaDock.Launch.%d",i);
+ if(!nd_task_start(&launch_jobs[i].task,program,guard,ND_IO_LAUNCH,&request,sizeof(request))){show_feedback(dock,"Could not prepare application launch.",1);return 0;}
+ strcpy(launch_jobs[i].command,item->command);strcpy(launch_jobs[i].arguments,request.arguments);strcpy(launch_jobs[i].directory,request.directory);launch_jobs[i].mode=item->launch_mode;strncpy(launch_jobs[i].label,item->label[0] ? item->label:(const char *)FilePart((STRPTR)item->command),sizeof(launch_jobs[i].label)-1);launch_jobs[i].label[sizeof(launch_jobs[i].label)-1]=0;
+ {char message[160];sprintf(message,nd_trf("Starting %s..."),launch_jobs[i].label);show_feedback(dock,message,0);}return 1;
+}
+void process_launch_jobs(struct NDDock *dock)
+{
+ int i;for(i=0;i<ND_LAUNCH_JOBS;++i){int active=launch_jobs[i].task.port!=NULL;struct NDTaskPacket *m=nd_task_poll(&launch_jobs[i].task);char message[192];
+  if(m){if(m->result!=1){unsigned long error=m->bytes==sizeof(struct NDIOJob) ? ((struct NDIOJob *)m->data)->error:0;
+    if(error)sprintf(message,nd_trf("Could not start %s (DOS error %lu)."),launch_jobs[i].label,error);
+    else sprintf(message,nd_trf("Could not start %s. Check its path and settings."),launch_jobs[i].label);
+    show_feedback(dock,message,1);
+   }FreeVec(m);
+  }else if(active && !launch_jobs[i].task.port){sprintf(message,nd_trf("Could not start %s: worker did not reply."),launch_jobs[i].label);show_feedback(dock,message,1);}
+ }
+}
+unsigned long launch_job_signals(void)
+{int i;unsigned long signals=0;for(i=0;i<ND_LAUNCH_JOBS;++i)signals|=nd_task_signals(&launch_jobs[i].task);return signals;}
+void close_launch_jobs(void)
+{int i;for(i=0;i<ND_LAUNCH_JOBS;++i)nd_task_close(&launch_jobs[i].task);}
+
+unsigned int active_launch_jobs(void){int i;unsigned int count=0;for(i=0;i<ND_LAUNCH_JOBS;++i)if(launch_jobs[i].task.port)++count;return count;}

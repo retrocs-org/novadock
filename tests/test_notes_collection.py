@@ -73,6 +73,6 @@ int main(void){FILE *f;struct NDNote reopened;char saved_path[220];
 """
   with tempfile.TemporaryDirectory() as t:
    p=Path(t);(p/'check.c').write_text(h)
-   subprocess.run([os.environ.get('CC','cc'),'-std=c99','-D_DARWIN_C_SOURCE','-Wno-deprecated-declarations','-I'+str(ROOT/'plugin_src/notes'),str(p/'check.c'),str(ROOT/'plugin_src/notes/nd_notes.c'),str(ROOT/'plugin_src/notes/nd_markdown.c'),'-o',str(p/'check')],check=True)
+   subprocess.run([os.environ.get('CC','cc'),'-std=c99','-D_DARWIN_C_SOURCE','-D_DEFAULT_SOURCE','-Wno-deprecated-declarations','-I'+str(ROOT/'plugin_src/notes'),str(p/'check.c'),str(ROOT/'plugin_src/notes/nd_notes.c'),str(ROOT/'plugin_src/notes/nd_markdown.c'),'-o',str(p/'check')],check=True)
    subprocess.run([str(p/'check')],cwd=p,check=True)
 if __name__=='__main__':unittest.main()

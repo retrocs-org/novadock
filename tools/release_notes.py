@@ -81,7 +81,7 @@ def plugin_names(root=ROOT):
         if path.is_file():
             found = re.search(r'^NOVADOCK_NAME=(.+)$', path.read_text('ascii'), re.M)
             if found: name = found[1].strip()
-        names.append(name)
+        names.append(name.upper())
     return names
 
 def changelog_markdown(root=ROOT):
@@ -142,8 +142,8 @@ def aminet(root=ROOT, uploader=None, author=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--check', action='store_true', help='Check the committed docs/RELEASE-NOTES.md against its source')
-    parser.add_argument('--write', action='store_true', help='Refresh docs/RELEASE-NOTES.md before committing release inputs')
+    parser.add_argument('--check', action='store_true', help='Check repository notes and the public changelog against their source')
+    parser.add_argument('--write', action='store_true', help='Refresh repository notes and the public changelog')
     parser.add_argument('--format', choices=('markdown','aminet'), default='markdown')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--tag')
@@ -152,10 +152,17 @@ def main():
         if args.check and args.write: raise ValueError('Choose --check or --write.')
         if (args.check or args.write) and (args.output or args.format!='markdown' or args.tag): raise ValueError('Documentation check/write uses the default version tag and Markdown format.')
         content = aminet() if args.format=='aminet' else markdown(tag=args.tag)
+        documents={'docs/RELEASE-NOTES.md':content}
+        if (ROOT/'public-web').is_dir():
+            documents['public-web/changelog.md']=(ROOT/'CHANGELOG.md').read_text('utf-8')
         if args.check:
-            path = ROOT/'docs/RELEASE-NOTES.md'
-            if not path.is_file() or path.read_text('utf-8')!=content: raise ValueError('Refresh docs/RELEASE-NOTES.md with tools/release_notes.py --write, then review and commit it.')
-        elif args.write: (ROOT/'docs/RELEASE-NOTES.md').write_text(content, encoding='utf-8')
+            for name,expected in documents.items():
+                path=ROOT/name
+                if not path.is_file() or path.read_text('utf-8')!=expected:
+                    raise ValueError('Refresh '+name+' with tools/release_notes.py --write, then review and commit it.')
+        elif args.write:
+            for name,expected in documents.items():
+                (ROOT/name).write_text(expected,encoding='utf-8')
         elif args.output: args.output.write_text(content, encoding='ascii' if args.format=='aminet' else 'utf-8')
         else: print(content, end='')
     except (ValueError,OSError) as error: parser.exit(1, str(error)+'\n')

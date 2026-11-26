@@ -36,6 +36,17 @@ Supported commands (case insensitive):
 | `ADD "Work:Apps/Editor"` | Appends an application or drawer launcher and saves |
 | `SETVALUE id caption value [meter]` | Updates a passive script tile (see below) |
 | `SETBADGE id [text]` | Shows TEXT (up to 7 characters, for example `3`) as a badge on plugin tile ID; `"*"` shows a dot and no text removes it. Works on any plugin tile; a plugin that sets its own badges replaces it with its next change. RC 5 and NOT FOUND for an unknown ID |
+| `GET key` | Returns one setting exactly as `novadock.cfg` stores it, for example `GET SIDE` returns `BOTTOM`; plugin options use `GET OPTION.CLOCK.FORMAT`. RC 5 and `UNKNOWN` for an unknown key |
+| `SET key value` | Changes one global setting or plugin option, applies it like Preferences' Use and saves it; returns the stored value (`SET AUTO_HIDE yes` returns `YES`). A run of `SET`s is applied to the dock together, a moment after the last one, or at once before any other command that reads or changes the dock. Keys are matched without regard to case. RC 10 with `INVALID` (value refused), `UNKNOWN` (no such key), `DOES NOT FIT` (the dock would not fit the screen), `BUSY` (Preferences is writing the settings; try again) or `FAILED`. Tiles are changed with `ADD`, `MOVE` and `REMOVE`, not `SET` |
+| `THEME id` | The same as `SET THEME id` for a theme this version includes (for example `THEME MOCHA`) |
+| `INFO 3` | Returns tile 3's kind, label, command, plugin ID and state, separated by vertical bars; the state is `RUNNING` or `IDLE` for launchers, `ONLINE` or `OFFLINE` for plugins, otherwise `-` |
+| `SAVE` | Writes pending settings now instead of after the usual pause; returns `OK` when nothing is pending, otherwise `QUEUED` |
+| `UNDO` | Reverts the last move or removal made in Edit mode (also on the dock menu while unlocked); RC 5 and `NOTHING` when there is none. Locking the dock ends the undo step |
+| `PROFILE name` / `PROFILE USE name` | Switches to the saved dock profile NAME (`ENVARC:NovaDock/Profiles/NAME.cfg`), applies it like Preferences' Use and saves it as the current settings. RC 5 and `NOT FOUND` if there is no such profile, RC 10 and `INVALID` for a name that is not 1–24 letters, digits, spaces, `_` or `-`. Quote a profile called `Save`, `Use`, `Delete` or `List`: `PROFILE "List"` |
+| `PROFILE SAVE name` | Saves the current dock as profile NAME (creating or replacing it) and makes it the active profile; RC 10 if it cannot be written |
+| `PROFILE DELETE name` | Deletes profile NAME; the current dock is not changed. RC 5 and `NOT FOUND` if there is no such profile |
+| `PROFILE LIST` | Returns up to 20 saved profile names, sorted and separated by `;`, for example `Games;Work` |
+| `STATUS DETAIL` | Returns paint, hover-frame, wake and update counters since start, and the current timer rate (`TIMER_HZ`: 5 or 1, or 10 when timer.device is missing and Intuition ticks drive the dock), as `NAME=value` pairs, for measuring performance on real hardware |
 | `SHOW` / `HIDE` / `TOGGLE` | Reveals the dock, collapses it to the reveal tab, or switches; `TOGGLE` returns `SHOWN` or `HIDDEN` |
 | `LOCK` / `UNLOCK` | Leaves or enters Edit mode |
 | `SUSPEND` / `RESUME` | Closes all of the dock's windows so Workbench can reset its screen (a screen mode change), and reopens them; plugins keep running. The dock reopens by itself after 30 seconds, or when screennotify.library reports the new Workbench. `RESUME` returns RC 5 and `PENDING` if Workbench is not back yet |

@@ -1,6 +1,9 @@
 #include "nd_games_scan.h"
 #include <stdlib.h>
 #include <string.h>
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct NDGamesScanFrame {
     struct NDGamesScanFrame *parent;
     void *handle;

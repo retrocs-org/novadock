@@ -14,6 +14,9 @@
 #include <stdio.h>
 #include "nd_pictures.h"
 #include "../screenshot/nd_cybergraphics.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct Library *DataTypesBase=NULL,*CyberGfxBase=NULL;struct GfxBase *GfxBase=NULL;
 static int alive(const char *parent){int ok;if(!parent)return 1;Forbid();ok=FindPort((STRPTR)parent)!=NULL;Permit();return ok;}
 static int scan(struct NDPicturesJob *j,const char *parent)

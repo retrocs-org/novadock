@@ -1,12 +1,12 @@
-# NovaDock 0.5
+# NovaDock 0.6
 
 NovaDock is a lightweight, extensible dock for Classic AmigaOS Workbench 3.x.
 
-**0.5 is in development.** The latest published release is 0.4.
+**0.6 is in development.** Downloads follow the latest published release.
 
 [Website](https://novadock.retrocs.org) | [Downloads](https://novadock.retrocs.org/get.php) | [Changelog](CHANGELOG.md) | [Source](https://github.com/retrocs-org/novadock)
 
-AmiRocket integration shows aggregate unread counts and connection status, with a click to start or restore the client. Configure its executable in the tile settings; accounts remain in AmiRocket. See [AmiRocket plugin](docs/AMIROCKET_PLUGIN.md).
+ALERTS, AMIRC and AMIROCKET are retired while notification support moves to the independent AmiNotis service. A future NOTIFICATION plugin will use that service; see [notification migration](docs/NOTIFICATION_MIGRATION.md).
 
 ## Features
 
@@ -16,7 +16,7 @@ AmiRocket integration shows aggregate unread counts and connection status, with 
 
 - Calculate decimal/hex/binary expressions with [CALC](docs/CALC_PLUGIN.md), or edit Workbench icon metadata with backup protection in [TOOLTYPES](docs/TOOLTYPES_PLUGIN.md).
 - Monitor drawer changes with [WATCH](docs/WATCH_PLUGIN.md) and follow warning/error lines with [LOGS](docs/LOGS_PLUGIN.md), using bounded histories and unread badges.
-- Keep permanent shortcut collections in [SHELF](docs/SHELF_PLUGIN.md) and review session notifications in [ALERTS](docs/ALERTS_PLUGIN.md).
+- Keep permanent shortcut collections in [SHELF](docs/SHELF_PLUGIN.md).
 - Inspect [volume capacity](docs/VOLUME_SPACE.md), set low-space warnings and use optional [I2C sensor readings](docs/SENSORS_PLUGIN.md).
 - Launch applications, commands, drawers and volumes; arrange tiles by drag and drop.
 - Choose from thirteen themes, seventy-five built-in icons, two tile sizes and multiple rows on any screen edge.
@@ -28,6 +28,8 @@ AmiRocket integration shows aggregate unread counts and connection status, with 
 - Add system meters, clipboard history, Trash, folder bookmarks, hardware sensors and system action tiles.
 - Take a break with SAVER's Boing Ball, copper waves, vectors, fireworks and maze, or a fullscreen aquarium. SAVER offers adaptive render sizes for slower systems. Optional performance diagnostics show FPS and frame timing.
 - Manage the dock through unified Preferences, diagnostics, ARexx and the public Plugin SDK.
+
+Volume meters keep their last successful reading while a disk is slow or unavailable. Their tooltip shows the reading age, cached/stale state and the last DOS error; successful results from other volumes appear without waiting for the whole batch. Launcher file checks and icon decoding run in bounded helpers, and newly requested artwork appears as each helper completes.
 
 Version 0.3 adds AMINET, PLACES, SAVER, AQUARIUM, DOWNLOAD, SYSTEM, ACTIONS,
 MUSIC and SENSOR, plus independent WHDLoad instances, improved forecasts and
@@ -51,6 +53,10 @@ Preferences uses compact layouts on 640x256 screens with the standard 8-point
 Workbench font. Longer plugin settings scroll; APPS and icon pickers use pages.
 Preferences -> Plugins offers Refresh and repair guidance for the selected
 instance, including stopped services, missing setup and unavailable readings.
+
+In **Preferences > Appearance**, choose **Background: Artwork** and click
+**Test** to try the current theme's dock background. See the [theme guide](docs/THEMES.md)
+for supported artwork and custom theme files.
 
 ## Requirements
 
@@ -83,8 +89,8 @@ imported plugins and themes. New bundled plugins are installed automatically.
 Uninstall asks for confirmation and whether to keep settings and saved Notes.
 Reinstalling after keeping settings restores that configuration.
 
-Fresh installs use Nord with seven tiles: the boot disk (`SYS:`), the installation's
-default shell (`NewShell`), MusicPlayer, Trash, CPU, RAM and Clock. Right-click the dock
+Fresh installs use Nord with eight tiles: the boot disk (`SYS:`), the installation's
+default shell (`NewShell`), MusicPlayer, Trash, CPU, RAM, Clock and Preferences. Right-click the dock
 to add items, open Preferences, restart or quit. Right-click a plugin for its settings.
 
 Default installed locations:
@@ -97,7 +103,7 @@ Default installed locations:
 | Help | `HELP:NovaDock.guide` |
 | Active settings | `ENV:NovaDock/novadock.cfg` |
 | Permanent settings and default Notes | `ENVARC:NovaDock/` |
-| German and Swedish dock catalogs | `LOCALE:Catalogs/<language>/novadock.catalog` |
+| Danish, German, Italian and Swedish dock catalogs | `LOCALE:Catalogs/<language>/novadock.catalog` |
 
 Press **Help** in Preferences to open the manual. Uninstall progress is recorded
 in `ENVARC:NovaDock-Uninstall.log`. For a standard-location Shell install, run
@@ -128,8 +134,8 @@ certificates. See [usage](docs/USING_NOVADOCK.md#update-notifications-04).
 [MusicPlayer](docs/MUSICPLAYER_PLUGIN.md), [Network](docs/NETWORK_PLUGIN.md),
 [SENSOR](docs/SENSORS_PLUGIN.md), [ACTIONS](docs/ACTIONS_PLUGIN.md),
 [PLACES](docs/PLACES_PLUGIN.md), [DOWNLOAD](docs/DOWNLOAD_PLUGIN.md),
-[SYSTEM](docs/SYSTEM_PLUGIN.md), [SAVER](docs/SAVER_PLUGIN.md) and
-[AQUARIUM](docs/AQUARIUM_PLUGIN.md).
+[SYSTEM](docs/SYSTEM_PLUGIN.md), [SAVER](docs/SAVER_PLUGIN.md),
+[AQUARIUM](docs/AQUARIUM_PLUGIN.md) and [PET](docs/PET_PLUGIN.md).
 
 ## Build from source
 
@@ -151,7 +157,7 @@ packaging requires FlexCat and refuses to omit these translations.
 
 Start plugin development with the [SDK quick start](docs/PLUGIN_SDK_QUICKSTART.md),
 [protocol reference](docs/PLUGIN_API.md) and [standalone SDK source](plugin-sdk/README.md).
-NovaDock 0.5 also supports [plugin-owned artwork and state icons](docs/PLUGIN_SDK_ARTWORK.md),
+NovaDock 0.6 also supports [plugin-owned artwork and state icons](docs/PLUGIN_SDK_ARTWORK.md),
 with an ArtHello example and a standalone artwork packer.
 For verified release builds, the four repository assets and Aminet submission,
 use `scripts/release.py` as described in [docs/RELEASING.md](docs/RELEASING.md).
@@ -162,3 +168,4 @@ NovaDock is released under the [MIT licence](LICENSE).
 Bundled third-party components retain their accompanying notices.
 
 The optional standalone SensorsI2C helper is GPL-3.0-or-later; see `Plugins/SensorsI2C.LICENSE`. The remaining NovaDock sources retain their stated licences.
+

@@ -95,7 +95,7 @@ int main(int argc,char **argv){
   if(!read_text_manifest(argv[i],&parsed)||!nd_manifest_finish(&parsed)){
    fprintf(stderr,"%s: %s\n",argv[i],parsed.error);return 1;
   }
-  if(!strcmp(parsed.id,"SENSORS"))assert(parsed.option_count==19);
+  if(!strcmp(parsed.id,"SENSORS"))assert(parsed.option_count==21);
   if(!strcmp(parsed.id,"MUSICLIB"))assert(parsed.option_count==16);
   ++checked;
  }

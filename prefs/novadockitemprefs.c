@@ -359,7 +359,7 @@ static int open_ui(struct ItemPage *p)
         !button(p,10,45,118,G_NAV_APPEARANCE,"Appearance") ||
         !button(p,10,69,118,G_NAV_ITEMS,"> Organize") ||
         !button(p,10,93,118,G_NAV_PLUGIN_MANAGER,"Plugins") ||
-        !button(p,10,117,118,G_NAV_DIAGNOSTICS,"Diagnostics") ||
+        !button(p,10,117,118,G_NAV_DIAGNOSTICS,"Support") ||
         !button(p,10,141,118,G_NAV_UPDATES,"Update") ||
         !button(p,10,165,118,G_NAV_ABOUT,"About")) return 0;
     ng_init(p,&ng,140,30,465,86,G_ACTIVE,"In dock");
@@ -491,7 +491,7 @@ int nd_dockitems_prefs_run(int argc,char **argv,char *plugin,int plugin_size,
             cls=msg->Class;code=msg->Code;
             id=msg->IAddress ? ((struct Gadget *)msg->IAddress)->GadgetID:0;
             GT_ReplyIMsg(msg);
-            if (cls==IDCMP_CLOSEWINDOW) {p->done=1;p->result=0;}
+            if (cls==IDCMP_CLOSEWINDOW || (cls==IDCMP_RAWKEY && code==0x45)) {p->done=1;p->result=0;}
             else if (cls==IDCMP_RAWKEY && code==ND_HELP_KEY) nd_prefs_help(p->screen);
             else if (cls==IDCMP_REFRESHWINDOW) {
                 GT_BeginRefresh(p->win);GT_EndRefresh(p->win,TRUE);
@@ -623,7 +623,7 @@ static int sp_open(struct SpacerPage *p)
     if (!p->focused && (!sp_button(p,10,21,118,S_NAV_GENERAL,"General") ||
         !sp_button(p,10,45,118,S_NAV_APPEARANCE,"Appearance") ||
         !sp_button(p,10,69,118,S_NAV_ITEMS,"> Organize") ||
-        !sp_button(p,10,93,118,S_NAV_DIAGNOSTICS,"Diagnostics"))) return 0;
+        !sp_button(p,10,93,118,S_NAV_DIAGNOSTICS,"Support"))) return 0;
     sp_field(p,&ng,field_x,24,90,S_WIDTH,"Spacer width:");
     p->width_gad=p->last=CreateGadget(STRING_KIND,p->last,&ng,
         GTST_String,(ULONG)width_text,GTST_MaxChars,3,
@@ -700,7 +700,7 @@ int nd_spacer_prefs_run(int argc,char **argv)
             cls=msg->Class;code=msg->Code;
             id=msg->IAddress ? ((struct Gadget *)msg->IAddress)->GadgetID:0;
             GT_ReplyIMsg(msg);
-            if (cls==IDCMP_CLOSEWINDOW) {p->done=1;p->result=0;}
+            if (cls==IDCMP_CLOSEWINDOW || (cls==IDCMP_RAWKEY && code==0x45)) {p->done=1;p->result=0;}
             else if (cls==IDCMP_RAWKEY && code==ND_HELP_KEY) nd_prefs_help(p->screen);
             else if (cls==IDCMP_REFRESHWINDOW) {
                 GT_BeginRefresh(p->win);GT_EndRefresh(p->win,TRUE);

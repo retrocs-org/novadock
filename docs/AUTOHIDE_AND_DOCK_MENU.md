@@ -38,6 +38,8 @@ Right-click the background/gap of the dock to open the compact dock menu:
 - Unlock dock / Lock dock
 - Add item... (Application, Drawer / disk, installed Plugin, Spacer, or Command tile)
 - Preferences…
+- Use profile *name* (up to four saved profiles, other than the active one)
+- Update profile *name* (when a profile is active: saves the current layout to it)
 - About NovaDock…
 - Restart NovaDock
 - Quit NovaDock
@@ -45,6 +47,16 @@ Right-click the background/gap of the dock to open the compact dock menu:
 Click outside any dock popup to dismiss it; a separate Cancel row is not
 needed. Row count and row assignment are managed in Preferences, where the
 result can be reviewed before Use or Save.
+
+### Dock profiles
+
+A profile is a complete saved dock layout and its settings, such as "Work"
+with editors and a clock, or "Games" with WHDLoad launchers. Profiles are
+stored as `ENVARC:NovaDock/Profiles/<name>.cfg`. Create one with ARexx
+`PROFILE SAVE Work`; after that the dock menu lists it, and **Use profile
+Work** switches the dock to it (the current settings become the switched-to
+profile). While a profile is active, **Update profile** saves later changes
+back to it. Names have 1–24 letters, digits, spaces, `_` or `-`.
 
 **About NovaDock…** opens a small non-modal window with NovaDock's name,
 version, short description, MIT license and public website. The same shared
@@ -188,3 +200,33 @@ so it no longer redraws needlessly five times a second.
 **Restart NovaDock** saves pending dock changes, closes the dock and its plugin
 windows, then starts the same NovaDock program again. Saved settings are kept.
 If saving fails, the dock remains open and the restart request is cancelled.
+
+The **Show drag bar** checkbox in Appearance adds a narrow grip at the left
+of a horizontal dock (at the top of a vertical dock). Drag the grip to move the dock continuously along the full usable screen edge.
+The complete dock stays on screen, including when magnification is enabled.
+Release to save its exact pixel position automatically. Appearance shows
+**Custom** for a dragged position; Start, Center and End remain available as presets.
+Custom positions survive restarts and named layouts. On a smaller screen the
+position is clamped to fit. `POSITION=CUSTOM` and `POSITION_OFFSET=137` in the
+configuration place the shelf 137 pixels from the usable edge origin (below
+the Workbench title bar for vertical docks). Right-click the grip for
+the main dock menu, including when the dock is locked. `DRAG_BAR=YES` enables
+it in configuration files; `NO` hides it. Fresh installations enable it;
+existing configurations that omit the setting retain their previous layout.
+
+## Background reads and artwork recovery
+
+Drawer popups open immediately with **Loading... (Esc cancels)** while a separate
+worker reads entries. Only visible icons are requested, with at most two popup
+icon jobs at once. Escape or clicking outside closes the popup without waiting
+for storage; replies belonging to a closed popup or earlier navigation are discarded.
+The list remains bounded to 64 visible entries and retains its existing sort and
+view settings. Empty drawers show `(empty)`; unavailable drawers offer **R** to retry.
+
+Choose **Reload artwork** from the dock background menu after inserting a disk,
+restoring a path or replacing an icon. It reloads artwork asynchronously while
+keeping resident plugins, the layout and saved settings. Pending old artwork
+jobs cannot overwrite the new request. Launcher feedback names the application;
+failed preparation includes the DOS error when one is available. Successful
+preparation means the launch was handed off, not that the application has exited
+successfully.

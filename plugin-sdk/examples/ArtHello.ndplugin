@@ -1,6 +1,6 @@
 NOVADOCK_ID=ARTHELLO
 NOVADOCK_PROGRAM=ArtHello
-NOVADOCK_NAME=Art demo
+NOVADOCK_NAME=ART DEMO
 NOVADOCK_VERSION=1.0
 NOVADOCK_AUTHOR=Example developer
 NOVADOCK_DESCRIPTION=Local on/off artwork demonstration; no external device actions.

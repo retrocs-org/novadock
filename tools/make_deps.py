@@ -53,7 +53,7 @@ def missing_headers(prerequisites):
         if source.endswith(('.c', '.asm')):
             headers_of(source, seen)
     listed = set(expanded)
-    return sorted(h for h in seen if h.endswith('.h') and h not in listed)
+    return sorted(h for h in seen if h.endswith(('.h','.c')) and h not in listed)
 
 
 def process(makefile, fix):

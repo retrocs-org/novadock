@@ -1,13 +1,14 @@
 {
   "project": "AmiHASS",
-  "version": "0.2",
+  "version": "0.3",
   "abi": 1,
   "files": {
-    "amihass.h": "524744a30561d9f462799a9eb55598ed250568ac35fb428c9267ee3afdc49ab1",
-    "amihass_core.h": "b100eb91dae617bc731cd7fa4d9a72e4f1ea9af540b7a7c51b8bd40295e6299d",
-    "amihass_config.h": "0acc452d4974d660a2305822e745312e042f38dc1113a69a1ca495662c58f9ea",
-    "amihass_client.c": "789f16f923338bb729d52a9c4fe8f428b776c40fc7270381092ce14dcebee27c",
-    "core.c": "8096d89e1ad787a505dced207434313316756407bbd4bb46b7dc74fa803b925b",
-    "nd_reply.h": "a3fc8345a03a5ccdd95356510069150158b086e21567ae4e58e1a29b699cd74c"
+    "amihass.h": "887722bb6104d9006dcb162a40747fc94281453c60c202897f42d972ef77bf7d",
+    "amihass_core.h": "cc95b16a9bbbd4778b3be75ab33a988b6634b4702a72f07d54dd97f509d0a9af",
+    "amihass_config.h": "834771e64cdd5e1445a470c0e05caac51734eb1ffa9600d793bf86343c367417",
+    "amihass_client.c": "b6477094ffc153804afe812b6dd60e41e6066991591e6315bb7b57254749a8e0",
+    "core.c": "398b24790d72985f84080d0f48a4172992c123ecd921b3daa396657c824b0e21",
+    "nd_reply.h": "a3fc8345a03a5ccdd95356510069150158b086e21567ae4e58e1a29b699cd74c",
+    "utf8_display.h": "7dd874428b6b3a9e45ff7a59d8fa807ae49bb188c19b5c9aab09db9f72175d8f"
   }
 }

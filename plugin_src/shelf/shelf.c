@@ -13,11 +13,15 @@
 #include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_reply.h"
+#include "nd_wait.h"
 #include "nd_list.h"
 #include "nd_panel.h"
 #include "nd_option_runtime.h"
 #include "nd_shelf.h"
 #include "nd_interaction.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct Library *WorkbenchBase=NULL;
 const char nd_version[]=ND_PLUGIN_VER_STRING(SHELF,"Shelf");long __stack=32768;
 #define SHELF_MAGIC 0x53484c46UL
@@ -45,7 +49,7 @@ static int open_target(const char *path)
  {char quoted[530],command[550];BPTR in,out;LONG rc;if(!nd_quote_path(quoted,sizeof(quoted),path))return 0;in=Open("NIL:",MODE_OLDFILE);out=Open("NIL:",MODE_NEWFILE);if(!in || !out){if(in)Close(in);if(out)Close(out);return 0;}sprintf(command,"C:WBRUN %s",quoted);rc=SystemTags(command,SYS_Input,in,SYS_Output,out,SYS_Asynch,TRUE,TAG_DONE);if(rc==-1){Close(in);Close(out);strcpy(status,"Could not open shortcut");return 0;}}return 1;}
 static int helper(const char *id,const char *verb,const char *path)
 {
- struct ShelfDrop *m;struct MsgPort *reply,*target;struct Message *answer=NULL;char port[64],directory[300],*end;FILE *f;int ticks,result=10;BPTR lock;
+ struct ShelfDrop *m;struct MsgPort *reply,*target;struct Message *answer=NULL;char port[64],directory[300],*end;FILE *f;int result=10;BPTR lock;
  if(!nd_shelf_id(id))return 20;m=AllocVec(sizeof(*m),MEMF_PUBLIC|MEMF_CLEAR);reply=nd_reply_port();if(!m || !reply){if(m)FreeVec(m);if(reply)nd_reply_delete(reply);return 20;}
  if(!strcmp(verb,"PUT")){m->count=1;strncpy(m->paths[0],path,ND_SHELF_PATH-1);}
  else if(!strcmp(verb,"HANDLELIST") && !strncmp(path,"T:NovaDockShelfDrop-",sizeof("T:NovaDockShelfDrop-")-1) && strlen(path)<sizeof(directory)){
@@ -53,7 +57,7 @@ static int helper(const char *id,const char *verb,const char *path)
  }else goto done;
  sprintf(port,"NovaDock.Shelf.%s",id);m->magic=SHELF_MAGIC;m->message.mn_Length=sizeof(*m);m->message.mn_ReplyPort=reply;
  Forbid();target=FindPort(port);if(target)PutMsg(target,(struct Message *)m);Permit();if(!target)goto done;
- for(ticks=0;ticks<250 && !answer;ticks+=5){answer=GetMsg(reply);if(!answer)Delay(5);}
+ if(nd_wait_port(NULL,reply,250UL))answer=GetMsg(reply);   /* sleep, at most five seconds */
  if(!answer){nd_reply_abandon(reply);reply=NULL;m=NULL;goto done;}result=(int)m->result;
 done:
  if(m)FreeVec(m);if(reply)nd_reply_delete(reply);

@@ -10,6 +10,10 @@ int main(void)
     int n,i;
     FILE *legacy;
     struct NDConfig recovered;
+    nd_factory_config(&recovered);
+    assert(recovered.colourful_icons&&recovered.theme_artwork&&recovered.hover_magnification==100&&recovered.hover_animation);
+    assert(!recovered.always_on_top&&!recovered.auto_hide&&recovered.shape==ND_SHAPE_ROUNDED);
+    /* Existing profiles without the newer keys keep their legacy defaults. */
     nd_default_config(&cfg);
     /* Editing items and layout does not require replacing window resources. */
     recovered=cfg;
@@ -31,7 +35,38 @@ int main(void)
     recovered=cfg;nd_config_set_theme(&recovered,"Classic");
     assert(!nd_config_can_update_live(&cfg,&recovered));
     assert(!nd_config_can_update_live(NULL,&cfg));
-    assert(cfg.count == 14);
+    assert(!cfg.colourful_icons);
+    recovered=cfg;recovered.always_on_top=1;assert(!nd_config_can_update_live(&cfg,&recovered));
+    recovered=cfg;assert(nd_parse_line(&recovered,"ICON_COLOURS=COLOURFUL")&&recovered.colourful_icons);
+    assert(!nd_config_can_update_live(&cfg,&recovered)&&!nd_config_runtime_equal(&cfg,&recovered));
+    assert(!nd_parse_line(&recovered,"ICON_COLOURS=INVALID")&&recovered.colourful_icons);
+    assert(nd_write_config(&recovered,"tests/icon-colours.cfg"));
+    assert(nd_load_config(&recovered,"tests/icon-colours.cfg")==0&&recovered.colourful_icons);
+    remove("tests/icon-colours.cfg");remove("tests/icon-colours.cfg.good");
+    assert(nd_parse_line(&recovered,"ICON_COLORS=THEME")&&!recovered.colourful_icons);
+    assert(!cfg.theme_artwork && !cfg.hover_magnification);
+    recovered=cfg;
+    assert(nd_parse_line(&recovered,"HOVER_MAGNIFICATION=YES") && recovered.hover_magnification);
+    assert(recovered.hover_magnification==100);
+    assert(nd_parse_line(&recovered,"HOVER_MAGNIFICATION=37") && recovered.hover_magnification==37);
+    assert(!nd_parse_line(&recovered,"HOVER_MAGNIFICATION=101") && recovered.hover_magnification==37);
+    assert(!nd_parse_line(&recovered,"HOVER_MAGNIFICATION=-1") && recovered.hover_magnification==37);
+    assert(!nd_config_runtime_equal(&cfg,&recovered));
+    assert(!nd_config_can_update_live(&cfg,&recovered));
+    assert(!nd_parse_line(&recovered,"HOVER_MAGNIFICATION=MAYBE") && recovered.hover_magnification);
+    assert(nd_parse_line(&recovered,"DOCK_BACKGROUND=Artwork") && recovered.theme_artwork);
+    assert(!nd_config_runtime_equal(&cfg,&recovered));
+    assert(!nd_config_can_update_live(&cfg,&recovered));
+    assert(!nd_parse_line(&recovered,"DOCK_BACKGROUND=UNKNOWN") && recovered.theme_artwork);
+    assert(nd_write_config(&recovered,"tests/artwork-roundtrip.cfg"));
+    assert(nd_load_config(&recovered,"tests/artwork-roundtrip.cfg")==0);
+    assert(recovered.theme_artwork && recovered.hover_magnification);
+    assert(nd_parse_line(&recovered,"HOVER_MAGNIFICATION=NO") && !recovered.hover_magnification);
+    assert(nd_parse_line(&recovered,"DOCK_BACKGROUND=Solid") && !recovered.theme_artwork);
+    remove("tests/artwork-roundtrip.cfg");
+    remove("tests/artwork-roundtrip.cfg.good");
+    assert(cfg.count == 15);
+    assert(cfg.items[14].enabled && cfg.items[14].kind==ND_ITEM_PLUGIN && !strcmp(cfg.items[14].id,"PREFERENCES"));
     assert(!strcmp(cfg.items[2].id,"MUSIC"));
     assert(!strcmp(cfg.items[3].id,"TRASH"));
     assert(cfg.side == ND_SIDE_BOTTOM);
@@ -52,7 +87,7 @@ int main(void)
     assert(!strcmp(cfg.items[4].id,"CPU"));
     assert(!strcmp(cfg.items[5].id,"RAM"));
     assert(!strcmp(cfg.items[6].id,"CLOCK"));
-    for (i=0;i<cfg.count;++i) assert(cfg.items[i].enabled==(i<7));
+    for (i=0;i<cfg.count;++i) assert(cfg.items[i].enabled==(i<7 || !strcmp(cfg.items[i].id,"PREFERENCES")));
 
     assert(cfg.tooltips == 1);
     /* Keyboard-control hot key: optional, kept verbatim, bounded, and it
@@ -145,9 +180,9 @@ int main(void)
         cfg.items[n].enabled=1;
         ++cfg.count;
     }
-    assert(cfg.count==27);
+    assert(cfg.count==28);
     assert(nd_add_plugin_instance(&cfg,8));
-    assert(cfg.count==28 && !strcmp(cfg.items[27].id,"EYES"));
+    assert(cfg.count==29 && !strcmp(cfg.items[28].id,"EYES"));
     nd_default_config(&cfg); /* keep the fixed catalogue indexes below */
     assert(strcmp(cfg.items[9].id, "DOPUS4") == 0 && !cfg.items[9].enabled);
     assert(strcmp(cfg.items[10].id,"ARCHIVE")==0 && !cfg.items[10].enabled);
@@ -163,7 +198,12 @@ int main(void)
     assert(nd_parse_line(&cfg,"FONT=BOLD") && cfg.font_mode==ND_FONT_BOLD);
     assert(nd_parse_line(&cfg,"FONT=WORKBENCH") && cfg.font_mode==ND_FONT_WORKBENCH);
     assert(!nd_parse_line(&cfg,"FONT=FUTURA"));
+    assert(nd_parse_line(&cfg,"BACKGROUND_TRANSPARENCY=0") && cfg.background_transparency==0);
+    assert(nd_parse_line(&cfg,"BACKGROUND_TRANSPARENCY=100") && cfg.background_transparency==100);
+    assert(!nd_parse_line(&cfg,"BACKGROUND_TRANSPARENCY=101"));
+    assert(!nd_parse_line(&cfg,"BACKGROUND_TRANSPARENCY=-1"));
     assert(nd_parse_line(&cfg,"LABELS=HOVER") && cfg.label_mode==ND_LABEL_HOVER);
+    assert(nd_parse_line(&cfg,"LABELS=MAGNIFIED") && cfg.label_mode==ND_LABEL_HOVER);
     assert(nd_parse_line(&cfg,"LABELS=HIDDEN") && cfg.label_mode==ND_LABEL_HIDDEN);
     assert(nd_parse_line(&cfg,"LABELS=ALWAYS") && cfg.label_mode==ND_LABEL_ALWAYS);
     assert(!nd_parse_line(&cfg,"LABELS=SOMETIMES"));
@@ -176,6 +216,19 @@ int main(void)
     assert(!strcmp(nd_position_name(ND_POSITION_END),"END"));
     assert(!strcmp(nd_font_name(ND_FONT_BOLD),"BOLD"));
     assert(!strcmp(nd_label_mode_name(ND_LABEL_HOVER),"HOVER"));
+    assert(nd_label_visible(ND_LABEL_ALWAYS,0,0));
+    assert(!nd_label_visible(ND_LABEL_HOVER,0,0));
+    assert(nd_label_visible(ND_LABEL_HOVER,0,1));
+    assert(!nd_label_visible(ND_LABEL_HIDDEN,0,1));
+    assert(!nd_label_visible(ND_LABEL_ALWAYS,1,1));
+    {
+        struct NDConfig labels;
+        nd_default_config(&labels);labels.label_mode=ND_LABEL_HOVER;labels.tooltips=0;labels.background_transparency=67;
+        assert(nd_write_config(&labels,"tests/caption-roundtrip.cfg"));
+        assert(!nd_load_config(&labels,"tests/caption-roundtrip.cfg"));
+        assert(labels.label_mode==ND_LABEL_HOVER && !labels.tooltips && labels.background_transparency==67);
+        remove("tests/caption-roundtrip.cfg");remove("tests/caption-roundtrip.cfg.good");remove("tests/caption-roundtrip.cfg.bak");
+    }
     assert(nd_parse_line(&cfg, "THEME=LIGHT") == 1);
     assert(cfg.theme == ND_THEME_LIGHT);
     assert(nd_parse_line(&cfg, "THEME=WORKBENCH") == 1);
@@ -333,21 +386,19 @@ int main(void)
     assert(nd_parse_line(&cfg, "Side=Left") == 1 && cfg.side == ND_SIDE_LEFT);
     assert(nd_parse_line(&cfg, "TOOLTIPS=no") == 1 && cfg.tooltips == 0);
     assert(nd_load_config(&cfg, "novadock.cfg") == 0);
-    assert(cfg.count == 32); /* seven active tiles plus optional definitions */
+    assert(cfg.count == 31); /* eight active tiles plus optional definitions */
     assert(!strcmp(cfg.items[2].id,"MUSIC"));
     assert(!strcmp(cfg.items[3].id,"TRASH"));
     assert(!strcmp(cfg.items[4].id,"CPU"));
     assert(!strcmp(cfg.items[5].id,"RAM"));
     assert(!strcmp(cfg.items[6].id,"CLOCK"));
-    assert(!cfg.items[29].enabled && !strcmp(cfg.items[29].id,"AMIROCKET"));
-    assert(!cfg.items[17].enabled && !strcmp(cfg.items[17].id,"TIMER"));
-    assert(!cfg.items[18].enabled && !strcmp(cfg.items[18].id,"NOTES"));
-    assert(!cfg.items[16].enabled && !strcmp(cfg.items[16].id,"BITSKIM"));
-    assert(!cfg.items[14].enabled && !strcmp(cfg.items[14].id,"AMIRC"));
-    assert(!cfg.items[15].enabled && !strcmp(cfg.items[15].id,"CLIPBOARD"));
-    assert(!cfg.items[19].enabled && !strcmp(cfg.items[19].id,"MUSICLIB"));
-    assert(!cfg.items[20].enabled && !strcmp(cfg.items[20].id,"SENSORS"));
-    for (i=0;i<cfg.count;++i) assert(cfg.items[i].enabled==(i<7));
+    assert(!cfg.items[16].enabled && !strcmp(cfg.items[16].id,"TIMER"));
+    assert(!cfg.items[17].enabled && !strcmp(cfg.items[17].id,"NOTES"));
+    assert(!cfg.items[15].enabled && !strcmp(cfg.items[15].id,"BITSKIM"));
+    assert(!cfg.items[14].enabled && !strcmp(cfg.items[14].id,"CLIPBOARD"));
+    assert(!cfg.items[18].enabled && !strcmp(cfg.items[18].id,"MUSICLIB"));
+    assert(!cfg.items[19].enabled && !strcmp(cfg.items[19].id,"SENSORS"));
+    for (i=0;i<cfg.count;++i) assert(cfg.items[i].enabled==(i<7 || !strcmp(cfg.items[i].id,"PREFERENCES")));
     assert(cfg.theme==ND_THEME_NORD && cfg.shape==ND_SHAPE_ROUNDED);
     assert(!strcmp(cfg.items[0].command,"SYS:"));
     assert(!strcmp(cfg.items[1].command,"NewShell"));
@@ -363,7 +414,7 @@ int main(void)
     fputs("OPTION.CHIPRAM.POLL_TICKS=60\n",legacy);
     fclose(legacy);
     assert(nd_load_config(&cfg,"tests/legacy-ram.cfg")==0);
-    assert(cfg.count==11 && !strcmp(cfg.items[0].id,"RAM"));
+    assert(cfg.count==12 && !strcmp(cfg.items[0].id,"RAM"));
     /* Every bundled plugin remains available to Add Item after loading a
      * configuration written before that plugin shipped. */
     assert(!strcmp(cfg.items[1].id,"CLOCK") && !cfg.items[1].enabled);
@@ -376,6 +427,17 @@ int main(void)
     assert(cfg.items[0].enabled && !cfg.items[0].graph);
     assert(!strcmp(nd_option_get(&cfg,"RAM","POLL_TICKS"),"60"));
     remove("tests/legacy-ram.cfg");
+
+    /* The shipped Preferences shortcut upgrades in place, including an
+     * intentionally disabled tile and a user-defined label. */
+    legacy=fopen("tests/legacy-preferences.cfg","w");assert(legacy);
+    fputs("LAUNCH=Other|SYS:System/Shell||ON|AUTO\nLAUNCH=My settings|NovaDockPrefs|NovaDockPrefs|OFF|AUTO\n",legacy);fclose(legacy);
+    assert(!nd_load_config(&cfg,"tests/legacy-preferences.cfg"));
+    assert(cfg.items[0].kind==ND_ITEM_LAUNCH && !strcmp(cfg.items[0].label,"Other"));
+    assert(cfg.items[1].kind==ND_ITEM_PLUGIN && !strcmp(cfg.items[1].id,"PREFERENCES"));
+    assert(!cfg.items[1].enabled && !strcmp(cfg.items[1].label,"MY SETTINGS"));
+    assert(!strcmp(cfg.items[1].command,"Plugins/Preferences"));
+    remove("tests/legacy-preferences.cfg");
 
     /* A successful atomic save publishes a separately validated recovery
      * generation.  It must remain usable even if the live file is later
@@ -402,7 +464,8 @@ int main(void)
     remove("tests/known-good.cfg.good");
     remove("tests/known-good.cfg.bak");
     assert(nd_load_config(&cfg, "this-file-does-not-exist.cfg") == -1);
-    assert(cfg.count == 14);
+    assert(cfg.count == 15);
+    assert(cfg.items[14].enabled && cfg.items[14].kind==ND_ITEM_PLUGIN && !strcmp(cfg.items[14].id,"PREFERENCES"));
     assert(!strcmp(cfg.items[2].id,"MUSIC"));
     assert(!strcmp(cfg.items[3].id,"TRASH"));
     puts("Config tests passed.");

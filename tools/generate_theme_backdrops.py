@@ -16,7 +16,7 @@ KEY = (255, 0, 255)
 SKIN_HEIGHT = 82
 THEMES = (
     "Mocha", "Light", "Workbench", "Graphite", "HighContrast",
-    "Copper", "Ocean", "Emerald", "NeXTSTEP", "BeOS", "Nord", "Vapor",
+    "Copper", "Ocean", "Emerald", "NeXTSTEP", "BeOS", "Nord", "Vapor", "Christmas", "MacModern", "MacGlass",
 )
 
 
@@ -36,10 +36,8 @@ def read_theme(path):
             values[key.strip()] = value.strip()
     return {
         "base": rgb(values["TILE"]),
-        "pattern": rgb(values["HOVER"]),
         "edge": rgb(values["ACCENT"]),
-        "shadow": rgb(values["BAR"]),
-        "highlight": rgb(values["SUBTLE"]),
+        "style": values.get("DOCK_STYLE", "FLAT"),
     }
 
 
@@ -47,49 +45,45 @@ def blank(width, height=SKIN_HEIGHT):
     return [[KEY for _ in range(width)] for _ in range(height)]
 
 
+def blend(base, accent, percent):
+    return tuple((a * (100 - percent) + b * percent + 50) // 100
+                 for a, b in zip(base, accent))
+
+
+def shelf_color(colors, y):
+    base = colors["base"]
+    if colors.get("style") == "GLASS":
+        # Eight restrained reflection bands keep the ILBM within 16 colours.
+        band = min(7, y * 8 // SKIN_HEIGHT)
+        return blend(base, (255,255,255), (68,52,34,18,8,16,26,46)[band])
+    if y in (0, SKIN_HEIGHT - 1):
+        return blend(base, colors["edge"], 30)
+    return base
+
+
 def centre(colors):
-    image = blank(64)
-    bottom = len(image) - 3
-    for y in range(2, bottom + 1):
-        for x in range(64):
-            image[y][x] = colors["base"]
-    for x in range(64):
-        image[2][x] = colors["edge"]
-        image[3][x] = colors["highlight"]
-        image[bottom - 1][x] = colors["shadow"]
-        image[bottom][x] = colors["edge"]
-    # Broad, low-contrast bands read cleanly at native and doubled display sizes.
-    # Single-pixel stipple looked like conversion noise after palette mapping.
-    for y in (20, 40, 60):
-        for x in range(0, 64, 16):
-            image[y][x:x + 8] = [colors["pattern"]] * 8
-    return image
+    # Every row is continuous, so tile boundaries cannot produce a pattern.
+    width = 64
+    return [[shelf_color(colors, y)] * width for y in range(SKIN_HEIGHT)]
 
 
 def cap(colors, right=False):
-    width = 20
+    width = 32 if colors.get("style")=="GLASS" else 20
     image = blank(width)
-    last = len(image) - 3
-    # One-pixel radius steps make a purposeful native-resolution curve.  The
-    # old 12/7/3-pixel jumps produced visibly blocky corners on a
-    # doubled Workbench display.
+    last = SKIN_HEIGHT - 1
     curve = (7, 5, 4, 3, 2, 1, 1, 0)
-    for y in range(2, last + 1):
-        distance = min(y - 2, last - y)
-        inset = curve[distance] if distance < len(curve) else 0
-        for x in range(inset, width):
-            target = width - 1 - x if right else x
-            image[y][target] = colors["base"]
-        boundary = width - 1 - inset if right else inset
-        image[y][boundary] = colors["edge"]
-        if distance == 1:
-            for x in range(inset, width):
-                target = width - 1 - x if right else x
-                image[y][target] = colors["highlight"]
-        elif y == last - 1:
-            for x in range(inset, width):
-                target = width - 1 - x if right else x
-                image[y][target] = colors["shadow"]
+    insets = [curve[min(y, last - y, len(curve) - 1)] for y in range(SKIN_HEIGHT)]
+    if colors.get("style")=="GLASS":insets=[20*(last-y)//last for y in range(SKIN_HEIGHT)]
+    edge = shelf_color(colors, 0)
+    for y, inset in enumerate(insets):
+        image[y][inset:] = [shelf_color(colors, y)] * (width - inset)
+        if 0 < y < last:
+            # Include every opaque pixel bordering a transparent one.
+            # The same contour colour runs around all four corners.
+            end = max(inset + 1, insets[y - 1], insets[y + 1])
+            image[y][inset:end] = [edge] * (end - inset)
+        if right:
+            image[y].reverse()
     return image
 
 
@@ -154,50 +148,84 @@ def mark_transparent(path):
     path.write_bytes(data)
 
 
+def ilbm_chunk(name, data):
+    return name + struct.pack(">I", len(data)) + data + (b"\0" if len(data) % 2 else b"")
+
+
+def write_ilbm(output, pixels):
+    """Encode the bounded four-plane indexed brushes used by the dock."""
+    width, height = len(pixels[0]), len(pixels)
+    palette = sorted({color for row in pixels for color in row})
+    if len(palette) > 16 or not (1 <= width <= 96 and 1 <= height <= 96):
+        raise ValueError("Artwork exceeds the dock ILBM limits")
+    indices = {color: index for index, color in enumerate(palette)}
+    planes = max(1, (len(palette) - 1).bit_length())
+    row_bytes = 2 * ((width + 15) // 16)
+    body = bytearray()
+    for row in pixels:
+        for plane in range(planes):
+            planar_row = bytearray(row_bytes)
+            for x, color in enumerate(row):
+                if indices[color] & (1 << plane):
+                    planar_row[x // 8] |= 0x80 >> (x % 8)
+            body.extend(planar_row)
+    header = struct.pack(">HHhhBBBBHBBhh", width, height, 0, 0, planes,
+                         2 if KEY in indices else 0, 0, 0, indices.get(KEY, 0),
+                         1, 1, width, height)
+    palette_bytes = bytes(channel for color in palette for channel in color)
+    data = (b"ILBM" + ilbm_chunk(b"BMHD", header) + ilbm_chunk(b"CMAP", palette_bytes)
+            + ilbm_chunk(b"BODY", bytes(body)))
+    output.write_bytes(b"FORM" + struct.pack(">I", len(data)) + data)
+
+
 def build_part(ppmtoilbm, output, pixels, temporary):
+    if ppmtoilbm is None:
+        write_ilbm(output, pixels)
+        return
     ppm = temporary / (output.stem + ".ppm")
     write_ppm(ppm, pixels)
     with output.open("wb") as target:
         subprocess.run(
             (ppmtoilbm, "-maxplanes", "4", "-compress", str(ppm)),
             check=True, stdout=target)
-    mark_transparent(output)
+    if any(KEY in row for row in pixels):
+        mark_transparent(output)
 
 
 def build_skin(ppmtoilbm, output_dir, source, colors, temporary):
     output_dir.mkdir(parents=True, exist_ok=True)
-    left = cap(colors)
-    middle = centre(colors)
-    right = cap(colors, right=True)
-    build_part(ppmtoilbm, output_dir / "Backdrop.iff", middle, temporary)
-    build_part(ppmtoilbm, output_dir / "BackdropLeft.iff", left, temporary)
-    build_part(ppmtoilbm, output_dir / "BackdropRight.iff", right, temporary)
+    parts = {"Backdrop.iff": centre(colors), "BackdropLeft.iff": cap(colors),
+             "BackdropRight.iff": cap(colors, right=True)}
+    for name, pixels in parts.items():
+        build_part(ppmtoilbm, output_dir / name, pixels, temporary)
+    left, middle, right = (parts[name] for name in
+                           ("BackdropLeft.iff", "Backdrop.iff", "BackdropRight.iff"))
     write_png(source, [a + b * 6 + c for a, b, c in zip(left, middle, right)])
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
-    parser.add_argument("--ppmtoilbm", default="ppmtoilbm")
+    parser.add_argument("--ppmtoilbm", help="Optional external encoder for ByteRun1 compression")
+    parser.add_argument("--theme", action="append", choices=THEMES,
+                        help="Generate only the selected theme, repeatable")
     args = parser.parse_args()
     root = args.root.resolve()
     with tempfile.TemporaryDirectory(prefix="novadock-skins-") as name:
         temporary = Path(name)
-        for theme in THEMES:
+        for theme in args.theme or THEMES:
             directory = root / "Themes" / theme
             build_skin(args.ppmtoilbm, directory / "Images",
                        directory / "Images" / "Source.png",
                        read_theme(directory / "theme.cfg"), temporary)
+        if args.theme:
+            return
         samples = {
             "ClassicGold": {
-                "base": (170, 122, 38), "pattern": (145, 94, 24),
-                "edge": (242, 194, 76), "shadow": (92, 54, 18),
-                "highlight": (214, 162, 62),
+                "base": (170, 122, 38), "edge": (242, 194, 76),
             },
             "ClassicBlue": {
-                "base": (35, 78, 130), "pattern": (25, 59, 105),
-                "edge": (96, 181, 231), "shadow": (15, 36, 70),
-                "highlight": (73, 135, 181),
+                "base": (35, 78, 130), "edge": (96, 181, 231),
             },
         }
         for name, colors in samples.items():

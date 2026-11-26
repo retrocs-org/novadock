@@ -12,6 +12,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "nd_clipboard_popup.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 extern struct IntuitionBase *IntuitionBase;
 extern struct GfxBase *GfxBase;
 #define PT_BG 0

@@ -13,7 +13,7 @@ def function(signature):
  return s[a:i]
 fragment=s[s.index('    top=p->screen->WBorTop'):s.index('    p->window=OpenWindowTags')].replace('goto fail','return 0')
 funcs='\n'.join(function(sig) for sig in ('int nd_panel_percent_get(', 'void nd_panel_percent_set(', 'int nd_panel_event('))
-tags=sorted(set(re.findall(r'\b(?:GTSL_\w+|GTST_\w+|GTTX_\w+|PGA_\w+|GA_\w+|IDCMP_\w+|[A-Z]+_KIND|PLACETEXT_\w+|LORIENT_HORIZ|GFLG_SELECTED)\b',fragment+funcs)))
+tags=sorted(set(re.findall(r'\b(?:GTSL_\w+|GTST_\w+|GTTX_\w+|PGA_\w+|GA_\w+|IDCMP_\w+|[A-Z]+_KIND|PLACETEXT_\w+|LORIENT_HORIZ|GFLG_SELECTED|GFLG_DISABLED)\b',fragment+funcs)))
 code=r'''
 #include <assert.h>
 #include <stdlib.h>
@@ -40,7 +40,7 @@ static void *CreateGadget(int kind,void *last,struct NewGadget *ng,...){
  return g;}
 /* Use fixed-width tag values in the captured constructor, like the 32-bit target. */
 static void GT_GetGadgetAttrs(struct Gadget *g,struct Window *w,void *r,ULONG tag,ULONG dest,...){(void)w;(void)r;assert(tag==GTSL_Level);*(ULONG *)dest=g->level;}
-static void GT_SetGadgetAttrs(struct Gadget *g,struct Window *w,void *r,...){va_list ap;ULONG tag,v;(void)w;(void)r;va_start(ap,r);while((tag=va_arg(ap,ULONG))){v=va_arg(ap,ULONG);if(tag==GTSL_Level){g->level=(int)v;++level_sets;}if(tag==GA_Disabled){g->disabled=(int)v;++disabled_sets;}}va_end(ap);}
+static void GT_SetGadgetAttrs(struct Gadget *g,struct Window *w,void *r,...){va_list ap;ULONG tag,v;(void)w;(void)r;va_start(ap,r);while((tag=va_arg(ap,ULONG))){v=va_arg(ap,ULONG);if(tag==GTSL_Level){g->level=(int)v;++level_sets;}if(tag==GA_Disabled){g->disabled=(int)v;if(v)g->Flags|=GFLG_DISABLED;else g->Flags&=~GFLG_DISABLED;++disabled_sets;}}va_end(ap);}
 static struct IntuiMessage *GT_GetIMsg(void *port){(void)port;if(!queued)return NULL;queued=0;return &message;}
 static void GT_ReplyIMsg(struct IntuiMessage *m){(void)m;++replied;}
 static void GT_BeginRefresh(struct Window *w){(void)w;}static void GT_EndRefresh(struct Window *w,int yes){(void)w;(void)yes;}
@@ -59,6 +59,8 @@ int main(void){struct NDPanel p;struct Screen screen;struct Font font;struct Win
    level_sets=disabled_sets=0;g->Flags=GFLG_SELECTED;nd_panel_percent_set(&p,4,80,1);assert(!level_sets&&g->level==50&&!g->disabled);
    g->Flags=0;nd_panel_percent_set(&p,4,80,1);assert(g->level==80);nd_panel_percent_set(&p,4,-1,0);assert(g->level==80&&g->disabled);
    nd_panel_percent_set(&p,4,140,1);assert(g->level==100&&!g->disabled);assert(nd_panel_percent_get(&p,0)==-1);
+   level_sets=disabled_sets=0;for(i=0;i<100;++i)nd_panel_percent_set(&p,4,100,1);
+   assert(!level_sets&&!disabled_sets); /* unchanged state performs zero redraws */
    /* GadTools can keep the outer gadget's SELECTED bit clear during drag. */
    g->Flags=0;queued=1;message.Class=IDCMP_GADGETDOWN;message.IAddress=g;
    assert(!nd_panel_event(&p));g->level=37;level_sets=0;
@@ -92,6 +94,9 @@ def cast_calls(source):
     source=source[:a]+call+source[b:];b=a+len(call)
    offset=b+2
  return source
+# Gadget flags are independent bits on the real target.
+code=code.replace('#define GFLG_SELECTED '+str(tags.index('GFLG_SELECTED')+10),'#define GFLG_SELECTED 1')
+code=code.replace('#define GFLG_DISABLED '+str(tags.index('GFLG_DISABLED')+10),'#define GFLG_DISABLED 2')
 code=cast_calls(code)
 with tempfile.TemporaryDirectory() as t:
  p=Path(t);(p/'ui.c').write_text(code)

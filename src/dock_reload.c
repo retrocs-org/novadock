@@ -1,5 +1,7 @@
+#include "nd_trace.h"
 /* NovaDock: Configuration reload, the control port, and moving or removing tiles. */
 #include "dock_internal.h"
+#include "nd_plugin_sampler.c"
 #include "nd_reply.h"
 
 /* Defined below, private to this file. */
@@ -38,10 +40,14 @@ static LONG apply_configuration(struct NDDock *dock,const struct NDConfig *provi
     unsigned char saved_woken[ND_MAX_ITEMS],saved_wake[ND_MAX_ITEMS];
     struct NDLayout layout;
     struct NDThemeSpec next_theme;
+    struct NDRect next_box;
     int status, i, j, found, skipped=0, base_count, live=0;
     ULONG started=diagnostic_ticks(),elapsed;
     LONG result = ND_CONTROL_OK;
     ++dock->diagnostic_reload_requests;
+    /* Any other settings change (Preferences, RELOAD, SET, ADD, pinning)
+     * ends the undo step: restoring the older snapshot would revert it. */
+    if (!dock->undo_keep) dock->undo_kind=ND_UNDO_NONE;
     dock->diagnostic_reload_largest_before=AvailMem(MEMF_LARGEST);
     dock->diagnostic_reload_free_low=AvailMem(MEMF_ANY);
     /* The loader clears the structure itself.  MEMF_REVERSE keeps this
@@ -97,13 +103,39 @@ static LONG apply_configuration(struct NDDock *dock,const struct NDConfig *provi
                     &dock->action_items[i])) {
                 same=0;break;
             }
-        if (same) {skipped=1;goto finish;}
+        if (same) {
+            /* Save after Test can leave settings unchanged while closing the
+             * window that was visible in the captured background. Repair an
+             * actually changed scene even on a skipped configuration reload. */
+            if(!provided && dock->hover_desktop){
+                desktop_scene_tick(dock,1);
+                if(dock->desktop_scene_dirty){
+                    dock->desktop_refresh_pending=2;
+                    dock->desktop_ready_ms=dock->desktop_probe_ms=0;
+                    desktop_startup_tick(dock,200);
+                }
+            }
+            skipped=1;goto finish;
+        }
     }
-    live=dock->window && !dock->box_pending &&
+    live=dock->window && !dock->box_pending && !dock->grip_moved &&
          nd_config_can_update_live(&dock->conf,next) &&
          !memcmp(&next_theme,&dock->theme_spec,sizeof(next_theme)) &&
          layout.tile_width==dock->tile_width &&
          layout.tile_height==dock->tile_height;
+    /* A moved or resized shelf needs fresh corner pixels from Workbench.
+     * The desktop snapshot exists whenever theme artwork is on, even when the
+     * theme has no backdrop image, so it gates the in-place path too. */
+    if (live) {
+        int same_box=nd_dock_rect(next,&layout,dock->screen->Width,dock->screen->Height,
+                                  dock->screen->BarHeight,&next_box) &&
+             next->side==dock->conf.side &&
+             next_box.left==dock->full_box.left && next_box.top==dock->full_box.top &&
+             next_box.width==dock->full_box.width && next_box.height==dock->full_box.height;
+        live=nd_live_reload_allowed(1,dock->hover_headroom,dock->hover_desktop!=NULL,
+                                    dock->background.parts[0].bitmap!=NULL,
+                                    dock->conf.background_transparency,same_box);
+    }
     icon_stash=(struct NDIconStash *)AllocVec(sizeof(*icon_stash),
                                              MEMF_PUBLIC|MEMF_CLEAR);
     if (!icon_stash) {result=ND_CONTROL_NOMEM;goto finish;}
@@ -148,6 +180,7 @@ static LONG apply_configuration(struct NDDock *dock,const struct NDConfig *provi
         }
     }
     /* Close only the Intuition UI; retain both public Exec ports. */
+    close_caption_popup(dock);
     close_tooltip(dock);
     close_feedback(dock);
     close_popup(dock);
@@ -169,6 +202,7 @@ static LONG apply_configuration(struct NDDock *dock,const struct NDConfig *provi
     }
     /* Install the new configuration; BUFFER now holds the previous one. */
     swap_configs(&dock->conf,buffer);
+    invalidate_settings_cache(dock);
     old = buffer;
     next = &dock->conf;
     dock->theme_spec=next_theme;
@@ -236,6 +270,7 @@ static LONG apply_configuration(struct NDDock *dock,const struct NDConfig *provi
         free_colors(dock);
         dock->screen = NULL;
         dock->conf = *old;
+        invalidate_settings_cache(dock);
         nd_theme_load_config(dock->directory,&dock->conf,&dock->theme_spec);
         memcpy(dock->history, saved_history, sizeof(dock->history));
         memcpy(dock->plugin_task,saved_tasks,sizeof(saved_tasks));
@@ -302,14 +337,57 @@ finish:
 }
 LONG reload_configuration(struct NDDock *dock)
 {
-    return apply_configuration(dock,NULL);
+    LONG rc=apply_configuration(dock,NULL);
+    /* A reload starts from EDIT_CONFIG, so queued ARexx SETs are now live. */
+    if (rc==ND_CONTROL_OK) {
+        dock->rexx_apply_pending=0;dock->rexx_apply_failures=0;
+        release_saved_settings_edit(dock);
+    }
+    return rc;
+}
+void flush_rexx_settings(struct NDDock *dock)
+{
+    LONG rc;
+    if (!dock || !dock->rexx_apply_pending) return;
+    if (!dock->edit_config) {dock->rexx_apply_pending=0;return;}
+    rc=apply_configuration(dock,dock->edit_config);
+    if (rc==ND_CONTROL_OK || (rc==ND_CONTROL_NOFIT && (!dock->screen || dock->screen_closed))) {
+        /* NOFIT with Workbench closed: reopening loads the edit. */
+        dock->rexx_apply_pending=0;dock->rexx_apply_failures=0;
+        /* SaveConfig may already have written this edit; it was kept only
+         * for this reload, so release it as the save completion would. */
+        release_saved_settings_edit(dock);
+        return;
+    }
+    /* Out of memory is usually transient: retry a few quiet periods, then
+     * keep the (saved) settings for the next reload and say so. */
+    if (rc==ND_CONTROL_NOMEM && ++dock->rexx_apply_failures<5) {
+        dock->rexx_apply_ticks=5;return;
+    }
+    dock->rexx_apply_pending=0;dock->rexx_apply_failures=0;
+    show_feedback(dock,"ARexx settings saved; they apply after the next reload",1);
 }
 static void fill_diagnostics(struct NDDock *dock,
                              struct NDDiagnosticsSnapshot *snapshot)
 {
+
     ULONG now=diagnostic_ticks();
     int i;
     memset(snapshot,0,sizeof(*snapshot));
+#if defined(ND_TRACE) || defined(ND_RUNTIME_TRACE)
+    {int persist;nd_trace_status(&snapshot->support_queued,&snapshot->support_dropped,&snapshot->support_errors,&persist);
+     snapshot->support_version=3;snapshot->support_level=(UWORD)nd_trace_level;snapshot->support_persist=(UWORD)persist;}
+#endif
+    snapshot->viewport_version=1;snapshot->viewport_pending=(UWORD)(dock->box_pending!=0);
+    if(dock->window){
+        snapshot->viewport_left=dock->window->LeftEdge;snapshot->viewport_top=dock->window->TopEdge;
+        snapshot->viewport_width=dock->window->Width;snapshot->viewport_height=dock->window->Height;
+        snapshot->viewport_scroll_x=dock->window->WLayer->Scroll_X;snapshot->viewport_scroll_y=dock->window->WLayer->Scroll_Y;
+    }
+    snapshot->async_version=1;snapshot->icon_jobs=(UWORD)active_icon_jobs();snapshot->launch_jobs=(UWORD)active_launch_jobs();
+    for(i=0;i<dock->conf.count;++i)if(dock->scaled_icon_bitmaps[i] || dock->brush_bitmaps[i])++snapshot->icons_ready;
+    snapshot->aminotis_version=1;snapshot->aminotis_enabled=(UWORD)dock->conf.send_alerts_aminotis;
+    nd_aminotis_stats(&snapshot->aminotis);
     snapshot->uptime_ticks=now-dock->diagnostic_started;
     snapshot->wake_count=dock->diagnostic_wakes;
     snapshot->paint_count=dock->diagnostic_full_paints;
@@ -326,6 +404,18 @@ static void fill_diagnostics(struct NDDock *dock,
     snapshot->mem_free=AvailMem(MEMF_ANY);
     snapshot->mem_largest=AvailMem(MEMF_LARGEST);
     snapshot->mem_chip_free=AvailMem(MEMF_CHIP);
+    snapshot->counter_epoch=dock->diagnostic_started;
+    snapshot->grip_version=1;snapshot->dock_position=(UWORD)dock->conf.position;
+    {struct NDRect grip;
+     if(dock->window && dock_grip_rect(dock,&grip)){
+        snapshot->grip_left=(WORD)(dock_left(dock)+grip.left);snapshot->grip_top=(WORD)(dock_top(dock)+grip.top);
+        snapshot->grip_width=(WORD)grip.width;snapshot->grip_height=(WORD)grip.height;
+     }}
+    snapshot->render_version=1;snapshot->frame_interval_ms=(UWORD)dock->timer_frame_ms;
+    snapshot->frame_average_us=dock->frame_average_us;snapshot->frame_peak_us=dock->frame_peak_us;
+    snapshot->frame_samples=dock->frame_samples;
+    snapshot->hover_cache_bytes=dock->screen ? hover_cache_bytes(dock):0;
+    snapshot->hover_cache_budget=dock->hover_cache_budget;snapshot->hover_cache_evictions=dock->hover_cache_evictions;
     snapshot->reload_largest_before=dock->diagnostic_reload_largest_before;
     snapshot->reload_largest_after=dock->diagnostic_reload_largest_after;
     snapshot->reload_free_low=dock->diagnostic_reload_free_low;
@@ -399,8 +489,14 @@ void process_control(struct NDDock *dock, int quitting)
             else{
                 if(m->action==ND_CONTROL_SAVE_LOCK){dock->write_owner=owner;
                     dock->write_deadline=diagnostic_ticks()+1500UL;}
+                /* Finish queued ARexx application before an external writer
+                 * reads/saves its own configuration. Saved edits cannot remain
+                 * as an alternative source for that writer's RELOAD. */
+                flush_rexx_settings(dock);
                 settings_save_tick(dock,1,1);
-                m->result=dock->save_state.revision==dock->save_state.saved ? ND_CONTROL_OK :
+                release_saved_settings_edit(dock);
+                m->result=!dock->rexx_apply_pending &&
+                    dock->save_state.revision==dock->save_state.saved ? ND_CONTROL_OK :
                     dock->save_state.last_failed && !dock->save_state.active ? ND_CONTROL_SAVE_FAILED : ND_CONTROL_PENDING;
             }
             dock->diagnostic_reclaimed_replies+=(ULONG)nd_reply_finish((struct Message *)m);continue;
@@ -453,6 +549,24 @@ void process_control(struct NDDock *dock, int quitting)
                     m->result=ND_CONTROL_OK;
                 }
             }
+            else if(m->action==ND_CONTROL_PLUGIN_RESOURCES && m->msg.mn_Length>=sizeof(struct NDControlPluginResourcesMessage)){
+                struct NDControlPluginResourcesMessage *q=(struct NDControlPluginResourcesMessage *)m;int i,n=0;ULONG now=diagnostic_ticks();
+                if(q->operation>1){m->result=ND_CONTROL_INVALID;}
+                else if(q->operation==1 && !plugin_sampler_start(dock)){m->result=ND_CONTROL_NOMEM;}
+                else{
+                    q->count=0;q->total=0;
+                    for(i=0;i<dock->conf.count;++i)if(dock->conf.items[i].kind==ND_ITEM_PLUGIN && dock->conf.items[i].enabled)++q->total;
+                    if(q->offset>=q->total)q->offset=0;
+                    for(i=0;i<dock->conf.count && q->count<ND_RESOURCE_PAGE;++i){const struct NDItem *item=&dock->conf.items[i];struct NDPluginResourceRow *row;
+                        if(item->kind!=ND_ITEM_PLUGIN || !item->enabled)continue;if(n++<q->offset)continue;
+                        row=&q->rows[q->count++];memset(row,0,sizeof(*row));strcpy(row->id,item->id);strcpy(row->label,item->label);row->reserved=(UWORD)i;row->online=(UWORD)item->online;row->stale=(UWORD)!strcmp(item->value,"NOT RESPONDING");
+                        row->age_ticks=ND_DIAGNOSTIC_AGE_UNKNOWN;
+                        if(!strcmp(dock->plugin_support_id[i],item->id)){row->stats=dock->plugin_support[i];row->age_ticks=now-dock->plugin_support_stamp[i];}
+                        row->cpu_samples=dock->plugin_cpu_samples;row->cpu_hits=dock->plugin_cpu_hits[i];row->cpu_valid=(UWORD)(dock->plugin_cpu_samples>=10 && dock->plugin_cpu_stamp!=0 && !strcmp(dock->plugin_cpu_id[i],item->id));
+                    }
+                    q->sample_remaining=plugin_sampler_remaining(dock);q->sample_age=dock->plugin_cpu_stamp ? now-dock->plugin_cpu_stamp:ND_DIAGNOSTIC_AGE_UNKNOWN;m->result=ND_CONTROL_OK;
+                }
+            }
             else if(m->action==ND_CONTROL_PLUGIN_HEALTH &&
                     m->msg.mn_Length>=sizeof(struct NDControlPluginHealthMessage)){
                 struct NDControlPluginHealthMessage *health=(struct NDControlPluginHealthMessage *)m;
@@ -497,6 +611,14 @@ void process_control(struct NDDock *dock, int quitting)
             } else if (m->action==ND_CONTROL_TOGGLE) {
                 if (dock->hidden) show_dock(dock); else hide_dock(dock);
                 m->result=ND_CONTROL_OK;
+            } else if (m->action==ND_CONTROL_SUPPORT_MARK) {
+#if defined(ND_TRACE) || defined(ND_RUNTIME_TRACE)
+                nd_trace_reload();if(nd_trace_level){nd_trace_marker();m->result=ND_CONTROL_OK;}
+#endif
+            } else if (m->action==ND_CONTROL_SUPPORT_FLUSH) {
+#if defined(ND_TRACE) || defined(ND_RUNTIME_TRACE)
+                nd_trace_reload();nd_trace_flush();m->result=ND_CONTROL_OK;
+#endif
             } else if (m->action==ND_CONTROL_DIAGNOSTICS_RESET) {
                 /* Preserve liveness timestamps/backoff state: this is a
                  * telemetry baseline change, not a watchdog reset. */
@@ -522,8 +644,10 @@ int save_and_reload(struct NDDock *dock, struct NDConfig **full)
     if (!nd_layout_fit_enabled(*full,dock->screen->Width,dock->screen->Height,
                                dock->screen->BarHeight,&layout)) return 0;
     if(apply_configuration(dock,*full)!=ND_CONTROL_OK)return 0;
-    /* The caller's buffer becomes the pending edit: no 58 KB copy. */
+    /* The caller's buffer becomes the pending edit: no 58 KB copy.  It was
+     * built from EDIT_CONFIG, so any queued ARexx SETs are now live too. */
     accept_settings_save(dock,*full);*full=NULL;
+    dock->rexx_apply_pending=0;
     return 1;
 }
 void capture_row_layout(struct NDDock *dock,struct NDConfig *full)
@@ -540,6 +664,44 @@ void capture_row_layout(struct NDDock *dock,struct NDConfig *full)
     full->row_layout=1;
 }
 /* Return a real persistence result for ARexx, rather than always saying OK. */
+/* One step of Edit-mode undo.  The configuration before the latest move or
+ * removal is kept only while the dock is unlocked (about 58 KB), and is
+ * released when the dock is locked again. */
+static void remember_undo(struct NDDock *dock,const struct NDConfig *before)
+{
+    dock->undo_kind=ND_UNDO_NONE;
+    if (!dock->edit_mode) return;
+    if (!dock->undo_config)
+        dock->undo_config=(struct NDConfig *)AllocVec(sizeof(*dock->undo_config),MEMF_PUBLIC|MEMF_REVERSE);
+    if (dock->undo_config) memcpy(dock->undo_config,before,sizeof(*before));
+}
+void release_undo(struct NDDock *dock)
+{
+    if (dock->undo_config) FreeVec(dock->undo_config);
+    dock->undo_config=NULL;dock->undo_kind=ND_UNDO_NONE;dock->undo_label[0]='\0';
+}
+/* Restore the configuration before the last Edit-mode move or removal. */
+int undo_last_edit(struct NDDock *dock)
+{
+    struct NDConfig *full;
+    char message[200];
+    int kind=dock->undo_kind;
+    if (kind==ND_UNDO_NONE || !dock->undo_config) return 0;
+    /* save_and_reload() takes the buffer over as the pending edit. */
+    full=dock->undo_config;dock->undo_config=NULL;dock->undo_kind=ND_UNDO_NONE;
+    dock->undo_keep=1;
+    if (!save_and_reload(dock,&full)) {
+        dock->undo_keep=0;
+        dock->undo_config=full;dock->undo_kind=kind;
+        if (dock->screen) DisplayBeep(dock->screen);
+        return 0;
+    }
+    dock->undo_keep=0;
+    sprintf(message,kind==ND_UNDO_REMOVE ? nd_trf("Restored %s") : nd_trf("Moved %s back"),dock->undo_label);
+    show_feedback(dock,message,0);
+    dock->undo_label[0]='\0';
+    return 1;
+}
 static int do_move_row(struct NDDock *dock,int from,int to,int target_row)
 {
     struct NDConfig *full;
@@ -557,8 +719,11 @@ static int do_move_row(struct NDDock *dock,int from,int to,int target_row)
     moved[sizeof(moved)-1]='\0';
     rc=load_edit_configuration(dock,full);
     if (rc<=0) capture_row_layout(dock,full);
-    if (rc<=0 && nd_move_visible_to_row(full,from,to,target_row))
-        success=save_and_reload(dock,&full);
+    if (rc<=0) remember_undo(dock,full);
+    if (rc<=0 && nd_move_visible_to_row(full,from,to,target_row)) {
+        dock->undo_keep=1;success=save_and_reload(dock,&full);dock->undo_keep=0;
+    }
+    if (success) {strcpy(dock->undo_label,moved);dock->undo_kind=ND_UNDO_MOVE;}
     if (!success && dock->screen) DisplayBeep(dock->screen);
     if (full) FreeVec(full);
     if (success) {
@@ -573,6 +738,10 @@ int drop_after_tile(struct NDDock *dock,int index,int mx,int my)
     if (!dock || index<0 || index>=dock->conf.count) return 0;
     tile_coords(dock,index,&x,&y);
     tile_dimensions(dock,index,&w,&h);
+    if(dock->hover_headroom && dock->hover_plan_ready){
+        const struct NDRect *box=&dock->hover_rects[index];
+        x=box->left;y=box->top;w=box->width;h=box->height;
+    }
     return vertical(dock) ? nd_drop_after_item(my-y,h) :
                             nd_drop_after_item(mx-x,w);
 }
@@ -636,8 +805,11 @@ int remove_dragged_item(struct NDDock *dock, int visible)
     full=(struct NDConfig *)AllocVec(sizeof(*full),MEMF_PUBLIC|MEMF_CLEAR|MEMF_REVERSE);
     if (!full) return 0;
     rc=load_edit_configuration(dock,full);
-    if (rc<=0 && nd_remove_visible_item(full,visible))
-        success=save_and_reload(dock,&full);
+    if (rc<=0) remember_undo(dock,full);
+    if (rc<=0 && nd_remove_visible_item(full,visible)) {
+        dock->undo_keep=1;success=save_and_reload(dock,&full);dock->undo_keep=0;
+    }
+    if (success) {strcpy(dock->undo_label,removed);dock->undo_kind=ND_UNDO_REMOVE;}
     if (!success && dock->screen) DisplayBeep(dock->screen);
     if (full) FreeVec(full);
     if (success) {
@@ -645,4 +817,103 @@ int remove_dragged_item(struct NDDock *dock, int visible)
         show_feedback(dock,message,0);
     }
     return success;
+}
+
+/* ---- Dock profiles: complete configurations saved by name ------------- */
+
+static int profile_cmp(const char *a,const char *b)
+{
+    int ca,cb;
+    do {ca=toupper((unsigned char)*a++);cb=toupper((unsigned char)*b++);
+        if (ca!=cb) return ca-cb;} while (ca);
+    return 0;
+}
+/* Up to MAX profile names (sorted, without ".cfg"), skipping EXCEPT. */
+int list_profiles(char names[][ND_PROFILE_LEN],int max,const char *except)
+{
+    struct FileInfoBlock *fib;
+    BPTR lock;
+    APTR requesters;
+    int count=0,i,j;
+    requesters=quiet_requesters();
+    lock=Lock((STRPTR)ND_PROFILE_DIR,ACCESS_READ);
+    restore_requesters(requesters);
+    if (!lock) return 0;
+    fib=(struct FileInfoBlock *)AllocDosObject(DOS_FIB,NULL);
+    if (fib && Examine(lock,fib)) {
+        while (ExNext(lock,fib)) {
+            char name[ND_PROFILE_LEN];
+            size_t n=strlen((char *)fib->fib_FileName);
+            if (fib->fib_DirEntryType>0 || n<5 || n-4>=sizeof(name) ||
+                profile_cmp((char *)fib->fib_FileName+n-4,".cfg")) continue;
+            memcpy(name,fib->fib_FileName,n-4);name[n-4]='\0';
+            if (!nd_profile_name_valid(name) || (except && !profile_cmp(name,except))) continue;
+            /* Insert sorted; keep the first MAX alphabetically. */
+            for (i=0;i<count && profile_cmp(names[i],name)<0;++i);
+            if (i>=max) continue;
+            for (j=(count<max ? count:max-1);j>i;--j) strcpy(names[j],names[j-1]);
+            strcpy(names[i],name);
+            if (count<max) ++count;
+        }
+    }
+    if (fib) FreeDosObject(DOS_FIB,fib);
+    UnLock(lock);
+    return count;
+}
+/* Save the current configuration as profile NAME and make it the active
+ * profile.  Returns 1 on success. */
+int save_profile(struct NDDock *dock,const char *name)
+{
+    struct NDConfig *full;
+    char path[ND_COMMAND_LEN],message[120];
+    int ok=0;
+    if (!nd_profile_path(name,path,sizeof(path))) return 0;
+    full=(struct NDConfig *)AllocVec(sizeof(*full),MEMF_PUBLIC|MEMF_CLEAR|MEMF_REVERSE);
+    if (!full) return 0;
+    if (load_edit_configuration(dock,full)<=0) {
+        strcpy(full->profile,name);
+        config_dir("ENVARC:NovaDock");config_dir(ND_PROFILE_DIR);
+        /* The file is the profile; also record it as the active one. */
+        if (nd_write_config(full,path)) {ok=1;(void)save_and_reload(dock,&full);}
+    }
+    if (full) FreeVec(full);
+    if (ok) sprintf(message,nd_trf("Saved profile %s"),name);
+    else sprintf(message,nd_trf("Could not save profile %s"),name);
+    show_feedback(dock,message,!ok);
+    return ok;
+}
+/* Switch to profile NAME: apply it like Preferences' Use and save it as the
+ * current configuration.  Returns 1 on success. */
+int use_profile(struct NDDock *dock,const char *name)
+{
+    struct NDConfig *full;
+    char path[ND_COMMAND_LEN],message[120];
+    int ok=0;
+    if (!nd_profile_path(name,path,sizeof(path))) return 0;
+    full=(struct NDConfig *)AllocVec(sizeof(*full),MEMF_PUBLIC|MEMF_CLEAR|MEMF_REVERSE);
+    if (!full) return 0;
+    if (nd_load_config(full,path)==0) {
+        strcpy(full->profile,name);
+        ok=save_and_reload(dock,&full);
+    }
+    if (full) FreeVec(full);
+    if (ok) sprintf(message,nd_trf("Switched to profile %s"),name);
+    else sprintf(message,nd_trf("Could not switch to profile %s"),name);
+    show_feedback(dock,message,!ok);
+    return ok;
+}
+/* Delete profile NAME with the backup copies the safe writer keeps. */
+int delete_profile(struct NDDock *dock,const char *name)
+{
+    static const char *const suffix[]={"",".bak",".good",".old",".new",NULL};
+    char path[ND_COMMAND_LEN+8];
+    int i,ok;
+    (void)dock;
+    if (!nd_profile_path(name,path,sizeof(path)-8)) return 0;
+    ok=DeleteFile((STRPTR)path)!=0;
+    for (i=1;suffix[i];++i) {
+        nd_profile_path(name,path,sizeof(path)-8);strcat(path,suffix[i]);
+        (void)DeleteFile((STRPTR)path);
+    }
+    return ok;
 }

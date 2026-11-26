@@ -22,7 +22,7 @@ class Picker(unittest.TestCase):
 #define ND_PLUGIN_CATALOG_MAX ND_MAX_ITEMS
 struct Node {char *ln_Name;};struct List {int count;};
 struct NDPluginSummary {char id[20],name[ND_LABEL_LEN],command[ND_COMMAND_LEN],problem[96];};
-struct AddItemPage {struct NDConfig *cfg;struct NDPluginSummary plugin_catalog[48];int catalog_count,catalog_scanned,plugin_count,plugin_selected;struct List plugin_rows;struct Node plugin_nodes[48];char plugin_names[49][96],preselect[20];int plugin_row_cfg[48],plugin_row_cat[48];};
+struct AddItemPage {struct NDConfig *cfg;struct NDPluginSummary plugin_catalog[ND_PLUGIN_CATALOG_MAX];int catalog_count,catalog_scanned,plugin_count,plugin_selected;struct List plugin_rows;struct Node plugin_nodes[ND_PLUGIN_CATALOG_MAX];char plugin_names[ND_PLUGIN_CATALOG_MAX+1][96],preselect[20];int plugin_row_cfg[ND_PLUGIN_CATALOG_MAX],plugin_row_cat[ND_PLUGIN_CATALOG_MAX];};
 static void NewList(struct List *p){p->count=0;}
 static void AddTail(struct List *p,struct Node *n){assert(n->ln_Name);++p->count;}
 static int nd_plugin_catalog_inventory(struct NDPluginSummary *p,int max){(void)p;(void)max;return 0;}
@@ -33,10 +33,10 @@ static int row(struct AddItemPage *p,const char *id){int i;for(i=0;i<p->plugin_c
 int main(void){static struct NDConfig cfg;static struct AddItemPage page;FILE *f;int cpu;
 f=fopen("minimal.cfg","w");assert(f);fputs("PLUGIN=Clock|Plugins/Clock|CLOCK|METER|ON\nPLUGIN=Notes|Plugins/Notes|NOTES|METER|ON\nPLUGIN=Extract|Plugins/ArchiveExtractor|ARCHIVE|METER|OFF\nPLUGIN=Screen Mode|Plugins/ScreenMode|SCREENMODE|METER|OFF\n",f);fclose(f);
 assert(nd_load_config(&cfg,"minimal.cfg")==0);page.cfg=&cfg;page.plugin_selected=-1;build_plugin_rows(&page);
-assert(row(&page,"CPU")>=0&&row(&page,"RAM")>=0&&row(&page,"NET")>=0);assert(!strcmp(page.plugin_names[row(&page,"CPU")],"CPU Activity"));assert(row(&page,"CLOCK")==-1&&row(&page,"NOTES")==-1);
+assert(row(&page,"CPU")>=0&&row(&page,"RAM")>=0&&row(&page,"NET")>=0);assert(!strcmp(page.plugin_names[row(&page,"CPU")],"CPU ACTIVITY"));assert(row(&page,"CLOCK")==-1&&row(&page,"NOTES")==-1);
 assert(!strcmp(page.cfg->items[page.plugin_row_cfg[row(&page,"ARCHIVE")]].label,"ARCHIVE"));
 assert(!strcmp(page.cfg->items[page.plugin_row_cfg[row(&page,"SCREENMODE")]].label,"SMODE"));
-assert(strstr(page.plugin_names[row(&page,"CPU")],"CPU Activity")&&!strchr(page.plugin_names[row(&page,"CPU")],'['));
+assert(strstr(page.plugin_names[row(&page,"CPU")],"CPU ACTIVITY")&&!strchr(page.plugin_names[row(&page,"CPU")],'['));
 cpu=page.plugin_row_cfg[row(&page,"CPU")];assert(nd_set_item_enabled(&cfg,cpu,1));build_plugin_rows(&page);assert(row(&page,"CPU")==-1&&row(&page,"RAM")>=0);
 page.catalog_count=2;strcpy(page.plugin_catalog[0].id,"RAM");strcpy(page.plugin_catalog[0].problem,"invalid manifest");strcpy(page.plugin_catalog[1].id,"BAD_NEW");strcpy(page.plugin_catalog[1].name,"Broken");strcpy(page.plugin_catalog[1].problem,"missing program");build_plugin_rows(&page);assert(row(&page,"RAM")==-1);{int i;for(i=0;i<page.plugin_count;++i)assert(page.plugin_row_cat[i]!=1);}
 {struct NDManifest m;struct NDOptionDef defs[32];int n,j;

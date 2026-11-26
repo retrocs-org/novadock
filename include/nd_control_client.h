@@ -3,6 +3,7 @@
 #include "nd_control.h"
 struct NDConfig;
 LONG nd_control_send(UWORD action);
+LONG nd_control_plugin_resources(struct NDControlPluginResourcesMessage *);
 LONG nd_control_alerts(struct NDControlAlertsMessage *request);
 int nd_control_sync_settings(void);
 int nd_control_write_config(const struct NDConfig *cfg,const char *path);

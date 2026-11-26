@@ -2,18 +2,19 @@
 # Builds and runs NovaDock's libFuzzer targets (needs clang with libFuzzer).
 #   sh scripts/fuzz.sh [seconds-per-target] [target ...]
 # Targets: config manifest rexx ilbm bitskim clipboard binary script network
-# music.  Crashes are kept in fuzz-out/<target>/ as crash-* files; the seed
+# music calc weather markdown log http.  Crashes are kept in fuzz-out/<target>/ as crash-* files; the seed
 # corpus comes from the project's own files.
 set -eu
 cd "$(dirname "$0")/.."
 SECONDS_EACH=${1:-60}
 [ $# -gt 0 ] && shift
-TARGETS=${*:-config manifest rexx ilbm bitskim clipboard binary script network music}
+TARGETS=${*:-config manifest rexx ilbm bitskim clipboard binary script network music calc weather markdown log http}
 CC=${FUZZ_CC:-clang}
 OUT=fuzz-out
 FLAGS="-g -O1 -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=undefined"
 INC="-Iinclude -Iplugin_src/common -Iplugin_src/bitskim -Iplugin_src/clipboard \
- -Iplugin_src/mixer -Iplugin_src/screenmode -Iplugin_src/script"
+ -Iplugin_src/mixer -Iplugin_src/screenmode -Iplugin_src/script -Iplugin_src/calc \
+ -Iplugin_src/weather -Iplugin_src/notes -Iplugin_src/monitor -Iplugin_src/aminet -D_DEFAULT_SOURCE"
 mkdir -p "$OUT"
 status=0
 for t in $TARGETS; do
@@ -28,6 +29,11 @@ for t in $TARGETS; do
     script)    SRC="plugin_src/script/nd_script.c"; SEEDS="" ;;
     network)   SRC="plugin_src/network/nd_network.c"; SEEDS="" ;;
     music)     SRC="plugin_src/musicplayer/nd_musicplayer.c"; SEEDS="" ;;
+    calc)      SRC="plugin_src/calc/nd_calc.c"; SEEDS="" ;;
+    weather)   SRC="plugin_src/weather/nd_weather.c"; SEEDS="tests/fixtures/weather*" ;;
+    markdown)  SRC="plugin_src/notes/nd_markdown.c plugin_src/notes/nd_notes.c"; SEEDS="docs/*.md" ;;
+    log)       SRC="plugin_src/monitor/nd_monitor.c"; SEEDS="" ;;
+    http)      SRC="plugin_src/aminet/nd_aminet.c"; SEEDS="" ;;
     *) echo "unknown target: $t" >&2; exit 2 ;;
   esac
   upper=$(echo "$t" | tr 'a-z' 'A-Z')

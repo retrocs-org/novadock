@@ -1,3 +1,5 @@
+> Retired from the shipped plugin set on 26 November 2026. Retained as source reference for AmiNotis. See [NOTIFICATION_MIGRATION.md](NOTIFICATION_MIGRATION.md).
+
 # ALERTS plugin
 
 Add **ALERTS** in Preferences > Organize > Add > Plugin. Its corner badge

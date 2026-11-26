@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "nd_manifest.h"
+#include "nd_retired_plugins.h"
 #include "nd_plugin_labels.h"
 #include "nd_plugin_versions.h"
 #include "nd_options.h"
@@ -49,7 +50,7 @@ void nd_manifest_init(struct NDManifest *m,const char *file_name)
     memset(m,0,sizeof(*m));
     m->abi=1;
     for (p=base;*p;++p) if (*p==':' || *p=='/') base=p+1;
-    copy_text(m->name,base,sizeof(m->name));
+    copy_text(m->name,base,sizeof(m->name));nd_plugin_name_upper(m->name);
 }
 int nd_manifest_line(struct NDManifest *m,const char *line)
 {
@@ -72,7 +73,7 @@ int nd_manifest_line(struct NDManifest *m,const char *line)
     if (same_nocase(key,"NOVADOCK_NAME")) {
         if (!*value || strlen(value)>=sizeof(m->name) || strchr(value,'|'))
             return fail(m,"invalid NOVADOCK_NAME");
-        copy_text(m->name,value,sizeof(m->name));
+        copy_text(m->name,value,sizeof(m->name));nd_plugin_name_upper(m->name);
         return 1;
     }
     if (same_nocase(key,"NOVADOCK_VIEW")) {
@@ -154,8 +155,10 @@ int nd_manifest_finish(struct NDManifest *m)
     if (!m) return 0;
     if (m->error[0]) return 0;
     if (!m->id[0]) return fail(m,"NOVADOCK_ID missing");
+    if (nd_plugin_retired(m->id)) return fail(m,"retired; notification support is moving to AmiNotis");
     if (m->abi>ND_MANIFEST_DOCK_ABI) return fail(m,"needs a newer NovaDock");
     if (!m->name[0]) copy_text(m->name,m->id,sizeof(m->name));
+    nd_plugin_name_upper(m->name);
     for (i=0;i<m->option_count;++i)
         copy_text(m->options[i].id,m->id,sizeof(m->options[i].id));
     return 1;
@@ -175,7 +178,7 @@ int nd_manifest_bundled_id(const char *id)
 {
     static const char *bundled[]={"CLOCK","CPU","RAM","CHIPRAM","FASTRAM",
         "NET","ROADSHOW","MUSIC","EYES","DOPUS4","ARCHIVE","RUNNINGAPPS",
-        "BENCH","QR","MOON","COLOUR","AGENDA","PICTURES","COMMAND","TRASH","WHDLOAD","MUSICLIB","SENSORS","CHRISTMAS","AQUARIUM","PLACES","SAVER","AMINET","DOWNLOAD","SYSTEM","HASS","ACTIONS","SHELF","CALC","TOOLTYPES","WATCH","LOGS","ALERTS","AMIROCKET","AMIRC","CLIPBOARD","BITSKIM",
+        "BENCH","QR","MOON","COLOUR","AGENDA","PICTURES","COMMAND","TRASH","WHDLOAD","MUSICLIB","SENSORS","CHRISTMAS","AQUARIUM","PET","PLACES","SAVER","AMINET","DOWNLOAD","SYSTEM","HASS","ACTIONS","SHELF","CALC","TOOLTYPES","WATCH","LOGS","CLIPBOARD","BITSKIM",
         "MIXER","SCREENSHOT","SCREENMODE","TIMER","NOTES","SCREENSWITCHER","WEATHER",
         NULL};
     int i;
@@ -290,35 +293,30 @@ static const struct BuiltinPlugin builtin_plugins[]={
     {"MOON","MOON","click,popup,artwork","Offline approximate moon phase and location-based sunrise/sunset.",ND_PLUGIN_VERSION_MOON,0},
     {"COLOUR","COLOUR","click,popup,artwork","Workbench colour sampler, RGB/hex clipboard and saved palette.",ND_PLUGIN_VERSION_COLOUR,0},
     {"HASS","HASS","click,popup,badge,artwork","Home Assistant entities, scenes and groups with shared authentication.",ND_PLUGIN_VERSION_HASS,1},
-    {"BITSKIM","BitSkim","meter,click,drop,badge",
+    {"BITSKIM","BITSKIM","meter,click,drop,badge",
      "Transfer speed/results and stable-ID file sending; starts or restores BitSkim.",ND_PLUGIN_VERSION_BITSKIM,0},
     {"SHELF","SHELF","click,drop,popup,badge,artwork","Permanent shortcut collections; independent instances.",ND_PLUGIN_VERSION_SHELF,1},
     {"WATCH","WATCH","click,popup,badge,artwork","Monitor new and changed files in a drawer.",ND_PLUGIN_VERSION_WATCH,1},
     {"LOGS","LOGS","click,popup,badge,artwork","Follow log files and mark warnings and errors.",ND_PLUGIN_VERSION_LOGS,1},
     {"CALC","CALC","click,popup,artwork","Calculator with bounded history, decimal/hex/binary conversion and clipboard copy.",ND_PLUGIN_VERSION_CALC,0},
     {"TOOLTYPES","TOOLTYPES","click,drop,popup,artwork","Edit Workbench ToolTypes, default tool and stack size while preserving icon artwork and backups.",ND_PLUGIN_VERSION_TOOLTYPES,0},
-    {"ALERTS","ALERTS","click,popup,badge,artwork","Dock notification history and unread count.",ND_PLUGIN_VERSION_ALERTS,0},
-    {"AMIROCKET","AmiRocket","meter,click,badge,artwork",
-     "Unread counts and connection status; click to start or restore AmiRocket.",ND_PLUGIN_VERSION_AMIROCKET,0},
-    {"AMIRC","AmIRC","meter,click,badge",
-     "AmIRC status and unread event badges; click to start or restore it.",ND_PLUGIN_VERSION_AMIRC,0},
-    {"CLIPBOARD","Clippy","meter,click,popup,badge",
+    {"CLIPBOARD","CLIPPY","meter,click,popup,badge",
      "Session text history; click to copy, delete, clear or pause capture.",ND_PLUGIN_VERSION_CLIPBOARD,0},
-    {"CLOCK","Clock","meter,click,popup",
+    {"CLOCK","CLOCK","meter,click,popup",
      "Digital or analogue clock; click opens a calendar.",ND_PLUGIN_VERSION_CLOCK,0},
-    {"CPU","CPU Activity","meter,graph",
+    {"CPU","CPU ACTIVITY","meter,graph",
      "Activity graph or meter from scheduler activity (not an exact CPU percentage).",ND_PLUGIN_VERSION_CPU,0},
     {"RAM","RAM","meter,graph",
      "Chip and Fast memory readings or bars, or a two-line history graph.",ND_PLUGIN_VERSION_RAM,0},
-    {"CHIPRAM","Chip RAM","meter,graph","Free Chip memory.",ND_PLUGIN_VERSION_RAM,0},
-    {"FASTRAM","Fast RAM","meter,graph","Free Fast memory.",ND_PLUGIN_VERSION_RAM,0},
-    {"NET","Network","meter,graph,click,badge",
+    {"CHIPRAM","CHIP RAM","meter,graph","Free Chip memory.",ND_PLUGIN_VERSION_RAM,0},
+    {"FASTRAM","FAST RAM","meter,graph","Free Fast memory.",ND_PLUGIN_VERSION_RAM,0},
+    {"NET","NETWORK","meter,graph,click,badge",
      "Roadshow Online/Offline controls and live packet meters or graphs.",ND_PLUGIN_VERSION_NET,0},
-    {"MUSIC","MusicPlayer","meter,click,media",
+    {"MUSIC","MUSICPLAYER","meter,click,media",
      "EaglePlayer, AmigaAMP, HippoPlayer and LumiAMP playback controls via ARexx.",ND_PLUGIN_VERSION_MUSIC,0},
-    {"EYES","Eyes","",
+    {"EYES","EYES","",
      "Two eyes follow the Workbench mouse pointer; optional blinking.",ND_PLUGIN_VERSION_EYES,1},
-    {"DOPUS4","DOpus4","meter,click,badge",
+    {"DOPUS4","DOPUS4","meter,click,badge",
      "Starts Directory Opus 4, restores its iconified screen or brings it forward.",ND_PLUGIN_VERSION_DOPUS4,0},
     {"ARCHIVE","ARCHIVE","meter,drop,badge,artwork",
      "Drop archives to unpack them, or files and drawers to create ZIP or LHA archives.",ND_PLUGIN_VERSION_ARCHIVE,0},
@@ -327,37 +325,39 @@ static const struct BuiltinPlugin builtin_plugins[]={
     {"SAVER","SAVER","click,popup,artwork","Fullscreen retro scenes and a configurable demo shuffle.",ND_PLUGIN_VERSION_SAVER,0},
     {"AQUARIUM","AQUARIUM","meter,click,popup,artwork",
      "Animated fish tank and a fullscreen underwater scene.",ND_PLUGIN_VERSION_AQUARIUM,0},
-    {"DOWNLOAD","DOWNLOAD","meter,click,popup",
+    {"PET","PET","click,artwork",
+     "An animated companion: a cat, Gerald the grumpy stapler, a dog, a rabbit or Bob the ball.",ND_PLUGIN_VERSION_PET,0},
+    {"DOWNLOAD","DOWNLOAD","meter,click,popup,artwork",
      "HTTP(S) downloads with a queue, progress and safe save paths.",ND_PLUGIN_VERSION_DOWNLOAD,0},
-    {"SYSTEM","SYSTEM","meter,click,popup",
+    {"SYSTEM","SYSTEM","meter,click,popup,artwork",
      "Detected CPU, Workbench library version and system uptime.",ND_PLUGIN_VERSION_SYSTEM,0},
     {"ACTIONS","ACTIONS","click,popup",
      "Independent system actions with custom icons and optional confirmation.",ND_PLUGIN_VERSION_ACTIONS,1},
-    {"CHRISTMAS","Christmas","click,popup,artwork",
+    {"CHRISTMAS","CHRISTMAS","click,popup,artwork",
      "Twinkling Christmas tree; click for a fullscreen snowy night with Santa and reindeer.",ND_PLUGIN_VERSION_CHRISTMAS,0},
     {"SENSORS","SENSOR","meter,click,popup,artwork",
      "Detected ZZ9000, RTC module and Warp readings with selectable channels.",ND_PLUGIN_VERSION_SENSORS,1},
     {"MUSICLIB","MUSIC","meter,click,popup,badge,artwork",
      "Cached music collections with format selection, title filters and a configurable player.",ND_PLUGIN_VERSION_MUSICLIB,1},
-    {"WHDLOAD","WHDLoad","meter,click,popup,badge,artwork",
+    {"WHDLOAD","WHDLOAD","meter,click,popup,badge,artwork",
      "Recursively indexes WHDLoad installs; each tile has its own label and folder.",ND_PLUGIN_VERSION_WHDLOAD,1},
-    {"TRASH","Trash","meter,click,drop,badge,artwork",
+    {"TRASH","TRASH","meter,click,drop,badge,artwork",
      "Drop files and drawers to move them to the Trashcan; empty it from the tile's menu.",ND_PLUGIN_VERSION_TRASH,0},
     {"RUNNINGAPPS","APPS","meter,click,popup,badge",
      "On-demand browser for open applications; select one to bring it forward.",ND_PLUGIN_VERSION_RUNNINGAPPS,0},
-    {"MIXER","Mixer","meter,click,popup",
+    {"MIXER","MIXER","meter,click,popup,artwork",
      "AHI output volume: click for a slider and mute; remembered across restarts.",ND_PLUGIN_VERSION_MIXER,0},
     {"SCREENSHOT","SHOT","click,badge,artwork",
      "Capture the front screen or Workbench as indexed or true-colour IFF, with a Workbench icon.",ND_PLUGIN_VERSION_SCREENSHOT,0},
     {"SCREENMODE","SMODE","click,popup,artwork",
      "Shows the Workbench resolution; click for available display modes or saved presets.",ND_PLUGIN_VERSION_SCREENMODE,0},
-    {"TIMER","Timer","meter,click,popup,artwork",
+    {"TIMER","TIMER","meter,click,popup,artwork",
      "Countdown with pause, reset and a non-modal reminder.",ND_PLUGIN_VERSION_TIMER,0},
-    {"NOTES","Notes","meter,click,popup,badge,artwork",
+    {"NOTES","NOTES","meter,click,popup,badge,artwork",
      "Permanent titled notes with a picker and multiline editor.",ND_PLUGIN_VERSION_NOTES,0},
     {"SCREENSWITCHER","SCREENS","click,popup",
      "Pick an open public screen and bring it forward.",ND_PLUGIN_VERSION_SCREENSWITCHER,0},
-    {"WEATHER","Weather","click,popup,badge,artwork",
+    {"WEATHER","WEATHER","click,popup,badge,artwork",
      "Current conditions and a five-day forecast, with an offline cache.",ND_PLUGIN_VERSION_WEATHER,0},
     {NULL,NULL,NULL,NULL,NULL,0}
 };
@@ -459,7 +459,7 @@ int nd_package_check(struct NDManifest *m,const char *manifest_file,
     {
         static const char *programs[]={"Clock","Eyes","Activity","Memory",
             "Network","Roadshow","MusicPlayer","DOpus4","ArchiveExtractor",
-            "Command","RunningApps","Trash","Games","MusicLibrary","Sensors","Christmas","Aquarium","Places","Saver","Aminet","Download","System","HASS","Actions","Shelf","Alerts","SensorsI2C","AmiRocket","AmIRC","BitSkim",
+            "Command","RunningApps","Trash","Games","MusicLibrary","Sensors","Christmas","Aquarium","Pet","Places","Saver","Aminet","Download","System","HASS","Actions","Shelf","Alerts","SensorsI2C","AmiRocket","AmIRC","BitSkim",
             "Clipboard","Mixer","Screenshot","SHOT","ScreenMode","Script","Timer","Notes","ScreenSwitcher","Weather",NULL};
         const char *dot=strrchr(m->program,'.');
         int k;

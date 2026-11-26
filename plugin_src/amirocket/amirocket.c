@@ -23,6 +23,9 @@ struct RxsLib *RexxSysBase=NULL;
 struct Library *WorkbenchBase=NULL;
 struct Pending {struct MsgPort *reply,*target;struct Task *owner;struct RexxMsg *message;STRPTR marker;ULONG age;int kind,obsolete;char host[64];};
 #include "nd_request.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 #define QUERY 1
 #define SUBSCRIBE 2
 #define SHOW 3

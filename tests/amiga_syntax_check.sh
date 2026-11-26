@@ -29,13 +29,23 @@ held!="" && /: note: / {
 { print }
 END { if (held!="") print held }'
 status=0
-for f in src/novadock.c src/dock_*.c src/control_client.c src/nd_locale.c src/nd_media.c src/nd_tasks.c src/nd_folder.c src/nd_manifest.c prefs/*.c plugin_src/*/*.c tools/*.c; do
+# vbcc register syntax (__reg("a0")) has no GCC equivalent in a syntax check.
+# Sources written in vbcc-only inline assembly, or which #error outside the
+# supported vbcc build, are compiled by vbcc alone.
+VBCC_ONLY='plugin_src/sensors/i2c_provider.c plugin_src/warp/nd_warp_ui.c plugin_src/warp/warp.c tools/warp_sensor_probe.c'
+for f in src/*.c prefs/*.c plugin_src/*/*.c tools/*.c; do
+  case " $VBCC_ONLY " in *" $f "*) continue;; esac
+  case $f in
+    src/nd_trace.c|tools/save_trace.c) extra=-DND_TRACE ;;
+    *) extra= ;;
+  esac
   out=$($CC -nostdinc -isystem "$($CC -print-file-name=include)" -I"$STUBS" \
-        -std=gnu89 -fsyntax-only -m68000 -Wall -Wdeclaration-after-statement -Wno-unused-function \
+        -std=gnu89 -fsyntax-only -fno-diagnostics-show-caret -m68000 -Wall -Wdeclaration-after-statement -Wno-unused-function \
         -Wno-pointer-sign -Wno-missing-braces -Wno-format \
-        -Wmisleading-indentation -D__amigaos__ -DND_PREFS_EMBEDDED \
-        -I"$OPENNDK" -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/command \
-        "$f" 2>&1 | awk "$SAME_LINE_FILTER" | grep -E 'error|warning' | grep -v "$OPENNDK" || true)
+        -Wmisleading-indentation -D__amigaos__ -DAMIGA -DND_PREFS_EMBEDDED '-D__reg(x)=' $extra \
+        -I"$OPENNDK" -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/command -Iplugin_src/warp -Iplugin_src/sensors \
+        -I"$(dirname "$f")" \
+        "$f" 2>&1 | awk "$SAME_LINE_FILTER" | grep -E '(^|[[:space:]])(fatal error|error|warning):' | grep -v "$OPENNDK" || true)
   if [ -n "$out" ]; then echo "$out"; status=1; fi
 done
 [ $status -eq 0 ] && echo "AmigaOS sources type-check cleanly (68000, OS 3.2 headers)."

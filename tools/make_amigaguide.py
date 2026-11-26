@@ -20,12 +20,13 @@ ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / 'NovaDock.guide'
 WIDTH = 76
 # Curated user and SDK topics. Repository/operator documents stay source-only.
-SOURCE_ONLY_DOCS = {"README.md", "docs/RELEASING.md", "docs/RELEASE_CHECKLIST.md", "docs/RELEASE-NOTES.md", "docs/TODO.md", "docs/QA_PERFORMANCE.md"}
+SOURCE_ONLY_DOCS = {"docs/ALERTS_PLUGIN.md", "docs/AMIRC_PLUGIN.md", "docs/AMIROCKET_PLUGIN.md", "README.md", "docs/RELEASING.md", "docs/RELEASE_CHECKLIST.md", "docs/RELEASE-NOTES.md", "docs/TODO.md", "docs/QA_PERFORMANCE.md", "docs/PERFORMANCE_AUDIT_2026-11-23.md"}
 GROUPS = (
     ('Using NovaDock', (
         ('docs/USING_NOVADOCK.md', 'Getting started and installation'),
         ('docs/LAUNCHERS_AND_ICONS.md', 'Launchers and icons'),
         ('docs/RESPONSIVE_SETTINGS.md', 'Responsive settings and diagnostics'),
+        ('docs/DIAGNOSTICS.md', 'Support recordings and reports'),
         ('docs/AUTOHIDE_AND_DOCK_MENU.md', 'Auto-hide and the dock menu'),
         ('docs/DRAWER_POPUPS.md', 'Drawer popups'),
         ('docs/REMOVABLE_MEDIA.md', 'Removable media'),
@@ -36,9 +37,8 @@ GROUPS = (
     ('Bundled plugins', (
         ('docs/WEATHER_PLUGIN.md', 'Weather'),
         ('docs/HASS_PLUGIN.md', 'Home Assistant'),
-        ('docs/AMIRC_PLUGIN.md', 'AmIRC'),
-        ('docs/AMIROCKET_PLUGIN.md', 'AmiRocket'),
-        ('docs/ALERTS_PLUGIN.md', 'Alerts'),
+        ('docs/AMINOTIS_PLUGIN.md', 'AmiNotis inbox'),
+        ('docs/NOTIFICATION_MIGRATION.md', 'Notification service transition'),
         ('docs/SHELF_PLUGIN.md', 'Shelf'),
         ('docs/WATCH_PLUGIN.md', 'Watch'),
         ('docs/LOGS_PLUGIN.md', 'Logs'),
@@ -71,6 +71,7 @@ GROUPS = (
         ('docs/SENSORS_PLUGIN.md', 'Hardware sensors'),
         ('docs/ACTIONS_PLUGIN.md', 'ACTIONS'),
         ('docs/AQUARIUM_PLUGIN.md', 'AQUARIUM'),
+        ('docs/PET_PLUGIN.md', 'PET'),
         ('docs/DOWNLOAD_PLUGIN.md', 'DOWNLOAD'),
         ('docs/SYSTEM_PLUGIN.md', 'SYSTEM'),
         ('docs/PLACES_PLUGIN.md', 'PLACES'),
@@ -80,6 +81,8 @@ GROUPS = (
         ('docs/PLUGIN_SDK_QUICKSTART.md', 'Plugin SDK quick start'),
         ('docs/PLUGIN_SDK_SETTINGS.md', 'Creating plugin settings windows'),
         ('docs/PLUGIN_SDK_ARTWORK.md', 'Plugin-owned artwork'),
+        ('docs/PLUGIN_SDK_DIAGNOSTICS.md', 'Plugin diagnostics policy'),
+        ('docs/PLUGIN_QA.md', 'Testing plugins before packaging'),
         ('docs/PLUGIN_API.md', 'Plugin protocol'),
         ('docs/PLUGIN_MANIFEST.md', 'Plugin manifests'),
         ('docs/PLUGIN_SETTINGS.md', 'Plugin settings'))),

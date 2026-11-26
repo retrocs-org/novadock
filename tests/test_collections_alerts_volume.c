@@ -37,8 +37,8 @@ int main(void)
  f=scratch();assert(f);fputs("NDI2C1 1000 1 2\n123 1000 0 1|One|C\n123 1000 0 1|Duplicate|C\n",f);rewind(f);assert(!nd_i2c_read(f,&reordered) && reordered.count==2);fclose(f);
  nd_default_config(&config);assert(nd_add_launcher(&config,ND_ITEM_DRAWER,"Work","Work:",""));index=config.count-1;config.items[index].volume_warning=15;config.items[index].volume_show_free=1;
  assert(nd_parse_line(&config,"PLUGIN=SHELF|Plugins/Shelf|SHELF|METER|ON|YES"));assert(nd_option_set(&config,"SHELF","LABEL","Tools"));assert(nd_add_plugin_instance(&config,config.count-1));
- assert(!strcmp(nd_option_schema_id(&config,"SHELF_2"),"SHELF"));assert(nd_option_set(&config,"SHELF_2","LABEL","Documents"));assert(!strcmp(nd_option_get(&config,"SHELF","LABEL"),"Tools"));
+ assert(!strcmp(nd_option_schema_id(&config,"SHELF_2"),"SHELF"));assert(nd_option_set(&config,"SHELF_2","LABEL","Documents"));assert(!strcmp(nd_option_get(&config,"SHELF","LABEL"),"TOOLS"));
  assert(nd_parse_line(&config,"PLUGIN=SENSOR|Plugins/Sensors|SENSORS|METER|ON|YES"));assert(nd_option_set(&config,"SENSORS",key,"NO"));assert(!nd_option_set(&config,"SENSORS","I2C_bad","YES"));
- assert(nd_write_config(&config,"features-test.cfg"));assert(!nd_load_config(&restored,"features-test.cfg"));assert(restored.items[index].volume_warning==15 && restored.items[index].volume_show_free);assert(!strcmp(nd_option_get(&restored,"SENSORS",key),"NO"));assert(!strcmp(nd_option_get(&restored,"SHELF_2","LABEL"),"Documents"));
+ assert(nd_write_config(&config,"features-test.cfg"));assert(!nd_load_config(&restored,"features-test.cfg"));assert(restored.items[index].volume_warning==15 && restored.items[index].volume_show_free);assert(!strcmp(nd_option_get(&restored,"SENSORS",key),"NO"));assert(!strcmp(nd_option_get(&restored,"SHELF_2","LABEL"),"DOCUMENTS"));
  puts("Volume arithmetic/settings, bounded alerts, permanent shelves and stable I2C selection passed.");return 0;
 }

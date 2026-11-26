@@ -1,3 +1,5 @@
+#include "nd_aminotis.h"
+#include "nd_trace.h"
 /* NovaDockPrefs: standalone classic Workbench preferences editor.
  * GadTools/Intuition only, OS 3.0+, baseline 68000. Fits a 640x200 WB.
  * ENV: is the session setting, ENVARC: the permanent setting.
@@ -70,11 +72,8 @@ int nd_additem_prefs_run(int argc,char **argv);
 #define G_LAUNCHERS 24
 #define G_LEFTCLICK 25
 #define G_TOOLTIPS 26
-#define G_AUTOHIDE 27
 #define G_APPEARANCE 28
 #define G_GENERAL 29
-#define G_HIDE_DELAY 30
-#define G_ALWAYS_ON_TOP 31
 #define G_DIAGNOSTICS 32
 #define G_QUIT_DOCK 33
 #define G_START_DOCK 34
@@ -83,6 +82,8 @@ int nd_additem_prefs_run(int argc,char **argv);
 #define G_REFRESH 37
 #define G_MEDIA 38
 #define G_DOCK_HOTKEY 41
+#define G_SEND_AMINOTIS 61
+#define G_AMINOTIS_STATUS 62
 #define G_UPDATES 42
 #define G_UPDATE_STARTUP 43
 #define G_UPDATE_RUNNING 44
@@ -108,15 +109,16 @@ struct Prefs {
     struct Gadget *g_width;
     struct Gadget *g_height;
     struct Gadget *g_gap;
-    struct Gadget *g_delay;
     struct Gadget *g_hotkey;
-    struct Gadget *g_auto_hide;
     struct Gadget *g_refresh;
+    struct Gadget *g_aminotis_status;
+    int aminotis_previous;
     struct Gadget *g_update_interval;
     int update_page;
     struct Gadget *g_update_now,*g_update_status,*g_update_last;
     unsigned int update_ticks,update_requested;
     unsigned long update_previous;
+    int update_rendered,update_disabled;
     char update_status[160],update_last[80];
     struct Gadget *g_start_dock;
     struct Gadget *g_restart_dock;
@@ -133,7 +135,6 @@ struct Prefs {
     int requested_visible;
 };
 static STRPTR clicks[] = {"Run", "Menu", NULL};
-static STRPTR tooltip_modes[] = {"Off", "On", NULL};
 static STRPTR hide_modes[] = {"Off", "On", NULL};
 static STRPTR update_intervals[]={"2 hours","4 hours","6 hours",NULL};
 static STRPTR refresh_modes[] = {"Low mem", "Smooth", NULL};
@@ -312,25 +313,9 @@ static int collect_hotkey(struct Prefs *p)
     return 1;
 }
 
-static int collect_numbers(struct Prefs *p)
-{
-    LONG delay;
-    if(p->update_page)return 1;
-    if (!nd_numeric_gadget_read(p->g_delay,p->win,&delay)) return 0;
-    if (delay<1 || delay>60) {
-        title_message(p, "NovaDock Prefs - invalid hide delay");
-        DisplayBeep(p->screen);
-        return 0;
-    }
-    p->cfg->hide_delay=(int)delay;
-    return 1;
-}
 static void navigate_to_page(struct Prefs *p,int page)
 {
-    /* Page navigation must never depend on an unrelated editor field.  Keep
-     * a valid delay edit, but still open the requested section when the
-     * delay field is temporarily empty or invalid. */
-    if (collect_numbers(p)) ND_PREFS_MARK_DIRTY();
+    /* Preserve general settings while navigating between sections. */
     (void)collect_hotkey(p);
     p->next_page=page;
     p->done=1;
@@ -346,7 +331,7 @@ static int apply_preferences(struct Prefs *p, int permanent)
     LONG rc;
     struct NDLayout layout;
     int fits;
-    if (!collect_numbers(p) || !collect_hotkey(p)) return 0;
+    if (!collect_hotkey(p)) return 0;
     fits = nd_layout_fit_enabled(p->cfg, p->screen->Width, p->screen->Height,
                                  p->screen->BarHeight, &layout);
     if (!fits) {
@@ -420,30 +405,44 @@ static const char *general_title(struct Prefs *p)
     return ND_PREFS_IS_DIRTY() ? "NovaDock Preferences - General *" :
                                  "NovaDock Preferences - General";
 }
+static void refresh_aminotis_status(struct Prefs *p)
+{
+ int available;
+ if(p->update_page||!p->win||!p->g_aminotis_status)return;
+ available=nd_aminotis_available();
+ if(p->aminotis_previous==available)return;
+ p->aminotis_previous=available;
+ GT_SetGadgetAttrs(p->g_aminotis_status,p->win,NULL,
+     GTTX_Text,(ULONG)(available ? "AmiNotis service detected":"AmiNotis service not running"),TAG_DONE);
+}
 static void refresh_update_status(struct Prefs *p)
 {
- struct NDUpdateStatus status;struct DateTime dt;char date[32],time[32];
+ struct NDUpdateStatus status;struct DateTime dt;char date[32],time[32],next[160],last[80];int disabled;
  if(!p->update_page || !p->win)return;
  nd_update_status(&status);
  if(status.busy || status.checked!=p->update_previous)p->update_requested=0;
- if(status.checking || p->update_requested)strcpy(p->update_status,"Checking for updates...");
- else if(status.result==1)strcpy(p->update_status,"You are up to date.");
- else if(status.result==2)sprintf(p->update_status,"NovaDock %.31s is available.",status.version);
- else if(status.result==4)strcpy(p->update_status,"Network is not available; check not completed.");
- else if(status.result==3 || status.result==5)strcpy(p->update_status,"Check failed; check network, curl and certificates.");
- else strcpy(p->update_status,"No update check has been completed yet.");
- if(status.checked){memset(&dt,0,sizeof(dt));dt.dat_Stamp.ds_Days=status.checked/86400UL;dt.dat_Stamp.ds_Minute=(status.checked%86400UL)/60UL;dt.dat_Stamp.ds_Tick=(status.checked%60UL)*50UL;dt.dat_Format=FORMAT_DOS;dt.dat_StrDate=date;dt.dat_StrTime=time;
-  if(DateToStr(&dt))sprintf(p->update_last,"%s %s",date,time);else strcpy(p->update_last,"Time unavailable");
- }else strcpy(p->update_last,"Never");
- GT_SetGadgetAttrs(p->g_update_status,p->win,NULL,GTTX_Text,(ULONG)p->update_status,TAG_DONE);
- GT_SetGadgetAttrs(p->g_update_last,p->win,NULL,GTTX_Text,(ULONG)p->update_last,TAG_DONE);
- GT_SetGadgetAttrs(p->g_update_now,p->win,NULL,GA_Disabled,(ULONG)(status.busy || p->update_requested),TAG_DONE);
+ if(status.checking || p->update_requested)strcpy(next,"Checking for updates...");
+ else if(status.result==1)strcpy(next,"You are up to date.");
+ else if(status.result==2)sprintf(next,"NovaDock %.31s is available.",status.version);
+ else if(status.result==4)strcpy(next,"Network is not available; check not completed.");
+ else if(status.result==3 || status.result==5)strcpy(next,"Check failed; check network, curl and certificates.");
+ else strcpy(next,"No update check has been completed yet.");
+ if(!p->update_rendered || status.checked!=p->update_previous){
+    if(status.checked){memset(&dt,0,sizeof(dt));dt.dat_Stamp.ds_Days=status.checked/86400UL;dt.dat_Stamp.ds_Minute=(status.checked%86400UL)/60UL;dt.dat_Stamp.ds_Tick=(status.checked%60UL)*50UL;dt.dat_Format=FORMAT_DOS;dt.dat_StrDate=date;dt.dat_StrTime=time;
+  if(DateToStr(&dt))sprintf(last,"%s %s",date,time);else strcpy(last,"Time unavailable");
+ }else strcpy(last,"Never");
+    if(!p->update_rendered || strcmp(last,p->update_last)){strcpy(p->update_last,last);GT_SetGadgetAttrs(p->g_update_last,p->win,NULL,GTTX_Text,(ULONG)p->update_last,TAG_DONE);}
+ }
+ if(!p->update_rendered || strcmp(next,p->update_status)){strcpy(p->update_status,next);GT_SetGadgetAttrs(p->g_update_status,p->win,NULL,GTTX_Text,(ULONG)p->update_status,TAG_DONE);}
+ disabled=status.busy || p->update_requested;
+ if(!p->update_rendered || disabled!=p->update_disabled){GT_SetGadgetAttrs(p->g_update_now,p->win,NULL,GA_Disabled,(ULONG)disabled,TAG_DONE);p->update_disabled=disabled;}
+ p->update_previous=status.checked;p->update_rendered=1;
 }
 static int open_editor(struct Prefs *p)
 {
     struct NewGadget ng;
-    char delay_text[8];
     int left,top,width,height,font_x=8,font_y=8;
+    p->update_rendered=0;
     if (p->screen->RastPort.Font) {
         font_x=p->screen->RastPort.Font->tf_XSize;
         font_y=p->screen->RastPort.Font->tf_YSize;
@@ -457,12 +456,11 @@ static int open_editor(struct Prefs *p)
     p->vi = GetVisualInfo(p->screen, TAG_DONE);
     if (!p->vi || !CreateContext(&p->gadgets)) return 0;
     p->last = p->gadgets;
-    sprintf(delay_text,"%d",p->cfg->hide_delay);
     if (!create_button(p,10,21,118,G_GENERAL,p->update_page ? "General":"> General") ||
         !create_button(p,10,45,118,G_APPEARANCE,"Appearance") ||
         !create_button(p,10,69,118,G_LAUNCHERS,"Organize") ||
         !create_button(p,10,93,118,G_PLUGIN_MANAGER,"Plugins") ||
-        !create_button(p,10,117,118,G_DIAGNOSTICS,"Diagnostics") ||
+        !create_button(p,10,117,118,G_DIAGNOSTICS,"Support") ||
         !create_button(p,10,141,118,G_UPDATES,p->update_page ? "> Update":"Update") ||
         !create_button(p,10,165,118,G_ABOUT,"About")) return 0;
     if(p->update_page){
@@ -489,57 +487,43 @@ static int open_editor(struct Prefs *p)
         if(!p->last)return 0;
     }else{
     /* Visual placement, font and labels live with their theme in Appearance. */
-    /* Keep a fixed gutter between the sidebar and GadTools' left-hand
-     * captions.  In particular, the longer Keep in front label must never
-     * extend beneath the navigation buttons. */
-    setup_gadget(p, &ng, 270, 21, 100, 16, G_LEFTCLICK, "Click action:");
+    /* Keep a fixed gutter between the sidebar and control captions. */
+    setup_gadget(p, &ng, 270, 21, 130, 16, G_LEFTCLICK, "Click action:");
     p->last = CreateGadget(CYCLE_KIND, p->last, &ng,
                            GTCY_Labels, (ULONG)clicks,
                            GTCY_Active, p->cfg->left_click, TAG_DONE);
     if (!p->last) return 0;
-    setup_gadget(p, &ng, 520, 21, 80, 16, G_TOOLTIPS, "Tooltips:");
-    p->last = CreateGadget(CYCLE_KIND, p->last, &ng,
-                           GTCY_Labels, (ULONG)tooltip_modes,
-                           GTCY_Active, p->cfg->tooltips ? 1 : 0, TAG_DONE);
-    if (!p->last) return 0;
-    setup_gadget(p,&ng,270,49,100,16,G_AUTOHIDE,"Auto hide:");
-    p->g_auto_hide=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
-        GTCY_Labels,(ULONG)hide_modes,GTCY_Active,p->cfg->auto_hide,TAG_DONE);
-    if (!p->last) return 0;
-    setup_gadget(p,&ng,550,49,50,16,G_HIDE_DELAY,"Hide delay:");
-    p->g_delay=p->last=CreateGadget(STRING_KIND,p->last,&ng,
-        GTST_String,(ULONG)delay_text,GTST_MaxChars,2,
-        GA_TabCycle,TRUE,GA_Disabled,(ULONG)!p->cfg->auto_hide,TAG_DONE);
-    if (!p->last) return 0;
-    setup_gadget(p,&ng,270,77,100,16,G_ALWAYS_ON_TOP,"Keep in front:");
-    p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
-        GTCY_Labels,(ULONG)hide_modes,
-        GTCY_Active,p->cfg->always_on_top ? 1 : 0,TAG_DONE);
-    if (!p->last) return 0;
-    setup_gadget(p,&ng,520,77,80,16,G_REFRESH,"Refresh:");
+    setup_gadget(p,&ng,500,21,105,16,G_REFRESH,"Refresh:");
     p->g_refresh=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
         GTCY_Labels,(ULONG)refresh_modes,
         GTCY_Active,p->cfg->refresh_mode,TAG_DONE);
     if (!p->last) return 0;
     /* Lifecycle actions have their own row; commit actions remain separate. */
-    p->g_start_dock=create_button(p,150,109,70,G_START_DOCK,"Start");
-    p->g_restart_dock=create_button(p,228,109,80,G_RESTART_DOCK,"Restart");
-    p->g_quit_dock=create_button(p,316,109,70,G_QUIT_DOCK,"Quit");
+    p->g_start_dock=create_button(p,150,121,90,G_START_DOCK,"Start");
+    p->g_restart_dock=create_button(p,250,121,90,G_RESTART_DOCK,"Restart");
+    p->g_quit_dock=create_button(p,350,121,90,G_QUIT_DOCK,"Quit");
     if (!p->g_start_dock || !p->g_restart_dock || !p->g_quit_dock ||
-        !create_button(p,500,109,100,G_LAYOUTS,"Layouts...")) return 0;
+        !create_button(p,500,121,105,G_LAYOUTS,"Layouts...")) return 0;
     /* Keyboard control: a Commodities hot key such as "ctrl alt d". */
-    setup_gadget(p,&ng,270,141,190,16,G_DOCK_HOTKEY,"Dock hot key:");
+    setup_gadget(p,&ng,270,57,335,16,G_DOCK_HOTKEY,"Dock hot key:");
     p->g_hotkey=p->last=CreateGadget(STRING_KIND,p->last,&ng,
         GTST_String,(ULONG)p->cfg->dock_hotkey,
         GTST_MaxChars,(ULONG)(sizeof(p->cfg->dock_hotkey)-1),
         GA_TabCycle,TRUE,TAG_DONE);
     if (!p->last) return 0;
     /* Removable-media tiles share the commit row's free left-hand space. */
-    setup_gadget(p,&ng,230,176,60,16,G_MEDIA,"Media:");
+    setup_gadget(p,&ng,270,89,130,16,G_MEDIA,"Media:");
     p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
         GTCY_Labels,(ULONG)hide_modes,
         GTCY_Active,p->cfg->removable_media ? 1 : 0,TAG_DONE);
     if(!p->last)return 0;
+    setup_gadget(p,&ng,154,143,24,16,G_SEND_AMINOTIS,"Send alerts to AmiNotis");
+    ng.ng_Flags=PLACETEXT_RIGHT;
+    p->last=CreateGadget(CHECKBOX_KIND,p->last,&ng,GTCB_Checked,(ULONG)p->cfg->send_alerts_aminotis,TAG_DONE);
+    if(!p->last)return 0;
+    setup_gadget(p,&ng,150,162,455,10,G_AMINOTIS_STATUS,NULL);
+    p->g_aminotis_status=p->last=CreateGadget(TEXT_KIND,p->last,&ng,GTTX_Text,(ULONG)"",GTTX_Clipped,TRUE,TAG_DONE);
+    p->aminotis_previous=-1;if(!p->last)return 0;
     }
     if (!create_button(p, 427, 176, 86, G_USE, "Use") ||
         !create_button(p, 519, 176, 86, G_SAVE, "Save")) return 0;
@@ -552,13 +536,14 @@ static int open_editor(struct Prefs *p)
                   WA_DragBar, TRUE, WA_CloseGadget, TRUE,
                   WA_Activate, TRUE, WA_DepthGadget, TRUE,
                   WA_IDCMP, IDCMP_GADGETUP | IDCMP_CLOSEWINDOW |
-                            IDCMP_REFRESHWINDOW | IDCMP_ACTIVEWINDOW | IDCMP_RAWKEY | (p->update_page ? IDCMP_INTUITICKS:0),
+                            IDCMP_REFRESHWINDOW | IDCMP_ACTIVEWINDOW | IDCMP_RAWKEY | IDCMP_INTUITICKS,
                   WA_Flags, WFLG_SMART_REFRESH | WFLG_ACTIVATE,
                   TAG_DONE);
     if (!p->win) return 0;
     GT_RefreshWindow(p->win, NULL);
     refresh_dock_controls(p);
     refresh_update_status(p);
+    refresh_aminotis_status(p);
     return 1;
 }
 static void on_gadget(struct Prefs *p, UWORD id, UWORD code)
@@ -567,14 +552,10 @@ static void on_gadget(struct Prefs *p, UWORD id, UWORD code)
     switch (id) {
     case G_GENERAL: if(p->update_page)navigate_to_page(p,-1);break;
     case G_LEFTCLICK: if (code <= ND_CLICK_MENU) {p->cfg->left_click = code;ND_PREFS_MARK_DIRTY();} break;
-    case G_TOOLTIPS: if (code <= 1) {p->cfg->tooltips = code;ND_PREFS_MARK_DIRTY();} break;
-    case G_ALWAYS_ON_TOP:
-        if (code <= 1) {p->cfg->always_on_top = code;ND_PREFS_MARK_DIRTY();}
-        break;
     case G_UPDATES: if(!p->update_page)navigate_to_page(p,10);break;
     case G_UPDATE_NOW:
         {struct NDUpdateStatus status;nd_update_status(&status);p->update_previous=status.checked;
-         if(nd_control_check_updates()){p->update_requested=5;refresh_update_status(p);}
+         if(nd_control_check_updates()){p->update_requested=5;refresh_update_status(p);refresh_aminotis_status(p);}
          else{title_message(p,"Could not start the update checker");DisplayBeep(p->screen);}}break;
     case G_UPDATE_STARTUP:
         if(code<=1){p->cfg->check_updates=(int)code;ND_PREFS_MARK_DIRTY();}break;
@@ -584,6 +565,8 @@ static void on_gadget(struct Prefs *p, UWORD id, UWORD code)
             ND_PREFS_MARK_DIRTY();}break;
     case G_UPDATE_INTERVAL:
         if(code<3){p->cfg->update_interval_hours=2*((int)code+1);ND_PREFS_MARK_DIRTY();}break;
+    case G_SEND_AMINOTIS:
+        if(code<=1){p->cfg->send_alerts_aminotis=(int)code;ND_PREFS_MARK_DIRTY();}break;
     case G_MEDIA:
         if (code<=1) {p->cfg->removable_media=(int)code;ND_PREFS_MARK_DIRTY();}
         break;
@@ -591,17 +574,6 @@ static void on_gadget(struct Prefs *p, UWORD id, UWORD code)
         if (code<ND_REFRESH_COUNT) {
             p->cfg->refresh_mode=code;ND_PREFS_MARK_DIRTY();
         }
-        break;
-    case G_AUTOHIDE:
-        if (code <= 1) {
-            p->cfg->auto_hide=code;
-            GT_SetGadgetAttrs(p->g_delay,p->win,NULL,
-                              GA_Disabled,(ULONG)!code,TAG_DONE);
-            ND_PREFS_MARK_DIRTY();
-        }
-        break;
-    case G_HIDE_DELAY:
-        if (collect_numbers(p)) ND_PREFS_MARK_DIRTY();
         break;
     case G_DOCK_HOTKEY:
         (void)collect_hotkey(p);
@@ -677,11 +649,11 @@ static void editor_loop(struct Prefs *p)
             code = msg->Code;
             id = msg->IAddress ? ((struct Gadget *)msg->IAddress)->GadgetID : 0;
             GT_ReplyIMsg(msg);
-            if (cls == IDCMP_CLOSEWINDOW) { p->done = 1; p->exit_status = 0; }
+            if (cls==IDCMP_CLOSEWINDOW || (cls==IDCMP_RAWKEY && code==0x45)) { p->done = 1; p->exit_status = 0; }
             else if (cls==IDCMP_RAWKEY && code==ND_HELP_KEY) nd_prefs_help(p->screen);
             else if (cls == IDCMP_REFRESHWINDOW) GT_BeginRefresh(p->win);
-            else if (cls == IDCMP_ACTIVEWINDOW) {refresh_dock_controls(p);refresh_update_status(p);}
-            else if(cls==IDCMP_INTUITICKS && ++p->update_ticks>=10){p->update_ticks=0;if(p->update_requested)--p->update_requested;refresh_update_status(p);}
+            else if (cls == IDCMP_ACTIVEWINDOW) {refresh_dock_controls(p);refresh_update_status(p);refresh_aminotis_status(p);}
+            else if(cls==IDCMP_INTUITICKS && ++p->update_ticks>=10){p->update_ticks=0;if(p->update_requested)--p->update_requested;refresh_update_status(p);refresh_aminotis_status(p);}
             /* An EMPTY refresh is correct: all UI belongs to GadTools. */
             else if (cls == IDCMP_GADGETUP) on_gadget(p, id, code);
             if (cls == IDCMP_REFRESHWINDOW) GT_EndRefresh(p->win, TRUE);
@@ -699,7 +671,7 @@ static int command_page(int argc, char **argv, char *plugin, int plugin_size)
         else if (!strcmp(argv[i],"PAGE=PLUGIN")) page=4;
         else if (!strcmp(argv[i],"PAGE=SPACER")) page=5;
         else if (!strcmp(argv[i],"PAGE=APPEARANCE")) page=3;
-        else if (!strcmp(argv[i],"PAGE=DIAGNOSTICS")) page=6;
+        else if (!strcmp(argv[i],"PAGE=DIAGNOSTICS") || !strcmp(argv[i],"PAGE=SUPPORT")) page=6;
         else if (!strcmp(argv[i],"PAGE=ADD")) page=7;
         else if (!strcmp(argv[i],"PAGE=ABOUT")) page=8;
         else if (!strcmp(argv[i],"PAGE=UPDATE") || !strcmp(argv[i],"PAGE=UPDATES")) page=10;
@@ -743,7 +715,9 @@ static int run_child_pages(int page,int argc,char **argv,char *plugin)
     char *plugin_argv[3],*launcher_argv[3],*spacer_argv[3],*add_argv[3];
     while (page) {
         ran_page=page;
-        prepare_plugin_page(page,nd_prefs_shared_config,plugin);
+        {ND_TRACE_PHASE_BEGIN(t,"prefs.prepare_page");
+         prepare_plugin_page(page,nd_prefs_shared_config,plugin);
+         ND_TRACE_PHASE_END(t,"prefs.prepare_page");}
         if (page==1) {
             result=nd_dockitems_prefs_run(argc,argv,plugin,20,&defined_index);
         } else if (page==2) {
@@ -838,9 +812,12 @@ static int run_general_page(int argc,char **argv,struct NDConfig *session,
     }
     p->screen = LockPubScreen("Workbench");
     if (!p->screen) goto finish;
-    if (!open_editor(p)) {
+    {int opened;ND_TRACE_PHASE_BEGIN(t,"prefs.general_window");
+     opened=open_editor(p);ND_TRACE_PHASE_END(t,"prefs.general_window");
+    if (!opened) {
         Printf("NovaDockPrefs requires a Workbench screen >=630x195.\n");
         goto finish;
+    }
     }
     editor_loop(p);
     result = p->exit_status;
@@ -894,10 +871,13 @@ int main(int argc, char **argv)
     int result=20,parsing,page,snapshot=0;
     char plugin[20];
     if(argc==3&&!strcmp(argv[1],"TASK"))return nd_catalog_worker(argv[2]);
+    ND_TRACE_INIT("prefs");
     session=(struct NDConfig *)AllocVec(sizeof(*session),MEMF_PUBLIC|MEMF_CLEAR);
     if (!session) return 20;
-    (void)nd_control_sync_settings();
-    parsing=nd_load_effective(session);
+    {ND_TRACE_PHASE_BEGIN(t,"prefs.sync_settings");
+     (void)nd_control_sync_settings();ND_TRACE_PHASE_END(t,"prefs.sync_settings");}
+    {ND_TRACE_PHASE_BEGIN(t,"prefs.load_config");
+     parsing=nd_load_effective(session);ND_TRACE_PHASE_END(t,"prefs.load_config");}
     if (parsing>0) {
         Printf("NovaDockPrefs: configuration has %ld invalid line(s).\n",(LONG)parsing);
         FreeVec(session);return 20;
@@ -905,7 +885,8 @@ int main(int argc, char **argv)
     sprintf(nd_revert_path,"T:NovaDockPrefs-%08lx.snapshot",(unsigned long)FindTask(NULL));
     session_discovered=0;
     memset(&nd_prefs_discovery,0,sizeof(nd_prefs_discovery));
-    revert_files(0,&snapshot,session);
+    {ND_TRACE_PHASE_BEGIN(t,"prefs.preview_snapshot");
+     revert_files(0,&snapshot,session);ND_TRACE_PHASE_END(t,"prefs.preview_snapshot");}
     if (!snapshot) {
         original=(struct NDConfig *)AllocVec(sizeof(*original),MEMF_PUBLIC);
         if (!original) {FreeVec(session);return 20;}
@@ -917,6 +898,7 @@ int main(int argc, char **argv)
     nd_prefs_preview_active=0;
     page=command_page(argc,argv,plugin,sizeof(plugin));
     for (;;) {
+        ND_TRACE_PAGE(page,page==4 ? nd_option_schema_id(session,plugin):NULL);
         if (page && page!=10) {
             result=run_child_pages(page,argc,argv,plugin);
             if (result==ND_PREF_NAV_GENERAL) {page=0;continue;}

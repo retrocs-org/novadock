@@ -116,10 +116,15 @@ class ReleaseNotesTests(unittest.TestCase):
 
     def test_committed_notes_and_real_plugin_inventory(self):
         self.assertEqual((ROOT/'docs/RELEASE-NOTES.md').read_text(), n.markdown(ROOT))
+        if (ROOT/'public-web').is_dir():
+            self.assertEqual((ROOT/'public-web/changelog.md').read_text(), (ROOT/'CHANGELOG.md').read_text())
         names = n.plugin_names(ROOT)
         self.assertEqual(len(names), 46)
-        self.assertIn("AmiRocket", names)
-        for name in ('Weather', 'Notes', 'Timer', 'SCREENS', 'SHOT', 'SMODE', 'ARCHIVE', 'MUSIC', 'SENSOR', 'ACTIONS', 'HASS', 'WATCH', 'LOGS', 'CALC', 'TOOLTYPES', 'BENCH', 'QR', 'MOON', 'COLOUR', 'AGENDA', 'PICTURES'):
+        self.assertNotIn("AMIROCKET", names)
+        self.assertNotIn("AMIRC", names)
+        self.assertNotIn("ALERTS", names)
+        self.assertIn("PREFERENCES", names)
+        for name in ('WEATHER', 'NOTES', 'TIMER', 'SCREENS', 'SHOT', 'SMODE', 'ARCHIVE', 'MUSIC', 'SENSOR', 'ACTIONS', 'HASS', 'WATCH', 'LOGS', 'CALC', 'TOOLTYPES', 'BENCH', 'QR', 'MOON', 'COLOUR', 'AGENDA', 'PICTURES', 'PET'):
             self.assertIn(name, names)
         self.assertIn('LumiAMP', n.aminet(ROOT, 'maintainer@example.org'))
         self.assertNotIn('Christmas', names)
@@ -143,7 +148,8 @@ class ReleaseNotesTests(unittest.TestCase):
     def test_aminet_history_is_complete_for_every_actual_release(self):
         text = n.aminet(ROOT, 'maintainer@example.org')
         releases = n.history(ROOT)
-        self.assertEqual([v for v, _ in releases], ['0.5', '0.4', '0.3', '0.2', '0.1'])
+        self.assertEqual(releases[0][0], n.version(ROOT))
+        self.assertEqual([v for v, _ in releases[-5:]], ['0.5', '0.4', '0.3', '0.2', '0.1'])
         compact = ' '.join(text.split())
         for release_version, groups in releases:
             self.assertEqual(text.count('  Version '+release_version+'\n'), 1)

@@ -8,7 +8,98 @@ static int rexx_set_badge(struct NDDock *dock,const struct NDRexxCommand *cmd);
 static const char *item_kind_name(const struct NDItem *item);
 static int rexx_list_stem(struct NDDock *dock,struct RexxMsg *m,const char *stem);
 static char *rexx_list_text(struct NDDock *dock);
+static int rexx_get(struct NDDock *dock,const char *key,char *out,unsigned int size);
+static int rexx_set(struct NDDock *dock,const char *key,const char *value,char *out,unsigned int size);
+static void rexx_info(struct NDDock *dock,int index,char *out);
+static void rexx_status_detail(struct NDDock *dock,char *out);
 
+/* GET key: the current value, as the configuration file stores it. */
+static int rexx_get(struct NDDock *dock,const char *key,char *out,unsigned int size)
+{
+    const struct NDConfig *cfg=dock->edit_config ? dock->edit_config : &dock->conf;
+    char stored[ND_RX_KEY_LEN+8];
+    if (!nd_config_canonical_key(cfg,key,stored,sizeof(stored))) return 0;
+    return nd_config_get(cfg,stored,out,size);
+}
+static int known_theme(const char *id)
+{
+    int i;
+    for (i=0;i<ND_THEME_COUNT;++i) {
+        const char *a=nd_theme_directory(i),*b=id;
+        while (*a && *b && toupper((unsigned char)*a)==toupper((unsigned char)*b)) {++a;++b;}
+        if (!*a && !*b) return 1;
+    }
+    return 0;
+}
+/* SET key value (and THEME id): change one global setting or plugin option,
+ * apply it the way Preferences' Use does, and queue it for saving.  OUT gets
+ * the stored value or the reason it was refused. */
+static int rexx_set(struct NDDock *dock,const char *key,const char *value,char *out,unsigned int size)
+{
+    struct NDConfig *full;
+    char line[ND_RX_KEY_LEN+ND_RX_TEXT_LEN+10],name[ND_RX_KEY_LEN+8];
+    int ok=0;
+    strcpy(out,"INVALID");
+    if (strlen(key)+strlen(value)+2>sizeof(line)) return 0;
+    full=(struct NDConfig *)AllocVec(sizeof(*full),MEMF_PUBLIC|MEMF_CLEAR|MEMF_REVERSE);
+    if (!full) {strcpy(out,"NO MEMORY");return 0;}
+    if (!strcmp(key,"THEME") && !known_theme(value)) {
+        /* The file keeps unknown theme ids for newer versions; ARexx only
+         * switches to a theme this version has. */
+        FreeVec(full);strcpy(out,"UNKNOWN THEME");return 0;
+    }
+    if (load_edit_configuration(dock,full)<=0 &&
+        nd_config_canonical_key(full,key,name,sizeof(name)) && nd_config_settable(full,name)) {
+        sprintf(line,"%s=%s",name,value);
+        if (nd_parse_line(full,line) && nd_config_get(full,name,out,size)) {
+            char stored[ND_CONFIG_VALUE_LEN];
+            struct NDLayout layout;
+            strcpy(stored,out);
+            /* Say why a valid value could not be applied. */
+            if (!dock->screen || dock->write_owner || !dock->save_port)
+                strcpy(out,"BUSY");
+            else if (!nd_layout_fit_enabled(full,dock->screen->Width,dock->screen->Height,
+                                            dock->screen->BarHeight,&layout))
+                strcpy(out,"DOES NOT FIT");
+            else if ((ok=queue_settings_save(dock,&full))!=0) {
+                /* Validated and fitted above; the live reload is batched
+                 * with any SETs that follow (see flush_rexx_settings). */
+                strcpy(out,stored);
+                dock->rexx_apply_pending=1;
+                dock->rexx_apply_ticks=ND_REXX_APPLY_QUIET;
+                dock->rexx_apply_failures=0;
+            }
+            else strcpy(out,"FAILED");
+        } else strcpy(out,"INVALID");
+    } else strcpy(out,"UNKNOWN");
+    if (full) FreeVec(full);
+    return ok;
+}
+/* INFO n: KIND|LABEL|COMMAND|ID|STATE for tile n (1-based, as LIST). */
+static void rexx_info(struct NDDock *dock,int index,char *out)
+{
+    const struct NDItem *item=&dock->conf.items[index];
+    const char *state="-";
+    if (item->kind==ND_ITEM_PLUGIN) state=item->online ? "ONLINE":"OFFLINE";
+    else if (item->kind==ND_ITEM_LAUNCH || item->transient==ND_TRANSIENT_TASK)
+        state=dock->running_items[index] ? "RUNNING":"IDLE";
+    sprintf(out,"%s|%.31s|%.255s|%.19s|%s",item_kind_name(item),item->label,
+            item->kind==ND_ITEM_SPACER ? "" : item->command,
+            item->kind==ND_ITEM_PLUGIN ? item->id : "",state);
+}
+/* STATUS DETAIL: paint and wake counters for measuring on real hardware. */
+static void rexx_status_detail(struct NDDock *dock,char *out)
+{
+    sprintf(out,"RUNNING=%d FULL_PAINTS=%lu TILE_PAINTS=%lu HOVER_FULL=%lu HOVER_PARTIAL=%lu "
+            "HOVER_SKIPPED=%lu WAKES=%lu UPDATES=%lu COALESCED=%lu TIMER_HZ=%d SECONDS=%lu",
+            dock->conf.count,(unsigned long)dock->diagnostic_full_paints,
+            (unsigned long)dock->diagnostic_tile_paints,(unsigned long)dock->diagnostic_hover_full,
+            (unsigned long)dock->diagnostic_hover_partial,(unsigned long)dock->diagnostic_hover_skipped,
+            (unsigned long)dock->diagnostic_wakes,(unsigned long)dock->diagnostic_updates,
+            (unsigned long)dock->diagnostic_coalesced_updates,
+            !dock->timer_open ? 10 : dock->timer_anim ? 25 : dock->timer_quanta>1 ? 1:5,
+            (unsigned long)((diagnostic_ticks()-dock->diagnostic_started)/50UL));
+}
 static const char *item_kind_name(const struct NDItem *item)
 {
     if (item->transient==ND_TRANSIENT_MEDIA) return "DISK";
@@ -195,15 +286,65 @@ void process_rexx(struct NDDock *dock)
         valid=IsRexxMsg(m) &&
               ((m->rm_Action & RXCODEMASK) == RXCOMM) &&
               nd_parse_rexx(m->rm_Args[0],&cmd);
+        /* Commands that read or change the live dock see queued SETs first. */
+        if (valid && cmd.action!=ND_RX_SET && cmd.action!=ND_RX_THEME &&
+            cmd.action!=ND_RX_GET && cmd.action!=ND_RX_PING &&
+            cmd.action!=ND_RX_VERSION && cmd.action!=ND_RX_HELP)
+            flush_rexx_settings(dock);
         if (!valid) { m->rm_Result1=10; strcpy(result,"Invalid command"); }
         else switch (cmd.action) {
         case ND_RX_PING: strcpy(result,"PONG"); break;
         case ND_RX_VERSION: strcpy(result,ND_VERSION); break;
-        case ND_RX_STATUS: sprintf(result,"RUNNING %d",dock->conf.count); break;
+        case ND_RX_STATUS:
+            if (cmd.first) rexx_status_detail(dock,result);
+            else sprintf(result,"RUNNING %d",dock->conf.count);
+            break;
+        case ND_RX_GET:
+            if (!rexx_get(dock,cmd.text2,result,sizeof(result))) {m->rm_Result1=5;strcpy(result,"UNKNOWN");}
+            break;
+        case ND_RX_SET:
+        case ND_RX_THEME:
+            if (!rexx_set(dock,cmd.text2,cmd.text,result,sizeof(result))) m->rm_Result1=10;
+            break;
+        case ND_RX_INFO:
+            if (cmd.first>dock->conf.count) {m->rm_Result1=5;strcpy(result,"NOT FOUND");}
+            else rexx_info(dock,cmd.first-1,result);
+            break;
+        case ND_RX_SAVE:
+            if (dock->save_state.revision==dock->save_state.saved && !dock->save_state.active)
+                strcpy(result,"OK");
+            else {settings_save_tick(dock,0,1);strcpy(result,"QUEUED");}
+            break;
+        case ND_RX_PROFILE:
+            if (cmd.first==ND_RX_PROFILE_LIST) {
+                char names[20][ND_PROFILE_LEN];
+                int count=list_profiles(names,20,NULL),k;
+                result[0]='\0';
+                for (k=0;k<count;++k) {if (k) strcat(result,";");strcat(result,names[k]);}
+            } else if (!nd_profile_name_valid(cmd.text)) {m->rm_Result1=10;strcpy(result,"INVALID");}
+            else if (cmd.first==ND_RX_PROFILE_SAVE) {
+                if (save_profile(dock,cmd.text)) strcpy(result,"OK"); else m->rm_Result1=10;
+            } else if (cmd.first==ND_RX_PROFILE_DELETE) {
+                if (delete_profile(dock,cmd.text)) strcpy(result,"OK");
+                else {m->rm_Result1=5;strcpy(result,"NOT FOUND");}
+            } else {
+                char path[ND_COMMAND_LEN];
+                BPTR lock;
+                (void)nd_profile_path(cmd.text,path,sizeof(path));
+                lock=Lock((STRPTR)path,ACCESS_READ);
+                if (!lock) {m->rm_Result1=5;strcpy(result,"NOT FOUND");}
+                else {UnLock(lock);if (use_profile(dock,cmd.text)) strcpy(result,"OK"); else m->rm_Result1=10;}
+            }
+            break;
+        case ND_RX_UNDO:
+            if (undo_last_edit(dock)) strcpy(result,"OK");
+            else {m->rm_Result1=5;strcpy(result,"NOTHING");}
+            break;
         case ND_RX_HELP:
             strcpy(result,"PING VERSION STATUS LIST [STEM var] OPEN n|label MOVE a b "
                    "CLICK n REMOVE n ADD path SETVALUE id caption value [meter] "
-                   "SETBADGE id [text] "
+                   "SETBADGE id [text] GET key SET key value THEME id INFO n "
+                   "SAVE UNDO STATUS DETAIL PROFILE [USE|SAVE|DELETE] name PROFILE LIST "
                    "SHOW HIDE TOGGLE LOCK UNLOCK SUSPEND RESUME RELOAD PREFS RESTART QUIT"); break;
         case ND_RX_LIST:
             if (cmd.text[0]) {
@@ -259,7 +400,7 @@ void process_rexx(struct NDDock *dock)
         case ND_RX_RESUME:
             dock->suspended=0;
             if (dock->window) strcpy(result,"OK");
-            else if (FindPort((STRPTR)"Workbench") && reopen_dock_ui(dock))
+            else if (FindPort((STRPTR)"WORKBENCH") && reopen_dock_ui(dock))
                 strcpy(result,"OK");
             else {m->rm_Result1=5;strcpy(result,"PENDING");} /* timer retries */
             break;

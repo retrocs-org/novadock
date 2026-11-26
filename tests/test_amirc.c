@@ -7,17 +7,18 @@
 static void manifest_test(void)
 {
     struct NDManifest m;struct NDConfig cfg;struct NDOptionDef defs[11];
-    char line[300];FILE *f=fopen("Plugins/AmIRC.ndplugin","r");int n;
+    char line[300];FILE *f=fopen("plugin_src/amirc/legacy/AmIRC.ndplugin","r");int n;
     assert(f);nd_manifest_init(&m,"AmIRC");
     while(fgets(line,sizeof(line),f)) assert(nd_manifest_line(&m,line));
-    fclose(f);assert(nd_manifest_package_ready(&m));
+    fclose(f);assert(!nd_manifest_package_ready(&m));
+    assert(strstr(m.error,"retired"));
     assert(m.option_count==6 && !strcmp(m.id,"AMIRC"));
     assert(!strcmp(m.options[0].type,"FILE"));
     nd_default_config(&cfg);n=cfg.count;
-    assert(nd_manifest_merge(&cfg,&m,"Plugins/AmIRC")==ND_MANIFEST_ADDED);
-    assert(cfg.count==n+1 && !cfg.items[n].enabled);
+    assert(nd_manifest_merge(&cfg,&m,"Plugins/AmIRC")==ND_MANIFEST_REJECTED);
+    assert(cfg.count==n);
     assert(nd_option_collect(&cfg,"AMIRC",defs,8)==6);
-    assert(nd_manifest_bundled_id("AMIRC"));
+    assert(!nd_manifest_bundled_id("AMIRC"));
     nd_manifest_init(&m,"Clipboard");f=fopen("Plugins/Clipboard.ndplugin","r");assert(f);
     while(fgets(line,sizeof(line),f))assert(nd_manifest_line(&m,line));
     fclose(f);assert(nd_manifest_package_ready(&m));

@@ -55,7 +55,7 @@ int nd_archive_compression_request(const struct NDArchiveSource *sources,unsigne
 {
     static STRPTR formats[]={"ZIP","LHA",NULL};
     struct Screen *screen=NULL;struct Window *win=NULL;
-    struct Gadget *gadgets=NULL,*last,*cycle,*drawer,*file,*g;
+    struct Gadget *gadgets=NULL,*last,*drawer,*file,*g;
     struct NewGadget ng;struct TextAttr font={(STRPTR)"topaz.font",8,0,0};
     struct IntuiMessage *msg;struct FileRequester *request;
     APTR visual=NULL;BPTR lock;struct FileInfoBlock *fib;int is_drawer;
@@ -104,7 +104,7 @@ int nd_archive_compression_request(const struct NDArchiveSource *sources,unsigne
     last=CreateGadget(TEXT_KIND,last,&ng,GTTX_Text,(ULONG)source_label,TAG_DONE);if(!last)goto cleanup;
     ng.ng_LeftEdge=100;ng.ng_TopEdge=top+22;ng.ng_Width=w-116;ng.ng_Height=18;
     ng.ng_Flags=PLACETEXT_LEFT;ng.ng_GadgetID=1;ng.ng_GadgetText="Format";
-    cycle=last=CreateGadget(CYCLE_KIND,last,&ng,GTCY_Labels,(ULONG)formats,GTCY_Active,format,TAG_DONE);if(!last)goto cleanup;
+    last=CreateGadget(CYCLE_KIND,last,&ng,GTCY_Labels,(ULONG)formats,GTCY_Active,format,TAG_DONE);if(!last)goto cleanup;
     ng.ng_TopEdge+=27;ng.ng_GadgetID=2;ng.ng_GadgetText="Save drawer";ng.ng_Width=w-204;
     drawer=last=CreateGadget(STRING_KIND,last,&ng,GTST_String,(ULONG)parent,GTST_MaxChars,255,TAG_DONE);if(!last)goto cleanup;
     ng.ng_LeftEdge=w-96;ng.ng_Width=80;ng.ng_GadgetID=4;ng.ng_GadgetText="Browse...";ng.ng_Flags=PLACETEXT_IN;

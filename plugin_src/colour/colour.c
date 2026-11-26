@@ -23,6 +23,9 @@ struct IntuitionBase *IntuitionBase=NULL;struct GfxBase *GfxBase=NULL;struct Lib
 const char nd_version[]=ND_PLUGIN_VER_STRING(COLOUR,"Colour");long __stack=65536;
 #define PALETTE "ENVARC:NovaDock/Colours/Palette"
 #include "nd_colour_job.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 static int sample(unsigned long *out)
 {struct Screen *screen=NULL;int x,y,depth,front=0,ok=0;LONG pen;ULONG colours[3];unsigned char pixel[3];
  IntuitionBase=(struct IntuitionBase *)OpenLibrary("intuition.library",39);GfxBase=(struct GfxBase *)OpenLibrary("graphics.library",39);if(!IntuitionBase||!GfxBase)goto done;screen=LockPubScreen("Workbench");if(!screen)goto done;Forbid();front=IntuitionBase->FirstScreen==screen;Permit();if(!front)goto done;x=screen->MouseX;y=screen->MouseY;if(x<0||y<0||x>=screen->Width||y>=screen->Height)goto done;depth=GetBitMapAttr(screen->RastPort.BitMap,BMA_DEPTH);

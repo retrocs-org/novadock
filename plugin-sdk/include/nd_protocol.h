@@ -19,6 +19,8 @@
 #define ND_TEXT_LEN 32
 #define ND_NO_METER 65535U
 
+#define ND_MSG_NOTICE_LONG 7U /* negotiated title[81], body[513]; v5 prefix */
+#define ND_MSG_SUPPORT 6U /* negotiated numeric activity/resource snapshot */
 #define ND_MSG_THUMBNAIL 5U /* negotiated bounded bitmap payload */
 #define ND_MSG_UPDATE 1U
 #define ND_MSG_GOODBYE 2U
@@ -109,7 +111,15 @@ struct NDMediaMessage {
 #define ND_EXT_HAS_GRAPH 1U
 #define ND_EXT_HAS_MEDIA 2U
 #define ND_EXT_HAS_ARTWORK 4U /* reserved2[0]: name key; reserved: state */
+#define ND_EVENT2_SENSOR_PREVIOUS 2048UL /* selected SENSOR channel */
+#define ND_EVENT2_SENSOR_NEXT 4096UL
+#define ND_EVENT2_SENSOR_DETAILS 8192UL
+#define ND_EVENT2_HOST_SUPPORT 64UL
+#define ND_EVENT2_SUPPORT_LOGGING 128UL
+#define ND_EVENT2_SUPPORT_TRACE 256UL
+#define ND_EVENT2_SUPPORT_SAMPLE 512UL
 #define ND_EVENT2_HOST_THUMBNAIL 32UL
+#define ND_EVENT2_HOST_LONG_NOTICE (1UL<<30)
 #define ND_EVENT2_HOST_ALERTS 16UL /* accepts ND_MSG_NOTICE */
 #define ND_EVENT2_HOST_ARTWORK_META 8UL /* separate art metadata; captions stay readable */
 #define ND_EVENT2_HOST_ARTWORK 4UL /* host can render plugin-owned artwork banks */
@@ -124,6 +134,9 @@ struct NDExtMessage {
     ULONG event2;                /* reply: bitmask of ND_EVENT2_* */
     ULONG reserved2[2];
 };
+struct NDNoticeMessage {struct NDExtMessage base;char title[81],text[513];};
+#include "nd_plugin_support.h"
+struct NDPluginSupportMessage {struct NDExtMessage base;struct NDPluginSupportStats stats;};
 #include "nd_thumbnail.h"
 struct NDThumbnailMessage {struct NDExtMessage base;struct NDThumbnail picture;};
 #endif

@@ -22,5 +22,6 @@ fi
 if [ -n "${VC:-}" ]; then export VC; fi
 export VBCC PATH
 
+"${PYTHON:-python3}" "$project_root/tools/build_identity.py"
 mkdir -p "$project_root/Plugins"
 exec make -C "$project_root" -f Makefile.cross "$@"

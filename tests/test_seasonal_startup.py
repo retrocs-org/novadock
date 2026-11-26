@@ -3,7 +3,7 @@
 from pathlib import Path
 import subprocess, tempfile, os
 ROOT=Path(__file__).resolve().parents[1]
-s=(ROOT/'src/dock_plugins.c').read_text();a=s.index('/* Seasonal history');b=s.index('static int launch_plugin',a)
+s=(ROOT/'src/dock_plugins.c').read_text();a=s.index('/* Seasonal history');b=s.index('static int plugin_launch_feedback',a)
 source=r"""#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -17,6 +17,7 @@ static void DateStamp(struct DateStamp *s){s->ds_Days=days;}
 static BPTR CreateDir(const char *name){(void)name;return 1;}
 static void UnLock(BPTR l){assert(l);}
 static void *alloc_data(size_t n){return calloc(1,n);}
+static int invalidations;static void invalidate_settings_cache(struct NDDock *d){(void)d;++invalidations;}
 static void FreeVec(void *p){free(p);}
 static int resolve_plugin_executable(struct NDDock *d,const char *name,char *out,unsigned int n){(void)d;(void)name;(void)n;strcpy(out,"Plugins/Christmas");return available;}
 """+s[a:b]+r"""

@@ -8,11 +8,9 @@ Other stack providers are not implemented yet.
 
 ## Tile and controls
 
-- **Offline:** a pre-generated network icon with NETWORK at the bottom, in the
-  same style as Apps and Music.
-- **Online:** two separate **IN** and **OUT** packet-activity meters by default.
-  Incoming traffic uses the first accent color; outgoing traffic uses the second.
-  Both bars use the same configured PPS scale. The value above them is IN/OUT p/s. Click the online tile to switch between meter and graph, like CPU/RAM.
+- **Offline:** the interface icon shows dashes in its two traffic channels.
+- **Online:** the interface icon displays incoming packets/second above outgoing packets/second, with separate activity colours. Large rates use k/M abbreviations; the tooltip retains full readings. The artwork follows the theme or Colourful icons setting and magnifies with neighbouring tiles.
+- Click the online tile to switch between icon and two-channel graph, like CPU/RAM. Tiny tiles retain their compact meters.
 - **Right-click → Online:** reconnect the selected Roadshow interface with
   `C:ConfigureNetInterface`, renewing DHCP when its profile uses DHCP. If the
   interface has not been registered, start it using `C:AddNetInterface` and
@@ -225,9 +223,7 @@ perform no action; right-click still exposes Online, Details and settings.
 
 ## Tile layout
 
-Online tiles align the NETWORK heading with CPU/RAM and show IN/OUT meters or
-a two-channel graph. Packet rates and control/sampling status are available
-in the hover tooltip. Offline tiles keep the network icon and bottom title.
+Network uses the same bottom-label settings and magnification as CPU/RAM. Its interface icon contains two live traffic readings outside graph mode. Packet rates and control/sampling status remain available in the hover tooltip.
 
 
 ## Configure Wi-Fi (0.4)

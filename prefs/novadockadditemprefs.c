@@ -858,7 +858,7 @@ int nd_additem_prefs_run(int argc,char **argv)
                 id=msg->IAddress ? ((struct Gadget *)msg->IAddress)->GadgetID : 0;
                 code=msg->Code;
                 GT_ReplyIMsg(msg);
-                if (cls==IDCMP_CLOSEWINDOW) {p->done=1;p->result=0;}
+                if (cls==IDCMP_CLOSEWINDOW || (cls==IDCMP_RAWKEY && code==0x45)) {p->done=1;p->result=0;}
                 else if (cls==IDCMP_RAWKEY && code==ND_HELP_KEY) nd_prefs_help(p->screen);
                 else if (cls==IDCMP_REFRESHWINDOW) {
                     GT_BeginRefresh(p->win);GT_EndRefresh(p->win,TRUE);

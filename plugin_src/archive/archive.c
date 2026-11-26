@@ -21,6 +21,9 @@
 #include "nd_option_runtime.h"
 #include "nd_archive.h"
 #include "nd_archive_dialog.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 
 #define EXTRACT_CONSOLE \
     "CON:10/12/620/176/NovaDock Archiver/AUTO/CLOSE"

@@ -1,135 +1,135 @@
 ; Execute this in an Amiga Shell with vbcc+NDK installed.
 ; Do not use +kick13; this program needs OS 3.0 and newer.
 FailAt 21
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Weather plugin_src/weather/weather.c plugin_src/weather/nd_weather.c plugin_src/weather/nd_weather_window.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/interaction.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Weather plugin_src/weather/weather.c plugin_src/weather/nd_weather.c plugin_src/weather/nd_weather_window.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/interaction.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/ScreenSwitcher plugin_src/screenswitcher/screenswitcher.c plugin_src/clipboard/nd_clipboard_popup.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/ScreenSwitcher plugin_src/screenswitcher/screenswitcher.c plugin_src/clipboard/nd_clipboard_popup.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o NovaDock src/novadock.c src/dock_save.c src/save_policy.c src/indicator.c src/dock_arexx.c src/dock_draw.c src/dock_events.c src/dock_icons.c src/dock_input.c src/dock_launch.c src/dock_menu.c src/dock_plugins.c src/dock_popups.c src/dock_reload.c src/dock_timers.c src/dock_window.c src/config.c src/theme.c src/nd_options.c src/layout.c src/graph.c src/ilbm.c src/icon_mask.c src/interaction.c src/autohide.c src/eyes.c src/watchdog.c src/control_client.c src/nd_locale.c src/nd_media.c src/nd_tasks.c src/nd_folder.c plugin_src/archive/nd_archive.c src/nd_warp_detect.c src/nd_update.c src/nd_update_hash.c src/nd_update_native.c plugin_src/common/nd_panel.c src/nd_alerts.c src/nd_volume.c src/nd_thumbnail.c -lamiga
+vc -O -DND_RUNTIME_TRACE -Iinclude -Iplugin_src/common -Iplugin_src/archive -o NovaDock src/novadock.c src/dock_save.c src/save_policy.c src/indicator.c src/dock_arexx.c src/dock_draw.c src/dock_events.c src/dock_icons.c src/dock_input.c src/dock_launch.c src/dock_menu.c src/dock_plugins.c src/dock_popups.c src/dock_reload.c src/dock_timers.c src/dock_window.c src/config.c src/theme.c src/nd_options.c src/layout.c src/graph.c src/ilbm.c src/nd_backdrop.c src/nd_transparency.c src/icon_mask.c src/interaction.c src/autohide.c src/eyes.c src/watchdog.c src/control_client.c src/nd_locale.c src/nd_media.c src/nd_tasks.c src/nd_folder.c plugin_src/archive/nd_archive.c src/nd_warp_detect.c src/nd_update.c src/nd_update_hash.c src/nd_update_native.c plugin_src/common/nd_panel.c src/nd_alerts.c src/nd_volume.c src/nd_thumbnail.c -lamiga src/nd_trace.c src/nd_support.c src/nd_support_log.c src/nd_aminotis.c src/aminotis_sdk/aminotis.c src/nd_volume_worker.c plugin_src/common/nd_task.c src/nd_async_result.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PREFS_EMBEDDED -o NovaDockPrefs prefs/novadockprefs.c prefs/nd_prefs_help.c prefs/novadockappearanceprefs.c prefs/novadockitemprefs.c prefs/novadocklauncherprefs.c prefs/novadockadditemprefs.c prefs/novadockpluginprefs.c src/nd_music_formats.c src/nd_sensors.c prefs/novadockmanagerprefs.c prefs/novadockdiagnosticsprefs.c prefs/novadockaboutprefs.c prefs/novadocklayoutprefs.c prefs/nd_catalog_job.c plugin_src/common/nd_task.c prefs/novadockdiscovery.c prefs/nd_package_install.c src/config.c src/theme.c src/nd_options.c src/layout.c src/layout_profiles.c src/prefs_layout.c src/control_client.c src/nd_manifest.c src/ilbm.c plugin_src/hass/nd_hass.c plugin_src/hass/nd_hass_client.c plugin_src/hass/nd_hass_ui.c plugin_src/common/nd_panel.c src/interaction.c src/nd_update.c src/nd_update_hash.c src/nd_update_native.c src/nd_i2c_cache.c plugin_src/moon/nd_moon_settings.c -lamiga
+vc -O -DND_RUNTIME_TRACE -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PREFS_EMBEDDED -o NovaDockPrefs prefs/novadockprefs.c prefs/nd_prefs_help.c prefs/novadockappearanceprefs.c prefs/novadockitemprefs.c prefs/novadocklauncherprefs.c prefs/novadockadditemprefs.c prefs/novadockpluginprefs.c src/nd_music_formats.c src/nd_sensors.c prefs/novadockmanagerprefs.c prefs/novadockdiagnosticsprefs.c prefs/novadockaboutprefs.c prefs/novadocklayoutprefs.c prefs/nd_catalog_job.c plugin_src/common/nd_task.c prefs/novadockdiscovery.c prefs/nd_package_install.c src/config.c src/theme.c src/nd_options.c src/layout.c src/layout_profiles.c src/prefs_layout.c src/control_client.c src/nd_manifest.c src/ilbm.c src/nd_backdrop.c src/nd_transparency.c plugin_src/hass/nd_hass.c plugin_src/hass/nd_hass_client.c plugin_src/hass/nd_hass_ui.c plugin_src/common/nd_panel.c src/interaction.c src/nd_update.c src/nd_update_hash.c src/nd_update_native.c src/nd_i2c_cache.c plugin_src/moon/nd_moon_settings.c -lamiga src/nd_trace.c src/nd_support.c src/nd_support_log.c src/nd_aminotis.c src/aminotis_sdk/aminotis.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Clock plugin_src/clock/clock.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Clock plugin_src/clock/clock.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Eyes plugin_src/eyes/eyes.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Eyes plugin_src/eyes/eyes.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Activity plugin_src/activity/activity.c plugin_src/activity/cpu_idle_hooks.asm src/metrics.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/prism/nd_prism.c plugin_src/prism/nd_prism_store.c plugin_src/prism/nd_prism_native.c plugin_src/warp/nd_warp_ui.c plugin_src/warp/nd_warp_control.c plugin_src/warp/nd_warp_hook.asm src/nd_warp_detect.c src/interaction.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Activity plugin_src/activity/activity.c plugin_src/activity/cpu_idle_hooks.asm src/metrics.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/prism/nd_prism.c plugin_src/prism/nd_prism_store.c plugin_src/prism/nd_prism_native.c plugin_src/warp/nd_warp_ui.c plugin_src/warp/nd_warp_control.c plugin_src/warp/nd_warp_hook.asm src/nd_warp_detect.c src/interaction.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Memory plugin_src/memory/memory.c src/metrics.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Memory plugin_src/memory/memory.c src/metrics.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/network -o Plugins/Network plugin_src/network/network.c plugin_src/network/nd_network.c plugin_src/network/nd_netcontrol.c plugin_src/network/nd_roadshow.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/prism/nd_prism.c plugin_src/prism/nd_prism_store.c plugin_src/prism/nd_prism_native.c plugin_src/warp/nd_warp_ui.c plugin_src/warp/nd_warp_control.c plugin_src/warp/nd_warp_hook.asm src/nd_warp_detect.c src/interaction.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/network -DND_PLUGIN_RESOURCES -o Plugins/Network plugin_src/network/network.c plugin_src/network/nd_network.c plugin_src/network/nd_netcontrol.c plugin_src/network/nd_roadshow.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/prism/nd_prism.c plugin_src/prism/nd_prism_store.c plugin_src/prism/nd_prism_native.c plugin_src/warp/nd_warp_ui.c plugin_src/warp/nd_warp_control.c plugin_src/warp/nd_warp_hook.asm src/nd_warp_detect.c src/interaction.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/MusicPlayer plugin_src/musicplayer/musicplayer.c plugin_src/musicplayer/nd_musicplayer.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/MusicPlayer plugin_src/musicplayer/musicplayer.c plugin_src/musicplayer/nd_musicplayer.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/DOpus4 plugin_src/dopus4/dopus4.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -DND_RUNTIME_TRACE -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/DOpus4 plugin_src/dopus4/dopus4.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/nd_trace.c src/nd_support.c src/nd_support_log.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/ArchiveExtractor plugin_src/archive/nd_archive_dialog.c plugin_src/archive/archive.c plugin_src/archive/nd_archive.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/ArchiveExtractor plugin_src/archive/nd_archive_dialog.c plugin_src/archive/archive.c plugin_src/archive/nd_archive.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/command -o Plugins/Command plugin_src/command/command.c plugin_src/command/nd_command.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/command -DND_PLUGIN_RESOURCES -o Plugins/Command plugin_src/command/command.c plugin_src/command/nd_command.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/RunningApps plugin_src/runningapps/runningapps.c plugin_src/common/nd_client.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/RunningApps plugin_src/runningapps/runningapps.c plugin_src/common/nd_client.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Trash plugin_src/trash/trash.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Trash plugin_src/trash/trash.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Games plugin_src/games/games.c plugin_src/games/nd_games_scan.c plugin_src/games/nd_games_cache.c src/nd_music_formats.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Games plugin_src/games/games.c plugin_src/games/nd_games_scan.c plugin_src/games/nd_games_cache.c src/nd_music_formats.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_MUSIC_LIBRARY -o Plugins/MusicLibrary plugin_src/games/games.c plugin_src/games/nd_games_scan.c plugin_src/games/nd_games_cache.c src/nd_music_formats.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_MUSIC_LIBRARY -DND_PLUGIN_RESOURCES -o Plugins/MusicLibrary plugin_src/games/games.c plugin_src/games/nd_games_scan.c plugin_src/games/nd_games_cache.c src/nd_music_formats.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/sensors -o Plugins/Sensors plugin_src/sensors/sensors.c plugin_src/sensors/nd_sensor_native.c src/nd_sensors.c src/interaction.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/nd_i2c_cache.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/sensors -DND_PLUGIN_RESOURCES -o Plugins/Sensors plugin_src/sensors/sensors.c plugin_src/sensors/nd_sensor_native.c src/nd_sensors.c src/interaction.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/nd_i2c_cache.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Christmas plugin_src/christmas/christmas.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Christmas plugin_src/christmas/christmas.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Aquarium plugin_src/aquarium/aquarium.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Aquarium plugin_src/aquarium/aquarium.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Pet plugin_src/pet/pet.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Places plugin_src/places/places.c plugin_src/clipboard/nd_clipboard_popup.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/interaction.c plugin_src/common/nd_list.c src/nd_volume.c src/nd_thumbnail.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Places plugin_src/places/places.c plugin_src/clipboard/nd_clipboard_popup.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/interaction.c plugin_src/common/nd_list.c src/nd_volume.c src/nd_thumbnail.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Saver plugin_src/saver/saver.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Saver plugin_src/saver/saver.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/aminet -Iplugin_src/aminet/compat -o Plugins/Aminet plugin_src/aminet/aminet.c plugin_src/aminet/nd_aminet.c plugin_src/aminet/nd_aminet_http.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/interaction.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/aminet -Iplugin_src/aminet/compat -DND_PLUGIN_RESOURCES -o Plugins/Aminet plugin_src/aminet/aminet.c plugin_src/aminet/nd_aminet.c plugin_src/aminet/nd_aminet_http.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/interaction.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Download plugin_src/download/download.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c src/interaction.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Download plugin_src/download/download.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c src/interaction.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/System plugin_src/system/system.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/System plugin_src/system/system.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/HASS plugin_src/hass/hass.c plugin_src/hass/nd_hass.c plugin_src/hass/nd_hass_client.c plugin_src/hass/nd_hass_ui.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/interaction.c plugin_src/hass/nd_hass_room.c plugin_src/hass/nd_hass_summary.c plugin_src/common/nd_list.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/HASS plugin_src/hass/hass.c plugin_src/hass/nd_hass.c plugin_src/hass/nd_hass_client.c plugin_src/hass/nd_hass_ui.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c src/interaction.c plugin_src/hass/nd_hass_room.c plugin_src/hass/nd_hass_summary.c plugin_src/common/nd_list.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Actions plugin_src/actions/actions.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Actions plugin_src/actions/actions.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Alerts plugin_src/alerts/alerts.c src/control_client.c src/config.c src/nd_options.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Shelf plugin_src/shelf/shelf.c plugin_src/shelf/nd_shelf.c plugin_src/common/nd_list.c src/interaction.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Shelf plugin_src/shelf/shelf.c plugin_src/shelf/nd_shelf.c plugin_src/common/nd_list.c src/interaction.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Watch plugin_src/monitor/watch.c plugin_src/monitor/nd_monitor.c plugin_src/common/nd_text.c plugin_src/common/nd_panel.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_list.c src/interaction.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Watch plugin_src/monitor/watch.c plugin_src/monitor/nd_monitor.c plugin_src/common/nd_text.c plugin_src/common/nd_panel.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_list.c src/interaction.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Logs plugin_src/monitor/logs.c plugin_src/monitor/nd_monitor.c plugin_src/common/nd_text.c plugin_src/common/nd_panel.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_list.c src/interaction.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Logs plugin_src/monitor/logs.c plugin_src/monitor/nd_monitor.c plugin_src/common/nd_text.c plugin_src/common/nd_panel.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_list.c src/interaction.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/ToolTypes plugin_src/tooltypes/tooltypes.c plugin_src/tooltypes/nd_tooltypes.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_list.c plugin_src/common/nd_task.c src/interaction.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/ToolTypes plugin_src/tooltypes/tooltypes.c plugin_src/tooltypes/nd_tooltypes.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_list.c plugin_src/common/nd_task.c src/interaction.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Calc plugin_src/calc/calc.c plugin_src/calc/nd_calc.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_list.c plugin_src/common/nd_task.c src/interaction.c plugin_src/common/nd_text.c plugin_src/clipboard/nd_clipboard.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Calc plugin_src/calc/calc.c plugin_src/calc/nd_calc.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_list.c plugin_src/common/nd_task.c src/interaction.c plugin_src/common/nd_text.c plugin_src/clipboard/nd_clipboard.c -lamiga
 If WARN
   Quit 10
 EndIf
@@ -137,43 +137,45 @@ vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/SensorsI2C p
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/amirocket -o Plugins/AmiRocket plugin_src/amirocket/amirocket.c plugin_src/amirocket/nd_amirocket.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/amirc -o Plugins/AmIRC plugin_src/amirc/amirc.c plugin_src/amirc/nd_amirc.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/bitskim -o Plugins/BitSkim plugin_src/bitskim/bitskim.c plugin_src/bitskim/nd_bitskim.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/bitskim -DND_PLUGIN_RESOURCES -o Plugins/BitSkim plugin_src/bitskim/bitskim.c plugin_src/bitskim/nd_bitskim.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/clipboard -o Plugins/Clipboard plugin_src/clipboard/clipboard.c plugin_src/clipboard/nd_clipboard_popup.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/clipboard -DND_PLUGIN_RESOURCES -o Plugins/Clipboard plugin_src/clipboard/clipboard.c plugin_src/clipboard/nd_clipboard_popup.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/mixer -o Plugins/Mixer plugin_src/mixer/mixer.c plugin_src/mixer/nd_ahiprefs.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/mixer -DND_PLUGIN_RESOURCES -o Plugins/Mixer plugin_src/mixer/mixer.c plugin_src/mixer/nd_ahiprefs.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/screenshot -o Plugins/Screenshot plugin_src/screenshot/screenshot.c plugin_src/screenshot/nd_shotfile.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/screenshot -DND_PLUGIN_RESOURCES -o Plugins/Screenshot plugin_src/screenshot/screenshot.c plugin_src/screenshot/nd_shotfile.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/screenmode -o Plugins/ScreenMode plugin_src/screenmode/screenmode.c plugin_src/screenmode/nd_scrmode.c src/interaction.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/screenmode -DND_PLUGIN_RESOURCES -o Plugins/ScreenMode plugin_src/screenmode/screenmode.c plugin_src/screenmode/nd_scrmode.c src/interaction.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/script -o Plugins/Script plugin_src/script/script.c plugin_src/script/nd_script.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -Iplugin_src/script -DND_PLUGIN_RESOURCES -o Plugins/Script plugin_src/script/script.c plugin_src/script/nd_script.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Timer plugin_src/timer/timer.c plugin_src/timer/nd_timer.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/AmiNotis plugin_src/aminotis/aminotis.c plugin_src/aminotis/nd_aminotis_sdk.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Notes plugin_src/notes/notes.c plugin_src/notes/nd_notes.c plugin_src/notes/nd_markdown.c plugin_src/notes/nd_note_editor.c plugin_src/clipboard/nd_clipboard_popup.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Timer plugin_src/timer/timer.c plugin_src/timer/nd_timer.c plugin_src/common/nd_panel.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
+If WARN
+  Quit 10
+EndIf
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Notes plugin_src/notes/notes.c plugin_src/notes/nd_notes.c plugin_src/notes/nd_markdown.c plugin_src/notes/nd_note_editor.c plugin_src/clipboard/nd_clipboard_popup.c plugin_src/clipboard/nd_clipboard.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c
 If WARN
   Quit 10
 EndIf
@@ -193,27 +195,40 @@ vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o SaveConfig tools/sav
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Bench plugin_src/bench/bench.c plugin_src/bench/nd_bench.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_task.c plugin_src/common/nd_list.c plugin_src/common/nd_text.c plugin_src/clipboard/nd_clipboard.c src/interaction.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Bench plugin_src/bench/bench.c plugin_src/bench/nd_bench.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_task.c plugin_src/common/nd_list.c plugin_src/common/nd_text.c plugin_src/clipboard/nd_clipboard.c src/interaction.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/QR plugin_src/qr/qr.c plugin_src/qr/nd_qr.c plugin_src/qr/nd_qr_view.c plugin_src/qr/vendor/qrcodegen.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_task.c plugin_src/common/nd_text.c plugin_src/clipboard/nd_clipboard.c src/interaction.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/QR plugin_src/qr/qr.c plugin_src/qr/nd_qr.c plugin_src/qr/nd_qr_view.c plugin_src/qr/vendor/qrcodegen.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_task.c plugin_src/common/nd_text.c plugin_src/clipboard/nd_clipboard.c src/interaction.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Moon plugin_src/moon/moon.c plugin_src/moon/nd_moon.c plugin_src/moon/nd_moon_settings.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_task.c src/interaction.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Moon plugin_src/moon/moon.c plugin_src/moon/nd_moon.c plugin_src/moon/nd_moon_settings.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_task.c src/interaction.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Colour plugin_src/colour/colour.c plugin_src/colour/nd_colour.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_task.c plugin_src/common/nd_list.c plugin_src/common/nd_text.c plugin_src/clipboard/nd_clipboard.c src/interaction.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Colour plugin_src/colour/colour.c plugin_src/colour/nd_colour.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_task.c plugin_src/common/nd_list.c plugin_src/common/nd_text.c plugin_src/clipboard/nd_clipboard.c src/interaction.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Agenda plugin_src/agenda/agenda.c plugin_src/agenda/nd_agenda.c plugin_src/common/nd_list.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_task.c src/interaction.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Agenda plugin_src/agenda/agenda.c plugin_src/agenda/nd_agenda.c plugin_src/common/nd_list.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_task.c src/interaction.c -lamiga
 If WARN
   Quit 10
 EndIf
-vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -o Plugins/Pictures plugin_src/pictures/pictures.c plugin_src/pictures/nd_pictures.c plugin_src/pictures/nd_pictures_native.c plugin_src/pictures/nd_picture_view.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_task.c src/interaction.c -lamiga
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Pictures plugin_src/pictures/pictures.c plugin_src/pictures/nd_pictures.c plugin_src/pictures/nd_pictures_native.c plugin_src/pictures/nd_picture_view.c plugin_src/common/nd_client.c plugin_src/common/nd_option_runtime.c plugin_src/common/nd_panel.c plugin_src/common/nd_task.c src/interaction.c -lamiga
+If WARN
+  Quit 10
+EndIf
+
+vc -O -Iinclude -Iplugin_src/common -Iplugin_src/archive -DND_PLUGIN_RESOURCES -o Plugins/Preferences plugin_src/preferences/preferences.c plugin_src/common/nd_client.c -lamiga
+If WARN
+  Quit 10
+EndIf
+vc -O -Iinclude -Iplugin_src/common -o SupportLog tools/support_log.c src/nd_support_log.c -lamiga src/nd_volume_query.c plugin_src/common/nd_task.c src/interaction.c src/nd_async_io.c src/nd_async_result.c src/ilbm.c src/nd_folder_query.c src/nd_folder.c
+If WARN
+  Quit 10
+EndIf
+vc -O -Iinclude -Iplugin_src/common -o SupportReport tools/support_report.c tools/nd_plugin_activity.c plugin_src/common/nd_panel.c tools/nd_support_capture.c src/control_client.c -lamiga src/config.c src/nd_options.c tools/nd_support_form.c src/nd_support_report.c src/prefs_layout.c src/nd_support.c tools/nd_support_save.c src/interaction.c
 If WARN
   Quit 10
 EndIf

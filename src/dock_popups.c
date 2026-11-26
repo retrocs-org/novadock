@@ -1,5 +1,16 @@
 /* NovaDock: Popup windows: calendar, About and drawer contents. */
 #include "dock_internal.h"
+#include "nd_task.h"
+static struct NDTask folder_job;
+static struct NDTaskPacket *folder_packet;
+static struct {struct NDTask task;int index;} folder_icon_jobs[2];
+static int folder_loading;
+static unsigned long folder_error;
+static char folder_previous[ND_COMMAND_LEN],folder_focus[ND_FOLDER_NAME_LEN];
+unsigned long folder_job_signals(void)
+{return nd_task_signals(&folder_job)|nd_task_signals(&folder_icon_jobs[0].task)|nd_task_signals(&folder_icon_jobs[1].task);}
+static void cancel_folder_icons(struct NDDock *dock)
+{int i;for(i=0;i<2;++i){int index=folder_icon_jobs[i].index;if(folder_icon_jobs[i].task.port && index>=0 && index<ND_FOLDER_MAX)dock->folder_icon_tried[index]=0;nd_task_close(&folder_icon_jobs[i].task);}}
 
 /* Defined below, private to this file. */
 static int calendar_leap(int year);
@@ -22,7 +33,7 @@ static int read_folder(struct NDDock *dock);
 static int open_folder_window(struct NDDock *dock);
 static void navigate_folder(struct NDDock *dock,const char *path, const char *focus);
 static void folder_go_up(struct NDDock *dock);
-static void open_folder_file(const char *path);
+static void open_folder_file(struct NDDock *dock,const char *path);
 static void activate_folder_entry(struct NDDock *dock,int index,int in_workbench);
 static void set_folder_hot(struct NDDock *dock,int index);
 static void folder_type_ahead(struct NDDock *dock,char ch,ULONG seconds);
@@ -97,16 +108,16 @@ void open_calendar(struct NDDock *dock,int index)
     DateStamp(&stamp);
     calendar_date_from_days(stamp.ds_Days,&dock->calendar_year,&dock->calendar_month,&day);
     tile_coords(dock,index,&x,&y);
-    px=dock->window->LeftEdge+x;
-    py=dock->window->TopEdge+y-height-4;
+    px=dock_left(dock)+x;
+    py=dock_top(dock)+y-height-4;
     if (vertical(dock)) {
-        px=dock->conf.side==ND_SIDE_LEFT ? dock->window->LeftEdge+dock->width+4 :
-           dock->window->LeftEdge-width-4;
-        py=dock->window->TopEdge+y;
+        px=dock->conf.side==ND_SIDE_LEFT ? dock_left(dock)+dock->width+4 :
+           dock_left(dock)-width-4;
+        py=dock_top(dock)+y;
     }
     if (px+width>dock->screen->Width) px=dock->screen->Width-width;
     if (px<0) px=0;
-    if (py<dock->screen->BarHeight) py=dock->window->TopEdge+y+dock->tile_height+4;
+    if (py<dock->screen->BarHeight) py=dock_top(dock)+y+dock->tile_height+4;
     if (py+height>dock->screen->Height) py=dock->screen->Height-height;
     dock->calendar=OpenWindowTags(NULL,WA_PubScreen,(ULONG)dock->screen,
         WA_Left,px,WA_Top,py,WA_Width,width,WA_Height,height,
@@ -221,6 +232,7 @@ void about_events(struct NDDock *dock)
 static void free_folder_icons(struct NDDock *dock)
 {
     int i;
+    cancel_folder_icons(dock);
     memset(dock->folder_icon_tried,0,sizeof(dock->folder_icon_tried));
     if (!dock->folder_icons) return;
     for (i=0;i<ND_FOLDER_MAX;++i)
@@ -239,10 +251,11 @@ static void close_folder_window(struct NDDock *dock)
 }
 void close_folder_popup(struct NDDock *dock)
 {
+    nd_task_close(&folder_job);folder_loading=0;folder_error=0;
     close_folder_window(dock);
     free_folder_icons(dock);
     if (dock->folder_icons) { FreeVec(dock->folder_icons);dock->folder_icons=NULL; }
-    if (dock->folder_entries) { FreeVec(dock->folder_entries);dock->folder_entries=NULL; }
+    if(folder_packet){FreeVec(folder_packet);folder_packet=NULL;}dock->folder_entries=NULL;
     dock->folder_count=0;dock->folder_hot=-1;dock->folder_offset=0;
 }
 /* Classic planar icon image, scaled down to the box if needed.  Pen 0 is
@@ -398,9 +411,9 @@ static void draw_folder_popup(struct NDDock *dock)
     Text(rp,l->view==ND_FOLDER_VIEW_ICONS ? (STRPTR)"=" : (STRPTR)"#",1);
     SetAPen(rp,pen(dock,ND_TEXT));
     folder_text(rp,label,30,3+rp->TxBaseline,w-30-24-sort_width-12,0);
-    if (!dock->folder_count) {
+    if (folder_loading || folder_error || !dock->folder_count) {
         SetAPen(rp,pen(dock,ND_SUBTLE));
-        folder_text(rp,nd_tr("(empty)"),8,l->header_height+6+rp->TxBaseline,
+        folder_text(rp,folder_loading ? nd_tr("Loading... (Esc cancels)") : folder_error ? nd_tr("Unavailable (R retries)") : nd_tr("(empty)"),8,l->header_height+6+rp->TxBaseline,
                     w-16,0);
         return;
     }
@@ -418,67 +431,58 @@ static void draw_folder_popup(struct NDDock *dock)
         RectFill(rp,w-3,l->header_height+3+top,w-2,l->header_height+3+top+size);
     }
 }
-void folder_icons_tick(struct NDDock *dock)
-{
-    char path[ND_COMMAND_LEN];
-    APTR requesters;
-    int i,first,last,budget=2;
-    if (!dock->folder_popup || dock->folder_view!=ND_FOLDER_VIEW_ICONS ||
-        !IconBase || !dock->folder_icons) return;
-    first=dock->folder_offset*dock->folder_layout.columns;
-    last=first+dock->folder_layout.visible_rows*dock->folder_layout.columns;
-    if (last>dock->folder_count) last=dock->folder_count;
-    requesters=quiet_requesters();
-    for (i=first;i<last && budget>0;++i) {
-        if (dock->folder_icon_tried[i]) continue;
-        dock->folder_icon_tried[i]=1;--budget;
-        if (nd_folder_join(path,sizeof(path),dock->folder_path,dock->folder_entries[i].name))
-            dock->folder_icons[i]=GetDiskObject((STRPTR)path);
-        if (dock->folder_icons[i]) draw_folder_cell(dock,i);
-    }
-    restore_requesters(requesters);
-}
-/* Read folder_path; returns the entry count, or -1 if it cannot be read. */
+/* Snapshot jobs own only copied paths and heap results. Closing/navigation
+ * removes the reply port; a delayed worker disposes its own late result. */
 static int read_folder(struct NDDock *dock)
 {
-    struct FileInfoBlock *fib;
-    APTR requesters;
-    BPTR lock;
-    int count=0;
-    if (!dock->folder_entries)
-        dock->folder_entries=(struct NDFolderEntry *)AllocVec(
-            sizeof(struct NDFolderEntry)*ND_FOLDER_MAX,MEMF_PUBLIC|MEMF_CLEAR);
-    if (!dock->folder_icons)
-        dock->folder_icons=(struct DiskObject **)AllocVec(
-            sizeof(struct DiskObject *)*ND_FOLDER_MAX,MEMF_PUBLIC|MEMF_CLEAR);
-    if (!dock->folder_entries || !dock->folder_icons) return -1;
-    free_folder_icons(dock);
-    dock->folder_count=0;dock->folder_more=0;
-    requesters=quiet_requesters();
-    lock=Lock((STRPTR)dock->folder_path,ACCESS_READ);
-    restore_requesters(requesters);
-    if (!lock) return -1;
-    fib=(struct FileInfoBlock *)AllocDosObject(DOS_FIB,NULL);
-    if (!fib) { UnLock(lock);return -1; }
-    if (Examine(lock,fib) && fib->fib_DirEntryType>0)
-        while (ExNext(lock,fib)) {
-            struct NDFolderEntry *entry;
-            if (!nd_folder_visible_name(fib->fib_FileName)) continue;
-            if (count>=ND_FOLDER_MAX) { dock->folder_more=1;break; }
-            entry=&dock->folder_entries[count];
-            strncpy(entry->name,fib->fib_FileName,ND_FOLDER_NAME_LEN-1);
-            entry->name[ND_FOLDER_NAME_LEN-1]='\0';
-            entry->drawer=fib->fib_DirEntryType>0;
-            entry->size=(unsigned long)fib->fib_Size;
-            entry->days=fib->fib_Date.ds_Days;
-            entry->minutes=fib->fib_Date.ds_Minute;
-            entry->ticks=fib->fib_Date.ds_Tick;
-            ++count;
-        }
-    FreeDosObject(DOS_FIB,fib);UnLock(lock);
-    nd_folder_sort(dock->folder_entries,count,dock->folder_sort);
-    dock->folder_count=count;
-    return count;
+ struct NDFolderBatch *request;char program[512],guard[64];int slot,started;
+ nd_task_close(&folder_job);cancel_folder_icons(dock);folder_error=0;folder_loading=0;
+ if(!dock->folder_icons)dock->folder_icons=AllocVec(sizeof(struct DiskObject *)*ND_FOLDER_MAX,MEMF_PUBLIC|MEMF_CLEAR);
+ if(!dock->folder_icons){folder_error=ERROR_NO_FREE_STORE;return 0;}
+ for(slot=0;slot<2;++slot){int busy;sprintf(guard,"NovaDock.Folder.%d",slot);Forbid();busy=FindPort(guard)!=NULL;Permit();if(!busy)break;}
+ if(slot==2){folder_error=ERROR_OBJECT_IN_USE;return 0;}
+ request=AllocVec(sizeof(*request),MEMF_PUBLIC|MEMF_CLEAR);if(!request){folder_error=ERROR_NO_FREE_STORE;return 0;}
+ strcpy(request->path,dock->folder_path);strcpy(program,dock->directory);
+ started=AddPart(program,"SupportLog",sizeof(program)) && nd_task_start(&folder_job,program,guard,ND_IO_FOLDER,request,sizeof(*request));
+ FreeVec(request);if(!started){folder_error=ERROR_NO_FREE_STORE;return 0;}folder_loading=1;return 1;
+}
+void process_folder_jobs(struct NDDock *dock)
+{
+ struct NDTaskPacket *m;int i,slot,was_active=folder_job.port!=NULL;
+ m=nd_task_poll(&folder_job);
+ if(m){
+  if(dock->folder_popup && m->bytes==sizeof(struct NDFolderBatch)){
+   struct NDFolderBatch *result=(struct NDFolderBatch *)m->data;folder_loading=0;
+   if(m->result==1 && result->count<=ND_FOLDER_MAX && !strcmp(result->path,dock->folder_path)){
+    free_folder_icons(dock);if(folder_packet)FreeVec(folder_packet);folder_packet=m;m=NULL;
+    dock->folder_entries=result->entries;dock->folder_count=result->count;dock->folder_more=result->more;
+    nd_folder_sort(dock->folder_entries,dock->folder_count,dock->folder_sort);folder_error=0;
+   }else folder_error=result->error ? result->error:ERROR_OBJECT_NOT_FOUND;
+   if(folder_error && dock->folder_count){strcpy(dock->folder_path,folder_previous);folder_error=0;show_feedback(dock,"Cannot read drawer contents",1);}
+   dock->folder_hot=dock->folder_count ? 0:-1;dock->folder_offset=0;
+   for(i=0;i<dock->folder_count;++i)if(!strcmp(dock->folder_entries[i].name,folder_focus))dock->folder_hot=i;
+   if(!open_folder_window(dock))close_folder_popup(dock);
+  }
+  if(m)FreeVec(m);
+ }else if(was_active && !folder_job.port){folder_loading=0;folder_error=ERROR_OBJECT_NOT_FOUND;draw_folder_popup(dock);}
+ for(slot=0;slot<2;++slot){
+  m=nd_task_poll(&folder_icon_jobs[slot].task);if(!m)continue;i=folder_icon_jobs[slot].index;
+  if(dock->folder_popup && !folder_loading && m->bytes==sizeof(struct NDIOJob) && i>=0 && i<dock->folder_count){struct NDIOJob *result=(struct NDIOJob *)m->data;if(result->icon){dock->folder_icons[i]=result->icon;result->icon=NULL;draw_folder_cell(dock,i);}}
+  nd_io_dispose(m->data,m->bytes);FreeVec(m);
+ }
+}
+void folder_icons_tick(struct NDDock *dock)
+{
+ char path[ND_COMMAND_LEN],program[512],guard[64];int i,first,last,slot;
+ if(!dock->folder_popup || folder_loading || folder_error || dock->folder_view!=ND_FOLDER_VIEW_ICONS || !dock->folder_icons)return;
+ first=dock->folder_offset*dock->folder_layout.columns;last=first+dock->folder_layout.visible_rows*dock->folder_layout.columns;if(last>dock->folder_count)last=dock->folder_count;
+ for(i=first;i<last;++i){struct NDIOJob request;if(dock->folder_icon_tried[i])continue;
+  for(slot=0;slot<2;++slot)if(!folder_icon_jobs[slot].task.port){int busy;sprintf(guard,"NovaDock.FolderIcon.%d",slot);Forbid();busy=FindPort(guard)!=NULL;Permit();if(!busy)break;}if(slot==2)return;
+  if(!nd_folder_join(path,sizeof(path),dock->folder_path,dock->folder_entries[i].name)){dock->folder_icon_tried[i]=1;continue;}
+  memset(&request,0,sizeof(request));strcpy(request.path,path);strcpy(program,dock->directory);if(!AddPart(program,"SupportLog",sizeof(program)))return;
+  if(!nd_task_start(&folder_icon_jobs[slot].task,program,guard,ND_IO_FOLDER_ICON,&request,sizeof(request)))return;
+  folder_icon_jobs[slot].task.dispose=nd_io_dispose;folder_icon_jobs[slot].index=i;dock->folder_icon_tried[i]=1;
+ }
 }
 /* (Re)open the popup window sized for the current entries and view. */
 static int open_folder_window(struct NDDock *dock)
@@ -491,16 +495,16 @@ static int open_folder_window(struct NDDock *dock)
                      dock->screen->Height*2/3,l);
     width=l->width;height=l->height;
     tile_coords(dock,dock->folder_tile,&x,&y);
-    px=dock->window->LeftEdge+x;
-    py=dock->window->TopEdge+y-height-3;
+    px=dock_left(dock)+x;
+    py=dock_top(dock)+y-height-3;
     if (vertical(dock)) {
-        px=dock->conf.side==ND_SIDE_LEFT ? dock->window->LeftEdge+dock->width+3 :
-           dock->window->LeftEdge-width-3;
-        py=dock->window->TopEdge+y;
+        px=dock->conf.side==ND_SIDE_LEFT ? dock_left(dock)+dock->width+3 :
+           dock_left(dock)-width-3;
+        py=dock_top(dock)+y;
     }
     if (px+width>dock->screen->Width) px=dock->screen->Width-width;
     if (px<0) px=0;
-    if (py<dock->screen->BarHeight) py=dock->window->TopEdge+y+dock->tile_height+3;
+    if (py<dock->screen->BarHeight) py=dock_top(dock)+y+dock->tile_height+3;
     if (py+height>dock->screen->Height) py=dock->screen->Height-height;
     if (py<0) py=0;
     dock->folder_offset=nd_folder_scroll_to(l,dock->folder_hot,dock->folder_offset);
@@ -518,7 +522,6 @@ static int open_folder_window(struct NDDock *dock)
 void open_folder_popup(struct NDDock *dock,int index)
 {
     const struct NDItem *item;
-    int count;
     if (index<0 || index>=dock->conf.count || !dock->screen) return;
     item=&dock->conf.items[index];
     if (item->kind!=ND_ITEM_DRAWER && item->kind!=ND_ITEM_GROUP) return;
@@ -527,11 +530,7 @@ void open_folder_popup(struct NDDock *dock,int index)
     strncpy(dock->folder_root,item->command,ND_COMMAND_LEN-1);
     dock->folder_root[ND_COMMAND_LEN-1]='\0';
     strcpy(dock->folder_path,dock->folder_root);
-    count=read_folder(dock);
-    if (count<0) { close_folder_popup(dock);
-        show_feedback(dock,"Cannot read drawer contents",1);return; }
-    if (!count) { close_folder_popup(dock);
-        show_feedback(dock,"Drawer is empty",0);return; }
+    folder_previous[0]=folder_focus[0]=0;read_folder(dock);
     dock->folder_hot=0;dock->folder_offset=0;dock->folder_typed[0]='\0';
     if (!open_folder_window(dock)) close_folder_popup(dock);
 }
@@ -539,22 +538,11 @@ void open_folder_popup(struct NDDock *dock,int index)
 static void navigate_folder(struct NDDock *dock,const char *path,
                             const char *focus)
 {
-    char previous[ND_COMMAND_LEN];
-    int i;
-    strcpy(previous,dock->folder_path);
-    strncpy(dock->folder_path,path,ND_COMMAND_LEN-1);
-    dock->folder_path[ND_COMMAND_LEN-1]='\0';
-    if (read_folder(dock)<0) {
-        strcpy(dock->folder_path,previous);
-        (void)read_folder(dock);
-        DisplayBeep(dock->screen);
-    }
-    dock->folder_hot=dock->folder_count ? 0 : -1;
-    dock->folder_offset=0;dock->folder_typed[0]='\0';
-    if (focus)
-        for (i=0;i<dock->folder_count;++i)
-            if (!strcmp(dock->folder_entries[i].name,focus)) {dock->folder_hot=i;break;}
-    if (!open_folder_window(dock)) close_folder_popup(dock);
+    strcpy(folder_previous,dock->folder_path);
+    strncpy(folder_focus,focus ? focus:"",sizeof(folder_focus)-1);folder_focus[sizeof(folder_focus)-1]=0;
+    strncpy(dock->folder_path,path,ND_COMMAND_LEN-1);dock->folder_path[ND_COMMAND_LEN-1]=0;
+    dock->folder_typed[0]=0;read_folder(dock);
+    if(!open_folder_window(dock))close_folder_popup(dock);
 }
 static void folder_go_up(struct NDDock *dock)
 {
@@ -566,16 +554,9 @@ static void folder_go_up(struct NDDock *dock)
     strncpy(child,name ? name : "",sizeof(child)-1);child[sizeof(child)-1]='\0';
     navigate_folder(dock,path,child);
 }
-static void open_folder_file(const char *path)
+static void open_folder_file(struct NDDock *dock,const char *path)
 {
-    char quoted[ND_COMMAND_LEN*2+4];
-    BPTR path_lock=Lock((STRPTR)path,ACCESS_READ);
-    if (path_lock) {
-        UnLock(path_lock);
-        if (WorkbenchBase && WorkbenchBase->lib_Version>=44 &&
-            OpenWorkbenchObject((STRPTR)path,TAG_DONE)) return;
-    }
-    if (nd_quote_path(quoted,sizeof(quoted),path)) launch_command(quoted);
+    struct NDItem item;memset(&item,0,sizeof(item));strncpy(item.command,path,sizeof(item.command)-1);strncpy(item.label,FilePart((STRPTR)path),sizeof(item.label)-1);item.launch_mode=ND_LAUNCH_AUTO;queue_launcher(dock,&item);
 }
 /* Drawers open inside the popup; Shift (or Alt) opens them in Workbench.
  * Files open with Workbench and close the popup. */
@@ -583,7 +564,7 @@ static void activate_folder_entry(struct NDDock *dock,int index,int in_workbench
 {
     char path[ND_COMMAND_LEN];
     int drawer;
-    if (index<0 || index>=dock->folder_count ||
+    if (folder_loading || folder_error || index<0 || index>=dock->folder_count ||
         !nd_folder_join(path,sizeof(path),dock->folder_path,
                         dock->folder_entries[index].name)) return;
     drawer=dock->folder_entries[index].drawer;
@@ -592,7 +573,7 @@ static void activate_folder_entry(struct NDDock *dock,int index,int in_workbench
         return;
     }
     close_folder_popup(dock);
-    if (drawer) open_drawer(path); else open_folder_file(path);
+    if (drawer) open_drawer(path); else open_folder_file(dock,path);
 }
 static void set_folder_hot(struct NDDock *dock,int index)
 {
@@ -641,6 +622,11 @@ void folder_popup_events(struct NDDock *dock)
         if (cls==IDCMP_INACTIVEWINDOW ||
             (cls==IDCMP_MOUSEBUTTONS && code==MENUDOWN)) {
             close_folder_popup(dock);continue;
+        }
+        if(folder_loading || folder_error){
+            if(cls==IDCMP_VANILLAKEY && code==27)close_folder_popup(dock);
+            else if(cls==IDCMP_VANILLAKEY && (code=='r' || code=='R') && !folder_loading){read_folder(dock);draw_folder_popup(dock);}
+            continue;
         }
         hit=nd_folder_hit(&dock->folder_layout,dock->folder_count,
                           dock->folder_offset,folder_can_go_up(dock),mx,my);

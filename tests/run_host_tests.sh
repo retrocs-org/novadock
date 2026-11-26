@@ -3,7 +3,7 @@ set -eu
 PYTHON=${PYTHON:-python3}
 export PYTHON
 cd "$(dirname "$0")/.."
-trap 'rm -f tests/nd_appscan_test tests/nd_bitskim_test tests/nd_interface_list_test tests/interface-choice.tmp tests/nd_netcontrol_test tests/net-interface.tmp tests/nd_dock_all.c tests/nd_package_install_test tests/nd_plugin_info_test tests/nd_text_pool_test tests/nd_text_pool_test.cfg tests/nd_text_pool_test.cfg.bak tests/nd_text_pool_test.cfg.old tests/nd_text_pool_test.cfg.good tests/nd_layout_enabled_test tests/nd_startinstaller_test tests/nd_amirc_test tests/nd_save_policy_test tests/nd_config_test tests/nd_theme_test tests/nd_network_test tests/nd_layout_test tests/nd_layout_profiles_test tests/nd_graph_test tests/nd_prefs_test tests/nd_prefs_layout_test tests/nd_roadshow_test tests/nd_musicplayer_test tests/nd_ilbm_test tests/nd_icon_mask_test tests/nd_launchers_test tests/nd_drag_menu_test tests/nd_interaction_test tests/nd_autohide_test tests/nd_unified_test tests/nd_eyes_test tests/nd_metrics_test tests/nd_watchdog_test tests/nd_archive_test tests/nd_fixes_test tests/nd_fixes_test.cfg tests/nd_fixes_test.cfg.bak tests/nd_media_test tests/nd_media_test.cfg tests/nd_media_test.cfg.bak tests/nd_manifest_test tests/nd_manifest_test.cfg tests/nd_manifest_test.cfg.bak tests/nd_tasks_test tests/nd_tasks_test.cfg tests/nd_tasks_test.cfg.bak tests/nd_command_test tests/nd_command_test.cfg tests/nd_command_test.cfg.bak tests/nd_folder_test tests/.drag_menu_test.cfg.good tests/eyes-roundtrip.cfg.good tests/hotkey.cfg.bak tests/hotkey.cfg.good tests/nd_command_test.cfg.good tests/nd_fixes_test.cfg.good tests/nd_launcher_roundtrip.cfg.bak tests/nd_launcher_roundtrip.cfg.good tests/nd_manifest_test.cfg.good tests/nd_media_test.cfg.good tests/nd_prefs_roundtrip.cfg.good tests/nd_tasks_test.cfg.good tests/unified-test.cfg.bak tests/unified-test.cfg.good' EXIT HUP INT TERM
+trap 'rm -f tests/nd_hover_layout_test tests/nd_appscan_test tests/nd_bitskim_test tests/nd_interface_list_test tests/interface-choice.tmp tests/nd_netcontrol_test tests/net-interface.tmp tests/nd_dock_all.c tests/nd_package_install_test tests/nd_plugin_info_test tests/nd_text_pool_test tests/nd_text_pool_test.cfg tests/nd_text_pool_test.cfg.bak tests/nd_text_pool_test.cfg.old tests/nd_text_pool_test.cfg.good tests/nd_layout_enabled_test tests/nd_startinstaller_test tests/nd_amirc_test tests/nd_save_policy_test tests/nd_config_test tests/nd_theme_test tests/nd_network_test tests/nd_layout_test tests/nd_layout_profiles_test tests/nd_graph_test tests/nd_prefs_test tests/nd_prefs_layout_test tests/nd_roadshow_test tests/nd_musicplayer_test tests/nd_ilbm_test tests/nd_icon_mask_test tests/nd_launchers_test tests/nd_drag_menu_test tests/nd_interaction_test tests/nd_autohide_test tests/nd_unified_test tests/nd_eyes_test tests/nd_metrics_test tests/nd_watchdog_test tests/nd_archive_test tests/nd_fixes_test tests/nd_fixes_test.cfg tests/nd_fixes_test.cfg.bak tests/nd_media_test tests/nd_media_test.cfg tests/nd_media_test.cfg.bak tests/nd_manifest_test tests/nd_manifest_test.cfg tests/nd_manifest_test.cfg.bak tests/nd_tasks_test tests/nd_tasks_test.cfg tests/nd_tasks_test.cfg.bak tests/nd_command_test tests/nd_command_test.cfg tests/nd_command_test.cfg.bak tests/nd_folder_test tests/.drag_menu_test.cfg.good tests/eyes-roundtrip.cfg.good tests/hotkey.cfg.bak tests/hotkey.cfg.good tests/nd_command_test.cfg.good tests/nd_fixes_test.cfg.good tests/nd_launcher_roundtrip.cfg.bak tests/nd_launcher_roundtrip.cfg.good tests/nd_manifest_test.cfg.good tests/nd_media_test.cfg.good tests/nd_prefs_roundtrip.cfg.good tests/nd_tasks_test.cfg.good tests/unified-test.cfg.bak tests/unified-test.cfg.good' EXIT HUP INT TERM
 # CC picks the host compiler; SANITIZE=1 adds AddressSanitizer and
 # UndefinedBehaviorSanitizer to every test program.
 CC=${CC:-cc}
@@ -19,6 +19,30 @@ if [ "${SANITIZE:-0}" = 1 ]; then
 fi
 # Lifecycle and fallback regressions run in a private temporary directory.
 REGRESSION_TMP=$(mktemp -d "${TMPDIR:-/tmp}/nd-regressions.XXXXXX")
+# The sources deliberately keep short guards on one line ("if(!p)return 0;x=1;").
+# GCC's -Wmisleading-indentation flags every one of them and buries useful
+# diagnostics, so host builds turn just that check off.
+CC="$CC -Wno-misleading-indentation"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_underlay.c -o "$REGRESSION_TMP/underlay"
+"$REGRESSION_TMP/underlay"
+python3 tests/test_underlay_capture.py
+python3 tests/test_plugin_resources.py
+python3 tools/check_plugin_policy.py
+python3 tools/check_plugin_qa.py
+python3 tests/test_plugin_qa.py
+$CC -std=c89 -Wall -Wextra -Wno-unused-function -Iinclude tests/test_custom_position.c src/autohide.c src/layout.c src/config.c src/nd_options.c src/layout_profiles.c -o "$REGRESSION_TMP/custom_position"
+(cd "$REGRESSION_TMP" && ./custom_position)
+$CC -std=c89 -Wall -Wextra -Wno-unused-function -Iinclude tests/test_plugin_names.c src/nd_manifest.c src/config.c src/nd_options.c -o "$REGRESSION_TMP/plugin_names"
+(cd "$REGRESSION_TMP" && ./plugin_names)
+python3 tests/test_build_identity.py
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_render_policy.c -o "$REGRESSION_TMP/render_policy"
+"$REGRESSION_TMP/render_policy"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_support_report.c src/nd_support_report.c -o "$REGRESSION_TMP/support_report"
+(cd "$REGRESSION_TMP" && ./support_report)
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_support.c src/nd_support.c -o "$REGRESSION_TMP/support"
+(cd "$REGRESSION_TMP" && ./support)
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_support_io.c -o "$REGRESSION_TMP/support_io"
+(cd "$REGRESSION_TMP" && ./support_io)
 $CC -std=c89 -Wall -Wextra -Wno-unused-function -Iinclude -Iplugin_src/monitor tests/test_monitors.c plugin_src/monitor/nd_monitor.c -o "$REGRESSION_TMP/monitors"
 "$REGRESSION_TMP/monitors"
 python3 tests/test_monitor_io.py
@@ -33,6 +57,7 @@ python3 tests/test_performance_gate.py
 python3 tests/test_agenda_pictures.py
 python3 tests/test_05_tools.py
 python3 tests/test_export.py
+python3 tests/test_aminotis_plugin.py
 python3 tests/test_hass_docs.py
 python3 tests/test_hass_room_summary.py
 python3 tools/generate_05_plugin_art.py --check
@@ -51,17 +76,25 @@ $CC -std=c99 -Wall -Wextra -Iinclude -Iplugin_src/shelf tests/test_collections_a
 $CC -std=c99 -Wall -Wextra -Iinclude -Iplugin_src/shelf tests/test_collections_alerts_volume.c src/nd_volume.c src/nd_alerts.c src/nd_i2c_cache.c plugin_src/shelf/nd_shelf.c src/config.c src/nd_options.c -o "$REGRESSION_TMP/collections_alerts_volume"
 (cd "$REGRESSION_TMP" && ./collections_alerts_volume)
 python3 tools/generate_amirocket_art.py --check
+python3 tests/test_aminotis_bridge.py
+$CC -std=c89 -Wall -Wextra -Iinclude tests/test_notification_retirement.c src/config.c src/nd_options.c src/nd_manifest.c -o "$REGRESSION_TMP/notification_retirement"
+(cd "$REGRESSION_TMP" && ./notification_retirement)
 python3 tools/generate_utility_plugin_art.py --check
 "$REGRESSION_TMP/hass"
 $CC -std=c89 -Wall -Wextra -Iinclude tests/test_plugin_health.c -o "$REGRESSION_TMP/plugin_health"
 "$REGRESSION_TMP/plugin_health"
 python3 tests/test_small_screens.py
 python3 tests/test_update_status.py
+python3 tests/test_update_page_cache.py
+python3 tests/test_volume_worker.py
+python3 tests/test_async_feedback.py
+python3 tests/test_notice_transport.py
 python3 tests/test_hass_transport.py
 python3 tests/test_hass_controls_ui.py
 python3 tests/test_plugin_health_ipc.py
 python3 tests/test_hass_bridge.py
 python3 tests/test_hass_new_sdk.py
+python3 tests/test_hass_service03.py
 python3 tests/test_hass_picker.py
 python3 tests/test_hass_capabilities.py
 python3 tests/test_plugin_artwork.py
@@ -71,7 +104,44 @@ python3 tests/test_artwork_validation.py
 python3 tests/test_option_lookup.py
 python3 tests/test_plugin_release_health.py
 python3 tests/test_prefs_startup.py
+"$PYTHON" tests/test_appearance_save.py
+"$PYTHON" tests/test_trace.py
 python3 tests/test_artwork_render.py
+"$PYTHON" tests/test_hover_cache.py
+"$PYTHON" tests/test_hover_frame.py
+"$PYTHON" tests/test_dock_polish.py
+"$PYTHON" tests/test_program_directory.py
+"$PYTHON" tests/test_hover_pointer.py
+"$PYTHON" tests/test_hover_rows.py
+"$PYTHON" tests/test_widget_bounds.py
+"$PYTHON" tests/test_wait.py
+"$PYTHON" tests/test_hover_partial.py
+"$PYTHON" tests/test_hover_overlays.py
+"$PYTHON" tests/test_desktop_startup.py
+"$PYTHON" tests/test_window_depth.py
+"$PYTHON" tests/test_canvas_view.py
+"$PYTHON" tests/test_resize_ack.py
+"$PYTHON" tests/test_desktop_scene.py
+"$PYTHON" tests/test_icon_colours.py
+"$PYTHON" tests/test_metric_visuals.py
+"$PYTHON" tests/test_tiny_metrics.py
+"$PYTHON" tests/test_preview_geometry.py
+"$PYTHON" tests/test_screen_pens.py
+"$PYTHON" tests/test_planar_scale.py
+"$PYTHON" tests/test_transparency.py
+"$PYTHON" tests/test_widget_bounds.py
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude src/config.c src/nd_options.c src/layout.c tests/test_hover_layout.c -o tests/nd_hover_layout_test
+./tests/nd_hover_layout_test
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_input_policy.c -o tests/nd_input_policy_test
+./tests/nd_input_policy_test
+rm -f tests/nd_input_policy_test
+python3 tests/test_review_fixes.py
+python3 tests/test_sdk_parity.py
+python3 tests/test_tracked_sources.py
+python3 tools/generate_launcher_plugin_art.py --check
+python3 tools/generate_status_widget_art.py --check
+python3 tests/test_plugin_icon_states.py
+python3 tests/test_plugin_art_policy.py
 python3 tests/test_artwork_palette.py
 python3 tests/test_compile_workspace.py
 python3 tests/test_package_assets.py
@@ -103,6 +173,12 @@ $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_seasonal.c src/config.
 python3 tests/test_seasonal_startup.py
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_option_batch.c src/config.c src/nd_options.c -o "$REGRESSION_TMP/option_batch"
 (cd "$REGRESSION_TMP" && ./option_batch)
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_option_pool.c src/config.c src/nd_options.c -o "$REGRESSION_TMP/option_pool"
+(cd "$REGRESSION_TMP" && ./option_pool)
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_option_capacity.c src/config.c src/nd_options.c -o "$REGRESSION_TMP/option_capacity"
+(cd "$REGRESSION_TMP" && ./option_capacity)
+$CC -std=c89 -Wall -Wextra -pedantic -Wno-unused-function -Iinclude tests/test_icon_rects.c src/ilbm.c -o "$REGRESSION_TMP/icon_rects"
+"$REGRESSION_TMP/icon_rects"
 $CC -std=c99 -Wall -Wextra -pedantic -Iinclude tests/test_system_info.c -o "$REGRESSION_TMP/system_info"
 "$REGRESSION_TMP/system_info"
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_download.c -o "$REGRESSION_TMP/download"
@@ -110,6 +186,12 @@ python3 tests/test_download_jobs.py
 "$REGRESSION_TMP/download"
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_aquarium.c -o "$REGRESSION_TMP/aquarium"
 "$REGRESSION_TMP/aquarium"
+$CC -std=c89 -Wall -Wextra -pedantic -Wno-unused-function -Iplugin_src/pet tests/test_pet.c -o "$REGRESSION_TMP/pet"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_hover_ease.c -o "$REGRESSION_TMP/hover_ease"
+"$REGRESSION_TMP/hover_ease"
+$CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_wallpaper.c -o "$REGRESSION_TMP/wallpaper"
+"$REGRESSION_TMP/wallpaper"
+"$REGRESSION_TMP/pet"
 python3 tests/test_aquarium_window.py
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_christmas.c -o "$REGRESSION_TMP/christmas"
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_christmas_scene.c -o "$REGRESSION_TMP/christmas_scene"
@@ -221,6 +303,7 @@ $CC -std=c89 -Wall -Wextra -pedantic -Iinclude tests/test_startinstaller.c -o te
 if [ -f NovaDock ]; then
   "$PYTHON" tests/test_installer_script.py
   "$PYTHON" tests/test_collection_icons.py
+  "$PYTHON" tests/test_tilt_icons.py
   "$PYTHON" tests/test_whdload_art_state.py
 else
   "$PYTHON" tests/test_installer_script.py --source-only
@@ -236,6 +319,7 @@ fi
 "$PYTHON" tests/test_release_tool.py
 "$PYTHON" tests/test_release_provenance.py
 "$PYTHON" tests/test_archive_timestamps.py
+"$PYTHON" tests/test_lha_compatibility.py
 "$PYTHON" tests/test_release_integration.py
 "$PYTHON" tests/test_release_catalog.py
 "$PYTHON" tests/test_graph_scroll.py
@@ -294,6 +378,11 @@ $CC -std=c89 -Wall -Wextra -pedantic -Iinclude -Iplugin_src/mixer -Iplugin_src/s
 rm -f tests/nd_newplugins_test
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude src/interaction.c tests/test_interaction.c -o tests/nd_interaction_test
 ./tests/nd_interaction_test
+CONFIG_GET_TMP=$(mktemp -d "${TMPDIR:-/tmp}/nd-config-get.XXXXXX")
+$CC -std=c99 -Wall -Wextra -Wno-misleading-indentation -Iinclude src/config.c src/nd_options.c src/theme.c \
+  tests/test_config_get.c -o "$CONFIG_GET_TMP/config_get"
+(cd "$CONFIG_GET_TMP" && ./config_get)
+rm -rf "$CONFIG_GET_TMP"
 
 $CC -std=c89 -Wall -Wextra -pedantic -Iinclude \
   src/config.c src/nd_options.c src/layout.c src/autohide.c tests/test_autohide.c -o tests/nd_autohide_test
@@ -426,6 +515,7 @@ python3 tests/test_screenmode_picker.py
 python3 tests/test_truecolor_screenshot.py
 python3 tests/test_plugin_launch_paths.py
 python3 tests/test_plugin_click_actions.py
+python3 tests/test_music_controls.py
 # Badges (ABI 4): older docks QUIT plugins on unknown commands, so the client
 # may send ND_MSG_BADGE only after the dock advertised ND_EVENT_HOST_BADGES.
 grep -q 'return c->host_badges ? send_badge(c) : ND_EVENT_NONE;' plugin_src/common/nd_client.c &&
@@ -554,17 +644,18 @@ for prefs_file in \
 done
 grep -q 'preview_normal_sample' prefs/novadockappearanceprefs.c &&
   grep -q 'preview_tiny_icon(p,x,y+2,w,h-18,2,p->cfg->running_apps)' prefs/novadockappearanceprefs.c &&
-  grep -q 'preview_tiny_clock(p,x,y+10,w,h-12)' prefs/novadockappearanceprefs.c &&
-  grep -q 'preview_meter(p,meter_x,y+h/2,meter_w,5,28)' prefs/novadockappearanceprefs.c &&
-  grep -q 'preview_meter(p,meter_x,y+h-7,meter_w,7,61)' prefs/novadockappearanceprefs.c ||
+  grep -q 'preview_tiny_clock(p,x,y+2,w,h-18)' prefs/novadockappearanceprefs.c &&
+  grep -q 'preview_metric(p,1,x,y,w,h)' prefs/novadockappearanceprefs.c &&
+  grep -q 'preview_metric(p,2,x,y,w,h)' prefs/novadockappearanceprefs.c ||
   fail_review "Appearance preview must show launcher artwork, a clock and both RAM meters."
 if grep -q '"[>] Application"\|"[>] Drawer / disk"\|"[>] Plugins"' \
   prefs/novadockadditemprefs.c; then
   fail_review "selected Add Item categories must not change their label width."
 fi
-sed -n '/^\(static \)*int read_folder/,/^}/p' "$DOCK_ALL" | grep -q 'quiet_requesters' &&
-  sed -n '/^\(static \)*void folder_icons_tick/,/^}/p' "$DOCK_ALL" | grep -q 'quiet_requesters' ||
-  fail_review "drawer popups must not raise insert-volume requesters."
+sed -n '/^\(static \)*int read_folder/,/^}/p' "$DOCK_ALL" | grep -q 'nd_task_start' &&
+  sed -n '/^\(static \)*void folder_icons_tick/,/^}/p' "$DOCK_ALL" | grep -q 'nd_task_start' &&
+  grep -q 'pr_WindowPtr=(APTR)-1' plugin_src/common/nd_task.c ||
+  fail_review "drawer filesystem jobs must run independently with insert-volume requesters suppressed."
 grep -q 'IDCMP_VANILLAKEY' "$DOCK_ALL" && grep -q 'folder_type_ahead' "$DOCK_ALL" ||
   fail_review "drawer popups need keyboard navigation and type-ahead."
 grep -q 'LayoutIconA\|DrawIconStateA' "$DOCK_ALL" &&
@@ -741,24 +832,25 @@ if ! grep -q 'case A_TEST: apply_appearance(p,0,0)' prefs/novadockappearancepref
 fi
 if ! grep -q 'appearance_item_sizes' prefs/novadockappearanceprefs.c ||
    ! grep -q 'draw_tiny_plugin' "$DOCK_ALL" ||
-   ! grep -q 'ITEM_SIZE=%s' src/config.c ||
-   ! grep -q 'item_size==ND_ITEM_SIZE_TINY) return 0' "$DOCK_ALL" ||
+   ! grep -q 'if (!strcmp(key,"ITEM_SIZE")) v=nd_item_size_name(cfg->item_size);' src/config.c ||
+   ! grep -q 'if(tiny || mode==ND_LABEL_HIDDEN)return 0' src/config.c ||
    ! grep -q 'centered_text_tight(dock,ND_TEXT,"EXTR"' "$DOCK_ALL" ||
    ! grep -q 'if (!tiny)' "$DOCK_ALL" ||
    ! grep -q 'GA_Disabled,(ULONG)tiny' prefs/novadockappearanceprefs.c ||
    ! grep -q 'preview_tiny_sample' prefs/novadockappearanceprefs.c ||
    ! grep -q 'preview_tiny_clock' prefs/novadockappearanceprefs.c ||
-   ! grep -q 'nd_option_get(&dock->conf,"CLOCK","FORMAT"),"ANALOG"' "$DOCK_ALL" ||
+   ! grep -q 'dock->opts.clock_analog=v && !strcmp(v,"ANALOG")' "$DOCK_ALL" ||
+   ! grep -q 'DOCK_OPTS(dock)->clock_analog' "$DOCK_ALL" ||
    ! grep -q 'draw_plugin_running_indicator' "$DOCK_ALL" ||
    ! grep -q 'nd_indicator_mode(item->id,item->online' "$DOCK_ALL" ||
-   ! grep -q 'centered_text(dock,ND_SUBTLE,"MUSIC"' "$DOCK_ALL" ||
+   ! grep -q 'caption_text_normal(dock,ND_SUBTLE,"MUSIC"' "$DOCK_ALL" ||
    ! grep -q 'button_w=15,button_h=12' "$DOCK_ALL"; then
   echo "Tiny item mode test failed: Appearance, persistence, and compact rendering are required." >&2
   exit 1
 fi
-if ! grep -q 'tiny_kinds\[4\]={2,7,6,5}' prefs/novadockappearanceprefs.c ||
-   ! grep -q 'columns=4,samples=4' prefs/novadockappearanceprefs.c; then
-  echo "Appearance preview test failed: Normal and Tiny must compare the same four representative items." >&2
+if ! grep -q 'tiny_kinds\[5\]={2,7,6,5,8}' prefs/novadockappearanceprefs.c ||
+   ! grep -q 'columns=5,samples=5' prefs/novadockappearanceprefs.c; then
+  echo "Appearance preview test failed: Normal and Tiny must compare the same five representative items." >&2
   exit 1
 fi
 if grep -q '"Available"' prefs/novadockitemprefs.c ||
@@ -852,8 +944,9 @@ fi
 if ! grep -q 'ND_CONTROL_DIAGNOSTICS_RESET' include/nd_control.h ||
    ! grep -q 'reset_diagnostic_counters(dock)' "$DOCK_ALL" ||
    ! grep -q 'D_REPORT_PATH "RAM:NovaDock-Diagnostics.txt"' prefs/novadockdiagnosticsprefs.c ||
-   ! grep -q 'D_SAVE_REPORT,"Save report"' prefs/novadockdiagnosticsprefs.c; then
-  echo "Diagnostics controls test failed: reset and text export are required." >&2
+   ! grep -q 'D_ADVANCED,"Advanced..."' prefs/novadockdiagnosticsprefs.c ||
+   ! grep -q 'Snapshot|Reset counters|Mark event|Back' prefs/novadockdiagnosticsprefs.c; then
+  echo "Support controls test failed: reset and text export are required." >&2
   exit 1
 fi
 if ! grep -q 'novadock.cfg.bak' src/config.c ||
@@ -882,8 +975,11 @@ if command -v "$PYTHON" >/dev/null 2>&1; then
   "$PYTHON" tests/test_info_icons.py
   if [ "${ND_DEFER_WEB_CHECKS:-0}" = 1 ]; then
     "$PYTHON" tests/test_public_web.py --source-only
-  elif [ -f public-web/index.php ]; then
+  elif [ -f public-web/index.php ] && [ -d public-web/downloads ]; then
     "$PYTHON" tests/test_public_web.py
+  elif [ -f public-web/index.php ]; then
+    # A source drop can carry the site without its generated downloads.
+    "$PYTHON" tests/test_public_web.py --source-only
   else
     echo "Website checks skipped in the source-only archive."
   fi

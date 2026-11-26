@@ -1,41 +1,99 @@
 ### Features
 
-- HASS supports advertised smart-lock and motorised-door actions through AmiHASS.
-- AGENDA keeps persistent tasks and recurring reminders with a due badge.
-- PICTURES displays local slideshows with larger previews and bounded background image decoding.
-- HASS exposes supported media playback, volume and track information through AmiHASS.
-- BENCH runs cancellable CPU, memory-copy and off-screen drawing comparisons with dated saved reports.
-- QR generates local UTF-8 codes from text or clipboard contents, with readable previews and ILBM export.
-- MOON shows offline moon phases, approximate illumination and location-based sunrise/sunset estimates.
-- COLOUR samples Workbench pixels, copies hex/RGB values and keeps a protected 32-colour named palette.
-- HASS adds read-only room summaries for lights, open contacts/covers and unavailable entities through AmiHASS.
+- AMINOTIS shows the AmiNotis inbox on a tile, with an unread badge, quiet mode and a paged reading panel.
+- PET adds an animated companion tile: a cat, Gerald the stapler, a dog, a rabbit or Bob the ball.
+- Drawer popups load entries and icons in the background, with loading states, Escape to cancel and R to retry.
+- Reload artwork in the dock menu retries tile artwork without restarting plugins or changing the layout.
+- Launch feedback names the application being started and includes DOS error details on failure.
+- Dock profiles save and switch named layouts from the dock menu or with ARexx PROFILE commands.
+- Optional animated magnification eases tiles in and out, with adjustable 0-100% hover magnification.
+- Adjustable 0-100% dock background transparency, with RTG blending and a palette-screen fallback.
+- Optional dock background artwork with seamless ILBM strips and rounded corners.
+- An optional drag grip moves the dock along its screen edge, with Start, Center and End presets.
+- Undo the last move or removal from the dock menu or with ARexx UNDO while the dock is unlocked.
+- Wallpaper-matched dock background on classic Workbench, following the desktop's colours.
+- Theme packs can bring their own backdrop artwork; Import can pick any small ILBM as the backdrop.
+- New macOS Modern and Mac OS X Glass themes with native artwork and transparency defaults.
+- Colourful icons option preserves original artwork colours across themes.
+- Forty new built-in icons in a tilted, bold-outlined late-90s desktop style.
+- Theme-coloured CPU, RAM and digital Clock artwork with live readings outside graph mode.
+- A magnifying Network interface icon with live incoming and outgoing packet readings.
+- A Preferences plugin replaces the old launcher, with themed artwork.
+- New ARexx commands: GET, SET, THEME, INFO, SAVE, UNDO and STATUS DETAIL.
+- Support section in Preferences with logging and trace modes, optional disk saving and rotating logs.
+- Timed support recordings restore normal settings automatically and keep bounded capture sessions.
+- SupportReport guides you through a report, collects system details and saves an LHA archive or drawer.
+- Danish and Italian translations.
+- The plugin SDK includes diagnostic wrappers, examples, a policy guide and an integration validator.
 
 ### Enhancements
 
-- Confirm HASS unlock, latch and door-opening actions; show clear door states and load supported actions in the background.
-- Include Trash between Music and CPU in the default dock layout.
-- Show percentage changes beside BENCH saved-result comparisons.
-- Add optional bounded plugin thumbnails without host-side image decoding or palette changes.
-- Retry saving a completed BENCH report after a destination error without rerunning its measurements.
-- Open Plugins immediately while inventory, cache writes and third-party details load in a cancellable background worker.
-- Derive installer QA versions from package executables and pair the HASS client explicitly with AmiHASS 0.2.
-- Cache validated plugin inventory with source fingerprints and a forced Refresh; corrupt caches fall back to normal scans.
-- Remove idle palette rebuilding and unchanged list copies; wait on signals in idle tool windows.
-- Share HASS room aggregations, coalesce refreshes and transfer ownership when a room tile closes.
-- Keep tool result windows and user edits intact during background updates; add COLOUR swatches, BENCH stages, QR export gating and MOON input validation.
-- Add paired native startup/window-latency, idle-wakeup and memory budgets with a regression checker.
-- Speed up built-in option lookup and animated artwork validation; read each artwork bank only once during package health checks.
-- Open General and bundled plugin settings without scanning unrelated plugins; use a lightweight, checksummed temporary preview backup.
-- Rename the installer and its Workbench icon to Install and Install.info.
-- New package drawer and installer icon.
-- Use the current packaging time for LHA and ZIP file dates and verify extracted LHA timestamps.
+- Danish, German, Italian and Swedish catalogues cover the new launch, drawer and disk messages.
+- Launcher icons and DataTypes pictures load in background workers and are reused across reloads.
+- Volume space queries run in a background worker and keep the last valid readings while disks are busy.
+- Notifications support longer titles and bodies, with a fallback for older plugins.
+- An opt-in setting forwards new dock alerts to the separately installed AmiNotis service.
+- Support snapshots and reports include AmiNotis delivery and failure diagnostics.
+- ALERTS, AMIRC and AMIROCKET are retired in favour of AmiNotis; old settings are kept but inactive.
+- Plugin names appear in uppercase in the dock, catalogues and settings.
+- About, support reports and trace logs show the exact source build ID.
+- Support is simplified to reporting, advanced tools and recovery.
+- All bundled plugins report bounded resource and activity snapshots for support reports.
+- A run of ARexx SET and THEME commands is applied to the dock in a single reload.
+- Plugin options use a shared pool, reducing memory while keeping older profiles intact.
+- Updates explains when an earlier, cancelled download is still finishing.
+- Appearance and General are reorganized into clearer groups, with a larger layout on big screens.
+- Fresh installs use Nord with rounded artwork, colourful icons and animated magnification.
+- The default dock includes a Preferences tile.
+- Labels offer Always, Hover and Hidden; hover names move above magnified tiles.
+- Magnification blends smoothly between tiles and stays stable across gaps and rows.
+- Repaints reuse cached shelves, widgets and artwork and redraw only the tiles that changed.
+- Idle tool windows, workers and auto-hide sleep until needed, lowering background CPU use.
+- Quitting or restarting no longer waits for an ARexx launcher that stopped answering.
+- Crowded captions are shortened with an ellipsis; full names stay in hover captions and tooltips.
+- Tiles show consistent loading, offline, unavailable and error markers with explanatory tooltips.
+- SENSOR keeps headings, readings and artwork visible on compressed side docks.
+- Plugin artwork appears as soon as the dock confirms support, without waiting for a heartbeat.
+- All artwork states must support Tiny and Normal sizes, checked by an SDK validator.
+- The public website has its own changelog page, checked against this changelog.
+- Release LHA archives are checked for compatibility with classic extractors, including OLHa.
+- Release testing covers all bundled plugins, every dock edge and a 30-minute packaged soak.
 
 ### Bugs
 
-- Use factory defaults for fresh installs from a runnable development drawer, preserving existing installed settings on updates.
-- Synchronize the AmiHASS SDK and require confirmed open/closed readback after stopping a cover.
-- Keep QR/BENCH staging filenames within classic filesystem limits; report write-protected, full and invalid destinations without losing results or replacing existing files.
-- Preserve COLOUR edits and saved palettes on failed writes, with actionable destination and recovery errors.
-- Correct HASS setup instructions to AmiHASS 0.2 and Install, and check the documentation against the paired SDK.
-- Avoid false plugin repair warnings for absent optional artwork on AmigaOS, restoring affected plugins to Add Item.
-- Reject release builds with missing, invalid or incompatible plugin packages after archive extraction.
+- Fix intermittent "freed twice" and "memory list corrupt" alerts when helpers or plugins exit.
+- Fix the Appearance preview shelf when switching to Tiny icons.
+- Find shared NovaDock components when running from a portable or unpacked drawer.
+- Queued ARexx edits no longer override a later Preferences Save.
+- Escape cancels Preferences pages and report windows consistently.
+- Support reports include both RAM and persistent disk logs.
+- With Animate off, the hovered tile snaps directly to the chosen magnification.
+- Fix magnification frames that could show layer scrolling or partial repaints.
+- Capture settings save correctly on ENV handlers without rename support.
+- Always on top raises the dock only when a window really overlaps it, and no longer hides new windows.
+- Keep the desktop snapshot the same size as the dock after live changes.
+- Clicks are no longer dropped or misplaced while the dock window resizes.
+- MusicPlayer queues actions and stops waiting for players that do not answer ARexx.
+- Repeated ARexx launcher clicks are ignored while their target is still busy.
+- Notes no longer reads past the end of text that ends with a heading marker.
+- Recover when Intuition never confirms a dock resize.
+- Queued clicks keep their positions when the system clock is set backwards.
+- The installer replaces an older NovaDock.previous drawer on a repeated update.
+- macOS Modern and Mac OS X Glass use valid theme IDs and their own defaults.
+- The Plugin Manager and Add Item list up to 64 installed plugins and say when the list is full.
+- MusicPlayer buttons and the volume knob match the magnified widget and give hover feedback.
+- Nearly full docks no longer bunch up abruptly when magnification reaches the screen edge.
+- Grey backdrop pixels no longer remain around the dock after startup or closed windows.
+- Colourful icons no longer turn into grey silhouettes after a reload or screen reopen.
+- The normal dock stays behind application windows moved into its magnification area.
+- Light themes use the same contrast-aware icon palette in Appearance and the live dock.
+- The dock no longer becomes invisible in Low Memory mode after an update or startup.
+- Label settings apply consistently to plugin artwork, launchers and widget headings.
+- Running dots and notification badges stay attached to magnified artwork.
+- The plugin catalogue holds 64 entries, so disabled plugins no longer block new drawers.
+- Magnification stays responsive while another window is active.
+- The drag grip no longer leaves a detached strip after reloads.
+- SENSOR keeps channel names separate and adds sensor-type artwork and per-channel titles.
+- Plugin badges show multi-digit counts such as 129.
+- A queued click no longer dismisses a context menu just after it opens.
+- Support reports keep your answers and the last save destination after failures.

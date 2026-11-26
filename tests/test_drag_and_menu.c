@@ -9,6 +9,7 @@
 int main(void)
 {
     struct NDConfig a, b, c, running;
+    int i;
     char name[ND_LABEL_LEN];
     char moved[ND_LABEL_LEN];
     const char *filename = "tests/.drag_menu_test.cfg";
@@ -61,12 +62,13 @@ int main(void)
     assert(a.count == 5 && !a.items[0].enabled);
     assert(nd_write_config(&a, filename));
     assert(nd_load_config(&b, filename) == 0);
-    assert(b.count == 16 && b.left_click == ND_CLICK_MENU);
+    assert(b.count == 17 && b.left_click == ND_CLICK_MENU);
     assert(!strcmp(b.items[10].id,"EYES") &&
            b.items[10].multiple_instances && !b.items[10].enabled);
     assert(!strcmp(b.items[11].id,"DOPUS4") && !b.items[11].enabled);
     assert(!strcmp(b.items[12].id,"ARCHIVE") && !b.items[12].enabled);
     assert(!strcmp(b.items[13].id,"RUNNINGAPPS") && !b.items[13].enabled);
+    assert(!strcmp(b.items[16].id,"PREFERENCES")&&!b.items[16].enabled);
     assert(!strcmp(b.items[0].id, "HIDDEN") && !b.items[0].enabled);
     running = b;
     assert(nd_compact_enabled(&running) == 1);
@@ -110,6 +112,32 @@ int main(void)
     assert(c.count==ND_MAX_ITEMS && c.items[0].enabled);
     assert(!strcmp(c.items[0].label,"Scout"));
     assert(!strcmp(c.items[0].command,"SYS:Tools/Scout"));
+
+    /* Importing all installed plugins used to fill 48 definitions while
+     * leaving only eight enabled tiles. New drawers must retain that entire
+     * catalogue and its settings, with sixteen slots available for additions. */
+    nd_default_config(&c);
+    while(c.count<48){
+        char line[120];
+        sprintf(line,"PLUGIN=Available%d|Plugins/Unused|UNUSED%d|METER|OFF",c.count,c.count);
+        assert(nd_parse_line(&c,line));
+    }
+    a=c;
+    for(i=0;i<16;++i){
+        char label[32],path[64];
+        sprintf(label,"Beam%d",i);sprintf(path,"builds:Beam%d",i);
+        assert(nd_insert_launcher_visible(&c,8+i,ND_ITEM_DRAWER,label,path,path));
+    }
+    assert(c.count==64);
+    assert(nd_write_config(&c,filename));
+    assert(nd_load_config(&b,filename)==0 && b.count==64);
+    running=b;assert(nd_compact_enabled(&running)==24);
+    remove(filename);
+    for(i=0;i<48;++i){
+        assert(!strcmp(c.items[i].command,a.items[i].command));
+        assert(c.items[i].enabled==a.items[i].enabled);
+    }
+    assert(!nd_insert_launcher_visible(&c,24,ND_ITEM_DRAWER,"Full","builds:Full",""));
 
     /* A row move changes membership as well as order. It must also support
      * moving an item into a previously empty row without replacing one. */

@@ -9,7 +9,7 @@ $themes = require __DIR__ . '/includes/theme_catalog.php';
 ?>
 <p class="eyebrow">The NovaDock marketplace</p>
 <h1>Make room for<br>something you like.</h1>
-<p class="lead">Explore every bundled plugin and thirteen themes. Each plugin shows its own version.</p>
+<p class="lead">Explore every bundled plugin and <?= count($themes) ?> themes. Each plugin shows its own version.</p>
 <p class="market-sections"><a href="#plugins">Plugins <small><?= count($catalog) ?></small></a> <a href="#themes">Themes <small><?= count($themes) ?></small></a></p>
 <h2 id="plugins">Plugins</h2>
 <p class="catalog-note">Add plugins from Preferences &gt; Organize &gt; Add Item &gt; Plugins. <a href="get.php">Download NovaDock</a>.</p>
@@ -24,7 +24,7 @@ $themes = require __DIR__ . '/includes/theme_catalog.php';
 <?php endforeach; ?>
 <p class="note">No community plugins are listed yet.</p>
 <h2 id="themes" class="section-heading">Themes</h2>
-<p class="lead">Thirteen colour palettes for your Workbench.</p>
+<p class="lead"><?= count($themes) ?> colour palettes for your Workbench.</p>
 <p class="catalog-note">Choose Preferences &gt; Appearance, then Test or Save. These are the real theme colours.</p>
 <div class="theme-list">
 <?php foreach ($themes as $theme): ?>

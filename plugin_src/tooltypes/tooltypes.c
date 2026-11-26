@@ -18,8 +18,12 @@
 #include "nd_list.h"
 #include "nd_task.h"
 #include "nd_reply.h"
+#include "nd_wait.h"
 #include "nd_tooltypes.h"
 #include "nd_plugin_versions.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 const char nd_version[]=ND_PLUGIN_VER_STRING(TOOLTYPES,"ToolTypes");long __stack=65536;
 struct Library *IconBase=NULL,*AslBase=NULL;
 #define TT_LOAD 1
@@ -50,7 +54,7 @@ static int parent_alive(const char *parent)
 {struct MsgPort *p;if(!parent)return 1;Forbid();p=FindPort((STRPTR)parent);Permit();return p!=NULL;}
 static int save_icon(struct TTData *d,const char *parent)
 {
- static struct TTData original;struct NDToolTypes *m=&d->model;struct DiskObject *icon;struct FileInfoBlock *fib=NULL;BPTR lock;char path[260],temp[300],temp_info[310],number[32];STRPTR old_tool;STRPTR *old_types,*types[ND_TT_MAX+1];LONG old_stack;unsigned int i;int ok=0;
+ static struct TTData original;struct NDToolTypes *m=&d->model;struct DiskObject *icon;struct FileInfoBlock *fib=NULL;BPTR lock;char path[260],temp[300],temp_info[310],number[32];STRPTR old_tool;STRPTR *old_types;STRPTR types[ND_TT_MAX+1];LONG old_stack;unsigned int i;int ok=0;
  original.model.path[0]=0;strcpy(original.model.path,m->path);
  if(!load_icon(&original)){strcpy(d->status,original.status);return 0;}
  if(m->hash!=original.model.hash || m->size!=original.model.size){strcpy(d->status,"Icon changed on disk; Reload before saving");return 0;}
@@ -80,7 +84,7 @@ static int work(unsigned int action,void *data,unsigned int bytes,const char *pa
  return action==TT_LOAD || action==TT_BROWSE ? load_icon(d):0;
 }
 static int helper(const char *id,const char *path)
-{struct TTDrop *m;struct MsgPort *reply,*target;char port[80];int i,ok=0;m=AllocVec(sizeof(*m),MEMF_PUBLIC|MEMF_CLEAR);reply=nd_reply_port();if(!m || !reply){if(m)FreeVec(m);if(reply)nd_reply_delete(reply);return 20;}if(!nd_tt_path(path,m->path)){FreeVec(m);nd_reply_delete(reply);return 20;}sprintf(port,"NovaDock.ToolTypes.%s",id);m->magic=TT_DROP_MAGIC;m->message.mn_Length=sizeof(*m);m->message.mn_ReplyPort=reply;Forbid();target=FindPort(port);if(target)PutMsg(target,(struct Message *)m);Permit();if(target){for(i=0;i<250;i+=5){if(GetMsg(reply)){ok=m->result;break;}Delay(5);}if(i==250){nd_reply_abandon(reply);return 10;}}FreeVec(m);nd_reply_delete(reply);return ok ? 0:10;}
+{struct TTDrop *m;struct MsgPort *reply,*target;char port[80];int ok=0;m=AllocVec(sizeof(*m),MEMF_PUBLIC|MEMF_CLEAR);reply=nd_reply_port();if(!m || !reply){if(m)FreeVec(m);if(reply)nd_reply_delete(reply);return 20;}if(!nd_tt_path(path,m->path)){FreeVec(m);nd_reply_delete(reply);return 20;}sprintf(port,"NovaDock.ToolTypes.%s",id);m->magic=TT_DROP_MAGIC;m->message.mn_Length=sizeof(*m);m->message.mn_ReplyPort=reply;Forbid();target=FindPort(port);if(target)PutMsg(target,(struct Message *)m);Permit();if(target){/* Sleep until the tile answers, at most five seconds. */if(nd_wait_port(NULL,reply,250UL)&&GetMsg(reply))ok=m->result;else{nd_reply_abandon(reply);return 10;}}FreeVec(m);nd_reply_delete(reply);return ok ? 0:10;}
 static struct NDPanel *open_panel(int loaded)
 {char stack[32];struct NDPanelField f[4];static const char *b[]={"Load","Browse...","ToolTypes...","Save"};sprintf(stack,"%lu",edit_data.model.stack);f[0].label="Icon path";f[0].value=edit_data.model.path;f[0].limit=220;f[1].label="Default tool";f[1].value=loaded ? edit_data.model.tool:"";f[1].limit=160;f[2].label="Stack bytes";f[2].value=loaded ? stack:"4096";f[2].limit=20;f[3].label="Status";f[3].value=edit_data.status;f[3].limit=0;return nd_panel_open("Workbench icon ToolTypes",f,4,b,4);}
 int main(int argc,char **argv)

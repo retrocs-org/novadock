@@ -18,6 +18,9 @@
 #include "nd_weather_codes.h"
 #include "nd_weather_art.h"
 #include "nd_fetch_worker.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 const char nd_version[]=ND_PLUGIN_VER_STRING(WEATHER,"Weather");
 long __stack=32768;
 struct WeatherSettings {char location[96],program[96],engine[8],units[8];unsigned int minutes;};

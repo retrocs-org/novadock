@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Regress old checkout dates and ZIP defaults through real archive creation."""
 from io import BytesIO
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -47,6 +48,29 @@ class ArchiveDates(unittest.TestCase):
         with ZipFile(BytesIO(payload)) as archive:self.assertIn(archive.infolist()[0].date_time,[dates.zip_datetime(t) for t in range(before,after+1,2)])
         explicit=package.zip_bytes([('default',b'today')],timestamp=self.epoch)
         self.assertEqual(explicit,package.zip_bytes([('default',b'today')],timestamp=self.epoch))
+
+    def test_zip_members_are_world_readable_and_scripts_executable(self):
+        payload=package.zip_bytes([('NovaDock/scripts/fuzz.sh',b'#!/bin/sh\n'),('NovaDock/tools/a.py',b'#!/usr/bin/env python3\n'),
+                                   ('NovaDock/tools/lib.py',b'import os\n'),('NovaDock/README.md',b'x')],timestamp=self.epoch)
+        with ZipFile(BytesIO(payload)) as archive:
+            modes={e.filename:(e.external_attr>>16)&0o777 for e in archive.infolist()}
+        self.assertEqual(modes['NovaDock/scripts/fuzz.sh'],0o755)
+        self.assertEqual(modes['NovaDock/tools/a.py'],0o755)
+        self.assertEqual(modes['NovaDock/tools/lib.py'],0o644)
+        self.assertEqual(modes['NovaDock/README.md'],0o644)
+
+    def test_source_checksums_replace_stale_manifest_and_include_new_files(self):
+        entries=[('NovaDock/old.c',b'changed'),('NovaDock/new.c',b'new'),
+                 ('NovaDock/SHA256SUMS',b'stale')]
+        entries=package.with_source_checksums(entries)
+        payload=package.zip_bytes(entries,timestamp=self.epoch)
+        with ZipFile(BytesIO(payload)) as archive:
+            manifest=archive.read('NovaDock/SHA256SUMS').decode().splitlines()
+            rows={name:digest for digest,name in (line.split('  ',1) for line in manifest)}
+            self.assertEqual(set(rows),{'old.c','new.c'})
+            for name,digest in rows.items():
+                self.assertEqual(digest,hashlib.sha256(archive.read('NovaDock/'+name)).hexdigest())
+        self.assertEqual(entries,package.with_source_checksums(entries))
 
     def test_real_level_one_lha_preserves_current_dates(self):
         lha=os.environ.get('LHA') or shutil.which('lha')

@@ -28,6 +28,9 @@
 #include <string.h>
 #include "nd_plugin_versions.h"
 #include "nd_client.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 
 const char nd_version[]=ND_PLUGIN_VER_STRING(TRASH,"Trash");
 struct IntuitionBase *IntuitionBase=NULL;

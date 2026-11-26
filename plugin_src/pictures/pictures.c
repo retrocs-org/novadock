@@ -13,6 +13,9 @@
 #include "nd_plugin_versions.h"
 #include "nd_pictures.h"
 #include "nd_picture_view.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 const char nd_version[]=ND_PLUGIN_VER_STRING(PICTURES,"Pictures");long __stack=65536;
 int nd_pictures_work(unsigned int action,void *data,unsigned int bytes,const char *parent);
 static void settings(const char *id,struct NDPicturesJob *j,char label[32],unsigned long *interval)

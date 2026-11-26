@@ -5,6 +5,10 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import vbcc_startup  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -63,6 +67,8 @@ def binaries(root=ROOT):
         path = root/name
         if path.read_bytes()[:4] != b'\0\0\x03\xf3':
             raise ValueError('Not an Amiga Hunk executable: '+name)
+        if vbcc_startup.check([path]):
+            raise ValueError('Linked with the stock vbcc startup.o exit race; rebuild with tools/vbcc_startup.py patch: '+name)
         result[name] = digest(path)
     return result
 

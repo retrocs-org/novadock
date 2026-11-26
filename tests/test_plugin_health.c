@@ -27,5 +27,8 @@ int main(void)
  check("NET",1,0,"OFFLINE","Network offline","Online");
  check("NET",1,0,"STARTING","Changing network","Wait");
  check("ARCHIVE",1,0,"Idle","Running","responding");
+ check("CPU",0,0,"MISSING PLUGIN","Missing plugin","Reinstall");
+ check("CPU",0,0,"STARTING","Starting","first reading");
+ check("CPU",0,0,"FAILED TO START","Error","Diagnostics");
  puts("Plugin health distinguishes runtime/setup/dependency failures, stopped processes and healthy idle/zero states.");return 0;
 }

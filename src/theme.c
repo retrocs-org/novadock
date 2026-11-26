@@ -17,56 +17,53 @@ static const unsigned char defaults[ND_THEME_COUNT][ND_THEME_COLOR_COUNT][3]={
     {{156,156,148},{214,212,200},{242,199,48},{22,22,20},{102,100,94},{250,205,40},{118,116,108},{72,138,151}},
     {{38,45,58},{59,66,82},{76,86,106},{236,239,244},{129,161,193},{136,192,208},{46,52,64},{163,190,140}},
     {{20,10,38},{46,24,71},{76,34,104},{245,230,255},{173,128,204},{255,83,185},{28,14,51},{80,225,230}},
-    {{10,27,24},{22,56,43},{37,77,55},{255,240,208},{166,186,157},{220,86,77},{13,36,29},{232,190,95}}
+    {{10,27,24},{22,56,43},{37,77,55},{255,240,208},{166,186,157},{220,86,77},{13,36,29},{232,190,95}},
+    {{82,99,118},{218,228,239},{235,242,249},{24,36,52},{91,115,140},{146,188,222},{113,137,160},{66,160,147}},
+    {{65,73,86},{188,197,209},{231,236,243},{24,32,44},{91,107,127},{222,233,246},{109,124,143},{73,157,128}}
 };
 static const char *names[ND_THEME_COUNT]={
     "Mocha","Light","Workbench","Graphite","High Contrast",
-    "Copper","Ocean","Emerald","NeXTSTEP","BeOS","Nord","Vapor","Christmas"
+    "Copper","Ocean","Emerald","NeXTSTEP","BeOS","Nord","Vapor","Christmas","macOS Modern","Mac OS X Glass"
 };
 static const char *dirs[ND_THEME_COUNT]={
     "Mocha","Light","Workbench","Graphite","HighContrast",
-    "Copper","Ocean","Emerald","NeXTSTEP","BeOS","Nord","Vapor","Christmas"
+    "Copper","Ocean","Emerald","NeXTSTEP","BeOS","Nord","Vapor","Christmas","MacModern","MacGlass"
 };
 static const unsigned char default_shapes[ND_THEME_COUNT]={
     ND_SHAPE_CHAMFER,ND_SHAPE_ROUNDED,ND_SHAPE_SQUARE,ND_SHAPE_MINIMAL,
     ND_SHAPE_SQUARE,ND_SHAPE_CHAMFER,ND_SHAPE_ROUNDED,ND_SHAPE_CHAMFER,
-    ND_SHAPE_SQUARE,ND_SHAPE_CHAMFER,ND_SHAPE_ROUNDED,ND_SHAPE_MINIMAL,ND_SHAPE_CHAMFER
+    ND_SHAPE_SQUARE,ND_SHAPE_CHAMFER,ND_SHAPE_ROUNDED,ND_SHAPE_MINIMAL,ND_SHAPE_CHAMFER,ND_SHAPE_ROUNDED,ND_SHAPE_ROUNDED
 };
 static const unsigned char default_sides[ND_THEME_COUNT]={
     ND_SIDE_BOTTOM,ND_SIDE_BOTTOM,ND_SIDE_BOTTOM,ND_SIDE_BOTTOM,
     ND_SIDE_BOTTOM,ND_SIDE_BOTTOM,ND_SIDE_BOTTOM,ND_SIDE_BOTTOM,
-    ND_SIDE_RIGHT,ND_SIDE_BOTTOM,ND_SIDE_BOTTOM,ND_SIDE_BOTTOM,ND_SIDE_BOTTOM
+    ND_SIDE_RIGHT,ND_SIDE_BOTTOM,ND_SIDE_BOTTOM,ND_SIDE_BOTTOM,ND_SIDE_BOTTOM,ND_SIDE_BOTTOM,ND_SIDE_BOTTOM
 };
 static const unsigned char default_positions[ND_THEME_COUNT]={
     ND_POSITION_CENTER,ND_POSITION_CENTER,ND_POSITION_CENTER,ND_POSITION_CENTER,
     ND_POSITION_CENTER,ND_POSITION_CENTER,ND_POSITION_CENTER,ND_POSITION_CENTER,
-    ND_POSITION_CENTER,ND_POSITION_CENTER,ND_POSITION_CENTER,ND_POSITION_CENTER,ND_POSITION_CENTER
+    ND_POSITION_CENTER,ND_POSITION_CENTER,ND_POSITION_CENTER,ND_POSITION_CENTER,ND_POSITION_CENTER,ND_POSITION_CENTER,ND_POSITION_CENTER
 };
 static const unsigned char default_fonts[ND_THEME_COUNT]={
     ND_FONT_WORKBENCH,ND_FONT_WORKBENCH,ND_FONT_TOPAZ,ND_FONT_TOPAZ,
     ND_FONT_BOLD,ND_FONT_TOPAZ,ND_FONT_WORKBENCH,ND_FONT_BOLD,
-    ND_FONT_TOPAZ,ND_FONT_TOPAZ,ND_FONT_WORKBENCH,ND_FONT_BOLD,ND_FONT_BOLD
-};
-static const unsigned char default_labels[ND_THEME_COUNT]={
-    ND_LABEL_ALWAYS,ND_LABEL_ALWAYS,ND_LABEL_ALWAYS,ND_LABEL_HOVER,
-    ND_LABEL_ALWAYS,ND_LABEL_ALWAYS,ND_LABEL_HOVER,ND_LABEL_ALWAYS,
-    ND_LABEL_ALWAYS,ND_LABEL_ALWAYS,ND_LABEL_ALWAYS,ND_LABEL_ALWAYS,ND_LABEL_ALWAYS
+    ND_FONT_TOPAZ,ND_FONT_TOPAZ,ND_FONT_WORKBENCH,ND_FONT_BOLD,ND_FONT_BOLD,ND_FONT_WORKBENCH,ND_FONT_WORKBENCH
 };
 static const unsigned char default_spacer_widths[ND_THEME_COUNT]={
-    48,44,42,48,50,52,46,48,42,44,46,48,48
+    48,44,42,48,50,52,46,48,42,44,46,48,48,46,46
 };
 static const unsigned char default_spacer_lines[ND_THEME_COUNT]={
-    0,1,1,1,1,1,0,1,1,1,1,1,1
+    0,1,1,1,1,1,0,1,1,1,1,1,1,1,1
 };
 static const unsigned char default_spacer_line_widths[ND_THEME_COUNT]={
-    2,1,1,2,3,2,2,2,1,1,1,2,2
+    2,1,1,2,3,2,2,2,1,1,1,2,2,1,1
 };
 static const unsigned char default_spacer_line_colors[ND_THEME_COUNT]={
     ND_SPACER_COLOR_SUBTLE,ND_SPACER_COLOR_SUBTLE,ND_SPACER_COLOR_TEXT,
     ND_SPACER_COLOR_ACCENT,ND_SPACER_COLOR_ACCENT,ND_SPACER_COLOR_ACCENT,
     ND_SPACER_COLOR_SECONDARY,ND_SPACER_COLOR_SECONDARY,
     ND_SPACER_COLOR_TEXT,ND_SPACER_COLOR_SUBTLE,ND_SPACER_COLOR_SUBTLE,
-    ND_SPACER_COLOR_ACCENT,ND_SPACER_COLOR_SECONDARY
+    ND_SPACER_COLOR_ACCENT,ND_SPACER_COLOR_SECONDARY,ND_SPACER_COLOR_SUBTLE,ND_SPACER_COLOR_SUBTLE
 };
 static char *trim(char *s)
 {
@@ -166,7 +163,7 @@ void nd_theme_defaults(int theme,struct NDThemeSpec *spec)
     spec->side=default_sides[theme];
     spec->position=default_positions[theme];
     spec->font_mode=default_fonts[theme];
-    spec->label_mode=default_labels[theme];
+    spec->label_mode=ND_LABEL_ALWAYS;
     spec->binding_mask=ND_THEME_BIND_ALL;
     spec->spacer_width=default_spacer_widths[theme];
     spec->spacer_line=default_spacer_lines[theme];
@@ -232,7 +229,16 @@ int nd_theme_load_id(const char *root,const char *theme_id,struct NDThemeSpec *s
             if (!strcmp(value,"ALWAYS")) {spec->label_mode=ND_LABEL_ALWAYS;spec->binding_mask|=ND_THEME_BIND_LABELS;}
             else if (!strcmp(value,"HOVER")) {spec->label_mode=ND_LABEL_HOVER;spec->binding_mask|=ND_THEME_BIND_LABELS;}
             else if (!strcmp(value,"HIDDEN")) {spec->label_mode=ND_LABEL_HIDDEN;spec->binding_mask|=ND_THEME_BIND_LABELS;}
-        } else if (!strcmp(key,"BG")) color_value(value,spec->rgb[0]);
+            else if (!strcmp(value,"MAGNIFIED")) {spec->label_mode=ND_LABEL_HOVER;spec->binding_mask|=ND_THEME_BIND_LABELS;}
+        } else if(!strcmp(key,"BACKGROUND_TRANSPARENCY")){
+            char *end;long n=strtol(value,&end,10);
+            if(*value && !*end && n>=0 && n<=100){spec->background_transparency=(int)n;spec->binding_mask|=ND_THEME_BIND_TRANSPARENCY;}
+        } else if(!strcmp(key,"DOCK_BACKGROUND")){
+            if(!strcmp(value,"ARTWORK") || !strcmp(value,"SOLID")){
+                spec->theme_artwork=!strcmp(value,"ARTWORK");spec->binding_mask|=ND_THEME_BIND_ARTWORK;
+            }
+        } else if(!strcmp(key,"DOCK_STYLE"))spec->dock_style=!strcmp(value,"GLASS");
+        else if (!strcmp(key,"BG")) color_value(value,spec->rgb[0]);
         else if (!strcmp(key,"TILE")) color_value(value,spec->rgb[1]);
         else if (!strcmp(key,"HOVER")) color_value(value,spec->rgb[2]);
         else if (!strcmp(key,"TEXT")) color_value(value,spec->rgb[3]);
@@ -295,6 +301,8 @@ void nd_theme_apply_spacers(struct NDConfig *cfg,const struct NDThemeSpec *spec)
 void nd_theme_apply_preferences(struct NDConfig *cfg,const struct NDThemeSpec *spec)
 {
     if (!cfg || !spec) return;
+    if(spec->binding_mask&ND_THEME_BIND_TRANSPARENCY)cfg->background_transparency=spec->background_transparency;
+    if(spec->binding_mask&ND_THEME_BIND_ARTWORK){cfg->theme_artwork=spec->theme_artwork;cfg->wallpaper_match=0;}
     if (spec->binding_mask&ND_THEME_BIND_SHAPE) cfg->shape=spec->shape;
     if (spec->binding_mask&ND_THEME_BIND_SIDE) cfg->side=spec->side;
     if (spec->binding_mask&ND_THEME_BIND_POSITION) cfg->position=spec->position;

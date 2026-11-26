@@ -13,7 +13,7 @@ static int number(const char *s,unsigned long *out)
 {unsigned long v;char *end;if(!*s || *s<'0'||*s>'9')return 0;v=strtoul(s,&end,10);if(*end || v>0xffffffffUL)return 0;*out=v;return 1;}
 int nd_bench_parse(const char *text,struct NDBenchResult *out)
 {
- struct NDBenchResult r;char line[256];const char *p,*end;unsigned long v;unsigned int seen=0,n;
+ struct NDBenchResult r;char line[256];const char *p,*end;unsigned int seen=0,n;
  if(!text || strlen(text)>2047 || strncmp(text,"NDBENCH1\n",9))return 0;memset(&r,0,sizeof(r));p=text+9;
  while(*p){end=strchr(p,'\n');if(!end)return 0;n=(unsigned int)(end-p);if(n>=sizeof(line))return 0;memcpy(line,p,n);line[n]=0;p=end+1;
   if(!strncmp(line,"DATE=",5)){if(seen&1 || !line[5] || strlen(line+5)>=sizeof(r.date))return 0;strcpy(r.date,line+5);seen|=1;}

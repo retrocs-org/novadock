@@ -6,6 +6,9 @@
 #if defined(__amigaos__) || defined(AMIGA) || defined(__VBCC__)
 #include <dos/dos.h>
 #include <proto/dos.h>
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 #endif
 void nd_note_init(struct NDNote *n)
 {memset(n,0,sizeof(*n));strcpy(n->font,"topaz.font");n->size=8;}

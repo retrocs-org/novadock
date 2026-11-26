@@ -17,6 +17,8 @@
 #include <string.h>
 #include "nd_plugin_versions.h"
 #include "nd_client.h"
+#include "nd_reply.h"
+#include "nd_wait.h"
 #include "nd_option_runtime.h"
 #include "nd_musicplayer.h"
 
@@ -100,29 +102,117 @@ static const char *detected_port(const struct NDMusicProfile *profile)
     if (has_port(profile->alt_port)) return profile->alt_port;
     return NULL;
 }
-/* ARexx synchronous request. RESULT is an optional ArgString returned by
- * the player on success (not a numeric error). We copy it before freeing.
- * These calls are only automatic when AUTO_QUERY=YES; a non-responding host
- * can block this separate plugin process, never NovaDock itself.
+/* ARexx request with a bounded wait. RESULT is an optional ArgString
+ * returned by the player on success (not a numeric error); it is copied
+ * before freeing.  A player showing a modal requester stops answering
+ * ARexx; waiting forever would stall this plugin until the dock's watchdog
+ * reports it as not responding and every control is discarded.
+ *
+ * The wait sleeps on the reply signal and a timer.device request, so a
+ * prompt reply costs no polling delay.  After ND_MUSIC_REXX_TIMEOUT_SECONDS
+ * the request is kept as the single "stuck" request: no further command is
+ * sent to any player until its reply arrives, and only then are the
+ * message and port freed.  At exit a still-stuck request is handed to
+ * nd_reply_abandon() so a late ReplyMsg lands in memory that stays valid.
  * NEVER free a RexxMsg or reply port while its request is outstanding.
  */
+#define ND_MUSIC_REXX_TIMEOUT_SECONDS 3UL
+/* One stuck request per player port, so a hung player never silences a
+ * different one.  Each holds a reply signal, so the table is small; when it
+ * is full no further player is contacted until one answers. */
+#define ND_MUSIC_STUCK_MAX 4
+struct MusicStuck {struct RexxMsg *request;struct MsgPort *reply;ULONG since;char port[ND_MUSIC_PORT_LEN + 1];};
+/* A player that quits or crashes without answering never replies.  After
+ * ND_MUSIC_STUCK_EXPIRE seconds, or once its port has gone, the request is
+ * handed to nd_reply_abandon() (a late ReplyMsg stays safe) and the slot is
+ * freed, so a restarted player under the same port name is reached again. */
+#define ND_MUSIC_STUCK_EXPIRE 10UL
+static struct MusicStuck stuck[ND_MUSIC_STUCK_MAX];
+static struct NDWaitTimer music_timer;
+
+static void free_request(struct RexxMsg *request, struct MsgPort *reply)
+{
+    DeleteArgstring(request->rm_Args[0]);
+    if (request->rm_Result1 == 0 && request->rm_Result2 &&
+        (request->rm_Action & RXFF_RESULT))
+        DeleteArgstring((STRPTR)request->rm_Result2);
+    DeleteRexxMsg(request);
+    nd_reply_delete(reply);
+}
+/* Free every stuck request whose reply has arrived. */
+static ULONG music_seconds(void)
+{
+    struct DateStamp d;
+    DateStamp(&d);
+    return (ULONG)d.ds_Days * 86400UL + (ULONG)d.ds_Minute * 60UL + (ULONG)d.ds_Tick / 50UL;
+}
+static void reclaim_stuck_requests(void)
+{
+    int i, gone;
+    ULONG now = music_seconds();
+    for (i = 0; i < ND_MUSIC_STUCK_MAX; ++i) {
+        if (!stuck[i].request) continue;
+        if (GetMsg(stuck[i].reply)) {
+            free_request(stuck[i].request, stuck[i].reply);
+            stuck[i].request = NULL; stuck[i].reply = NULL;
+            continue;
+        }
+        Forbid();
+        gone = FindPort((STRPTR)stuck[i].port) == NULL;
+        Permit();
+        if (!gone && now >= stuck[i].since && now - stuck[i].since < ND_MUSIC_STUCK_EXPIRE)
+            continue;
+        Forbid();
+        if (GetMsg(stuck[i].reply)) { Permit(); free_request(stuck[i].request, stuck[i].reply); }
+        else { nd_reply_abandon(stuck[i].reply); Permit(); }
+        stuck[i].request = NULL; stuck[i].reply = NULL;
+    }
+}
+/* -1: PORT has a stuck request; otherwise a free slot (or ND_MUSIC_STUCK_MAX
+ * when the table is full). */
+static int stuck_slot(const char *port)
+{
+    int i, free_slot = ND_MUSIC_STUCK_MAX;
+    for (i = 0; i < ND_MUSIC_STUCK_MAX; ++i) {
+        if (!stuck[i].request) { if (free_slot == ND_MUSIC_STUCK_MAX) free_slot = i; }
+        else if (!strcmp(stuck[i].port, port)) return -1;
+    }
+    return free_slot;
+}
+static void music_rexx_close(void)
+{
+    int i;
+    reclaim_stuck_requests();
+    for (i = 0; i < ND_MUSIC_STUCK_MAX; ++i) {
+        if (!stuck[i].request) continue;
+        Forbid();
+        if (GetMsg(stuck[i].reply)) { Permit(); free_request(stuck[i].request, stuck[i].reply); }
+        else { nd_reply_abandon(stuck[i].reply); Permit(); }
+        stuck[i].request = NULL; stuck[i].reply = NULL;
+    }
+    nd_wait_timer_close(&music_timer);
+}
 static LONG send_command(const char *port, const char *command,
                          char *output, unsigned int output_len)
 {
     struct MsgPort *reply, *target;
     struct RexxMsg *request, *response;
     LONG result = 20;
-    int delivered = 0;
+    int delivered = 0, slot;
     if (output && output_len) output[0] = 0;
     if (!RexxSysBase || !nd_music_valid_port(port) ||
         !nd_music_valid_command(command)) return 20;
-    reply = CreateMsgPort();
+    reclaim_stuck_requests();
+    slot = stuck_slot(port);
+    /* This player still owns a request, or no slot is left to keep one. */
+    if (slot < 0 || slot >= ND_MUSIC_STUCK_MAX) return 20;
+    reply = nd_reply_port();
     if (!reply) return 20;
     request = CreateRexxMsg(reply, (STRPTR)"rexx", (STRPTR)port);
-    if (!request) { DeleteMsgPort(reply); return 20; }
+    if (!request) { nd_reply_delete(reply); return 20; }
     request->rm_Args[0] = CreateArgstring((STRPTR)command, (LONG)strlen(command));
     if (!request->rm_Args[0]) {
-        DeleteRexxMsg(request); DeleteMsgPort(reply); return 20;
+        DeleteRexxMsg(request); nd_reply_delete(reply); return 20;
     }
     request->rm_Action = RXCOMM | (output && output_len ? RXFF_RESULT : 0);
     Forbid();
@@ -132,22 +222,32 @@ static LONG send_command(const char *port, const char *command,
         delivered = 1;
     }
     Permit();
-    if (delivered) {
-        WaitPort(reply);
-        response = (struct RexxMsg *)GetMsg(reply);
-        if (response == request) {
-            result = request->rm_Result1;
-            if (result == 0 && output && output_len && request->rm_Result2) {
-                STRPTR text = (STRPTR)request->rm_Result2;
-                nd_music_clean_text(output, output_len, text);
-                DeleteArgstring(text);
-                request->rm_Result2 = 0;
-            }
+    if (!delivered) {
+        DeleteArgstring(request->rm_Args[0]);
+        DeleteRexxMsg(request); nd_reply_delete(reply);
+        return 20;
+    }
+    (void)nd_wait_port(&music_timer, reply, ND_MUSIC_REXX_TIMEOUT_SECONDS * 50UL);
+    response = (struct RexxMsg *)GetMsg(reply);
+    if (!response) {
+        /* The player still owns REQUEST: keep it, never free it here. */
+        stuck[slot].request = request; stuck[slot].reply = reply;
+        stuck[slot].since = music_seconds();
+        strcpy(stuck[slot].port, port);   /* validated: <= ND_MUSIC_PORT_LEN */
+        return 20;
+    }
+    if (response == request) {
+        result = request->rm_Result1;
+        if (result == 0 && output && output_len && request->rm_Result2) {
+            STRPTR text = (STRPTR)request->rm_Result2;
+            nd_music_clean_text(output, output_len, text);
+            DeleteArgstring(text);
+            request->rm_Result2 = 0;
         }
     }
     DeleteArgstring(request->rm_Args[0]);
     DeleteRexxMsg(request);
-    DeleteMsgPort(reply);
+    nd_reply_delete(reply);
     return result;
 }
 /* Only send configured queries. A command returning no RESULT must not
@@ -567,6 +667,7 @@ int main(int argc, char **argv)
         }
     }
     panel_close(&panel);
+    music_rexx_close();
     nd_client_close(&client);
     if (RexxSysBase) CloseLibrary((struct Library *)RexxSysBase);
     CloseLibrary(GadToolsBase);

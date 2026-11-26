@@ -13,6 +13,9 @@
 #include "nd_hass_room_native.h"
 #include "nd_option_runtime.h"
 #include "nd_list.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct RoomCache;
 struct Room {struct NDHassClient client;struct NDHassAggregate *work;struct RoomCache *shared;unsigned long generation,published,revision,since_refresh,shared_age,requests,heartbeat;int shared_slot;unsigned int poll_interval;struct NDHassRoomData shown;char area[96],label[32],name[96],source[32],problem[96];unsigned long wait,age;unsigned int interval;int active,checked,total,offset,result,valid,dirty,fresh,sample;};
 static void begin(struct Room *r)

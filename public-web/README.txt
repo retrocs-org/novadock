@@ -22,6 +22,7 @@ includes/plugin_catalog.php.
 
 CONTENTS
   index.php        Home page
+  changelog.md     Full version history, synchronized from ../CHANGELOG.md
   features.php     Dock features and the application screenshot gallery
   marketplace.php  Plugin and theme catalogs; future community additions
   plugins.php      Redirect for older links
@@ -107,3 +108,6 @@ AUTOMATIC RELEASE DATA
   allow_url_fopen with working certificate trust. The site directory may remain
   read-only; the PHP user only needs access to its system temporary directory.
   The Source page only explains obtaining, compiling and installing the code.
+
+Run python3 tools/release_notes.py --write from the project root after editing
+CHANGELOG.md. The release checks reject a stale public-web/changelog.md.

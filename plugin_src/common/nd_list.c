@@ -15,6 +15,9 @@
 #include <string.h>
 #include <ctype.h>
 #include "nd_list.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct IntuitionBase *IntuitionBase;struct Library *GadToolsBase;struct GfxBase *GfxBase;
 static int users;
 struct NDList {struct Screen *screen;struct Window *win;APTR vi;struct Gadget *gadgets,*last,*list,*filter,*buttons[9];char button_text[9][24];unsigned int button_count;int following;struct TextAttr font;struct List labels;struct Node nodes[ND_LIST_MAX];char rows[ND_LIST_MAX][160],query[80],base_title[80],title[112];int map[ND_LIST_MAX],count,shown,selected;ULONG seconds,micros;};

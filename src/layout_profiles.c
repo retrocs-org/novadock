@@ -36,7 +36,7 @@ int nd_layout_apply(struct NDConfig *target,const struct NDConfig *saved)
     if (!target || !saved || saved->count<1 || saved->count>ND_MAX_ITEMS)
         return 0;
     target->side=saved->side;
-    target->position=saved->position;
+    target->position=saved->position;target->position_offset=saved->position_offset;
     target->font_mode=saved->font_mode;
     target->label_mode=saved->label_mode;
     target->item_size=saved->item_size;
@@ -44,6 +44,7 @@ int nd_layout_apply(struct NDConfig *target,const struct NDConfig *saved)
     if (!nd_config_set_theme(target,nd_config_theme_id(saved)))
         target->theme=saved->theme;
     target->shape=saved->shape;
+    target->hover_magnification=saved->hover_magnification;
     target->tile_width=saved->tile_width;
     target->tile_height=saved->tile_height;
     target->gap=saved->gap;

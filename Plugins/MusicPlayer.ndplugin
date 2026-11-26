@@ -1,0 +1,10 @@
+NOVADOCK_ID=MUSIC
+NOVADOCK_NAME=MUSICPLAYER
+NOVADOCK_PROGRAM=MusicPlayer
+NOVADOCK_VERSION=0.4.1
+NOVADOCK_AUTHOR=NovaDock
+NOVADOCK_DESCRIPTION=Control supported Amiga music players, with theme-aware idle artwork and live playback controls.
+NOVADOCK_LICENSE=MIT
+NOVADOCK_FEATURES=click,media,artwork
+NOVADOCK_VIEW=METER
+NOVADOCK_ABI=5

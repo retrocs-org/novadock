@@ -15,4 +15,5 @@ size_t fread(void*,size_t,size_t,FILE*); size_t fwrite(const void*,size_t,size_t
 int remove(const char*); int rename(const char*,const char*); int fflush(FILE*); int ferror(FILE*); int feof(FILE*);
 int fseek(FILE*,long,int); long ftell(FILE*); int sscanf(const char*,const char*,...); int puts(const char*); int putchar(int);
 int getc(FILE*); int ungetc(int,FILE*); void rewind(FILE*);
+int snprintf(char*,size_t,const char*,...); int fscanf(FILE*,const char*,...);
 #endif

@@ -10,6 +10,9 @@
 #include <string.h>
 #include <stdio.h>
 #include "nd_sensor_native.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct ExpansionBase *ExpansionBase=NULL;
 unsigned long nd_sensor_now(void)
 {struct DateStamp d;DateStamp(&d);return (unsigned long)d.ds_Days*86400UL+(unsigned long)d.ds_Minute*60UL+(unsigned long)d.ds_Tick/50UL;}

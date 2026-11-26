@@ -289,7 +289,7 @@ owns it after either deadline.
 `ND_CONTROL_DIAGNOSTICS_RESET` starts a new measurement baseline. It clears
 telemetry totals and per-plugin diagnostic counts, but deliberately retains
 plugin liveness timestamps, graph history, online state, watchdog retry/backoff
-state and configuration. The Preferences Diagnostics page can also save its
+state and configuration. The Preferences Support page can also save its
 current human-readable rows to `RAM:NovaDock-Diagnostics.txt`; this export is
 local to Preferences and does not add another control-port message format.
 
@@ -496,7 +496,7 @@ remain normal readable strings. No packet layout or service-port change is neede
 After a normal update negotiates host capabilities,
 `nd_client_notify(client, title, details, severity)` can add a notice to the
 ALERTS session history. Severity is 0 for information, 1 for warnings and 2
-for errors. Keep details within 31 characters and omit credentials.
+for errors. The legacy packet carries 31-character title/body previews. Current SDK clients negotiate the extended notice format described below. Omit credentials.
 
 OR the returned event bits into the normal update result so a simultaneous
 click or settings action is retained. Read extended actions through
@@ -506,3 +506,15 @@ on meaningful transitions rather than on every sample.
 
 Host capability flags remain present on badge and notification replies as
 well as status updates. These replies do not revoke negotiated artwork support.
+
+Plugin display names and tile labels are shown in uppercase, including names
+from third-party manifests. Executable paths, plugin IDs, live values and
+unrelated captions retain their original bytes.
+
+### Long notices (NovaDock 0.6)
+
+A host sets `ND_EVENT2_HOST_LONG_NOTICE` only when it accepts `ND_MSG_NOTICE_LONG`. That command uses an unchanged `NDExtMessage` v5 prefix followed by `char title[81]` and `char text[513]`. Validate the entire `NDNoticeMessage` length before reading the tail, and terminate both fields within their bounds. Titles carry up to 80 characters and bodies up to 512 characters in ISO-8859-1. `nd_client_notify()` negotiates this automatically; older hosts receive the original `ND_MSG_NOTICE` preview packet. Existing message versions and the legacy history-control preview layout remain unchanged. Full bounded text participates in duplicate detection and is forwarded to AmiNotis when enabled.
+
+## Artwork size policy
+
+Plugins with artwork must support Tiny and Normal (large) for every emitted state, including animation, busy, unknown/disconnected and sad/error states. Scalable 32×32 bank frames may serve both sizes; icons must remain recognizable, with readings and badges clear of the artwork. Do not leave a blank or text-only Tiny fallback. See [the SDK requirements](PLUGIN_SDK_ARTWORK.md#required-tiny-and-normal-artwork-coverage) for packaging and mandatory host/native validation.

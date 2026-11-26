@@ -38,6 +38,9 @@ else
 fi
 
 required_binaries="
+SupportLog
+SupportReport
+Plugins/Preferences
 NovaDock
 NovaDockPrefs
 MakeIcon
@@ -60,6 +63,7 @@ Plugins/MusicLibrary
 Plugins/Sensors
 Plugins/Christmas
 Plugins/Aquarium
+Plugins/Pet
 Plugins/Places
 Plugins/Saver
 Plugins/Aminet
@@ -67,9 +71,6 @@ Plugins/Download
 Plugins/System
 Plugins/HASS
 Plugins/Actions
-Plugins/AmIRC
-Plugins/AmiRocket
-Plugins/Alerts
 Plugins/Shelf
 Plugins/Logs
 Plugins/Watch
@@ -88,6 +89,7 @@ Plugins/Mixer
 Plugins/Screenshot
 Plugins/ScreenMode
 Plugins/Script
+Plugins/AmiNotis
 Plugins/Timer
 Plugins/Notes
 Plugins/Weather
@@ -116,6 +118,15 @@ done
 "$PYTHON" "$project_root/tools/generate_info_icons.py"
 # Remove retired files when refreshing an existing staging drawer.
 rm -f "$destination/Plugins/Roadshow" "$destination/Plugins/Roadshow.info" "$destination/Plugins/Roadshow.ndplugin"
+# Retire the former notification integrations in refreshed staging drawers.
+rm -f "$destination/Plugins/Alerts" "$destination/Plugins/Alerts.info" "$destination/Plugins/Alerts.ndplugin"
+rm -rf "$destination/Plugins/Alerts.assets"
+rm -f "$destination/Plugins/AmIRC" "$destination/Plugins/AmIRC.info" "$destination/Plugins/AmIRC.ndplugin"
+rm -rf "$destination/Plugins/AmIRC.assets"
+rm -f "$destination/Plugins/AmiRocket" "$destination/Plugins/AmiRocket.info" "$destination/Plugins/AmiRocket.ndplugin"
+rm -rf "$destination/Plugins/AmiRocket.assets"
+rm -f "$destination/Rexx/NovaDockNotify.amirx"
+
 cp -p "$project_root"/Plugins/*.info "$destination/Plugins/"
 
 # Copy all self-describing plugin manifests, including optional components.
@@ -127,6 +138,8 @@ for assets in "$project_root"/Plugins/*.assets; do
 done
 "$PYTHON" "$project_root/tools/generate_hass_device_icons.py" --clean-legacy "$destination/Icons"
 "$PYTHON" "$project_root/tools/generate_plugin_status_art.py" --clean-legacy "$destination/Icons"
+
+cp -p "$project_root/SupportReport.info" "$destination/SupportReport.info"
 
 # Workbench entry points and the optional in-Amiga installer.
 cp -p "$project_root/NovaDock.info" "$destination/NovaDock.info"
@@ -163,8 +176,10 @@ for extra in Aminet-parser-LICENSE.txt README.md LICENSE BitSkim-icon-LICENSE.tx
 done
 
 mkdir -p "$destination/Rexx"
-cp -p "$project_root"/Rexx/*.amirx "$destination/Rexx/"
-cp -p "$project_root"/Rexx/*.rexx "$destination/Rexx/"
+for rexx_script in "$project_root"/Rexx/*.amirx "$project_root"/Rexx/*.rexx; do
+    [ -f "$rexx_script" ] || continue
+    cp -p "$rexx_script" "$destination/Rexx/"
+done
 
 # Launcher artwork used by the stock configuration. PNG authoring sources are
 # deliberately omitted from this runnable staging directory.
@@ -172,14 +187,21 @@ for icon in "$project_root"/Icons/*.iff; do
     cp -p "$icon" "$destination/Icons/"
 done
 
-# Themes are colour configuration at runtime. Copy only the files NovaDock
-# reads; graphic backdrop sources are not part of the current theme system.
+# Themes include their configuration and optional runtime ILBM strips.
 for theme_directory in "$project_root"/Themes/*; do
     if [ -f "$theme_directory/theme.cfg" ]; then
         theme_name=$(basename "$theme_directory")
         mkdir -p "$destination/Themes/$theme_name"
         cp -p "$theme_directory/theme.cfg" \
             "$destination/Themes/$theme_name/theme.cfg"
+        if [ -f "$theme_directory/Images/Backdrop.iff" ]; then
+            mkdir -p "$destination/Themes/$theme_name/Images"
+            for piece in Backdrop.iff BackdropLeft.iff BackdropRight.iff; do
+                if [ -f "$theme_directory/Images/$piece" ]; then
+                    cp -p "$theme_directory/Images/$piece" "$destination/Themes/$theme_name/Images/"
+                fi
+            done
+        fi
     fi
 done
 

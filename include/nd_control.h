@@ -4,10 +4,14 @@
  * caller must keep packet/reply port alive until dock replies. */
 #include <exec/types.h>
 #include "nd_alerts.h"
+#include "nd_aminotis.h"
 #include <exec/ports.h>
 #define ND_CONTROL_PORT "NovaDock.Control.1"
 #define ND_CONTROL_MAGIC 0x4e444354UL /* 'NDCT' */
 #define ND_CONTROL_VERSION 1U
+#include "nd_plugin_support.h"
+#define ND_CONTROL_PLUGIN_RESOURCES 17U
+#define ND_RESOURCE_PAGE 8
 #define ND_CONTROL_RELOAD 1U
 #define ND_CONTROL_QUIT 2U
 #define ND_CONTROL_DIAGNOSTICS 3U
@@ -25,6 +29,8 @@
 #define ND_CONTROL_SAVE_FLUSH 10U
 #define ND_CONTROL_SAVE_LOCK 11U
 #define ND_CONTROL_SAVE_UNLOCK 12U
+#define ND_CONTROL_SUPPORT_MARK 16U /* timestamp a reproduction step */
+#define ND_CONTROL_SUPPORT_FLUSH 15U /* apply support settings, flush bounded RAM capture */
 #define ND_CONTROL_ALERTS 14U /* bounded history: list, acknowledge or clear */
 #define ND_CONTROL_PLUGIN_HEALTH 13U /* selected-instance, read-only status */
 #define ND_DIAGNOSTIC_MAX_PLUGINS 12
@@ -113,6 +119,29 @@ struct NDDiagnosticsSnapshot {
     ULONG saves_started,saves_completed,saves_failed,saves_coalesced;
     ULONG save_last_ticks,save_total_ticks,save_env_ticks,save_envarc_ticks;
     UWORD save_env_ok,save_envarc_ok;
+    UWORD support_version,support_level,support_persist,support_reserved;
+    ULONG support_queued,support_dropped,support_errors;
+    UWORD viewport_version,viewport_pending;
+    WORD viewport_left,viewport_top,viewport_width,viewport_height;
+    LONG viewport_scroll_x,viewport_scroll_y;
+    ULONG counter_epoch; /* changes on restart or diagnostics Reset */
+    UWORD grip_version,dock_position;
+    WORD grip_left,grip_top,grip_width,grip_height;
+    UWORD render_version,frame_interval_ms;
+    ULONG frame_average_us,frame_peak_us,frame_samples;
+    ULONG hover_cache_bytes,hover_cache_budget,hover_cache_evictions;
+    UWORD aminotis_version,aminotis_enabled;
+    struct NDAmiNotisStats aminotis;
+    UWORD async_version,icon_jobs,icons_ready,launch_jobs;
+};
+struct NDPluginResourceRow {
+ char id[20],label[32];struct NDPluginSupportStats stats;
+ ULONG age_ticks,cpu_hits,cpu_samples;UWORD online,stale,cpu_valid,reserved;
+};
+struct NDControlPluginResourcesMessage {
+ struct NDControlMessage control;UWORD operation,offset,count,total;
+ ULONG sample_remaining,sample_age;
+ struct NDPluginResourceRow rows[ND_RESOURCE_PAGE];
 };
 struct NDControlPluginHealthMessage {
     struct NDControlMessage control;

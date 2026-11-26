@@ -1,10 +1,10 @@
 @database NovaDock.guide
-@$VER: NovaDock.guide 0.5 (21.11.2026)
+@$VER: NovaDock.guide 0.6 (24.11.2026)
 @author "NovaDock contributors"
 @(c) "Copyright 2026 NovaDock contributors, MIT licence"
-@node Main "NovaDock 0.5 manual"
+@node Main "NovaDock 0.6 manual"
 
-@{b}NovaDock 0.5@{ub}
+@{b}NovaDock 0.6@{ub}
 A lightweight, extensible dock for Classic AmigaOS Workbench.
 
 Select a topic. Press Help in any NovaDock Preferences window to
@@ -15,6 +15,7 @@ return to this manual.
   @{" Getting started and installation " link USING_NOVADOCK}
   @{" Launchers and icons " link LAUNCHERS_AND_ICONS}
   @{" Responsive settings and diagnostics " link RESPONSIVE_SETTINGS}
+  @{" Support recordings and reports " link DIAGNOSTICS}
   @{" Auto-hide and the dock menu " link AUTOHIDE_AND_DOCK_MENU}
   @{" Drawer popups " link DRAWER_POPUPS}
   @{" Removable media " link REMOVABLE_MEDIA}
@@ -27,9 +28,8 @@ return to this manual.
 
   @{" Weather " link WEATHER_PLUGIN}
   @{" Home Assistant " link HASS_PLUGIN}
-  @{" AmIRC " link AMIRC_PLUGIN}
-  @{" AmiRocket " link AMIROCKET_PLUGIN}
-  @{" Alerts " link ALERTS_PLUGIN}
+  @{" AmiNotis inbox " link AMINOTIS_PLUGIN}
+  @{" Notification service transition " link NOTIFICATION_MIGRATION}
   @{" Shelf " link SHELF_PLUGIN}
   @{" Watch " link WATCH_PLUGIN}
   @{" Logs " link LOGS_PLUGIN}
@@ -62,6 +62,7 @@ return to this manual.
   @{" Hardware sensors " link SENSORS_PLUGIN}
   @{" ACTIONS " link ACTIONS_PLUGIN}
   @{" AQUARIUM " link AQUARIUM_PLUGIN}
+  @{" PET " link PET_PLUGIN}
   @{" DOWNLOAD " link DOWNLOAD_PLUGIN}
   @{" SYSTEM " link SYSTEM_PLUGIN}
   @{" PLACES " link PLACES_PLUGIN}
@@ -73,6 +74,8 @@ return to this manual.
   @{" Plugin SDK quick start " link PLUGIN_SDK_QUICKSTART}
   @{" Creating plugin settings windows " link PLUGIN_SDK_SETTINGS}
   @{" Plugin-owned artwork " link PLUGIN_SDK_ARTWORK}
+  @{" Plugin diagnostics policy " link PLUGIN_SDK_DIAGNOSTICS}
+  @{" Testing plugins before packaging " link PLUGIN_QA}
   @{" Plugin protocol " link PLUGIN_API}
   @{" Plugin manifests " link PLUGIN_MANIFEST}
   @{" Plugin settings " link PLUGIN_SETTINGS}
@@ -91,18 +94,19 @@ Source:  github.com/retrocs-org/novadock
 ================================
 
 @{b}Sections@{ub}
-  @{" Install, update or remove " link USING_NOVADOCK 22}
-  @{" Start and stop " link USING_NOVADOCK 58}
-  @{" First use " link USING_NOVADOCK 70}
-  @{" Add and arrange tiles " link USING_NOVADOCK 86}
-  @{" Small screens " link USING_NOVADOCK 104}
-  @{" Save settings " link USING_NOVADOCK 117}
-  @{" Update notifications (0.4) " link USING_NOVADOCK 125}
-  @{" Help and development " link USING_NOVADOCK 177}
-  @{" Classic icon colours " link USING_NOVADOCK 194}
-  @{" Warp1260 CPU controls (0.4) " link USING_NOVADOCK 203}
-  @{" Plugin runtime health " link USING_NOVADOCK 241}
-  @{" Additional 0.5 tools " link USING_NOVADOCK 251}
+  @{" Install, update or remove " link USING_NOVADOCK 23}
+  @{" Start and stop " link USING_NOVADOCK 59}
+  @{" First use " link USING_NOVADOCK 71}
+  @{" Add and arrange tiles " link USING_NOVADOCK 152}
+  @{" Small screens " link USING_NOVADOCK 170}
+  @{" Save settings " link USING_NOVADOCK 183}
+  @{" Update notifications (0.4) " link USING_NOVADOCK 191}
+  @{" Help and development " link USING_NOVADOCK 243}
+  @{" Classic icon colours " link USING_NOVADOCK 260}
+  @{" Warp1260 CPU controls (0.4) " link USING_NOVADOCK 269}
+  @{" Plugin runtime health " link USING_NOVADOCK 307}
+  @{" Additional 0.5 tools " link USING_NOVADOCK 317}
+  @{" Sending a support report " link USING_NOVADOCK 324}
 
 NovaDock is an application dock for Classic AmigaOS Workbench 3.x. It keeps
 applications, drawers, disks and useful plugin controls within easy reach.
@@ -142,8 +146,8 @@ The standard locations are:
 
 The installer adds startup entries and the required assignments. Help,
 translations and settings keep their standard locations even when you choose
-custom application or shared-data drawers. German and Swedish translations
-follow the language selected in Locale preferences.
+custom application or shared-data drawers. Danish, German, Italian and
+Swedish translations follow the language selected in Locale preferences.
 
 @{b}Start and stop@{ub}
 --------------
@@ -160,14 +164,79 @@ application.
 @{b}First use@{ub}
 ---------
 
-A fresh configuration uses the Nord theme and seven tiles: System, Shell,
-Music, Trash, CPU, RAM and Clock. Existing installations retain their
-layout.
+A fresh configuration uses the Nord theme and eight tiles: System, Shell,
+Music, Trash, CPU, RAM, Clock and Preferences. Existing installations retain
+their layout.
 
 Click a launcher to open its application or drawer. Plugin clicks perform
 their own actions: the clock opens a calendar, Notes opens its collection,
 SHOT takes a screenshot and MODES opens the resolution picker. CPU and RAM
 clicks switch between their meter and graph views.
+
+Labels apply to application, drawer and plugin captions. @{b}Always@{ub} keeps every
+name at the bottom. @{b}Hover@{ub} shows only the focused tile's name: at the bottom
+with magnification disabled, or in a caption bubble above the tile when
+magnification is enabled. @{b}Hidden@{ub} suppresses names. Status values, controls,
+meters and badges remain visible.
+
+Long captions use an ellipsis rather than cutting off letters. Preferences
+and MusicPlayer use the shorter names Prefs and Music when space is tight.
+Full names remain available in floating Hover captions and enabled tooltips.
+
+Normal artwork shares a 48-pixel area while retaining its proportions.
+Plugin artwork ignores unused transparent padding; all animation states
+share one envelope so their size stays steady. Notification badges and
+running dots follow the same artwork anchors.
+
+Plugin health markers appear at the top-left of the artwork: an hourglass
+means loading, an outlined minus means offline, a question mark means
+unavailable or setup is required, and an exclamation mark means an error.
+Tooltips explain the state, and Plugins shows corresponding health
+information. These markers are separate from notification counts and
+running-app dots. Healthy idle, empty and zero readings do not produce an
+error marker. A recovered plugin clears its marker on the next update.
+
+The magnification background refreshes when nearby windows move or close,
+including while you hover over a tile or its tooltip. Refresh remains
+deferred during dragging, popup menus and dock keyboard control.
+
+CPU and RAM meter views use processor and memory-module artwork with live
+readings. Digital Clock uses a clock display; analogue Clock and graph views
+retain their own displays. Running-app dots sit below the artwork and follow
+it during magnification.
+
+@{b}Colourful icons@{ub} gives bundled artwork recognizable colours: a purple
+MusicPlayer, blue Preferences, green Trash and circuit boards, an amber
+digital Clock, and a blue Network interface. Third-party artwork keeps its
+original RGB colours. Turn it off to follow the theme. Launcher artwork
+keeps its own colours in either mode. The preview and live dock share the
+same icon palettes. Appearance groups its controls under Layout, Icons and
+labels, Background and effects, and Behaviour on larger screens; smaller
+screens keep a compact form. Network shows separate incoming and outgoing
+packet rates inside its interface icon, and retains its existing graph view.
+
+@{b}Always on top@{ub}, @{b}Auto hide@{ub} and @{b}Hide delay@{ub} are in Appearance. Hide delay is
+1-60 seconds and is enabled when Auto hide is on. With Always on top off,
+application windows stay above the dock. With it on, the topmost layer
+follows the visible shelf and magnified artwork instead of reserving an
+invisible rectangle above it.
+
+The @{b}Tooltips@{ub} switch in Appearance controls hover popups for both plugins and
+normal launchers independently of these captions. Popups sit close to the
+current artwork, including magnified widgets.
+
+@{b}Transparency %@{ub} accepts 0-100: zero keeps an opaque background and 100 shows
+only the desktop behind the tiles. RTG screens use cached colour blending;
+palette screens use an ordered transparency mask. The desktop snapshot
+refreshes after startup, when the dock window is rebuilt and when nearby
+windows move or close. Capture waits until a window drag ends. Icons and
+labels stay opaque.
+
+@{b}macOS Modern@{ub} provides a translucent rounded shelf; @{b}Mac OS X Glass@{ub} adds a
+sloping reflective shelf. Their transparency defaults can be adjusted in
+Appearance. Preferences is now a theme-aware plugin; the original default
+launcher upgrades in place. Idle MusicPlayer artwork follows the theme too.
+All plugin widgets, including Eyes, support hover magnification.
 
 Hover over a tile for its tooltip. Right-click a tile for its actions,
 settings and removal. Plugin help pages explain extra controls and software
@@ -215,8 +284,8 @@ configuration or use the built-in defaults.
 @{b}Update notifications (0.4)@{ub}
 --------------------------
 
-Open @{b}Preferences -> Update@{ub}, between Diagnostics and About. Both checkboxes
-are off on new installations and when older configurations have no update
+Open @{b}Preferences -> Update@{ub}, between Support and About. Both checkboxes are
+off on new installations and when older configurations have no update
 opt-in:
 
   * @{b}Check for updates on startup@{ub} checks once when the network is available.
@@ -334,7 +403,7 @@ Reinstall the complete plugin package, then reopen Preferences.
 Open Preferences -> Plugins, select a dock instance and click Refresh to
 check its runtime status. The details distinguish a missing heartbeat from
 setup, connection and dependency problems, and suggest a next step. Check
-Diagnostics for unresponsive processes and AmiHASSPrefs for HASS connection
+Support for unresponsive processes and AmiHASSPrefs for HASS connection
 errors. Empty collections, idle tools and lights reporting off are normal
 states.
 
@@ -344,6 +413,40 @@ states.
 BENCH, QR, MOON and COLOUR are available under Add Item -> Plugin. See the
 @{"benchmark" link BENCH_PLUGIN}, @{"QR" link QR_PLUGIN}, @{"moon" link MOON_PLUGIN} and @{"colour" link COLOUR_PLUGIN} chapters for use, settings and limits. HASS
 Type room adds read-only room summaries through AmiHASS; see @{"HASS" link HASS_PLUGIN}.
+
+@{b}Sending a support report@{ub}
+------------------------
+
+Open Preferences > Support > Create report. Recording starts automatically
+for 60 seconds; use NovaDock to demonstrate the problem. Logs, plugin CPU
+estimates and tracked RAM are gathered for you, and prior logging settings
+are restored. Choose Continue now to keep a partial recording, or Use
+existing logs after a crash you cannot repeat. Then choose the kind of
+problem and describe it.
+
+Use your own words on the What happened page. The questions are optional and
+an example follows the kind of problem you chose. The final page lists
+detected system details. Choose Save report to pick where the report should
+go; cancelling the chooser returns to review and keeps your answers.
+
+If C:LhA or a LhA program beside SupportReport is available, the report is
+saved as one .lha archive. Otherwise choose a drawer and NovaDock saves a
+new report folder there. If compression fails, the uncompressed folder is
+retained. Send the saved archive or all the files in the report folder to
+support. Nothing is uploaded automatically.
+
+Fresh installations use Nord, a rounded artwork background, colourful icons,
+Always labels and 100% magnification with Animate on. Always on top and Auto
+hide start off. Updating an existing installation retains its saved
+preferences.
+
+Create report enables detailed disk tracing automatically. For an
+intermittent crash before a report is started, use Advanced > Logging to
+enable Detailed trace and Save logs to disk ahead of time. Disk logs survive
+a dock restart and a reboot; RAM logs do not survive reboot. The final
+buffered events may be lost in a crash. Reports include both available RAM
+logs and disk logs (named with -disk), plus their previous rotation, so a
+fresh log after restart cannot hide the earlier disk record.
 @endnode
 
 @node LAUNCHERS_AND_ICONS "Launchers and icons"
@@ -356,10 +459,10 @@ Type room adds read-only room summaries through AmiHASS; see @{"HASS" link HASS_
   @{" Text configuration " link LAUNCHERS_AND_ICONS 59}
   @{" Unified Launcher Action " link LAUNCHERS_AND_ICONS 78}
   @{" Bundled icons " link LAUNCHERS_AND_ICONS 136}
-  @{" Installation or upgrades " link LAUNCHERS_AND_ICONS 173}
-  @{" Dock context menu and direct manipulation (NovaDock 0.2) " link LAUNCHERS_AND_ICONS 183}
-  @{" Tooltips, Workbench drops and ARexx " link LAUNCHERS_AND_ICONS 281}
-  @{" Stack, quoting and running applications " link LAUNCHERS_AND_ICONS 287}
+  @{" Installation or upgrades " link LAUNCHERS_AND_ICONS 192}
+  @{" Dock context menu and direct manipulation (NovaDock 0.2) " link LAUNCHERS_AND_ICONS 202}
+  @{" Tooltips, Workbench drops and ARexx " link LAUNCHERS_AND_ICONS 300}
+  @{" Stack, quoting and running applications " link LAUNCHERS_AND_ICONS 306}
 
 NovaDock supports separate @{b}application/command@{ub} launchers and @{b}Workbench
 folder/drawer@{ub} launchers. Both use the optional third field for a custom
@@ -494,6 +597,25 @@ by an unsuccessful click.
   Games      Icons/Games.iff      Game drawers or launchers
   Internet   Icons/Internet.iff   Network/browsers
   Tools      Icons/Tools.iff      Configuration/utilities
+
+@{b}Tilt icon set@{ub}
+
+Forty more icons in the Icons drawer are drawn in a classic late-90s desktop
+style: objects tilted slightly towards the viewer, a bold dark outline, a
+light top face with darker sides, and bright colours. They are original
+NovaDock artwork, generated by tools/generate_tilt_icons.py, and share one
+16-colour palette so the icon gallery needs few extra pens.
+
+Folder, HardDisk, Floppy, CD, Trash, Settings, Clock, User, Chat, Notes,
+Paint, Picture, Speaker, Keyboard, Joystick, Mouse, Globe, Server, Database,
+Lock, Key, Archive, Calculator, Clipboard, Battery, Power, Cloud, Weather,
+Rocket, Chip, Bug, Help, Info, Headphones, Puzzle, Trophy, Coffee, Bell,
+Pencil and Script.
+
+Use them like any bundled icon, for example
+LAUNCH=Paint|Work:DPaint/DPaint|Icons/Paint.iff, or pick them by name in the
+@{b}Tile icon@{ub} gallery of plugins that offer one (Games, Shelf, Actions, Music
+Library).
 
   * 32 x 32, @{b}IFF ILBM@{ub} 4 planes (16 indexed colors), transparent color 0.
   * Read directly on AmigaOS 3.0+ by the included portable IFF parser.
@@ -671,10 +793,11 @@ tiles retain their compact artwork area and central placement.
 ===================================
 
 @{b}Sections@{ub}
-  @{" Status dots " link RESPONSIVE_SETTINGS 50}
-  @{" Recovery and low-resource preset " link RESPONSIVE_SETTINGS 64}
-  @{" Preferences startup and preview backups " link RESPONSIVE_SETTINGS 85}
-  @{" Cached plugin inventory in 0.5 " link RESPONSIVE_SETTINGS 114}
+  @{" Status dots " link RESPONSIVE_SETTINGS 51}
+  @{" Recovery and low-resource preset " link RESPONSIVE_SETTINGS 65}
+  @{" Preferences startup and preview backups " link RESPONSIVE_SETTINGS 86}
+  @{" Cached plugin inventory in 0.5 " link RESPONSIVE_SETTINGS 115}
+  @{" Support logging and traces " link RESPONSIVE_SETTINGS 145}
 
 Moving, adding and removing dock items, switching the CPU/RAM view, and
 changing folder view/sort update the dock immediately. Rapid edits share an
@@ -693,7 +816,7 @@ with the background writer. Tile edits are refused briefly while Preferences
 owns that lease. Saved configuration files retain the existing validation,
 backup and known-good recovery handling. Manual external writes made during
 a pending dock save do not participate in this coordination; use Preferences
-or wait until Diagnostics reports no pending changes.
+or wait until Support reports no pending changes.
 
 Quit flushes the latest edits before removing the dock's public ports. If a
 save fails or takes longer than the shutdown wait, the dock stays running
@@ -701,7 +824,7 @@ and shows a message so the unsaved changes can be inspected or retried.
 SaveConfig must stay beside the NovaDock executable; the installer copies it
 there.
 
-Diagnostics separates these operations:
+Support diagnostics separate these operations:
 
   * @{b}Last update / Update paths@{ub}: whether the window was reused, rebuilt,
     skipped because nothing changed, or an update failed.
@@ -720,7 +843,7 @@ showing a fabricated clean-save state.
 @{b}Status dots@{ub}
 -----------
 
-Plugin process liveness is reported in Diagnostics, not as an automatic tile
+Plugin process liveness is reported in Support, not as an automatic tile
 dot. AmIRC publishes a confirmed IRC connection; Roadshow publishes its
 stack state; Directory Opus publishes whether the application is resident.
 Music uses its detected player's advertised controls. These marks follow the
@@ -734,7 +857,7 @@ existing negotiated badge API. No plugin wire ABI was changed.
 @{b}Recovery and low-resource preset@{ub}
 --------------------------------
 
-Diagnostics offers @{b}Recover settings@{ub}. Choose ENV or ENVARC and then the
+Support offers @{b}Recover settings@{ub}. Choose ENV or ENVARC and then the
 known-good or previous backup generation. NovaDock validates the selected
 file before offering to load it into the Preferences session. Existing
 session changes are replaced only after that confirmation. Use or Save
@@ -810,6 +933,184 @@ preserve uncommitted text edits and keyboard focus; an explicit Paste or
 palette Use replaces the selected input. Idle tools wait on UI/worker
 signals and keep their normal dock heartbeat, rather than running frequent
 polling timers.
+
+@{b}Support logging and traces@{ub}
+--------------------------
+
+Open @{b}Preferences > Support > Advanced... > Logging@{ub}. Choose @{b}Off@{ub}, @{b}Logging@{ub} or
+@{b}Detailed trace@{ub}. Use applies this session; Save also enables it after a
+restart. Support settings have their own ENV/ENVARC file and are independent
+of appearance previews and dock profiles. The normal installation defaults
+to Off. A separate diagnostic installer is no longer required.
+
+Logging records timing summaries about every five seconds. Detailed trace
+records summaries about every second, ordered state changes, native startup
+phases and a four-per-second heartbeat in plugin editors. Calls taking at
+least 100 ms are recorded separately. Capture covers the dock, Preferences,
+the bundled DOpus4 bridge and shared resource/activity telemetry from
+bundled plugins.
+
+@{b}Save logs to disk@{ub} queues output to the low-priority SupportLog worker in
+NovaDock:SupportLogs. The dock never waits for that worker's disk writes.
+RAM capture remains in RAM:NovaDock-Trace. Each component keeps current and
+previous files: 64 KiB per RAM log and 512 KiB per disk log, plus bounded
+retained sessions. Queues hold at most eight records per producer; a slow or
+failed writer is visible in the queued, dropped and error counters. Capture
+cannot guarantee the last queued disk record survives a power failure. RAM
+logs are lost on reboot.
+
+Use @{b}Mark event@{ub} just before or after a slow action to add a timestamped
+reproduction marker to the dock and Preferences logs. Wall-clock stamps on
+each summary correlate separate processes even after logs rotate. Start/stop
+records distinguish capture disabled or normal exit from an interrupted
+recording.
+
+Choose @{b}Create report...@{ub} to start a 60-second recording automatically.
+Reproduce the issue while the countdown runs; plugin CPU estimates, tracked
+RAM, activity counters and disk traces are gathered without extra setup.
+Previous logging settings are restored when it ends. @{b}Continue now@{ub} keeps a
+partial recording; @{b}Use existing logs@{ub} is useful after a crash that cannot be
+repeated. The previous recording and resource samples remain available
+alongside the new ones. See @{"Diagnostics" link DIAGNOSTICS} for sample fields and limitations.
+
+Double-clicking SupportReport or using SupportReport FORM opens the same
+flow. Without arguments the Shell command saves an anonymous technical
+snapshot for automated collection. @{b}Advanced... > More... > Snapshot@{ub} keeps
+the quick RAM-only text action. The collector includes current, previous and
+retained RAM and disk logs separately, including when the dock is no longer
+running. The save chooser selects the location, and LhA compression is used
+when available. No files are uploaded. The interactive form has five pages
+after recording:
+
+  1. @{b}Prepare:@{ub} choose the problem type and review the recording status.
+     Partial or existing logs are accepted; the form never claims that
+     completing a countdown proves the issue was reproduced.
+  2. @{b}Details:@{ub} optional name/email, a required short summary, frequency and
+     optional setup notes (accelerator, graphics card, network stack, etc.).
+     Next stays disabled until a non-blank summary is entered.
+  3. @{b}Description:@{ub} a large multiline text editor for up to 8191 characters,
+     with a vertical scrollbar. Text over that limit must be shortened
+     before continuing; it is never silently truncated. The system
+     texteditor.gadget supplies native editing on AmigaOS 3.2. If that class
+     is unavailable on an older installation, the wizard still allows
+     Steps/Actual on the next page.
+  4. @{b}Reproduction:@{ub} steps, timing/markers, expected/actual behaviour and
+     recent changes.
+  5. @{b}System / save:@{ub} labeled read-only fields show the detected CPU,
+     AmigaOS/Workbench version, Kickstart release, separate running Exec
+     version, NovaDock version, total/free Chip and Fast RAM, screen
+     dimensions, bitmap bit depth, display-mode ID and display-mode name.
+     Detection occurs automatically at report start; editable setup notes
+     stay separate. Unknown OS releases retain their exact Workbench library
+     version rather than guessing a marketing release; unknown Kickstart is
+     marked unavailable.
+
+Back and Next retain edits; Cancel creates no bundle. Save report writes the
+chosen details and detected system information to problem.txt beside the
+technical support.txt and logs. Nothing is sent automatically. Turn capture
+Off after a short recording to avoid unnecessary logging overhead.
+
+Automatic trace data includes build/system identification, memory, timings
+and numeric state/counters. It excludes typed text, setting values,
+credentials, window titles and configuration files. Contact and problem text
+entered deliberately in the report form is included in problem.txt.
+Collection is local and never uploads.
+
+Trace capture adds overhead, particularly Detailed trace. Turn it off after
+collecting a short reproduction and compare responsiveness with capture off.
+Use @{b}Refresh@{ub} to inspect current capture/writer health. Existing recordings
+are retained by installer updates and when capture is disabled.
+
+The capture design was also compared with the SnoopDos 3.10 source
+(https://aminet.net/util/moni/SnoopDos_Src.lha), especially buffer.c, the
+logging routines in mainwin.c, its options and roadmap. Bounded buffering,
+explicit capture controls and log lifecycle markers are useful patterns
+here. NovaDock uses its own implementation and does not patch system-wide
+DOS/library calls or copy SnoopDos functions. A separate worker can claim
+startup records while the traced process is blocked; short message transfers
+never perform disk I/O while holding the scheduler lock.
+@endnode
+
+@node DIAGNOSTICS "Support recordings and reports"
+@toc Main
+@{b}Support recordings and reports@{ub}
+==============================
+
+@{b}Create a report@{ub}
+---------------
+
+Choose @{b}Preferences > Support > Create report...@{ub}. A 60-second recording
+starts automatically. Use NovaDock to demonstrate the problem while the
+countdown runs. Detailed tracing, disk logs and repeated five-second plugin
+CPU and tracked-allocation samples are collected automatically. Your
+previous logging settings are restored when recording ends, even if the dock
+restarts. An expiry lease restores settings if the countdown helper stops
+unexpectedly while NovaDock remains running. Later manual logging changes
+take precedence.
+
+@{b}Continue now@{ub} keeps a partial recording and opens the report form. @{b}Use
+existing logs@{ub} does the same for issues that already happened, especially
+crashes that cannot safely be repeated. The previous recording and resource
+samples are retained alongside the new recording. Completed and partial
+results are labelled; missing CPU samples are shown as unavailable, never as
+zero load.
+
+Describe the problem, review the detected system details, then choose where
+to save. A fresh five-second plugin sample is gathered at save time as well.
+Reports include capture.txt, capture.previous.txt, plugin-samples.txt, and
+plugin-samples.previous.txt when available. Every sample row contains
+elapsed time, numeric plugin slot, tracked RAM, activity/I/O counters, and
+CPU hit/sample counts. These are statistical estimates of the main plugin
+task, not total process accounting or separately launched worker programs.
+
+The main Support page has Create report, Advanced, recovery, and the
+low-resource preset. @{b}Advanced...@{ub} contains manual logging, plugin activity,
+snapshots, counter reset and event markers. The temporary DOpus4 benchmark
+was removed.
+
+Disk component logs retain a 512 KB current and previous file. RAM logs use
+64 KB per file to limit memory use. Starting a new capture archives the
+preceding capture into four owned disk session slots, or two RAM slots, per
+component. The newest unfinished archived capture is protected when older
+slots are pruned. Unknown files in a slot prevent its deletion. Reports
+collect RAM and disk sessions separately. Logging must already have been
+running to capture events before a crash; data never recorded cannot be
+recovered.
+
+Magnification uses measured rendering cost to choose a 40-200 ms timer
+period. With Animate off the selected tile still jumps directly to its full
+configured size. Optional scaled icon and widget caches share an automatic
+128-1024 KB image-data budget. HOVER_CACHE_KB=128 through 8192 sets an
+explicit budget; 0 restores automatic sizing. Necessary background buffers
+are retained to preserve the pixels of windows underneath the dock. Support
+reports include frame cost, target period, cache size, budget and eviction
+count.
+
+If saving a report fails, entered answers and the last selected destination
+are retained for another attempt. Partially saved files are kept. Collection
+and LhA compression show a progress window; failed compression retains the
+uncompressed report drawer.
+
+@{b}Plugin activity@{ub}
+---------------
+
+Open @{b}Preferences > Support > Advanced... > Activity@{ub} for a paged list of
+enabled plugins, tracked RAM, a sampled CPU estimate and the latest fixed
+operation. The view starts one five-second sample; @{b}Sample 5s@{ub} repeats it.
+Measuring does not turn logging on. -- means unavailable, and + marks
+partial allocation tracking. Tracked RAM excludes libraries, stacks, code
+and graphics buffers. CPU sampling can miss short bursts and does not
+include separately launched applications.
+
+All bundled clients negotiate the same capture policy. Off sends no extra
+support packets. Logging adds bounded numeric snapshots; Detailed trace
+permits more frequent snapshots. Allocation failures, file I/O counts,
+transfer bytes, scan/cache state and user actions use fixed numeric events.
+WHDLoad includes indexing state, entry count and scan errors. SENSOR
+includes available-channel and provider counts. Aminet reports transfer
+phase and byte counts. These records use the dock's existing
+bounded/retained logs and are collected with reports. Resource snapshots and
+CPU sample counts are also included in support.txt.
 @endnode
 
 @node AUTOHIDE_AND_DOCK_MENU "Auto-hide and the dock menu"
@@ -818,12 +1119,13 @@ polling timers.
 ===========================
 
 @{b}Sections@{ub}
-  @{" Auto-hide " link AUTOHIDE_AND_DOCK_MENU 14}
-  @{" Dock-wide menu " link AUTOHIDE_AND_DOCK_MENU 42}
-  @{" Highlighting " link AUTOHIDE_AND_DOCK_MENU 108}
-  @{" Keyboard control " link AUTOHIDE_AND_DOCK_MENU 122}
-  @{" Workbench smoke checklist " link AUTOHIDE_AND_DOCK_MENU 148}
-  @{" Showing and hiding on demand " link AUTOHIDE_AND_DOCK_MENU 185}
+  @{" Auto-hide " link AUTOHIDE_AND_DOCK_MENU 15}
+  @{" Dock-wide menu " link AUTOHIDE_AND_DOCK_MENU 43}
+  @{" Highlighting " link AUTOHIDE_AND_DOCK_MENU 122}
+  @{" Keyboard control " link AUTOHIDE_AND_DOCK_MENU 136}
+  @{" Workbench smoke checklist " link AUTOHIDE_AND_DOCK_MENU 162}
+  @{" Showing and hiding on demand " link AUTOHIDE_AND_DOCK_MENU 199}
+  @{" Background reads and artwork recovery " link AUTOHIDE_AND_DOCK_MENU 236}
 
 This is a @{b}source prototype@{ub}. Portable tests and native 68k compilation pass;
 the dock has also been exercised on Workbench.
@@ -865,6 +1167,9 @@ Right-click the background/gap of the dock to open the compact dock menu:
   * Add item... (Application, Drawer / disk, installed Plugin, Spacer, or
     Command tile)
   * Preferences...
+  * Use profile @{i}name@{ui} (up to four saved profiles, other than the active one)
+  * Update profile @{i}name@{ui} (when a profile is active: saves the current layout
+    to it)
   * About NovaDock...
   * Restart NovaDock
   * Quit NovaDock
@@ -872,6 +1177,16 @@ Right-click the background/gap of the dock to open the compact dock menu:
 Click outside any dock popup to dismiss it; a separate Cancel row is not
 needed. Row count and row assignment are managed in Preferences, where the
 result can be reviewed before Use or Save.
+
+@{b}Dock profiles@{ub}
+
+A profile is a complete saved dock layout and its settings, such as "Work"
+with editors and a clock, or "Games" with WHDLoad launchers. Profiles are
+stored as ENVARC:NovaDock/Profiles/<name>.cfg. Create one with ARexx PROFILE
+SAVE Work; after that the dock menu lists it, and @{b}Use profile Work@{ub} switches
+the dock to it (the current settings become the switched-to profile). While
+a profile is active, @{b}Update profile@{ub} saves later changes back to it. Names
+have 1-24 letters, digits, spaces, _ or -.
 
 @{b}About NovaDock...@{ub} opens a small non-modal window with NovaDock's name,
 version, short description, MIT license and public website. The same shared
@@ -1021,6 +1336,39 @@ it no longer redraws needlessly five times a second.
 windows, then starts the same NovaDock program again. Saved settings are
 kept. If saving fails, the dock remains open and the restart request is
 cancelled.
+
+The @{b}Show drag bar@{ub} checkbox in Appearance adds a narrow grip at the left of a
+horizontal dock (at the top of a vertical dock). Drag the grip to move the
+dock continuously along the full usable screen edge. The complete dock stays
+on screen, including when magnification is enabled. Release to save its
+exact pixel position automatically. Appearance shows @{b}Custom@{ub} for a dragged
+position; Start, Center and End remain available as presets. Custom
+positions survive restarts and named layouts. On a smaller screen the
+position is clamped to fit. POSITION=CUSTOM and POSITION_OFFSET=137 in the
+configuration place the shelf 137 pixels from the usable edge origin (below
+the Workbench title bar for vertical docks). Right-click the grip for the
+main dock menu, including when the dock is locked. DRAG_BAR=YES enables it
+in configuration files; NO hides it. Fresh installations enable it; existing
+configurations that omit the setting retain their previous layout.
+
+@{b}Background reads and artwork recovery@{ub}
+-------------------------------------
+
+Drawer popups open immediately with @{b}Loading... (Esc cancels)@{ub} while a
+separate worker reads entries. Only visible icons are requested, with at
+most two popup icon jobs at once. Escape or clicking outside closes the
+popup without waiting for storage; replies belonging to a closed popup or
+earlier navigation are discarded. The list remains bounded to 64 visible
+entries and retains its existing sort and view settings. Empty drawers show
+(empty); unavailable drawers offer @{b}R@{ub} to retry.
+
+Choose @{b}Reload artwork@{ub} from the dock background menu after inserting a disk,
+restoring a path or replacing an icon. It reloads artwork asynchronously
+while keeping resident plugins, the layout and saved settings. Pending old
+artwork jobs cannot overwrite the new request. Launcher feedback names the
+application; failed preparation includes the DOS error when one is
+available. Successful preparation means the launch was handed off, not that
+the application has exited successfully.
 @endnode
 
 @node DRAWER_POPUPS "Drawer popups"
@@ -1300,6 +1648,9 @@ The text file accepts these keys:
     POSITION=CENTER
     FONT=TOPAZ
     LABELS=ALWAYS
+    BACKGROUND_TRANSPARENCY=0
+    DOCK_BACKGROUND=ARTWORK
+    DOCK_STYLE=FLAT
     SPACER_WIDTH=52
     SPACER_LINE=YES
     SPACER_LINE_COLOR=ACCENT
@@ -1323,16 +1674,100 @@ without allocating extra palette pens. Minimal deliberately omits these
 edges for a flat, undecorated style. BEVEL=YES draws a classic raised
 Workbench frame around the whole dock (HOVER on the upper/left edge, SUBTLE
 on the lower/right); the bundled Workbench theme sets it and every other
-theme defaults to NO. Graphic dock backdrops are intentionally unsupported
-for now. DataTypes-backed artwork still applies to individual launcher
-icons.
+theme defaults to NO. Choose @{b}Background: Artwork@{ub} in Appearance and click
+@{b}Test@{ub} to see the selected theme's artwork on the dock. The Appearance sample
+uses the same artwork while you browse themes. @{b}Solid@{ub} is the factory default
+and the low-resource preset. Use or Save applies your choice.
+
+@{b}Colourful icons@{ub} is a user override in Appearance. It preserves artwork-bank
+RGB colours instead of applying a theme's icon roles. CPU, RAM and digital
+Clock use a fixed blue/green palette in this mode. The preference is saved
+as ICON_COLOURS=COLOURFUL or THEME; selecting another theme preserves it.
+Theme mode uses separate dark and light icon inks so black text themes still
+have readable displays.
+
+@{b}Transparency %@{ub} accepts 0-100: 0 keeps the shelf opaque and 100 reveals the
+desktop. Artwork, values and captions remain opaque. RTG screens use cached
+colour blending; palette screens use an ordered mask. A theme can supply
+BACKGROUND_TRANSPARENCY, DOCK_BACKGROUND (SOLID or ARTWORK) and DOCK_STYLE
+(FLAT or GLASS). Omitted keys preserve the current preferences. GLASS adds a
+sloping horizontal shelf and reflection bands. @{b}macOS Modern@{ub} defaults to 65%
+transparency; @{b}Mac OS X Glass@{ub} defaults to 35%. Both values remain adjustable
+after selecting the theme.
+
+@{b}Magnify %@{ub} in Appearance accepts 0-100. Zero disables the effect; 100 uses
+the full magnification strength. Existing HOVER_MAGNIFICATION=YES settings
+load as 100 and NO loads as 0; saved configurations use a numeric
+percentage.
+
+With @{b}Animate@{ub} off, entering a tile immediately enlarges that tile to the
+selected @{b}Magnify %@{ub}, within the available screen space. Its size stays fixed
+as you move within the tile; moving to another tile switches the enlargement
+directly. Other tiles keep their normal sizes.
+
+@{b}Animate@{ub} (HOVER_ANIMATION=YES) enables a smooth wave around the pointer and
+makes magnified tiles grow and shrink over a few frames: each frame closes
+half of the remaining distance. The animation timer waits 40 ms on fast
+systems, and adapts up to 200 ms when frames take longer to render. It falls
+back to its normal rate as soon as tiles settle. Housekeeping uses elapsed
+time, including painting time, so changing cadence does not stretch watchdog
+or hide delays. The shipped configuration turns it on; existing
+configurations keep it off until it is ticked. On a slow 68000 leave it off,
+or check STATUS DETAIL's hover counters (see the ARexx guide).
+
+@{b}Wallpaper-matched background@{ub}
+
+@{b}Background@{ub} in Appearance offers @{b}Solid@{ub}, @{b}Artwork@{ub} and @{b}Wallpaper@{ub}
+(DOCK_BACKGROUND=WALLPAPER). Wallpaper samples the Workbench screen behind
+the dock when the dock opens and derives the shelf, tile, hover and text
+colours from its average colour: the shelf is slightly darker than a light
+desktop or lighter than a dark one, text keeps a strong contrast, and the
+theme's accent colours stay as they are. It works on palette (classic
+Workbench) screens of up to 256 colours; on RTG screens with more colours
+the theme's own colours are used. A theme with its own artwork backdrop
+takes precedence. Change the Workbench pattern and restart the dock (or
+choose @{b}Use@{ub} in Preferences) to match the new one.
+
+A horizontal or vertical dock grows along its length while hovered. In a
+multi-row layout, only the hovered row magnifies; neighbouring rows move
+aside and the shelf grows to keep them separated. Icons and their labels
+move together, and CPU, RAM, digital/analogue Clock and network meters
+enlarge with their text, meters and graphs. Neighbours move apart using
+their actual visible sizes. Growth is limited to the available screen space.
+Left/right docks expand inward; a top dock expands down and a bottom dock
+expands up. Rounded corners retain the desktop behind them while the shelf
+grows and shrinks.
+
+Pointer movement is observed through Commodities even while another window
+is active; the dock does not take focus. Queued movements are coalesced and
+stationary pointers do not repaint. The low-rate timer remains a fallback.
+Hover frames reuse cached artwork, live widget images and transparent masks.
+The extra canvas samples the desktop when the dock opens; it is refreshed
+when the window reopens. Extra bitmaps are freed on reload/close. Overflow
+docks retain a smaller in-tile effect. The factory default and low-resource
+preset set magnification to zero.
+
+A theme can include Images/Backdrop.iff plus optional
+Images/BackdropLeft.iff and Images/BackdropRight.iff. Use indexed ILBM with
+up to 16 colours and dimensions up to 96 by 96 pixels. The dock repeats the
+centre along its length, fits the artwork to its thickness, and turns it for
+a vertical dock. Both caps must be usable and fit the available length. The
+dock samples the visible Workbench pixels behind transparent end-cap corners
+when it opens or changes position or size. The sample refreshes after nearby
+windows move or close, once window dragging ends. Use an opaque centre strip
+for a continuous shelf. A missing or invalid centre falls back to Solid.
+
+For a custom theme, copy its Images drawer alongside the installed
+theme.cfg. The existing theme importer installs the configuration file.
+DataTypes-backed pictures remain available for individual launcher icons.
 
 SIDE (BOTTOM, TOP, LEFT or RIGHT), POSITION (START, CENTER or END), FONT
 (WORKBENCH, TOPAZ or BOLD) and LABELS (ALWAYS, HOVER or HIDDEN) are also
-part of a theme. They appear on the Appearance page and are applied when
-that theme is selected. The user can still adjust them afterward. Older
-custom theme files that omit one of these keys leave the current setting
-unchanged.
+part of a theme. All bundled themes default to @{b}Always@{ub} labels for
+normal-sized launchers. These settings appear on the Appearance page and are
+applied when that theme is selected. The user can still adjust them
+afterward. Older custom theme files that omit one of these keys leave the
+current setting unchanged.
 
 SPACER_WIDTH is the theme's default spacer size from 20 through 140 pixels.
 SPACER_LINE is YES or NO; SPACER_LINE_COLOR is SUBTLE, ACCENT, SECONDARY or
@@ -1359,6 +1794,8 @@ Smooth is enabled only when the user explicitly selects it in General.
 @{b}Bundled packs@{ub}
 -------------
 
+  * macOS Modern -- a rounded translucent shelf.
+  * Mac OS X Glass -- a sloping reflective shelf.
   * Mocha
   * Light
   * Workbench
@@ -1399,6 +1836,13 @@ A recommended ZIP or LHA layout is:
       Themes/
         BlueCopper/
           theme.cfg
+          Images/
+            Backdrop.iff        (optional shelf artwork)
+            BackdropLeft.iff    (optional start cap)
+            BackdropRight.iff   (optional end cap)
+
+Artwork images are indexed ILBM files of up to 96 x 96 pixels and 16
+colours, the same limits as tile icons.
 
 README.txt should include the theme name, author, license, compatible
 NovaDock version, theme ID, installation steps and uninstall steps. Theme
@@ -1410,7 +1854,10 @@ To import a pack from the UI:
   2. Open NovaDock Preferences and choose @{b}Appearance@{ub}.
   3. Select @{b}Import...@{ub} and choose the pack's theme.cfg file.
   4. NovaDock validates the file, installs it as
-     PROGDIR:Themes/<theme-id>/theme.cfg, and selects the new theme.
+     PROGDIR:Themes/<theme-id>/theme.cfg, and selects the new theme. Any
+     Images/Backdrop.iff, BackdropLeft.iff and BackdropRight.iff beside the
+     pack's theme.cfg are checked and copied too; the window title says when
+     an image was not usable and was left out.
   5. Choose @{b}Test@{ub} to preview it on the dock, then @{b}Save@{ub} when satisfied.
 
 Importing the same theme ID again updates that theme. NovaDock copies and
@@ -1420,12 +1867,29 @@ previous file if installation fails.
 For manual installation, copy the complete theme drawer below
 NovaDock:Themes/, then reopen the Appearance page.
 
+@{b}Picking a backdrop image@{ub}
+
+@{b}Import...@{ub} also offers @{b}Backdrop...@{ub}, which picks any ILBM image (up to 96 x 96
+pixels, 16 colours) as the dock's shelf artwork. For an imported theme the
+image replaces that theme's backdrop. For a bundled theme NovaDock creates
+an imported theme called @{b}Custom@{ub} from the current theme's colours, shape and
+placement, so bundled themes are never changed. The picked image becomes the
+centre piece and any end caps are removed, and @{b}Artwork@{ub} is selected as the
+background. Choose @{b}Test@{ub} to try it and @{b}Save@{ub} to keep it; @{b}Custom@{ub} can be removed
+like any imported theme.
+
 To uninstall an imported theme, select it in Appearance and choose
 @{b}Import...@{ub}; NovaDock asks whether to import another theme or remove this one.
 A theme the dock is using now, or that is saved, cannot be removed: select
 and @{b}Use@{ub} or @{b}Save@{ub} another theme first. Removal deletes the theme's theme.cfg
-and deletes its drawer only when nothing else is left in it. Bundled themes
-cannot be removed.
+and its imported Images artwork, and deletes its drawer only when nothing
+else is left in it. Bundled themes cannot be removed.
+
+When Always on top and animated magnification are enabled, newly covered
+headroom is sampled just before the dock grows. This keeps a window opened
+behind the dock visible between enlarged icons instead of restoring an old
+desktop image. The overlapping dock area is never sampled, avoiding trails
+from the dock itself. RTG tint rows reuse their existing bitmap and buffer.
 @endnode
 
 @node AREXX_AND_DROPS "ARexx, tooltips and drops"
@@ -1435,9 +1899,9 @@ cannot be removed.
 
 @{b}Sections@{ub}
   @{" Optional ARexx host " link AREXX_AND_DROPS 9}
-  @{" Tooltip behavior " link AREXX_AND_DROPS 136}
-  @{" Drag-and-drop behavior " link AREXX_AND_DROPS 154}
-  @{" Native testing checklist " link AREXX_AND_DROPS 194}
+  @{" Tooltip behavior " link AREXX_AND_DROPS 185}
+  @{" Drag-and-drop behavior " link AREXX_AND_DROPS 203}
+  @{" Native testing checklist " link AREXX_AND_DROPS 243}
 
 @{b}Optional ARexx host@{ub}
 -------------------
@@ -1494,6 +1958,55 @@ Supported commands (case insensitive):
       tile ID; "*" shows a dot and no text removes it. Works on any plugin
       tile; a plugin that sets its own badges replaces it with its next
       change. RC 5 and NOT FOUND for an unknown ID
+  @{b}GET key@{ub}
+      Returns one setting exactly as novadock.cfg stores it, for example GET
+      SIDE returns BOTTOM; plugin options use GET OPTION.CLOCK.FORMAT. RC 5
+      and UNKNOWN for an unknown key
+  @{b}SET key value@{ub}
+      Changes one global setting or plugin option, applies it like
+      Preferences' Use and saves it; returns the stored value (SET AUTO_HIDE
+      yes returns YES). A run of SETs is applied to the dock together, a
+      moment after the last one, or at once before any other command that
+      reads or changes the dock. Keys are matched without regard to case. RC
+      10 with INVALID (value refused), UNKNOWN (no such key), DOES NOT FIT
+      (the dock would not fit the screen), BUSY (Preferences is writing the
+      settings; try again) or FAILED. Tiles are changed with ADD, MOVE and
+      REMOVE, not SET
+  @{b}THEME id@{ub}
+      The same as SET THEME id for a theme this version includes (for
+      example THEME MOCHA)
+  @{b}INFO 3@{ub}
+      Returns tile 3's kind, label, command, plugin ID and state, separated
+      by vertical bars; the state is RUNNING or IDLE for launchers, ONLINE
+      or OFFLINE for plugins, otherwise -
+  @{b}SAVE@{ub}
+      Writes pending settings now instead of after the usual pause; returns
+      OK when nothing is pending, otherwise QUEUED
+  @{b}UNDO@{ub}
+      Reverts the last move or removal made in Edit mode (also on the dock
+      menu while unlocked); RC 5 and NOTHING when there is none. Locking the
+      dock ends the undo step
+  @{b}PROFILE name / PROFILE USE name@{ub}
+      Switches to the saved dock profile NAME
+      (ENVARC:NovaDock/Profiles/NAME.cfg), applies it like Preferences' Use
+      and saves it as the current settings. RC 5 and NOT FOUND if there is
+      no such profile, RC 10 and INVALID for a name that is not 1-24
+      letters, digits, spaces, _ or -. Quote a profile called Save, Use,
+      Delete or List: PROFILE "List"
+  @{b}PROFILE SAVE name@{ub}
+      Saves the current dock as profile NAME (creating or replacing it) and
+      makes it the active profile; RC 10 if it cannot be written
+  @{b}PROFILE DELETE name@{ub}
+      Deletes profile NAME; the current dock is not changed. RC 5 and NOT
+      FOUND if there is no such profile
+  @{b}PROFILE LIST@{ub}
+      Returns up to 20 saved profile names, sorted and separated by ;, for
+      example Games;Work
+  @{b}STATUS DETAIL@{ub}
+      Returns paint, hover-frame, wake and update counters since start, and
+      the current timer rate (TIMER_HZ: 5 or 1, or 10 when timer.device is
+      missing and Intuition ticks drive the dock), as NAME=value pairs, for
+      measuring performance on real hardware
   @{b}SHOW / HIDE / TOGGLE@{ub}
       Reveals the dock, collapses it to the reveal tab, or switches; TOGGLE
       returns SHOWN or HIDDEN
@@ -1818,11 +2331,11 @@ so both rain and snow remain visible.
   @{" AmiHASS framework for developers " link HASS_PLUGIN 248}
   @{" Integration checks " link HASS_PLUGIN 280}
   @{" Fan, cover and temperature controls " link HASS_PLUGIN 317}
-  @{" Per-tile refresh, display and read-only mode " link HASS_PLUGIN 347}
-  @{" Bridge compatibility " link HASS_PLUGIN 387}
-  @{" Read-only room summaries (0.5) " link HASS_PLUGIN 406}
-  @{" Media players " link HASS_PLUGIN 436}
-  @{" Locks and motorised doors " link HASS_PLUGIN 457}
+  @{" Per-tile refresh, display and read-only mode " link HASS_PLUGIN 348}
+  @{" Bridge compatibility " link HASS_PLUGIN 388}
+  @{" Read-only room summaries (0.5) " link HASS_PLUGIN 407}
+  @{" Media players " link HASS_PLUGIN 437}
+  @{" Locks and motorised doors " link HASS_PLUGIN 458}
 
 HASS connects NovaDock 0.5 to the separate AmiHASS background service. Add
 independent tiles for lights, switches, groups, scenes, scripts or sensor
@@ -1842,7 +2355,7 @@ inputs. Physical-device testing remains a separate release check.
 @{b}Connect through AmiHASS@{ub}
 -----------------------
 
-  1. Install the separate @{b}AmiHASS 0.2@{ub} package using @{b}Install@{ub}.
+  1. Install the separate @{b}AmiHASS 0.3@{ub} package using @{b}Install@{ub}.
   2. Configure AmiHASS's networking requirements (C:curl, CA certificates
      for HTTPS and your TCP/IP stack). The dock plugin itself makes no HTTP
      requests.
@@ -1972,8 +2485,8 @@ turns the light off. On/off/toggle buttons remain available.
 
 The slider appears only when AmiHASS reports brightness support. Older
 service builds without control metadata, on/off-only lights and other entity
-types keep their existing controls. Use an updated AmiHASS 0.2 service for
-dimming.
+types keep their existing controls. Use AmiHASS 0.3 for the current dimming
+implementation.
 
 The dock reads the confirmed level after a request and picks up changes made
 by other clients. The slider is disabled while awaiting a reply or while
@@ -2087,7 +2600,7 @@ read-only C example.
 @{b}Integration checks@{ub}
 ------------------
 
-The public AmiHASS 0.2/ABI 1 snapshot is recorded in
+The public AmiHASS 0.3/ABI 1 snapshot is recorded in
 plugin_src/hass/service/sdk.json, including hashes for the protocol, client
 and portable request/metadata decoder. Optional QUERY.items[] control
 metadata extends ABI 1 without changing its message size. Older replies
@@ -2133,9 +2646,10 @@ Unsupported controls are omitted.
 
 All actions still go to the Amiga AmiHASS service through structured Exec
 messages. The plugin does not connect to Home Assistant. Fan and cover
-controls require the matching updated AmiHASS 0.2 service; optional metadata
-extends the existing ABI 1 message without changing its layout. Older
-bridges leave these controls unavailable. Locks remain read-only.
+controls require AmiHASS 0.2 or newer with matching capabilities; optional
+metadata extends the existing ABI 1 message without changing its layout.
+Older bridges leave these controls unavailable. Lock actions require the
+metadata and confirmation described under Smart locks and doors below.
 
 Percentage changes submit on release. A released value or numeric/color edit
 can wait briefly for an in-flight query, with a bounded lifetime. Closing,
@@ -2194,7 +2708,7 @@ shared polling.
 @{b}Bridge compatibility@{ub}
 --------------------
 
-The tested release pair is @{b}NovaDock 0.5 with AmiHASS 0.2@{ub}. Install and
+The tested release pair is @{b}NovaDock 0.6 with AmiHASS 0.3@{ub}. Install and
 configure the bridge separately; no credentials belong in NovaDock. A
 missing service shows @{b}Start AmiHASS 0.2+ service@{ub} and connection failures
 must not retain a successful Sample data label. Newer bridges are accepted
@@ -2250,10 +2764,10 @@ bridge reports them. The default State tile display shows track information.
 Read-only tiles show metadata and Refresh but expose no mutating controls.
 
 Playback and volume commands use the public Exec-port C SDK. The updated
-AmiHASS 0.2 service owns all network calls, validates advertised
-capabilities and supplies sample media playback, volume and track changes
-for offline tests. Older service builds without media metadata safely leave
-these controls absent. Commands are not replayed after outages; volume and
+AmiHASS service owns all network calls, validates advertised capabilities
+and supplies sample media playback, volume and track changes for offline
+tests. Older service builds without media metadata safely leave these
+controls absent. Commands are not replayed after outages; volume and
 playback use confirmed readback, and track navigation waits for an updated
 state timestamp.
 
@@ -2292,193 +2806,194 @@ the capabilities are verified, its action picker offers Show controls.
 Unsupported actions are removed; failed queries leave the picker read-only.
 No Home Assistant credentials or HTTP calls are handled by the dock.
 
-These controls require the current AmiHASS 0.2 build with lock metadata.
-Older ABI 1 services remain usable for supported existing entities; missing
-lock metadata never enables an action. Integration QA uses only the bridge's
+These controls require AmiHASS 0.2 or newer with lock metadata. Older ABI 1
+services remain usable for supported existing entities; missing lock
+metadata never enables an action. Integration QA uses only the bridge's
 shared sample front-door lock and garage door, with no real lock or door
 commands.
+
+@{b}AmiHASS 0.3 compatibility@{ub}
+
+The current plugin uses the AmiHASS 0.3 SDK while retaining ABI 1 and the
+required feature handshake for compatible 0.2 services. Its existing
+controls use the updated climate step validation. A full entity-selection
+table now shows its own status and waits before retrying; authentication
+rejection points to AmiHASS credentials instead of displaying the protocol
+state name.
+
+AmiHASS 0.3 can block lock/cover opening from external clients unless its
+@{b}Script doors@{ub} setting is enabled. NovaDock still asks for local confirmation
+and shows the service refusal when that setting is off. It does not change
+the setting, send a delayed retry, or impersonate AmiHASS Dashboard. Use
+AmiHASS Preferences to choose the service policy. Code-protected devices
+stay outside NovaDock's current control UI.
+
+The new AmiHASS cameras, labels, history, attribute browsing, notifications
+and additional device types are optional future tile features. Updating the
+SDK does not add those interfaces to the current HASS popup.
+
+@{b}Offline compatibility check@{ub}
+
+Run python3 tools/run_hass_qa.py --bridge ../AmiHASS from the NovaDock
+source folder after building the paired AmiHASS service. The tool verifies
+the SDK snapshot, then runs the production NovaDock adapter against that
+service in a separate, hidden FS-UAE guest. It checks the native wire sizes,
+unconfigured status, brightness, RGB, climate, sample-lock actions,
+diagnostic pagination and service shutdown. It uses a private RAM
+configuration, shared sample entities and no network. The existing Workbench
+session stays open. Use --output <new-folder> to retain the fixture and logs
+at a chosen location.
+
+Host regression tests/test_hass_service03.py additionally covers Fahrenheit
+setpoint validation, selection-capacity backoff and recovery, authentication
+messages, additive capabilities and refusal feedback without action replay.
+AmiHASS sample mode bypasses the live door policy; those refusal replies are
+tested with simulated service messages in the host regression.
 @endnode
 
-@node AMIRC_PLUGIN "AmIRC"
+@node AMINOTIS_PLUGIN "AmiNotis inbox"
 @toc Main
-@{b}AmIRC@{ub}
-========
+@{b}AmiNotis inbox@{ub}
+==============
 
-The optional AmIRC tile shows whether AmIRC is running and connected. It can
-show connection status, your nickname, the current channel or the server
-name. A numbered badge shows pending notification events when the supplied
-hook is installed. When you are away, the caption changes to AMIRC AWAY. The
-corner dot appears only after AmIRC confirms an IRC connection. It is
-cleared while offline, disconnected, checking or unresponsive, and follows
-the dock running-indicator setting. It does not indicate whether the bridge
-process itself is running.
+@{b}Sections@{ub}
+  @{" Set up " link AMINOTIS_PLUGIN 16}
+  @{" Tile " link AMINOTIS_PLUGIN 27}
+  @{" Panel " link AMINOTIS_PLUGIN 44}
+  @{" Settings " link AMINOTIS_PLUGIN 61}
+  @{" Build " link AMINOTIS_PLUGIN 75}
 
-Right-click the dock background, choose @{b}Add@{ub}, and select @{b}AmIRC@{ub} from the
-plugins. It is supplied disabled; the six default tiles stay unchanged.
-Right-click its tile and choose @{b}Change settings...@{ub}:
+AMINOTIS shows the inbox of the separately installed AmiNotis notification
+service in the dock. It replaces the retired session-only ALERTS tile. The
+dock's own notices still reach AmiNotis through General Preferences > @{b}Send
+alerts to AmiNotis@{ub}. AMINOTIS reads the shared inbox that AmiNotis keeps for
+every application.
 
-  * @{b}AmIRC executable@{ub}: select your installed AmIRC program. This is needed to
-    start AmIRC from the tile; an already running instance can be detected
-    without setting the executable path.
-  * @{b}ARexx port@{ub}: AUTO finds an AMIRC or numbered AMIRC.n public port,
-    regardless of case. Set the exact port name to select a particular
-    instance.
-  * @{b}Display@{ub}: NICK (default), STATUS, CHANNEL, or SERVER.
-  * @{b}Refresh ticks@{ub}: 100 by default; 50 ticks is one second. Normal NovaDock
-    activity backoff also applies while idle or hidden.
+@{b}Set up@{ub}
+------
 
-Click the tile to start the selected program or restore AmIRC's window.
-Workbench launch preserves AmIRC's normal icon/tooltype startup settings.
-OFFLINE means there is no AmIRC port; DISCONNECTED means AmIRC is running
-without a server connection. SET PROGRAM asks you to select its executable.
-An unresponsive ARexx request displays NO RESPONSE; the dock continues
-running.
+  1. Install AmiNotis (https://aminotis.retrocs.org) and start its service,
+     or let it start with Workbench.
+  2. Add @{b}AMINOTIS@{ub} through NovaDock Preferences -> Organize -> Add -> Plugin.
 
-The plugin uses AmIRC's local ISCONNECTED, GETAWAYSTATE, GETMYNICK,
-GETCHANNEL, GETSERVERNAME and SHOW commands. The last command runs only when
-you click the tile, or after a click has launched AmIRC. Launching AmIRC
-uses AmIRC's existing startup preferences.
+The plugin needs no other setup. When the service is not running, the tile
+shows a sad bell with @{b}AmiNotis not running@{ub}. It checks for the service every
+five seconds and continues by itself once AmiNotis starts.
 
-The bridge uses non-blocking ARexx exchanges with at most one outstanding
-request. If a client never replies, the request remains owned by that
-client; on plugin shutdown its reply target is made non-signalling and
-retained rather than freed unsafely. This exceptional case retains one small
-request/port and one ARexx library reference. Normal replies and shutdown
-release all resources.
+@{b}Tile@{ub}
+----
 
-AmIRC is a separate application and is not bundled with NovaDock. The
-official AmIRC download (https://www.amirc.org/download) includes its
-AmigaGuide manual. Commands were checked against Documentation/AmIRC.doc in
-the official AmigaOS 68020 package
-(https://www.amirc.org/sites/default/files/amirc_39_68020.lha).
+  @{b}Bell@{ub}
+      Connected, nothing unread
+  @{b}Bell with red dot@{ub}
+      Unread notifications; the badge shows the count
+  @{b}Bell with blue Z@{ub}
+      Quiet mode (Do Not Disturb) is on, with its end time when one is set
+  @{b}Bell with sad face@{ub}
+      AmiNotis is not running, or the installed AmiNotis is too old
 
-@{b}Numbered unread alerts@{ub}
-----------------------
+The tile follows the inbox live. A parked AmiNotis watch wakes the plugin
+only when the history, unread state or quiet mode changes. It does not poll
+the service. All requests are asynchronous and bounded, so a busy or stopped
+service never holds up the dock.
 
-AmIRC 3.9 has no documented unread-counter query. NovaDock therefore counts
-@{b}Private Msg@{ub} and @{b}Highlite@{ub} event notifications received while AmIRC is not
-active. This is an unread @{b}event@{ub} count, not an exact per-channel message
-counter. If AmIRC fires both events for one message, BOTH mode counts both;
-choose PRIVATE or HIGHLIGHT if you prefer one source. No message contents or
-IRC traffic are forwarded.
+@{b}Panel@{ub}
+-----
 
-The installer places Rexx/NovaDockNotify.amirx in the NovaDock drawer. To
-connect AmIRC once:
+Click the tile to open a non-modal panel. It shows the unread and total
+counts and four notifications per page, newest first: an asterisk for
+unread, time, application, title and the start of the body. The buttons are:
 
-  1. Copy that script into your existing AmIRC Rexx drawer.
-  2. In AmIRC's @{b}Settings -> Events@{ub}, set the @{b}Private Msg@{ub} Rexx command to
-     NovaDockNotify.amirx PRIVATE.
-  3. Set the @{b}Highlite@{ub} Rexx command to NovaDockNotify.amirx HIGHLIGHT.
-  4. Save AmIRC's settings. Highlight matching uses AmIRC's existing Hilite
-     list.
+  * @{b}Newer@{ub} and @{b}Older@{ub} page through the inbox.
+  * @{b}Read all@{ub} marks the notifications you have seen as read. Anything that
+    arrives after the panel refreshed stays unread.
+  * @{b}Quiet 1h@{ub} turns on quiet mode for an hour. While quiet mode is on, the
+    button reads @{b}Quiet off@{ub}.
+  * @{b}Inbox@{ub} opens the full AmiNotis dashboard.
 
-Keep any existing event scripts by calling this script from them instead of
-replacing them. The hook quietly does nothing if the NovaDock AmIRC plugin
-is not running. It uses the originating AmIRC port, so another client cannot
-add to a tile pinned to a different port.
-
-The badge shows 1, 2, etc., capped visually at 999+. It takes priority over
-the connected dot and remains visible if you disable running-app dots.
-Returning to an AmIRC window clears the count by default. A successful click
-on the tile (AmIRC acknowledges SHOW) also clears it. A failed SHOW keeps
-it. Switching to a different AmIRC instance or closing it resets the count.
-
-@{b}Notification events@{ub} selects BOTH (default), PRIVATE, HIGHLIGHT or OFF. @{b}Clear
-alerts when AmIRC is active@{ub} defaults to YES; set NO to acknowledge only
-through the dock tile. Unread event counts are session-local, not saved.
-@endnode
-
-@node AMIROCKET_PLUGIN "AmiRocket"
-@toc Main
-@{b}AmiRocket@{ub}
-=========
-
-Add @{b}AmiRocket@{ub} using Preferences -> Organize -> Add -> Plugin. This optional
-tile starts or restores your AmiRocket client and shows its connection state
-and unread count across configured servers. It is included with NovaDock 0.4
-and has its own plugin version, initially 0.1.
+Read state, quiet mode and dismissals belong to AmiNotis, so every AmiNotis
+frontend shows the same result.
 
 @{b}Settings@{ub}
 --------
 
-  * @{b}AmiRocket executable@{ub}: select the installed client. The default is
-    SYS:Utilities/AmiRocket/AmiRocket.
-  * @{b}Client port@{ub}: AUTO finds AMIROCKET or a numbered client such as
-    AMIROCKET.2. Set the exact port to monitor a particular client. AUTO
-    chooses the first name in lexical order and prefers the unnumbered
-    client.
-  * @{b}Show unread count@{ub}: enables the badge, capped at 999+. Opening the client
-    does not clear the badge: only AmiRocket's confirmed subscription counts
-    do that.
+  @{b}Click opens@{ub}
+      Values: PANEL (the dock panel) or INBOX (the AmiNotis dashboard)
+      Default: PANEL
+  @{b}Badge counts@{ub}
+      Values: BADGE (sources that take part in badges) or UNREAD (all
+      unread)
+      Default: BADGE
+  @{b}Flash on new notifications@{ub}
+      Values: Yes or No
+      Default: No
 
-The rocket changes between disconnected, connected, unread and waiting
-states. The tooltip shows how many servers are online. A stopped client
-shows @{b}NOT RUNNING@{ub}; click to launch it. A disconnected running client can
-still be restored by clicking. Authentication and connection controls remain
-in AmiRocket.
+@{b}Build@{ub}
+-----
 
-@{b}Requirements and behaviour@{ub}
---------------------------
+The plugin is plugin_src/aminotis/aminotis.c. plugin_src/aminotis/sdk/ holds
+an unchanged copy of the AmiNotis v2 SDK. That copy is newer than the
+snapshot in src/aminotis_sdk/, which the dock uses for forwarding.
+nd_aminotis_sdk.c builds the copy with plugin resource accounting. Refresh
+the three SDK files together and update the digests in
+tests/test_aminotis_plugin.py.
 
-Requires AmiRocket's @{b}dock protocol 2@{ub} (DOCKSTATUS and SUBSCRIBE ... 2) and
-rexxsyslib.library. Native ARexx packets are sent directly; no RexxMast
-script is launched. AmiRocket itself requires AmigaOS 3.2, a 68020 or
-better, a TCP/IP stack and AmiSSL for HTTPS. This plugin adds no networking
-or TLS dependency to NovaDock.
-
-The tile receives local change notifications, coalesces them into fresh
-snapshots and also polls every ten seconds. Counts cover all configured
-servers in the selected client. AmiRocket can retain cached counts for an
-offline server while other servers remain online; these are subscription
-counts, not a complete message history or mention counter.
-
-A stale or stopped client clears the visible badge. Restarting the client
-triggers rediscovery and subscription. Only one command may be outstanding
-at a time; unanswered packets are never freed while AmiRocket might still
-reply. Up to four retired requests are retained after host replacement,
-bounding failure recovery storage. After repeated nonreplying crashes
-exhaust that bound, restart the dock. A modal client may temporarily show
-@{b}NOT RESPONDING@{ub} and recover when it replies.
-
-No chat text is sent, executed or stored by this plugin. It never reads
-account tokens. Artwork ships in Plugins/AmiRocket.assets/Artwork.ndart,
-beside its executable and manifest, and is copied by install and update.
+tools/generate_aminotis_art.py writes Plugins/AmiNotis.assets/Artwork.ndart
+and Plugins/AmiNotis.info. Run it with --check to verify both.
+plugin_src/aminotis/build.sh builds only this plugin through Makefile.cross
+and checks that the patched vbcc startup is linked.
 @endnode
 
-@node ALERTS_PLUGIN "Alerts"
+@node NOTIFICATION_MIGRATION "Notification service transition"
 @toc Main
-@{b}Alerts@{ub}
-========
+@{b}Notification service transition@{ub}
+===============================
 
-Add @{b}ALERTS@{ub} in Preferences > Organize > Add > Plugin. Its corner badge counts
-unread notifications. Click to open the native history window.
+ALERTS, AMIRC and AMIROCKET are no longer shipped or offered by NovaDock.
+The notification-focused integrations are moving to the independent AmiNotis
+service. AMINOTIS, the AmiNotis inbox tile, brings the bundled SDK-client
+inventory to 47 plugins. See @{"AMINOTIS" link AMINOTIS_PLUGIN}.
 
-The dock retains the newest 64 notifications during its current session. The
-window shows newest first, with source and elapsed session time. Previous
-and Next browse older entries. @{b}Mark read@{ub} acknowledges notifications from the
-last snapshot; arrivals after that snapshot stay unread. @{b}Clear@{ub} removes the
-history. Closing the window does not mark notifications as read.
+WATCH and LOGS remain file/log monitors. AGENDA and TIMER remain reminders.
+DOWNLOAD, AMINET, ARCHIVE and HASS retain their own functions and the
+existing notification API, ready for the future service integration.
 
-Timer expiry, ARCHIVE results, DOWNLOAD and Aminet transfers, low disk
-space, new NovaDock releases and AmiHASS connection loss/recovery feed the
-history. AmiHASS alerts begin only after a connection has succeeded. Routine
-state polling does not generate notifications. Identical consecutive notices
-within 30 seconds are coalesced. Notification text is bounded and strips
-controls.
+Older saved tile lines are retained as RETIRED_PLUGIN.<ID> migration
+metadata, with OPTION.<ID> settings preserved. Long tile definitions use
+numbered RETIRED_PLUGIN.<ID>.<chunk> fields. They are not launched, shown as
+missing plugins, or offered in Add/Plugins. Saving a profile keeps these
+settings. The installers remove only the retired managed executables,
+manifests, launch icons, artwork directories and shipped AmIRC hook from
+NovaDock's shared data. They do not remove the standalone AmIRC or AmiRocket
+applications.
 
-@{b}Edit settings > System beep for new alerts@{ub} is off by default. This uses the
-system beep and may be visual depending on your system settings. No sound
-files, network access or persistent log are required. Restarting the dock
-clears the history. Features that already show their own reminders keep
-them.
+Reference sources remain in plugin_src/alerts, plugin_src/amirc and
+plugin_src/amirocket. Their old manifests/artwork are in each directory's
+legacy subdirectory. The legacy AmIRC hook is
+plugin_src/amirc/legacy/NovaDockNotify.amirx. These references are not
+runnable components of the new NovaDock package.
 
-Plugin developers can call nd_client_notify(client, title, details,
-severity) with severity 0 (information), 1 (warning) or 2 (error). OR the
-returned event bits into your normal update result, so pending actions are
-retained. The client sends notices only after the host advertises support.
-Older docks continue working without notifications. Details currently fit
-the 31-character IPC text field; never include passwords or tokens in a
-notice.
+AmiNotis and its SDK are developed separately. AMINOTIS reads the shared
+AmiNotis inbox; it does not start the service. Existing internal session
+notice collection remains available to code using the current API; no new
+external service is started by this build. General Preferences offers @{b}Send
+alerts to AmiNotis@{ub}, off by default. It forwards only new notices while the
+service is available; local session collection continues independently. The
+saved choice survives service absence. Delivery uses asynchronous version-2
+SDK messages with a bounded queue and timeout; it never waits for the
+service in the dock event loop. Old history is not replayed when forwarding
+is enabled.
+
+Support diagnostics and reports include session delivery/drop counts, queued
+and pending notices, unavailable/full-queue/timeout/rejection counts and the
+last forwarding failure/result. Diagnostics Reset clears these counters
+without cancelling an in-flight delivery. Disabled forwarding creates no
+attempts; disabling it cancels and counts already queued notices.
+
+Current SDK clients negotiate 80-character titles and 512-character bodies.
+Older hosts retain their 31-character transport previews. NovaDock keeps the
+legacy history-control preview layout, but compares the complete bounded
+text when coalescing and forwards the full text to AmiNotis.
 @endnode
 
 @node SHELF_PLUGIN "Shelf"
@@ -2939,8 +3454,9 @@ files or perform filesystem requests.
 In a drawer item's editor, @{b}Space...@{ub} sets the low-space threshold from 1 to
 99 percent remaining; 0 disables warnings. The default is 10 percent. Below
 the threshold the meter uses the theme's secondary accent and sends one
-ALERTS notification. It can notify again after space recovers and then falls
-below the threshold. Missing/invalid readings never mean a full disk.
+internal notification, optionally forwarded to AmiNotis. It can notify again
+after space recovers and then falls below the threshold. Missing/invalid
+readings never mean a full disk.
 
 Enable @{b}Show free space@{ub} in that dialog to show remaining capacity in place of
 the icon label. Use/Save in the parent editor applies/persists these
@@ -2951,6 +3467,19 @@ Right-click a drawer/volume and choose @{b}Volume overview...@{ub} for a filtere
 list of mounted volumes and their capacities. Select a row and click Open,
 press Return or double-click. Refresh resamples the list on demand. It uses
 the bundled PLACES helper, without needing a PLACES tile in the dock.
+
+Queries run in a bounded, independent worker. Identical paths are sampled
+once per refresh, active paths are protected when the 64-entry cache is
+full, and each completed reading is delivered immediately instead of waiting
+for later volumes in the batch.
+
+The tooltip shows @{b}Last updated@{ub}, @{b}cached/stale@{ub}, or @{b}unavailable@{ub}, together with
+the last DOS error when a query fails. Readings older than 15 seconds are
+marked stale. Failed requests preserve the last successful capacity; an
+initial failure shows capacity unavailable. Stale values do not imply that
+the disk is full or trigger another low-space warning merely because a query
+failed. Drawing, hovering, reload and Quit do not wait for a volume-space
+query.
 @endnode
 
 @node BITSKIM_PLUGIN "BitSkim"
@@ -3109,14 +3638,14 @@ not trigger reconnection.
 
 @{b}Sections@{ub}
   @{" Tile and controls " link NETWORK_PLUGIN 21}
-  @{" Setup " link NETWORK_PLUGIN 53}
-  @{" Existing installations " link NETWORK_PLUGIN 121}
-  @{" Network Details " link NETWORK_PLUGIN 138}
-  @{" Disconnecting and reconnecting " link NETWORK_PLUGIN 179}
-  @{" Quiet operation and debug logging " link NETWORK_PLUGIN 222}
-  @{" Saved display view " link NETWORK_PLUGIN 247}
-  @{" Tile layout " link NETWORK_PLUGIN 260}
-  @{" Configure Wi-Fi (0.4) " link NETWORK_PLUGIN 268}
+  @{" Setup " link NETWORK_PLUGIN 54}
+  @{" Existing installations " link NETWORK_PLUGIN 122}
+  @{" Network Details " link NETWORK_PLUGIN 139}
+  @{" Disconnecting and reconnecting " link NETWORK_PLUGIN 180}
+  @{" Quiet operation and debug logging " link NETWORK_PLUGIN 223}
+  @{" Saved display view " link NETWORK_PLUGIN 248}
+  @{" Tile layout " link NETWORK_PLUGIN 261}
+  @{" Configure Wi-Fi (0.4) " link NETWORK_PLUGIN 269}
 
 Network combines Roadshow control and the packet-activity sampler in one
 tile. It is optional; add @{b}Network@{ub} from the dock's Add menu. The first
@@ -3128,13 +3657,14 @@ yet.
 @{b}Tile and controls@{ub}
 -----------------
 
-  * @{b}Offline:@{ub} a pre-generated network icon with NETWORK at the bottom, in the
-    same style as Apps and Music.
-  * @{b}Online:@{ub} two separate @{b}IN@{ub} and @{b}OUT@{ub} packet-activity meters by default.
-    Incoming traffic uses the first accent color; outgoing traffic uses the
-    second. Both bars use the same configured PPS scale. The value above
-    them is IN/OUT p/s. Click the online tile to switch between meter and
-    graph, like CPU/RAM.
+  * @{b}Offline:@{ub} the interface icon shows dashes in its two traffic channels.
+  * @{b}Online:@{ub} the interface icon displays incoming packets/second above
+    outgoing packets/second, with separate activity colours. Large rates use
+    k/M abbreviations; the tooltip retains full readings. The artwork
+    follows the theme or Colourful icons setting and magnifies with
+    neighbouring tiles.
+  * Click the online tile to switch between icon and two-channel graph, like
+    CPU/RAM. Tiny tiles retain their compact meters.
   * @{b}Right-click -> Online:@{ub} reconnect the selected Roadshow interface with
     C:ConfigureNetInterface, renewing DHCP when its profile uses DHCP. If
     the interface has not been registered, start it using C:AddNetInterface
@@ -3367,10 +3897,10 @@ Online, Details and settings.
 @{b}Tile layout@{ub}
 -----------
 
-Online tiles align the NETWORK heading with CPU/RAM and show IN/OUT meters
-or a two-channel graph. Packet rates and control/sampling status are
-available in the hover tooltip. Offline tiles keep the network icon and
-bottom title.
+Network uses the same bottom-label settings and magnification as CPU/RAM.
+Its interface icon contains two live traffic readings outside graph mode.
+Packet rates and control/sampling status remain available in the hover
+tooltip.
 
 @{b}Configure Wi-Fi (0.4)@{ub}
 ---------------------
@@ -4474,12 +5004,12 @@ windows; on 3.0 and 3.1, use @{b}Window > Update@{ub} in Workbench.
 =============
 
 @{b}Sections@{ub}
-  @{" Using it " link GAMES_PLUGIN 40}
-  @{" Persistent index cache " link GAMES_PLUGIN 70}
-  @{" Which installs it finds " link GAMES_PLUGIN 85}
-  @{" How installs start " link GAMES_PLUGIN 101}
-  @{" Removing a tile " link GAMES_PLUGIN 121}
-  @{" Plugin-owned status artwork " link GAMES_PLUGIN 130}
+  @{" Using it " link GAMES_PLUGIN 42}
+  @{" Persistent index cache " link GAMES_PLUGIN 72}
+  @{" Which installs it finds " link GAMES_PLUGIN 87}
+  @{" How installs start " link GAMES_PLUGIN 103}
+  @{" Removing a tile " link GAMES_PLUGIN 123}
+  @{" Plugin-owned status artwork " link GAMES_PLUGIN 132}
 
 Each WHDLoad tile has its own label and one folder to index. Add it using
 @{b}Add item > Plugins > WHDLoad@{ub}. You can add it more than once, for example
@@ -4498,7 +5028,9 @@ Right-click a tile and choose @{b}Edit settings@{ub}:
     cancels. Small screens have Previous/Next pages; paging buttons are
     hidden when all icons fit. The library includes WHDLoad, Games, Demos,
     Apps, Arcade, Music, Graphics, Code, Movies, Books, Disks, Network,
-    Utilities, Favourites, Drawer, Workbench, Tools and Internet.
+    Utilities, Favourites, Drawer, Workbench, Tools and Internet, the
+    smart-home and network devices, and the Tilt set (see Launchers and
+    icons).
   * @{b}Custom icon or picture@{ub}: choose @{b}Select@{ub} and browse to a game's .info file
     or another icon/picture. An existing custom file takes priority over the
     library selection automatically; clear the field to use the library
@@ -4699,18 +5231,34 @@ continues to use your selected collection or custom icon.
 ================
 
 @{b}Sections@{ub}
-  @{" Supported sources " link SENSORS_PLUGIN 26}
-  @{" Refresh and stale data " link SENSORS_PLUGIN 117}
-  @{" Hardware validation and TF1260 " link SENSORS_PLUGIN 134}
-  @{" Plugin-owned status artwork " link SENSORS_PLUGIN 152}
-  @{" Optional i2csensors.library v2 provider " link SENSORS_PLUGIN 160}
-  @{" Reading and provider status " link SENSORS_PLUGIN 199}
+  @{" Supported sources " link SENSORS_PLUGIN 42}
+  @{" Refresh and stale data " link SENSORS_PLUGIN 133}
+  @{" Hardware validation and TF1260 " link SENSORS_PLUGIN 150}
+  @{" Plugin-owned status artwork " link SENSORS_PLUGIN 168}
+  @{" Optional i2csensors.library v2 provider " link SENSORS_PLUGIN 176}
+  @{" Reading and provider status " link SENSORS_PLUGIN 215}
+  @{" Repeatable FS-UAE validation " link SENSORS_PLUGIN 232}
+  @{" Side docks and compact tiles " link SENSORS_PLUGIN 251}
 
 Add @{b}SENSOR@{ub} from @{b}Add item > Plugins@{ub}. Add multiple independent tiles, such as
 Temperatures and Voltages, each with its own label and selected channels. It
-detects supported readings and rotates selected channels in the dock every
-five seconds. Click for a live, paged list with @{b}Previous@{ub}, @{b}Next@{ub}, @{b}Refresh@{ub} and
-@{b}Close@{ub}.
+detects supported readings and shows the active channel name, value and
+sensor-type artwork above the instance label. CPU, memory, FPGA,
+temperature, voltage, battery and fan readings have distinct artwork.
+Unknown devices use a generic sensor picture.
+
+@{b}Auto-switch seconds@{ub} controls rotation (default five seconds). Set it to @{b}0@{ub} to
+hold the current channel. Right-click for @{b}Next sensor@{ub}, @{b}Previous sensor@{ub} or
+@{b}Sensor readings...@{ub}. @{b}Click action > Next sensor@{ub} makes an ordinary tile click
+advance immediately; the default still opens the readings list. The list
+also has a @{b}Next sensor@{ub} button. Missing/unselected readings are skipped.
+Changing the channel does not run the vendor diagnostic again.
+
+Each detected channel has an optional @{b}title@{ub} in settings. Leave it empty to
+use the device's normal name. I2C titles and choices follow the device's
+stable identity rather than its discovery position. @{b}Tile label@{ub} remains
+independent of channel titles, so several SENSOR instances can have
+different purposes.
 
 Right-click and choose @{b}Edit settings@{ub}. Freshly detected channels appear as
 checkboxes, checked initially. Untick readings you do not want displayed.
@@ -4910,6 +5458,35 @@ the last resident status. Status older than 30 seconds is labelled stale;
 start SENSOR to populate live discovery information. Settings are preserved
 while hardware is unavailable. Optional I2C library absence does not prevent
 native ZZ9000, RTC or Warp readings from being used.
+
+@{b}Repeatable FS-UAE validation@{ub}
+----------------------------
+
+Run python3 tools/run_sensor_qa.py from the source tree with the normal
+Amiga build toolchain and an imported AmigaOS 3.2.3 installation configured.
+Use --no-build to test binaries already built. The tool creates a
+disposable, offline guest, redirects its ENV assign, and supplies known
+AK_Sensors inputs. It never mounts persistent guest drives or executes
+WHDLoad games.
+
+The fixture checks the real SENSOR client's channel names, values, artwork
+keys, manual switching and missing readings. It also runs the real WHDLoad
+indexer against 129 dummy project drawers, then checks the normal dock's
+rendered three-digit badge, channel text and independent footer.
+Before/after PPM images and PASS/FAIL output are saved in the temporary QA
+output directory printed by the runner. This tests the data and rendering
+paths without sensor hardware; physical ZZ9000, Warp and I2C hardware still
+require device-specific validation.
+
+@{b}Side docks and compact tiles@{ub}
+----------------------------
+
+SENSOR supports Bottom, Top, Left and Right placements. A crowded side dock
+may shorten Normal tiles to 46 pixels. The compact artwork layout keeps the
+selected sensor name and reading visible, and omits the redundant
+plugin-name footer when it cannot fit. Tiny mode keeps its icon and reading.
+Test both Normal and Tiny, including live and sad/unavailable states, idle
+and magnified on both side docks.
 @endnode
 
 @node ACTIONS_PLUGIN "ACTIONS"
@@ -4974,6 +5551,50 @@ restart. The fullscreen scene keeps its proportions, reuses one bitmap,
 pauses when another window is active and closes when NovaDock exits. The
 dock animation slows when hidden. No network connection, external player or
 sound is used.
+@endnode
+
+@node PET_PLUGIN "PET"
+@toc Main
+@{b}PET@{ub}
+========
+
+Add @{b}PET@{ub} from Add item > Plugins for a small animated companion on its own
+tile. Choose the @{b}Character@{ub} in Edit settings:
+
+  @{b}Cat (Whiskers)@{ub}
+      Idle: sways its tail, blinks, purrs
+      Napping: curls up with drifting Zs
+      When clicked: hops with a heart
+  @{b}Gerald@{ub}
+      Idle: a grumpy stapler who frowns and grumbles "Hmph."
+      Napping: snores with his jaw shut
+      When clicked: chomps, fires a staple, and offers a piece of
+      unsolicited advice
+  @{b}Dog (Biscuit)@{ub}
+      Idle: wags its tail
+      Napping: sleeps with its head on its paws
+      When clicked: hops with its tongue out
+  @{b}Rabbit (Clover)@{ub}
+      Idle: twitches its nose and ears
+      Napping: naps as a loaf, ears laid back
+      When clicked: jumps for joy
+  @{b}Bob@{ub}
+      Idle: a polka-dot rubber ball who bounces and squashes
+      Napping: rests on the floor
+      When clicked: leaps and chatters
+
+A click also wakes a napping pet. Gerald and Bob say something different on
+each click ("Paper jam? Not my department.", "Gravity is a suggestion.").
+
+Edit settings also sets the pet's name (shown with its mood as the tile's
+value; leave it as Whiskers to use the character's own name), Slow, Normal
+or Fast animation, and how many minutes (1-30) pass before it naps. Use
+applies settings for the session; Save keeps them after restart.
+
+PET opens no window and uses no sound or network. The dock repaints only the
+PET tile for each frame. Napping halves the frame rate, and the animation
+slows to an occasional update while the dock is hidden or covered, so an
+idle PET costs very little CPU time.
 @endnode
 
 @node DOWNLOAD_PLUGIN "DOWNLOAD"
@@ -5107,6 +5728,23 @@ Aminet.
 
 Parsing and transport were adapted from Beam68 under its MIT licence. The
 package includes Aminet-parser-LICENSE.txt with the original notice.
+
+@{b}Live FS-UAE test@{ub}
+----------------
+
+Run python3 tools/run_aminet_qa.py from a configured source tree. The test
+starts a disposable AmigaOS 3.2.3 guest with host-socket networking enabled,
+opens the real Aminet browser, searches for JustName, selects the result and
+saves it through the normal ASL requester. It checks the archive header,
+compares the bytes with an independent HTTPS download, and tests LHA member
+CRCs. The package is never installed, extracted or executed. Existing
+persistent guest drives are not mounted. Network/service failures make this
+opt-in test fail; it is separate from the normal offline host suite.
+--no-build uses existing native binaries.
+
+Downloads validate the HTTP response, declared size, byte bounds and archive
+magic before the staged file is committed. Final numeric transfer statistics
+are reported even for files that complete between progress updates.
 @endnode
 
 @node SAVER_PLUGIN "SAVER"
@@ -5192,16 +5830,17 @@ measurement/overlay work when enabled. The defaults remain @{b}Full@{ub}, @{b}Fa
 ======================
 
 @{b}Sections@{ub}
-  @{" Requirements " link PLUGIN_SDK_QUICKSTART 33}
-  @{" Build the Hello example " link PLUGIN_SDK_QUICKSTART 43}
-  @{" The complete simple plugin " link PLUGIN_SDK_QUICKSTART 65}
-  @{" Turn the example into your plugin " link PLUGIN_SDK_QUICKSTART 95}
-  @{" Settings window from the dock menu " link PLUGIN_SDK_QUICKSTART 114}
-  @{" API levels " link PLUGIN_SDK_QUICKSTART 132}
-  @{" Common mistakes " link PLUGIN_SDK_QUICKSTART 144}
-  @{" Package and import a plugin " link PLUGIN_SDK_QUICKSTART 163}
-  @{" Own artwork and state icons " link PLUGIN_SDK_QUICKSTART 195}
-  @{" Session notifications (NovaDock 0.4) " link PLUGIN_SDK_QUICKSTART 204}
+  @{" Requirements " link PLUGIN_SDK_QUICKSTART 34}
+  @{" Build the Hello example " link PLUGIN_SDK_QUICKSTART 49}
+  @{" The complete simple plugin " link PLUGIN_SDK_QUICKSTART 71}
+  @{" Turn the example into your plugin " link PLUGIN_SDK_QUICKSTART 101}
+  @{" Settings window from the dock menu " link PLUGIN_SDK_QUICKSTART 120}
+  @{" API levels " link PLUGIN_SDK_QUICKSTART 138}
+  @{" Common mistakes " link PLUGIN_SDK_QUICKSTART 150}
+  @{" Package and import a plugin " link PLUGIN_SDK_QUICKSTART 169}
+  @{" Own artwork and state icons " link PLUGIN_SDK_QUICKSTART 201}
+  @{" Session notifications (NovaDock 0.4) " link PLUGIN_SDK_QUICKSTART 210}
+  @{" Shared diagnostics " link PLUGIN_SDK_QUICKSTART 237}
 
 The standalone SDK contains everything needed to build a basic NovaDock
 status plugin without building NovaDock itself:
@@ -5227,6 +5866,11 @@ the public NovaDock.1 Exec message port. NovaDock owns all tile drawing.
   * Classic AmigaOS 3.0 or newer.
   * vbcc configured with an AmigaOS m68k target and compatible NDK headers.
   * A running NovaDock installation for testing.
+  * Artwork plugins: every visual state must have a recognizable icon in
+    Tiny and Normal (large), including sad/error/offline states and all
+    animation frames. A scalable 32×32 bank may serve both sizes. Run the
+    SDK checks and verify both modes idle and magnified; see
+    @{"Artwork requirements" link PLUGIN_SDK_ARTWORK}.
 
 The API targets the baseline 68000 and uses C89. No MUI, Reaction, shared
 library, socket connection or NovaDock source build is required.
@@ -5396,15 +6040,36 @@ format, packaging, import/removal and state-update API.
 ------------------------------------
 
 After a normal update negotiates host capabilities, nd_client_notify(client,
-title, details, severity) can add a notice to the ALERTS session history.
-Severity is 0 for information, 1 for warnings and 2 for errors. Keep details
-within 31 characters and omit credentials.
+title, details, severity) can add a notice to the dock session history.
+General Preferences can optionally forward new notices to the separately
+installed AmiNotis service. Severity is 0 for information, 1 for warnings
+and 2 for errors. Keep details within 31 characters and omit credentials.
 
 OR the returned event bits into the normal update result so a simultaneous
 click or settings action is retained. Read extended actions through
 nd_client_events2() as usual. The client waits for ND_EVENT2_HOST_ALERTS
 before sending notices and safely does nothing on older hosts. Send notices
 on meaningful transitions rather than on every sample.
+
+@{b}Notification text sizes@{ub}
+
+nd_client_notify() negotiates ND_EVENT2_HOST_LONG_NOTICE automatically. A
+capable host accepts ND_MSG_NOTICE_LONG with an unchanged v5 prefix, an
+80-character title and a 512-character body (ISO-8859-1; array sizes include
+a terminating NUL). Legacy hosts still receive ND_MSG_NOTICE with
+31-character title/body previews. Never send the extended command without
+the negotiated capability, and validate its complete message length before
+accessing the tail. Existing plugins and host ABI versions continue to work
+unchanged. AmiNotis receives the complete negotiated text; the legacy
+internal history API retains its bounded preview layout.
+
+@{b}Shared diagnostics@{ub}
+------------------
+
+New plugins follow @{"the diagnostics policy" link PLUGIN_SDK_DIAGNOSTICS}. Use the SDK client, tracked
+allocation/I/O wrappers and fixed numeric activity events. The host controls
+Off, Logging and Detailed trace and collects the results. Do not create
+independent trace files.
 @endnode
 
 @node PLUGIN_SDK_SETTINGS "Creating plugin settings windows"
@@ -5588,10 +6253,11 @@ dock's right-click settings form.
 ====================
 
 @{b}Sections@{ub}
-  @{" Select a named frame and state " link PLUGIN_SDK_ARTWORK 26}
-  @{" Build an artwork bank " link PLUGIN_SDK_ARTWORK 57}
-  @{" Theme colours and value layouts " link PLUGIN_SDK_ARTWORK 84}
-  @{" Dynamic thumbnails (NovaDock 0.5) " link PLUGIN_SDK_ARTWORK 110}
+  @{" Required Tiny and Normal artwork coverage " link PLUGIN_SDK_ARTWORK 27}
+  @{" Select a named frame and state " link PLUGIN_SDK_ARTWORK 57}
+  @{" Build an artwork bank " link PLUGIN_SDK_ARTWORK 90}
+  @{" Theme colours and value layouts " link PLUGIN_SDK_ARTWORK 117}
+  @{" Dynamic thumbnails (NovaDock 0.5) " link PLUGIN_SDK_ARTWORK 143}
 
 NovaDock 0.4 supports artwork that travels with a plugin. Keep the
 executable, manifest and its .assets drawer together:
@@ -5609,6 +6275,36 @@ bank with the program and manifest as one transaction. Removal deletes the
 owned bank and its empty drawer. Other files in that drawer are left alone.
 Keep authoring sources in your project; only Artwork.ndart is needed at
 runtime.
+
+@{b}Required Tiny and Normal artwork coverage@{ub}
+-----------------------------------------
+
+Every plugin that displays artwork @{b}must provide a recognizable icon in both
+Tiny and Normal (large) dock modes for every state it can send@{ub}. This
+includes idle, active, busy/loading, disabled, disconnected/unknown and
+sad/error states, plus every animation frame. Do not replace an icon with an
+empty tile or a text-only placeholder in Tiny mode. Preserve meaningful
+readings and state badges without covering the artwork.
+
+A single 32×32 Artwork.ndart source per state satisfies both sizes when the
+host can scale it clearly; duplicate small/large files are not required. The
+included plugins use this approach. Keep important features readable at the
+smallest supported tile, use transparent backgrounds, and verify Colourful
+and theme-coloured modes on RTG and classic planar screens. Every name/state
+combination passed to nd_client_update_art_quiet() or
+nd_client_update_art_meter_quiet() must exist in the shipped bank. Package
+the matching executable, manifest and complete .assets drawer together.
+
+Before release, run make check or python3 tools/check_plugin.py .. The
+included tools/check_plugin_art.py checks declared banks, binary bounds and
+every packaged state at Normal, Tiny, minimum Tiny and compressed 55×46
+Normal sizes. It rejects missing banks and states whose pixels disappear
+when scaled. It cannot prove that an icon is recognizable or infer states
+selected dynamically by C code: compare your emitted name/state combinations
+with the bank and visually test every state in FS-UAE at both sizes, idle
+and magnified, on Bottom, Top, Left and Right docks. Include
+sad/error/offline states explicitly; successful connected screenshots alone
+do not establish coverage.
 
 @{b}Select a named frame and state@{ub}
 ------------------------------
@@ -5629,11 +6325,13 @@ MUSIC and SENSOR plugins each ship their sad status frame in their own bank.
 For hardware controls, select a frame from the confirmed reading, not the
 requested action.
 
-The helper negotiates support through an ABI 5 reply capability. Older docks
-receive the ordinary text caption. Quiet updates retain the usual heartbeat
-and click/settings handling; there is no extra polling process or message.
-The reserved ART:name:state caption is internal to the helper. Badge support
-continues to work independently.
+The helper negotiates support through an ABI 5 reply capability and
+immediately republishes the first artwork state when support becomes known,
+without waiting for the next heartbeat. Older docks receive the ordinary
+text caption. Quiet updates retain the usual heartbeat and click/settings
+handling; there is no extra polling process or message. The reserved
+ART:name:state caption is internal to the helper. Badge support continues to
+work independently.
 
 NovaDock validates and caches banks while loading plugin resources, shares
 one copy between instances of the same executable, and maps the palette to
@@ -5706,6 +6404,217 @@ dock. The host validates indices, caches screen bitmaps and uses existing
 Workbench pens. Keep normal status/heartbeat updates running and resend a
 frame after settings changes or screen reloads. Package static artwork as
 the fallback for hosts without this optional capability.
+
+@{b}Independent live headings@{ub}
+
+Artwork flag ND_ARTWORK_HEADING (8), combined with ND_ARTWORK_VALUE (1),
+reserves a separate content row for the update's caption above its value.
+The configured tile label remains a footer. This is useful for rotating
+sensor channels: use nd_client_update_art_quiet with a readable channel
+caption and a sensor-type artwork key. Keep names out of diagnostic events.
+Heading banks require a host accepting flag 8; older hosts reject the bank
+and retain their ordinary text fallback. The SDK packer validates all four
+presentation flags.
+
+Use nd_client_update_art_meter_quiet() when an artwork state accompanies a
+live meter or graph reading. Its arguments add meter between state and
+elapsed_ticks; it preserves the same quiet heartbeat and older-host text
+fallback as nd_client_update_art_quiet(). State banks are scaled for Tiny
+and Normal sizes, including busy, offline and sad/error frames.
+@endnode
+
+@node PLUGIN_SDK_DIAGNOSTICS "Plugin diagnostics policy"
+@toc Main
+@{b}Plugin diagnostics policy@{ub}
+=========================
+
+Use the supplied nd_client for every bundled or third-party client. The host
+owns capture policy, retention, disk output and support-report collection.
+Do not create a private always-on trace file or log a title, path, search
+query, message body, setting value, contact detail, credential or arbitrary
+text.
+
+nd_client.c includes the private resource implementation. Follow the sample
+Makefile and do not also link nd_plugin_resources.c as a second object.
+
+The normal SDK Makefile enables ND_PLUGIN_RESOURCES. Include
+nd_plugin_resources.h @{b}after@{ub} native and C library headers in each source file
+that allocates memory or performs file I/O. It preserves native inline
+library stubs and wraps AllocVec/AllocMem, malloc/calloc/realloc and their
+frees, and Open/Read/Write/ExNext. Use the matching allocation/free
+families. Foreign library-owned pointers pass through safely. Library
+buffers, code, stacks and graphics allocations are not process-total RAM; UI
+and reports call this @{b}tracked RAM@{ub}. Tracking has 128 buckets and at most 4096
+records per process; allocation/metadata failure marks results partial
+without failing a successful application allocation. Metadata is released
+when the last NDClient closes. Call nd_resources_forget(pointer) when
+ownership passes to another process. Internal workers share the owner's
+accounting only while that owner is alive; external launched programs are
+not attributed to the plugin.
+
+nd_client negotiates ND_EVENT2_HOST_SUPPORT before sending ND_MSG_SUPPORT.
+Old hosts never see that command. Off sends no support-only packets. Logging
+sends numeric snapshots no more often than five seconds; Detailed trace
+allows one per second. Normal status heartbeats may make a snapshot arrive
+later. A temporary resource sample requests snapshots without enabling
+logging. Support metadata never consumes queued click/media/settings events.
+Existing v1-v5 message prefixes and artwork/badge negotiation remain intact.
+
+Describe meaningful work with fixed operations and numeric fields:
+
+    nd_client_activity(&client, ND_PLUGIN_OP_SCAN, 1, 0, 0);
+    /* scan without blocking the host */
+    nd_client_activity(&client, ND_PLUGIN_OP_SCAN, errors ? 3 : 2,
+                       entries, errors);
+
+Phases are 1 begin, 2 complete and 3 failed. Use the supplied operation
+constants; there is no arbitrary-string logging field. Automatic wrappers
+record numeric allocation/I/O counters and the latest operation. Add domain
+counters such as index entries, cache hits, queue lengths or transferred
+bytes through the two numeric detail fields. Do not encode private data in
+those fields.
+
+Create report automatically collects repeated five-second statistical CPU
+samples. Preferences > Support > Advanced > Activity also offers a manual
+sample. It compares exact plugin task pointers during jittered timer
+interrupts; there are no Exec patches, CIA ownership changes or busy-wait
+sampler tasks. CPU values are estimates with a sample count, not scheduler
+accounting. Short bursts and internal/external child tasks may be missed.
+RAM and last-operation values are bounded snapshots and carry
+age/partial/availability information. Old clients remain usable and show
+unavailable resource data.
+
+Inside an SDK project, run python3 tools/check_plugin.py . or make check. In
+the full NovaDock tree, run python3 tools/check_plugin_policy.py, the host
+regression suite, and the native plugin-support fixture. Third-party authors
+must use these APIs and follow the policy; the host cannot prevent
+independently written programs from opening their own files outside the SDK.
+@endnode
+
+@node PLUGIN_QA "Testing plugins before packaging"
+@toc Main
+@{b}Testing plugins before packaging@{ub}
+================================
+
+@{b}Sections@{ub}
+  @{" What still needs separate testing " link PLUGIN_QA 49}
+  @{" State icon regression " link PLUGIN_QA 71}
+  @{" Side placement and backdrop refresh " link PLUGIN_QA 87}
+  @{" AmiNotis forwarding and retired plugins " link PLUGIN_QA 104}
+
+Run from the repository with the configured Amiga compiler and an imported
+AmigaOS FS-UAE test system:
+
+    python3 tools/run_plugin_qa.py --output outputs/plugin-qa-new-run
+
+This builds the programs, runs the complete portable host suite, then boots
+an isolated offline FS-UAE Workbench. The output directory must be new. No
+installed user configuration is used. Allow several minutes for the native
+run.
+
+Every bundled client has an explicit case in tests/plugin_qa.json. Adding a
+new client without a case fails coverage validation. Each case names its
+portable feature tests; the native harness also checks startup, heartbeat,
+five-second CPU/resource sampling, bounded idle update traffic, Logging and
+Detailed trace metadata, and orderly shutdown. The native gate also runs
+eight ARexx/Preferences save-barrier sequences, so queued script edits
+cannot shadow a later external Save. Interactive utility cases open and
+close their real native window and check screen bounds. The report includes
+each plugin's RAM, CPU hits/sample count and activity counters; the full
+logs are retained.
+
+To test and package the same binaries in one command:
+
+    python3 tools/run_plugin_qa.py --output outputs/plugin-qa-new-run --package outputs/package-new-run
+
+tools/release.py build runs this gate automatically. Evidence binds the host
+and native results to the current source, plugin inventory, binaries and
+runtime assets, and checks the saved log digests. A changed executable or
+stale/partial report fails release packaging. Standalone developer
+make-release.sh always checks coverage; use the command above for the
+complete release gate.
+
+A focused development check is also available:
+
+    python3 tools/run_plugin_qa.py --output outputs/qa-sensor-new-run --no-build --skip-host --plugin SENSORS
+
+Repeat --plugin for additional IDs or program names. Focused runs and
+--skip-host produce partial evidence and cannot pass the release gate. Use
+--system and --resources to select imported FS-UAE resources explicitly.
+
+@{b}What still needs separate testing@{ub}
+---------------------------------
+
+CPU is a statistical estimate of the plugin main task. RAM counts tracked
+allocations, excluding executable code, task stacks, libraries and graphics.
+A short idle sample is useful for regressions, not a physical-hardware
+benchmark.
+
+Offline checks validate unavailable-provider behavior and portable feature
+logic. They do not prove an AHI device, Warp/I2C sensors, Home Assistant
+server, external application or Internet service works on a user's machine.
+Use tools/run_sensor_qa.py for the deterministic sensor display fixture and
+tools/run_aminet_qa.py for the separate live Aminet search/download test.
+Keep real-hardware smoke checks for providers and low-memory configurations.
+
+The release gate also launches the actual dock from Shell and Workbench in a
+portable drawer, a split installation with an empty sibling Plugins drawer,
+and one containing only stale metadata. Each launch must receive live
+updates from CPU, RAM, Clock, Archive and Pet.
+tools/run_program_directory_qa.py runs these six cases independently; it
+uses disposable settings and never installs into the user profile.
+
+@{b}State icon regression@{ub}
+---------------------
+
+python3 tests/test_plugin_icon_states.py renders every packaged artwork
+frame through the production Tiny/Normal bank renderer, including the cached
+shelf, one-bit transparency mask and both colour modes. Every bundled plugin
+must have a bank or a dedicated live/launcher icon.
+
+python3 tools/run_plugin_icon_qa.py --resources /path/to/isolated/resources
+--profile a4000-rtg --output outputs/plugin-icons-rtg replays the packaged
+state banks over the real client ABI in a disposable offline FS-UAE
+installation. It checks painted pixels and screen bounds at both sizes, idle
+and magnified, and checks Tiny EYES. Repeat with --profile a500-ecs for
+classic planar graphics. Test clients replace only copies inside the
+isolated fixture and never run network jobs or user commands.
+
+@{b}Side placement and backdrop refresh@{ub}
+-----------------------------------
+
+Use tools/run_plugin_icon_qa.py --side LEFT --height 46 --programs Sensors
+... and repeat with --side RIGHT. The default height remains 76; minimum
+Normal tiles may be compressed to 46 pixels by dock fitting. The fixture
+identifies the actual diagnostics viewport, so it also follows magnified
+side docks.
+
+tools/run_side_redraw_qa.py --mode BACKDROP --alpha 100 --resources
+/path/to/isolated/resources --output outputs/side-redraw supplies a
+deliberately delayed SIMPLE_REFRESH desktop and static launcher artwork. It
+compares the composed dock before and after desktop refresh and rapid hover
+movement on all four edges, with animation off/on. Repeat with --mode TOP
+and opaque/transparent backgrounds. A configuration guard rejects
+fallback/default layouts, and all output remains in a disposable guest.
+
+@{b}AmiNotis forwarding and retired plugins@{ub}
+---------------------------------------
+
+tools/run_aminotis_qa.py --resources /path/to/resources --profile a4000-rtg
+--output outputs/notis-rtg checks the real dock, General checkbox and
+protocol-v2 SDK against an isolated receiver. Repeat with --profile a500-ecs
+for planar UI bounds. Add --service-drawer /path/to/AmiNotis/build/Amiga to
+copy the independently built service, presenter and history writer into the
+guest and observe delivery through its public SDK. The real-service binaries
+are hashed in the report. No installed AmiNotis or user configuration is
+changed.
+
+The cases cover local collection with forwarding off, enabled delivery,
+coalescing, service absence/restart without history replay, checkbox Save
+and retired enabled profiles. Host tests cover queue limits, timeout/disable
+cleanup, retained source options and chunked legacy tile data. Runtime
+package checks reject the three retired programs, manifests, icons, artwork
+and hook.
 @endnode
 
 @node PLUGIN_API "Plugin protocol"
@@ -5714,24 +6623,25 @@ the fallback for hosts without this optional capability.
 ===============
 
 @{b}Sections@{ub}
-  @{" Running a plugin " link PLUGIN_API 36}
-  @{" ABI layout " link PLUGIN_API 57}
-  @{" Fast path: helper client " link PLUGIN_API 119}
-  @{" Reducing idle traffic for stable status tiles " link PLUGIN_API 147}
-  @{" Adding graph data from a third-party plugin " link PLUGIN_API 187}
-  @{" Safety and stability " link PLUGIN_API 230}
-  @{" Bundled examples " link PLUGIN_API 259}
-  @{" NovaDock 0.1 preferences and control port " link PLUGIN_API 309}
-  @{" Network connection example " link PLUGIN_API 374}
-  @{" MusicPlayer ARexx bridge example (0.1) " link PLUGIN_API 382}
-  @{" One-file settings API (0.1) " link PLUGIN_API 395}
-  @{" Bundled xeyes-style Eyes tile " link PLUGIN_API 406}
-  @{" Badges (ABI 4, optional) " link PLUGIN_API 420}
-  @{" Waking on clicks (optional) " link PLUGIN_API 450}
-  @{" Second event word (ABI 5, optional) " link PLUGIN_API 475}
-  @{" Settings and long configuration lines " link PLUGIN_API 495}
-  @{" Plugin-owned artwork (NovaDock 0.4) " link PLUGIN_API 517}
-  @{" Session notifications (NovaDock 0.4) " link PLUGIN_API 534}
+  @{" Running a plugin " link PLUGIN_API 37}
+  @{" ABI layout " link PLUGIN_API 58}
+  @{" Fast path: helper client " link PLUGIN_API 120}
+  @{" Reducing idle traffic for stable status tiles " link PLUGIN_API 148}
+  @{" Adding graph data from a third-party plugin " link PLUGIN_API 188}
+  @{" Safety and stability " link PLUGIN_API 231}
+  @{" Bundled examples " link PLUGIN_API 260}
+  @{" NovaDock 0.1 preferences and control port " link PLUGIN_API 310}
+  @{" Network connection example " link PLUGIN_API 375}
+  @{" MusicPlayer ARexx bridge example (0.1) " link PLUGIN_API 383}
+  @{" One-file settings API (0.1) " link PLUGIN_API 396}
+  @{" Bundled xeyes-style Eyes tile " link PLUGIN_API 407}
+  @{" Badges (ABI 4, optional) " link PLUGIN_API 421}
+  @{" Waking on clicks (optional) " link PLUGIN_API 451}
+  @{" Second event word (ABI 5, optional) " link PLUGIN_API 476}
+  @{" Settings and long configuration lines " link PLUGIN_API 496}
+  @{" Plugin-owned artwork (NovaDock 0.4) " link PLUGIN_API 518}
+  @{" Session notifications (NovaDock 0.4) " link PLUGIN_API 535}
+  @{" Artwork size policy " link PLUGIN_API 571}
 
 NovaDock plugins are @{b}ordinary, independent AmigaOS 68k executable processes@{ub}.
 There are no undocumented jumps into dock memory, no shared C runtime, and
@@ -6038,10 +6948,10 @@ either deadline.
 ND_CONTROL_DIAGNOSTICS_RESET starts a new measurement baseline. It clears
 telemetry totals and per-plugin diagnostic counts, but deliberately retains
 plugin liveness timestamps, graph history, online state, watchdog
-retry/backoff state and configuration. The Preferences Diagnostics page can
-also save its current human-readable rows to RAM:NovaDock-Diagnostics.txt;
-this export is local to Preferences and does not add another control-port
-message format.
+retry/backoff state and configuration. The Preferences Support page can also
+save its current human-readable rows to RAM:NovaDock-Diagnostics.txt; this
+export is local to Preferences and does not add another control-port message
+format.
 
 The optional fifth PLUGIN config field is ON (default) or OFF:
 
@@ -6249,8 +7159,9 @@ change is needed.
 
 After a normal update negotiates host capabilities, nd_client_notify(client,
 title, details, severity) can add a notice to the ALERTS session history.
-Severity is 0 for information, 1 for warnings and 2 for errors. Keep details
-within 31 characters and omit credentials.
+Severity is 0 for information, 1 for warnings and 2 for errors. The legacy
+packet carries 31-character title/body previews. Current SDK clients
+negotiate the extended notice format described below. Omit credentials.
 
 OR the returned event bits into the normal update result so a simultaneous
 click or settings action is retained. Read extended actions through
@@ -6261,6 +7172,33 @@ on meaningful transitions rather than on every sample.
 Host capability flags remain present on badge and notification replies as
 well as status updates. These replies do not revoke negotiated artwork
 support.
+
+Plugin display names and tile labels are shown in uppercase, including names
+from third-party manifests. Executable paths, plugin IDs, live values and
+unrelated captions retain their original bytes.
+
+@{b}Long notices (NovaDock 0.6)@{ub}
+
+A host sets ND_EVENT2_HOST_LONG_NOTICE only when it accepts
+ND_MSG_NOTICE_LONG. That command uses an unchanged NDExtMessage v5 prefix
+followed by char title[81] and char text[513]. Validate the entire
+NDNoticeMessage length before reading the tail, and terminate both fields
+within their bounds. Titles carry up to 80 characters and bodies up to 512
+characters in ISO-8859-1. nd_client_notify() negotiates this automatically;
+older hosts receive the original ND_MSG_NOTICE preview packet. Existing
+message versions and the legacy history-control preview layout remain
+unchanged. Full bounded text participates in duplicate detection and is
+forwarded to AmiNotis when enabled.
+
+@{b}Artwork size policy@{ub}
+-------------------
+
+Plugins with artwork must support Tiny and Normal (large) for every emitted
+state, including animation, busy, unknown/disconnected and sad/error states.
+Scalable 32×32 bank frames may serve both sizes; icons must remain
+recognizable, with readings and badges clear of the artwork. Do not leave a
+blank or text-only Tiny fallback. See @{"the SDK requirements" link PLUGIN_SDK_ARTWORK} for packaging and
+mandatory host/native validation.
 @endnode
 
 @node PLUGIN_MANIFEST "Plugin manifests"

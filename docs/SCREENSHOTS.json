@@ -425,7 +425,63 @@
       "height": 171,
       "thumb_width": 268,
       "thumb_height": 71
+    },
+    {
+      "file": "dock-06.gif",
+      "capture": "shot-dock.ppm",
+      "crop": [
+        8,
+        503,
+        1016,
+        592
+      ],
+      "width": 1008,
+      "height": 89,
+      "thumb_width": 268,
+      "thumb_height": 24
+    },
+    {
+      "file": "drawer-popup.gif",
+      "capture": "shot-drawer.ppm",
+      "crop": [
+        211,
+        147,
+        539,
+        509
+      ],
+      "width": 328,
+      "height": 362,
+      "thumb_width": 268,
+      "thumb_height": 296
+    },
+    {
+      "file": "dock-menu-06.gif",
+      "capture": "shot-menu.ppm",
+      "crop": [
+        8,
+        452,
+        528,
+        592
+      ],
+      "width": 520,
+      "height": 140,
+      "thumb_width": 268,
+      "thumb_height": 72
+    },
+    {
+      "file": "aminotis-inbox.gif",
+      "capture": "shot-inbox.ppm",
+      "crop": [
+        232,
+        20,
+        792,
+        178
+      ],
+      "width": 560,
+      "height": 158,
+      "thumb_width": 268,
+      "thumb_height": 76
     }
   ],
-  "updated": "2026-11-16"
+  "updated": "2026-11-27"
 }

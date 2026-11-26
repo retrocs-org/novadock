@@ -3,8 +3,21 @@
 Add **SENSOR** from **Add item > Plugins**. Add multiple independent tiles, such
 as Temperatures and Voltages, each with its own label and selected channels.
 It detects supported readings and
-rotates selected channels in the dock every five seconds. Click for a live,
-paged list with **Previous**, **Next**, **Refresh** and **Close**.
+shows the active channel name, value and sensor-type artwork above the instance
+label. CPU, memory, FPGA, temperature, voltage, battery and fan readings have
+distinct artwork. Unknown devices use a generic sensor picture.
+
+**Auto-switch seconds** controls rotation (default five seconds). Set it to **0**
+to hold the current channel. Right-click for **Next sensor**, **Previous sensor**
+or **Sensor readings...**. **Click action > Next sensor** makes an ordinary tile
+click advance immediately; the default still opens the readings list. The list
+also has a **Next sensor** button. Missing/unselected readings are skipped.
+Changing the channel does not run the vendor diagnostic again.
+
+Each detected channel has an optional **title** in settings. Leave it empty to
+use the device's normal name. I2C titles and choices follow the device's stable
+identity rather than its discovery position. **Tile label** remains independent
+of channel titles, so several SENSOR instances can have different purposes.
 
 Right-click and choose **Edit settings**. Freshly detected channels appear as
 checkboxes, checked initially. Untick readings you do not want displayed.
@@ -185,3 +198,23 @@ last resident status. Status older than 30 seconds is labelled stale; start
 SENSOR to populate live discovery information. Settings are preserved while
 hardware is unavailable. Optional I2C library absence does not prevent native
 ZZ9000, RTC or Warp readings from being used.
+
+## Repeatable FS-UAE validation
+
+Run `python3 tools/run_sensor_qa.py` from the source tree with the normal Amiga
+build toolchain and an imported AmigaOS 3.2.3 installation configured. Use
+`--no-build` to test binaries already built. The tool creates a disposable,
+offline guest, redirects its ENV assign, and supplies known AK_Sensors inputs.
+It never mounts persistent guest drives or executes WHDLoad games.
+
+The fixture checks the real SENSOR client's channel names, values, artwork keys,
+manual switching and missing readings. It also runs the real WHDLoad indexer
+against 129 dummy project drawers, then checks the normal dock's rendered
+three-digit badge, channel text and independent footer. Before/after PPM images
+and PASS/FAIL output are saved in the temporary QA output directory printed by
+the runner. This tests the data and rendering paths without sensor hardware;
+physical ZZ9000, Warp and I2C hardware still require device-specific validation.
+
+## Side docks and compact tiles
+
+SENSOR supports Bottom, Top, Left and Right placements. A crowded side dock may shorten Normal tiles to 46 pixels. The compact artwork layout keeps the selected sensor name and reading visible, and omits the redundant plugin-name footer when it cannot fit. Tiny mode keeps its icon and reading. Test both Normal and Tiny, including live and sad/unavailable states, idle and magnified on both side docks.

@@ -3,6 +3,8 @@
 import argparse
 from pathlib import Path
 from pack_plugin_art import build_bank
+from plugin_art_colours import colourful_palette
+from artifact_compare import same_artifact
 ROOT=Path(__file__).resolve().parents[1]
 def bank():
     frames=[]
@@ -29,12 +31,12 @@ def bank():
         if state==0:
             rect(23,20,8,10,1);rect(25,23,1,1,2);rect(29,23,1,1,2);rect(26,26,3,1,2);rect(25,27,1,1,2);rect(29,27,1,1,2)
         frames.append(dict(name='Rocket',state=state,pixels=p))
-    return build_bank(frames,[(0,0,0),(36,44,57),(124,157,186),(232,239,245),(143,194,205),(170,194,140)]+[(0,0,0)]*10,[0,1,2,3,4,5]+[0]*10)
+    return build_bank(frames,colourful_palette("amirocket"),[0,1,2,3,4,5]+[0]*10)
 def main():
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--check',action='store_true');args=parser.parse_args()
-    target=ROOT/'Plugins/AmiRocket.assets/Artwork.ndart';data=bank()
+    target=ROOT/'plugin_src/amirocket/legacy/AmiRocket.assets/Artwork.ndart';data=bank()
     if args.check:
-        if not target.is_file() or target.read_bytes()!=data:raise SystemExit('AmiRocket artwork needs regeneration')
+        if not target.is_file() or not same_artifact(target.read_bytes(),data):raise SystemExit('AmiRocket artwork needs regeneration')
     else:target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
     print('AmiRocket: four plugin-owned rocket status frames are current.')
 if __name__=='__main__':main()

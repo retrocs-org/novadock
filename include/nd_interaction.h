@@ -25,6 +25,18 @@
 #define ND_RX_SUSPEND 21   /* SUSPEND: close the dock's windows (Workbench reset) */
 #define ND_RX_RESUME 22    /* RESUME: reopen them */
 #define ND_RX_RESTART 23   /* RESTART: normal shutdown and relaunch */
+#define ND_RX_GET 24       /* GET key: one setting (text = key) */
+#define ND_RX_SET 25       /* SET key value: change, apply and save one setting */
+#define ND_RX_THEME 26     /* THEME id: shorthand for SET THEME id */
+#define ND_RX_INFO 27      /* INFO n: one item's kind, state, label and command */
+#define ND_RX_SAVE 28      /* SAVE: write pending settings now */
+#define ND_RX_UNDO 29      /* UNDO: revert the last Edit-mode move or removal */
+#define ND_RX_PROFILE 30   /* PROFILE [USE] name | SAVE name | DELETE name | LIST */
+#define ND_RX_PROFILE_USE 0
+#define ND_RX_PROFILE_SAVE 1
+#define ND_RX_PROFILE_DELETE 2
+#define ND_RX_PROFILE_LIST 3
+#define ND_RX_KEY_LEN 48   /* GET/SET key, including OPTION.<id>.<key> */
 #define ND_RX_BADGE_LEN 8  /* as ND_BADGE_LEN in nd_protocol.h */
 #define ND_RX_TEXT_LEN 240
 #define ND_RX_ID_LEN 20

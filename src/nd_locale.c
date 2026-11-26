@@ -55,21 +55,25 @@ const char *nd_tr(const char *english)
     long id=string_id(english);
     return id<0 ? english : lookup(id,english);
 }
+/* Skip literal %% and compare argument types, including long modifiers.
+ * A translated word following %% must never be parsed as a conversion. */
+static int format_argument(const char **scan)
+{
+ const char *p=*scan;int wide;
+ while((p=strchr(p,'%'))!=NULL){
+  ++p;if(*p=='%'){++p;continue;}
+  while(*p && strchr("-+ #0.123456789",*p))++p;
+  wide=0;if(*p=='l'){wide=256;++p;}
+  if(!*p || !strchr("sdu",*p))return -1;
+  *scan=p+1;return (unsigned char)*p+wide;
+ }
+ *scan=NULL;return 0;
+}
 const char *nd_trf(const char *english_format)
 {
-    const char *translated=nd_tr(english_format);
-    /* Formats are written into fixed buffers: keep a long translation from
-     * overflowing them, and require the same conversions in the same order. */
-    const char *a=english_format,*b=translated;
-    if (!translated || strlen(translated)>ND_TR_FORMAT_MAX) return english_format;
-    for (;;) {
-        a=strchr(a,'%');b=strchr(b,'%');
-        if (!a || !b) break;
-        while (*a && !strchr("sdu",*a)) ++a;
-        while (*b && !strchr("sdu",*b)) ++b;
-        if (*a!=*b) return english_format;
-        if (*a) ++a;
-        if (*b) ++b;
-    }
-    return (!a && !b) ? translated : english_format;
+ const char *translated=nd_tr(english_format),*a=english_format,*b=translated;
+ int left,right;
+ if(!translated || strlen(translated)>ND_TR_FORMAT_MAX)return english_format;
+ do{left=format_argument(&a);right=format_argument(&b);if(left<0 || left!=right)return english_format;}while(left);
+ return translated;
 }

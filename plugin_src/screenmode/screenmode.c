@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "nd_wait.h"
 #include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
@@ -298,7 +299,7 @@ static int dock_command(const char *command)
     struct MsgPort *reply,*host;
     struct RexxMsg *msg;
     STRPTR marker=NULL;
-    int replied=0,waited,ok=0;
+    int replied=0,ok=0;
     if (!RexxSysBase || !(reply=CreateMsgPort())) return 0;
     msg=CreateRexxMsg(reply,(STRPTR)"rexx",(STRPTR)"NOVADOCK");
     if (!msg) {DeleteMsgPort(reply);return 0;}
@@ -314,10 +315,8 @@ static int dock_command(const char *command)
         if (host) PutMsg(host,(struct Message *)msg);
         Permit();
         if (host) {
-            for (waited=0;waited<150 && !replied;waited+=2) {
-                if (GetMsg(reply)) replied=1;
-                else Delay(2);
-            }
+            /* Sleep until NovaDock answers (at most three seconds). */
+            if (nd_wait_port(NULL,reply,150UL) && GetMsg(reply)) replied=1;
             if (!replied) {
                 Forbid();
                 if (GetMsg(reply)) replied=1;
@@ -338,6 +337,9 @@ static int dock_command(const char *command)
     return ok;
 }
 #include "nd_mode_worker.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 /* Keep normal dock heartbeats while the separate editor process runs.
  * Deadline expiry resumes the dock without killing a live Amiga process.
  * The worker's global guard prevents overlapping switches until it exits. */

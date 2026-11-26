@@ -1,5 +1,6 @@
 #ifndef ND_MANIFEST_H
 #define ND_MANIFEST_H
+#include "nd_retired_plugins.h"
 /* Self-describing plugins.  A plugin describes itself with NOVADOCK_* lines,
  * either as tool types in its own icon (Plugins/Example.info) or in a text
  * file beside it (Plugins/Example.ndplugin).  Preferences reads these and

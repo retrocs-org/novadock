@@ -4,7 +4,7 @@
 ; required for Import; replace the values with your own.  The same
 ; NOVADOCK_ lines can instead be tool types in Hello.info.
 NOVADOCK_ID=HELLO
-NOVADOCK_NAME=Hello
+NOVADOCK_NAME=HELLO
 NOVADOCK_VERSION=1.0
 NOVADOCK_AUTHOR=Your Name
 NOVADOCK_DESCRIPTION=Shows a greeting and reacts to clicks.

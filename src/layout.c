@@ -249,6 +249,150 @@ void nd_icon_fit(int width, int height, int max_width, int max_height,
     if (fitted_height) *fitted_height = out_height;
 }
 
+int nd_hover_size(int distance,int radius,int strength,int max_width,int max_height,int *width,int *height)
+{
+    int weight,w,h;
+    if (distance<0) distance=-distance;
+    if (radius<1 || distance>=radius || strength<=0 || *width<1 || *height<1) return 0;
+    if(strength>100)strength=100;
+    /* Smoothstep has zero slope at both the peak and the wave edge.
+     * Keep sub-percent precision so crossing an icon centre stays gentle. */
+    weight=(radius-distance)*1024/radius;
+    weight=weight*weight*(3072-2*weight)/1048576;
+    weight=weight*strength/100;
+    w=*width+*width*weight*7/4096;
+    h=*height+*height*weight*7/4096;
+    nd_icon_fit(w,h,max_width,max_height,&w,&h);
+    if(w<*width || h<*height || (w==*width && h==*height))return 0;
+    *width=w;*height=h;return 1;
+}
+
+int nd_icon_wave_size(int distance,int radius,int max_width,int max_height,int *width,int *height)
+{return nd_hover_size(distance,radius,100,max_width,max_height,width,height);}
+static int hover_extent(const struct NDHoverLayoutItem *item,int normal)
+{
+    int extent=item->vertical ? (normal ? item->base_height:item->height):
+                                (normal ? item->base_width:item->width);
+    if(item->kind==ND_HOVER_ART){
+        if(item->vertical)extent+=item->label;
+        else if(extent<item->label)extent=item->label;
+    }
+    return extent;
+}
+static void hover_segment(struct NDHoverLayoutItem *items,int first,int end,
+                           int focus,int gap,int left,int right)
+{
+    int i,normal=0,expanded=0,budget,amount=100,width,previous,shift,span;
+    if(first>=end)return;
+    for(i=first;i<end;++i){normal+=hover_extent(&items[i],1);expanded+=hover_extent(&items[i],0);}
+    normal+=(end-first-1)*gap;expanded+=(end-first-1)*gap;
+    budget=right-left-normal;
+    if(expanded>right-left && expanded>normal){
+        amount=budget>0 ? budget*100/(expanded-normal):0;
+        if(amount>100)amount=100;
+    }
+    for(i=first;i<end;++i){
+        items[i].width=items[i].base_width+(items[i].width-items[i].base_width)*amount/100;
+        items[i].height=items[i].base_height+(items[i].height-items[i].base_height)*amount/100;
+        items[i].centre=items[i].anchor;
+    }
+    if(focus<first)focus=first;if(focus>=end)focus=end-1;
+    {int extra=(hover_extent(&items[focus],0)-hover_extent(&items[focus],1))/2;
+     for(i=focus-1;i>=first;--i){int own=hover_extent(&items[i],0)-hover_extent(&items[i],1);items[i].centre-=extra+own/2;extra+=own;}
+     extra=(hover_extent(&items[focus],0)-hover_extent(&items[focus],1)+1)/2;
+     for(i=focus+1;i<end;++i){int own=hover_extent(&items[i],0)-hover_extent(&items[i],1);items[i].centre+=extra+(own+1)/2;extra+=own;}}
+    for(i=focus-1;i>=first;--i){
+        width=(hover_extent(&items[i],0)+1)/2+hover_extent(&items[i+1],0)/2+gap;
+        if(items[i].centre>items[i+1].centre-width)items[i].centre=items[i+1].centre-width;
+    }
+    for(i=focus+1;i<end;++i){
+        width=(hover_extent(&items[i-1],0)+1)/2+hover_extent(&items[i],0)/2+gap;
+        if(items[i].centre<items[i-1].centre+width)items[i].centre=items[i-1].centre+width;
+    }
+    span=items[end-1].centre+(hover_extent(&items[end-1],0)+1)/2-
+         (items[first].centre-hover_extent(&items[first],0)/2);
+    if(span>right-left){
+        int minimum=0,free_space,room,slack=0,used=0,old_centre,next_centre,packed;
+        for(i=first;i<end;++i)minimum+=hover_extent(&items[i],0);
+        minimum+=(end-first-1)*gap;
+        free_space=span-minimum;room=right-left-minimum;
+        /* Remove only the excess spacing, proportionally across the row.
+         * Switching straight to minimum gaps at this boundary makes the
+         * entire dock jump even for a one-pixel change in the wave. Use
+         * cumulative rounding so the last tile fits exactly as well. */
+        if(free_space>0 && room>=0){
+            old_centre=items[first].centre;
+            for(i=first+1;i<end;++i){
+                width=(hover_extent(&items[i-1],0)+1)/2+hover_extent(&items[i],0)/2+gap;
+                next_centre=items[i].centre;
+                slack+=next_centre-old_centre-width;
+                packed=slack*room/free_space;
+                items[i].centre=items[i-1].centre+width+packed-used;
+                used=packed;old_centre=next_centre;
+            }
+        }
+    }
+    shift=0;
+    previous=items[first].centre-hover_extent(&items[first],0)/2;
+    width=items[end-1].centre+(hover_extent(&items[end-1],0)+1)/2;
+    if(previous+shift<left)shift=left-previous;
+    if(width+shift>right)shift=right-width;
+    for(i=first;i<end;++i)items[i].centre+=shift;
+}
+void nd_hover_layout(struct NDHoverLayoutItem *items,int count,int focus,int gap,int left,int right)
+{
+    int i,first=0,bound=left;
+    if(!items || count<1 || right<=left)return;
+    for(i=0;i<count;++i){
+        items[i].centre=items[i].anchor;
+        if(items[i].kind==ND_HOVER_FIXED){
+            hover_segment(items,first,i,focus,gap,bound,
+                          items[i].anchor-hover_extent(&items[i],1)/2-gap);
+            first=i+1;bound=items[i].anchor+(hover_extent(&items[i],1)+1)/2+gap;
+        }
+    }
+    hover_segment(items,first,count,focus,gap,bound,right);
+}
+
+/* Blend valid packings around the two neighbouring anchors. Their sizes
+ * and bounds are identical; interpolating their centres preserves gaps and
+ * fixed dividers, without snapping when the highlighted tile changes. */
+void nd_hover_layout_at(struct NDHoverLayoutItem *items,int count,int position,int gap,int left,int right)
+{
+    struct NDHoverLayoutItem original[ND_MAX_DOCK_ITEMS];
+    int centres[ND_MAX_DOCK_ITEMS];
+    int a=-1,b=-1,i,weight;
+    if(!items || count<1 || count>ND_MAX_DOCK_ITEMS || right<=left)return;
+    for(i=0;i<count;++i){
+        if(items[i].anchor<=position && (a<0 || items[i].anchor>items[a].anchor))a=i;
+        if(items[i].anchor>=position && (b<0 || items[i].anchor<items[b].anchor))b=i;
+    }
+    if(a<0)a=b;if(b<0)b=a;
+    if(a==b){nd_hover_layout(items,count,a,gap,left,right);return;}
+    weight=(position-items[a].anchor)*256/(items[b].anchor-items[a].anchor);
+    memcpy(original,items,(unsigned int)count*sizeof(*items));
+    nd_hover_layout(items,count,a,gap,left,right);
+    for(i=0;i<count;++i)centres[i]=items[i].centre;
+    memcpy(items,original,(unsigned int)count*sizeof(*items));
+    nd_hover_layout(items,count,b,gap,left,right);
+    for(i=0;i<count;++i)
+        items[i].centre=(centres[i]*(256-weight)+items[i].centre*weight+128)/256;
+}
+
+int nd_icon_hover_size(int tile_width,int tile_height,int tiny,int *width,int *height)
+{
+    int max_width=tile_width-8,max_height=tile_height-(tiny ? 8 : 24);
+    int w,h;
+    if (max_width>ND_HOVER_ICON_LIMIT) max_width=ND_HOVER_ICON_LIMIT;
+    if (max_height>ND_HOVER_ICON_LIMIT) max_height=ND_HOVER_ICON_LIMIT;
+    if (*width<=0 || *height<=0) return 0;
+    nd_icon_fit(*width+*width/4,*height+*height/4,max_width,max_height,&w,&h);
+    /* Do not shrink an icon that already occupies the available space. */
+    if (w<*width || h<*height || (w==*width && h==*height)) return 0;
+    *width=w;*height=h;
+    return 1;
+}
+
 static int view_fit(const struct LView *v, int screen_width,
                     int screen_height, int bar_height,
                     struct NDLayout *layout)
@@ -395,7 +539,14 @@ int nd_layout_fit(const struct NDConfig *cfg, int screen_width,
 {
     struct LView v;
     if (!view_all(&v,cfg)) return 0;
-    return view_fit(&v,screen_width,screen_height,bar_height,layout);
+    {
+        int grip=cfg->drag_bar ? ND_DRAG_BAR_SIZE:0;
+        int vertical=cfg->side==ND_SIDE_LEFT || cfg->side==ND_SIDE_RIGHT;
+        int ok=view_fit(&v,screen_width-(vertical ? 0:grip),
+                         screen_height-(vertical ? grip:0),bar_height,layout);
+        if(ok){if(vertical)layout->height+=grip;else layout->width+=grip;}
+        return ok;
+    }
 }
 
 int nd_layout_fit_enabled(const struct NDConfig *cfg, int screen_width,
@@ -404,5 +555,37 @@ int nd_layout_fit_enabled(const struct NDConfig *cfg, int screen_width,
 {
     struct LView v;
     if (!view_enabled(&v,cfg)) return 0;
-    return view_fit(&v,screen_width,screen_height,bar_height,layout);
+    {
+        int grip=cfg->drag_bar ? ND_DRAG_BAR_SIZE:0;
+        int vertical=cfg->side==ND_SIDE_LEFT || cfg->side==ND_SIDE_RIGHT;
+        int ok=view_fit(&v,screen_width-(vertical ? 0:grip),
+                         screen_height-(vertical ? grip:0),bar_height,layout);
+        if(ok){if(vertical)layout->height+=grip;else layout->width+=grip;}
+        return ok;
+    }
+}
+
+/* Clamp before adding so even extreme mouse deltas cannot overflow. */
+int nd_drag_offset(int origin,int delta,int length,int dock_length)
+{
+    int travel;
+    if(length<=0 || dock_length<=0)return 0;
+    travel=length>dock_length ? length-dock_length:0;
+    if (origin<0) origin=0;if (origin>travel) origin=travel;
+    if (delta < -origin) return 0;
+    if (delta > travel-origin) return travel;
+    return origin+delta;
+}
+
+/* Snap the proposed dock origin, not the mouse's absolute position: the
+ * leading grip of a wide centered dock may already be near the left edge. */
+int nd_drag_snap(int position,int delta,int length,int dock_length)
+{
+    int travel=length-dock_length-2*ND_LAYOUT_MARGIN,origin;
+    if(travel<=0)return position;
+    origin=position==ND_POSITION_START ? 0:position==ND_POSITION_END ? travel:travel/2;
+    origin+=delta;
+    if(origin<travel/4)return ND_POSITION_START;
+    if(origin>travel-travel/4)return ND_POSITION_END;
+    return ND_POSITION_CENTER;
 }

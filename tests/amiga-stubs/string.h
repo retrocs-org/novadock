@@ -7,4 +7,5 @@ char *strchr(const char*,int); char *strrchr(const char*,int); char *strstr(cons
 void *memcpy(void*,const void*,size_t); void *memmove(void*,const void*,size_t); void *memset(void*,int,size_t); int memcmp(const void*,const void*,size_t);
 void *memchr(const void*,int,size_t);
 size_t strspn(const char*,const char*); size_t strcspn(const char*,const char*);
+char *strpbrk(const char*,const char*);
 #endif

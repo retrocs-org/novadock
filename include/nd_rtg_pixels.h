@@ -1,0 +1,80 @@
+#ifndef ND_RTG_PIXELS_H
+#define ND_RTG_PIXELS_H
+/* Small CyberGraphX-compatible interface, also supplied by Picasso96.
+ * GetCyberMapAttr -96 (a0,d0); ReadPixelArray -120
+ * (a0,d0,d1,d2,a1,d3,d4,d5,d6,d7). No separate RTG SDK is required. */
+#include <exec/types.h>
+#include <graphics/rastport.h>
+extern struct Library *NDGlassCyberGfxBase;
+#if defined(__VBCC__)
+ULONG __nd_glass_attr(__reg("a6") struct Library *,__reg("a0") struct BitMap *,__reg("d0") ULONG)="\tjsr\t-96(a6)";
+ULONG __nd_glass_read(__reg("a6") struct Library *,__reg("a0") APTR,
+    __reg("d0") UWORD,__reg("d1") UWORD,__reg("d2") UWORD,
+    __reg("a1") struct RastPort *,__reg("d3") UWORD,__reg("d4") UWORD,
+    __reg("d5") UWORD,__reg("d6") UWORD,__reg("d7") UBYTE)="\tjsr\t-120(a6)";
+#define nd_glass_depth(bitmap) __nd_glass_attr(NDGlassCyberGfxBase,(bitmap),0x80000007UL)
+#define nd_glass_bitmap(bitmap) __nd_glass_attr(NDGlassCyberGfxBase,(bitmap),0x80000008UL)
+#define nd_glass_rgb_span(out,width,rp,x,y) __nd_glass_read(NDGlassCyberGfxBase,(out),0,0,(UWORD)((width)*3U),(rp),(UWORD)(x),(UWORD)(y),(UWORD)(width),1,0)
+#define nd_glass_rgb_line(out,width,rp,y) __nd_glass_read(NDGlassCyberGfxBase,(out),0,0,(UWORD)((width)*3U),(rp),0,(UWORD)(y),(UWORD)(width),1,0)
+#define nd_glass_rgb_pixel(out,rp,x,y) __nd_glass_read(NDGlassCyberGfxBase,(out),0,0,3,(rp),(UWORD)(x),(UWORD)(y),1,1,0)
+ULONG __nd_glass_write(__reg("a6") struct Library *,__reg("a0") APTR,
+    __reg("d0") UWORD,__reg("d1") UWORD,__reg("d2") UWORD,
+    __reg("a1") struct RastPort *,__reg("d3") UWORD,__reg("d4") UWORD,
+    __reg("d5") UWORD,__reg("d6") UWORD,__reg("d7") UBYTE)="\tjsr\t-126(a6)";
+#define nd_glass_write_span(out,width,rp,x,y) __nd_glass_write(NDGlassCyberGfxBase,(out),0,0,(UWORD)((width)*3U),(rp),(UWORD)(x),(UWORD)(y),(UWORD)(width),1,0)
+#define nd_glass_write_line(out,width,rp,y) __nd_glass_write(NDGlassCyberGfxBase,(out),0,0,(UWORD)((width)*3U),(rp),0,(UWORD)(y),(UWORD)(width),1,0)
+#elif defined(__GNUC__) && defined(__mc68000__) && !defined(__linux__)
+static __inline ULONG nd_glass_bitmap(struct BitMap *bitmap)
+{
+    register struct Library *base __asm("a6")=NDGlassCyberGfxBase;
+    register struct BitMap *a0 __asm("a0")=bitmap;
+    register ULONG result __asm("d0")=0x80000008UL;
+    __asm volatile("jsr -96(a6)":"+r"(result),"+r"(a0):"r"(base):"d1","a1","cc","memory");return result;
+}
+static __inline ULONG nd_glass_depth(struct BitMap *bitmap)
+{
+    register struct Library *base __asm("a6")=NDGlassCyberGfxBase;
+    register struct BitMap *a0 __asm("a0")=bitmap;
+    register ULONG result __asm("d0")=0x80000007UL;
+    __asm volatile("jsr -96(a6)":"+r"(result),"+r"(a0):"r"(base):"d1","a1","cc","memory");return result;
+}
+static __inline ULONG nd_glass_rgb_span(APTR out,unsigned int width,struct RastPort *rp,unsigned int x,unsigned int y)
+{
+    register struct Library *base __asm("a6")=NDGlassCyberGfxBase;
+    register APTR a0 __asm("a0")=out;register struct RastPort *a1 __asm("a1")=rp;
+    register ULONG d0 __asm("d0")=0,d1 __asm("d1")=0,d2 __asm("d2")=width*3U;
+    register ULONG d3 __asm("d3")=x,d4 __asm("d4")=y,d5 __asm("d5")=width;
+    register ULONG d6 __asm("d6")=1,d7 __asm("d7")=0;
+    __asm volatile("jsr -120(a6)":"+r"(d0),"+r"(d1),"+r"(d2),"+r"(d3),"+r"(d4),"+r"(d5),"+r"(d6),"+r"(d7),"+r"(a0),"+r"(a1):"r"(base):"cc","memory");return d0;
+}
+static __inline ULONG nd_glass_write_span(APTR out,unsigned int width,struct RastPort *rp,unsigned int x,unsigned int y)
+{
+    register struct Library *base __asm("a6")=NDGlassCyberGfxBase;
+    register APTR a0 __asm("a0")=out;register struct RastPort *a1 __asm("a1")=rp;
+    register ULONG d0 __asm("d0")=0,d1 __asm("d1")=0,d2 __asm("d2")=width*3U;
+    register ULONG d3 __asm("d3")=x,d4 __asm("d4")=y,d5 __asm("d5")=width;
+    register ULONG d6 __asm("d6")=1,d7 __asm("d7")=0;
+    __asm volatile("jsr -126(a6)":"+r"(d0),"+r"(d1),"+r"(d2),"+r"(d3),"+r"(d4),"+r"(d5),"+r"(d6),"+r"(d7),"+r"(a0),"+r"(a1):"r"(base):"cc","memory");return d0;
+}
+#define nd_glass_rgb_line(out,width,rp,y) nd_glass_rgb_span(out,width,rp,0,y)
+#define nd_glass_write_line(out,width,rp,y) nd_glass_write_span(out,width,rp,0,y)
+static __inline ULONG nd_glass_rgb_pixel(APTR out,struct RastPort *rp,unsigned int x,unsigned int y)
+{
+ register struct Library *base __asm("a6")=NDGlassCyberGfxBase;
+ register APTR a0 __asm("a0")=out;register struct RastPort *a1 __asm("a1")=rp;
+ register ULONG d0 __asm("d0")=0,d1 __asm("d1")=0,d2 __asm("d2")=3;
+ register ULONG d3 __asm("d3")=x,d4 __asm("d4")=y,d5 __asm("d5")=1;
+ register ULONG d6 __asm("d6")=1,d7 __asm("d7")=0;
+ __asm volatile("jsr -120(a6)":"+r"(d0),"+r"(d1),"+r"(d2),"+r"(d3),"+r"(d4),"+r"(d5),"+r"(d6),"+r"(d7),"+r"(a0),"+r"(a1):"r"(base):"cc","memory");return d0;
+}
+
+#else
+ULONG nd_glass_rgb_span(APTR out,unsigned int width,struct RastPort *rp,unsigned int x,unsigned int y);
+ULONG nd_glass_write_span(APTR out,unsigned int width,struct RastPort *rp,unsigned int x,unsigned int y);
+ULONG nd_glass_write_line(APTR out,unsigned int width,struct RastPort *rp,unsigned int y);
+ULONG nd_glass_depth(struct BitMap *bitmap);
+ULONG nd_glass_bitmap(struct BitMap *bitmap);
+ULONG nd_glass_rgb_pixel(APTR out,struct RastPort *rp,unsigned int x,unsigned int y);
+ULONG nd_glass_rgb_line(APTR out,unsigned int width,struct RastPort *rp,unsigned int y);
+#endif
+#endif

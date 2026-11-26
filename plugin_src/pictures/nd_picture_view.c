@@ -9,6 +9,9 @@
 #include <proto/graphics.h>
 #include <string.h>
 #include "nd_picture_view.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct IntuitionBase *IntuitionBase=NULL;struct GfxBase *GfxBase=NULL;
 struct NDPictureView {struct Screen *screen;struct Window *window;struct NDPictureImage image;ULONG pens[16];int scale;char title[120];};
 static void draw(struct NDPictureView *v)

@@ -563,7 +563,7 @@ static int open_ui(struct Editor *e)
     if (!button(e,10,21,118,G_NAV_GENERAL,"General") ||
         !button(e,10,45,118,G_NAV_APPEARANCE,"Appearance") ||
         !button(e,10,69,118,G_NAV_ITEMS,"Organize") ||
-        !button(e,10,93,118,G_NAV_DIAGNOSTICS,"Diagnostics")) return 0;
+        !button(e,10,93,118,G_NAV_DIAGNOSTICS,"Support")) return 0;
     ng_init(e,&ng,135,30,190,163,G_LIST,"Actions (> pick, * dock)");
     ng.ng_Flags=PLACETEXT_ABOVE;
     e->list=e->last=CreateGadget(LISTVIEW_KIND,e->last,&ng,

@@ -71,6 +71,19 @@ int LLVMFuzzerTestOneInput(const uint8_t *data,size_t size)
     }
     for (i=0;i<fuzz_cfg->hook_count;++i)
         CHECK(nd_hook_event_valid(fuzz_cfg->hooks[i].event));
+    /* Every global value ARexx GET reports is bounded and parses back. */
+    for (i=0;nd_config_keys[i];++i) {
+        char value[ND_CONFIG_VALUE_LEN],line[ND_CONFIG_VALUE_LEN+40];
+        if (!nd_config_get(fuzz_cfg,nd_config_keys[i],value,sizeof(value))) continue;
+        CHECK(memchr(value,'\0',sizeof(value))!=NULL);
+        sprintf(line,"%s=%s",nd_config_keys[i],value);
+        (void)nd_parse_line(fuzz_cfg,line);
+    }
+    for (i=0;i<fuzz_cfg->option_count;++i) {
+        char key[96],value[ND_CONFIG_VALUE_LEN];
+        sprintf(key,"OPTION.%.20s.%.40s",fuzz_cfg->options[i].id,fuzz_cfg->options[i].key);
+        (void)nd_config_get(fuzz_cfg,key,value,sizeof(value));
+    }
     return 0;
 }
 #elif defined(FUZZ_MANIFEST)
@@ -207,6 +220,75 @@ int LLVMFuzzerTestOneInput(const uint8_t *data,size_t size)
     int playing;
     (void)nd_music_parse_playing(text,&playing);
     free(text);
+    return 0;
+}
+#elif defined(FUZZ_CALC)
+#include "nd_calc.h"
+int LLVMFuzzerTestOneInput(const uint8_t *data,size_t size)
+{
+    char *s=text_copy(data,size,4096);
+    struct NDCalcResult r;
+    memset(&r,0,sizeof(r));
+    (void)nd_calc_eval(s,&r);
+    free(s);
+    return 0;
+}
+#elif defined(FUZZ_WEATHER)
+#include "nd_weather.h"
+int LLVMFuzzerTestOneInput(const uint8_t *data,size_t size)
+{
+    static struct NDWeather w;
+    char *s=text_copy(data,size,65536),a[32],b[32];
+    memset(&w,0,sizeof(w));
+    (void)nd_weather_parse(s,&w);
+    a[0]=b[0]='\0';
+    if (nd_weather_geocode(s,a,b,sizeof(a))) {
+        CHECK(memchr(a,'\0',sizeof(a))!=NULL);
+        CHECK(memchr(b,'\0',sizeof(b))!=NULL);
+    }
+    free(s);
+    return 0;
+}
+#elif defined(FUZZ_MARKDOWN)
+#include "nd_notes.h"
+#include "nd_markdown.h"
+int LLVMFuzzerTestOneInput(const uint8_t *data,size_t size)
+{
+    static struct NDMarkdown view;
+    static char out[ND_NOTE_TEXT*4+64];
+    char *s;
+    if (size>=ND_NOTE_TEXT) return 0;   /* notes are bounded by the editor */
+    s=text_copy(data,size,ND_NOTE_TEXT);
+    nd_md_parse(s,&view,0,0);
+    (void)nd_md_write(&view,out);
+    (void)nd_md_formats_read(&view,s);
+    free(s);
+    return 0;
+}
+#elif defined(FUZZ_LOG)
+#include "nd_monitor.h"
+int LLVMFuzzerTestOneInput(const uint8_t *data,size_t size)
+{
+    static struct NDMonitorHistory history;
+    static struct NDLogParser parser;
+    memset(&history,0,sizeof(history));
+    nd_log_reset(&parser,0);
+    /* Twice: the second pass starts mid-stream with carried-over state. */
+    (void)nd_log_feed(&history,&parser,data,(unsigned int)size);
+    (void)nd_log_feed(&history,&parser,data,(unsigned int)size);
+    return 0;
+}
+#elif defined(FUZZ_HTTP)
+#include "nd_aminet.h"
+int LLVMFuzzerTestOneInput(const uint8_t *data,size_t size)
+{
+    char *s=text_copy(data,size,16384);
+    long length=-2;
+    if (nd_aminet_http_header(s,1000000UL,&length)) CHECK(length>=-1 && length<=1000000L);
+    (void)nd_aminet_archive_header("x.lha",data,(unsigned int)size);
+    (void)nd_aminet_archive_header("x.zip",data,(unsigned int)size);
+    (void)nd_aminet_archive_header("x.tgz",data,(unsigned int)size);
+    free(s);
     return 0;
 }
 #else

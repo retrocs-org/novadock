@@ -55,7 +55,7 @@ int nd_icon_remove_border_background(const unsigned char *pens,
 void nd_icon_art_box(int tile_width,int tile_height,int tiny,int *width,int *height)
 {
     int w=tile_width-(tiny ? 2 : 14),h=tile_height-(tiny ? 2 : 24);
-    if(!tiny){if(w>48)w=48;if(h>40)h=40;}
+    if(!tiny){if(w>48)w=48;if(h>48)h=48;}
     *width=w>0 ? w : 1;*height=h>0 ? h : 1;
 }
 int nd_icon_art_top(int tile_y,int tile_height,int image_height,int tiny)

@@ -24,6 +24,9 @@ for program in programs:
         f'build.amiga {program}: missing {missing}, extra {extra}'
     for source in wanted:
         assert (ROOT / source).exists(), f'{program}: {source} does not exist'
+stage=(ROOT/'scripts/build-and-stage-amiga.sh').read_text()
+staged=re.search(r'required_binaries="(.*?)"',stage,re.S).group(1).split()
+assert set(staged)==set(programs), 'staged binaries must match the Makefile'
 print(f'build.amiga matches the Makefile for all {len(programs)} programs.')
 
 # Switching development versions must also remove old runnable downloads.
@@ -58,3 +61,23 @@ with tempfile.TemporaryDirectory() as temporary:
     assert result.returncode != 0 and 'release requires FlexCat' in result.stderr
     assert not output.exists(), 'failed prerequisite must not create release state'
 print('Release packaging refuses missing translations before building.')
+
+# A retired hook can leave an optional extension with no matching files.
+copy_block = stage.split('mkdir -p "$destination/Rexx"', 1)[1].split('# Launcher artwork', 1)[0]
+with tempfile.TemporaryDirectory() as temporary:
+    fixture = Path(temporary)
+    source, target = fixture/'source', fixture/'target'
+    (source/'Rexx').mkdir(parents=True)
+    (target/'Rexx').mkdir(parents=True)
+    for filename in ('Kept.rexx', 'Extra.amirx'):
+        (source/'Rexx'/filename).write_text(filename)
+    env = dict(os.environ, project_root=str(source), destination=str(target))
+    subprocess.run(['sh', '-ec', copy_block], env=env, check=True)
+    assert sorted(p.name for p in (target/'Rexx').iterdir()) == ['Extra.amirx', 'Kept.rexx']
+    (source/'Rexx/Extra.amirx').unlink()
+    (target/'Rexx/Extra.amirx').unlink()
+    subprocess.run(['sh', '-ec', copy_block], env=env, check=True)
+    assert [p.name for p in (target/'Rexx').iterdir()] == ['Kept.rexx']
+    (source/'Rexx/Kept.rexx').unlink()
+    subprocess.run(['sh', '-ec', copy_block], env=env, check=True)
+print('Staging copies remaining ARexx scripts with optional extensions absent.')

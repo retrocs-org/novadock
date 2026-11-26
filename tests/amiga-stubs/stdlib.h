@@ -6,4 +6,5 @@ int atoi(const char*); long atol(const char*); long strtol(const char*,char**,in
 void exit(int); int abs(int); long labs(long); void qsort(void*,size_t,size_t,int(*)(const void*,const void*)); char *getenv(const char*);
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE 1
+int atexit(void(*)(void));
 #endif

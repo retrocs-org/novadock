@@ -1,6 +1,6 @@
 NOVADOCK_ID=CALC
 NOVADOCK_NAME=CALC
-NOVADOCK_VERSION=0.1
+NOVADOCK_VERSION=0.1.2
 NOVADOCK_AUTHOR=NovaDock
 NOVADOCK_DESCRIPTION=Calculator with bounded history, decimal/hex/binary conversion and clipboard copy.
 NOVADOCK_LICENSE=MIT

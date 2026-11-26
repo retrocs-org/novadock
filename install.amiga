@@ -146,21 +146,99 @@ IF NOT EXISTS SYS:NovaDock/Themes/Vapor
   MakeDir SYS:NovaDock/Themes/Vapor
 ENDIF
 Copy Themes/Mocha/theme.cfg TO SYS:NovaDock/Themes/Mocha/theme.cfg
+IF EXISTS Themes/Mocha/Images/Backdrop.iff
+  IF NOT EXISTS SYS:NovaDock/Themes/Mocha/Images
+    MakeDir SYS:NovaDock/Themes/Mocha/Images
+  ENDIF
+  Copy Themes/Mocha/Images/Backdrop#?.iff TO SYS:NovaDock/Themes/Mocha/Images
+ENDIF
 Copy Themes/Light/theme.cfg TO SYS:NovaDock/Themes/Light/theme.cfg
+IF EXISTS Themes/Light/Images/Backdrop.iff
+  IF NOT EXISTS SYS:NovaDock/Themes/Light/Images
+    MakeDir SYS:NovaDock/Themes/Light/Images
+  ENDIF
+  Copy Themes/Light/Images/Backdrop#?.iff TO SYS:NovaDock/Themes/Light/Images
+ENDIF
 Copy Themes/Workbench/theme.cfg TO SYS:NovaDock/Themes/Workbench/theme.cfg
+IF EXISTS Themes/Workbench/Images/Backdrop.iff
+  IF NOT EXISTS SYS:NovaDock/Themes/Workbench/Images
+    MakeDir SYS:NovaDock/Themes/Workbench/Images
+  ENDIF
+  Copy Themes/Workbench/Images/Backdrop#?.iff TO SYS:NovaDock/Themes/Workbench/Images
+ENDIF
 Copy Themes/Graphite/theme.cfg TO SYS:NovaDock/Themes/Graphite/theme.cfg
+IF EXISTS Themes/Graphite/Images/Backdrop.iff
+  IF NOT EXISTS SYS:NovaDock/Themes/Graphite/Images
+    MakeDir SYS:NovaDock/Themes/Graphite/Images
+  ENDIF
+  Copy Themes/Graphite/Images/Backdrop#?.iff TO SYS:NovaDock/Themes/Graphite/Images
+ENDIF
 Copy Themes/HighContrast/theme.cfg TO SYS:NovaDock/Themes/HighContrast/theme.cfg
+IF EXISTS Themes/HighContrast/Images/Backdrop.iff
+  IF NOT EXISTS SYS:NovaDock/Themes/HighContrast/Images
+    MakeDir SYS:NovaDock/Themes/HighContrast/Images
+  ENDIF
+  Copy Themes/HighContrast/Images/Backdrop#?.iff TO SYS:NovaDock/Themes/HighContrast/Images
+ENDIF
 Copy Themes/Copper/theme.cfg TO SYS:NovaDock/Themes/Copper/theme.cfg
+IF EXISTS Themes/Copper/Images/Backdrop.iff
+  IF NOT EXISTS SYS:NovaDock/Themes/Copper/Images
+    MakeDir SYS:NovaDock/Themes/Copper/Images
+  ENDIF
+  Copy Themes/Copper/Images/Backdrop#?.iff TO SYS:NovaDock/Themes/Copper/Images
+ENDIF
 Copy Themes/Ocean/theme.cfg TO SYS:NovaDock/Themes/Ocean/theme.cfg
+IF EXISTS Themes/Ocean/Images/Backdrop.iff
+  IF NOT EXISTS SYS:NovaDock/Themes/Ocean/Images
+    MakeDir SYS:NovaDock/Themes/Ocean/Images
+  ENDIF
+  Copy Themes/Ocean/Images/Backdrop#?.iff TO SYS:NovaDock/Themes/Ocean/Images
+ENDIF
 Copy Themes/Emerald/theme.cfg TO SYS:NovaDock/Themes/Emerald/theme.cfg
+IF EXISTS Themes/Emerald/Images/Backdrop.iff
+  IF NOT EXISTS SYS:NovaDock/Themes/Emerald/Images
+    MakeDir SYS:NovaDock/Themes/Emerald/Images
+  ENDIF
+  Copy Themes/Emerald/Images/Backdrop#?.iff TO SYS:NovaDock/Themes/Emerald/Images
+ENDIF
 Copy Themes/NeXTSTEP/theme.cfg TO SYS:NovaDock/Themes/NeXTSTEP/theme.cfg
+IF EXISTS Themes/NeXTSTEP/Images/Backdrop.iff
+  IF NOT EXISTS SYS:NovaDock/Themes/NeXTSTEP/Images
+    MakeDir SYS:NovaDock/Themes/NeXTSTEP/Images
+  ENDIF
+  Copy Themes/NeXTSTEP/Images/Backdrop#?.iff TO SYS:NovaDock/Themes/NeXTSTEP/Images
+ENDIF
 Copy Themes/BeOS/theme.cfg TO SYS:NovaDock/Themes/BeOS/theme.cfg
+IF EXISTS Themes/BeOS/Images/Backdrop.iff
+  IF NOT EXISTS SYS:NovaDock/Themes/BeOS/Images
+    MakeDir SYS:NovaDock/Themes/BeOS/Images
+  ENDIF
+  Copy Themes/BeOS/Images/Backdrop#?.iff TO SYS:NovaDock/Themes/BeOS/Images
+ENDIF
 Copy Themes/Nord/theme.cfg TO SYS:NovaDock/Themes/Nord/theme.cfg
+IF EXISTS Themes/Nord/Images/Backdrop.iff
+  IF NOT EXISTS SYS:NovaDock/Themes/Nord/Images
+    MakeDir SYS:NovaDock/Themes/Nord/Images
+  ENDIF
+  Copy Themes/Nord/Images/Backdrop#?.iff TO SYS:NovaDock/Themes/Nord/Images
+ENDIF
 Copy Themes/Vapor/theme.cfg TO SYS:NovaDock/Themes/Vapor/theme.cfg
+IF EXISTS Themes/Vapor/Images/Backdrop.iff
+  IF NOT EXISTS SYS:NovaDock/Themes/Vapor/Images
+    MakeDir SYS:NovaDock/Themes/Vapor/Images
+  ENDIF
+  Copy Themes/Vapor/Images/Backdrop#?.iff TO SYS:NovaDock/Themes/Vapor/Images
+ENDIF
 IF NOT EXISTS SYS:NovaDock/Themes/Christmas
   MakeDir SYS:NovaDock/Themes/Christmas
 ENDIF
 Copy Themes/Christmas/theme.cfg TO SYS:NovaDock/Themes/Christmas/theme.cfg
+IF EXISTS Themes/Christmas/Images/Backdrop.iff
+  IF NOT EXISTS SYS:NovaDock/Themes/Christmas/Images
+    MakeDir SYS:NovaDock/Themes/Christmas/Images
+  ENDIF
+  Copy Themes/Christmas/Images/Backdrop#?.iff TO SYS:NovaDock/Themes/Christmas/Images
+ENDIF
 ; Copy the complete plugin payload, including new programs and manifests.
 Copy Plugins TO SYS:NovaDock/Plugins ALL
 ; Network replaces the retired standalone Roadshow program.
@@ -246,3 +324,51 @@ Echo >>S:User-Startup "  IF WARN"
 Echo >>S:User-Startup "    Assign >NIL: NovaDock: SYS:NovaDock"
 Echo >>S:User-Startup "  ENDIF"
 Echo >>S:User-Startup "ENDIF"
+
+; Runtime support capture and bundle collector
+Copy SupportLog TO SYS:NovaDock/SupportLog
+Copy SupportReport TO SYS:NovaDock/SupportReport
+IF EXISTS SupportReport.info
+  Copy SupportReport.info TO SYS:NovaDock/SupportReport.info
+ENDIF
+
+; Retired notification integrations are moving to AmiNotis.
+IF EXISTS SYS:NovaDock/Plugins/Alerts
+  Delete SYS:NovaDock/Plugins/Alerts QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Plugins/Alerts.info
+  Delete SYS:NovaDock/Plugins/Alerts.info QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Plugins/Alerts.ndplugin
+  Delete SYS:NovaDock/Plugins/Alerts.ndplugin QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Plugins/Alerts.assets
+  Delete SYS:NovaDock/Plugins/Alerts.assets ALL QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Plugins/AmIRC
+  Delete SYS:NovaDock/Plugins/AmIRC QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Plugins/AmIRC.info
+  Delete SYS:NovaDock/Plugins/AmIRC.info QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Plugins/AmIRC.ndplugin
+  Delete SYS:NovaDock/Plugins/AmIRC.ndplugin QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Plugins/AmIRC.assets
+  Delete SYS:NovaDock/Plugins/AmIRC.assets ALL QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Plugins/AmiRocket
+  Delete SYS:NovaDock/Plugins/AmiRocket QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Plugins/AmiRocket.info
+  Delete SYS:NovaDock/Plugins/AmiRocket.info QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Plugins/AmiRocket.ndplugin
+  Delete SYS:NovaDock/Plugins/AmiRocket.ndplugin QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Plugins/AmiRocket.assets
+  Delete SYS:NovaDock/Plugins/AmiRocket.assets ALL QUIET
+ENDIF
+IF EXISTS SYS:NovaDock/Rexx/NovaDockNotify.amirx
+  Delete SYS:NovaDock/Rexx/NovaDockNotify.amirx QUIET
+ENDIF

@@ -7,5 +7,7 @@ paths=[ROOT/'README.md',ROOT/'CHANGELOG.md',ROOT/'NovaDock.guide']
 paths+=list((ROOT/'docs').rglob('*.md'))
 paths+=list((ROOT/'public-web').rglob('*.php'))
 for path in paths:
+    if path == ROOT/'public-web/includes/plugin_catalog.php':
+        continue  # Marketplace explicitly lists every bundled dock plugin.
     assert not re.search(r'\b(?:Christmas plugin|Christmas tree|XMAS|CHRISTMAS_PLUGIN|Wintery loop)\b',path.read_text('latin-1' if path.suffix=='.guide' else 'utf-8'),re.I), str(path)
-print('Seasonal surprise remains absent from public documentation, release notes and website prose.')
+print('Seasonal surprise remains absent from public documentation, release notes and website prose outside the marketplace.')

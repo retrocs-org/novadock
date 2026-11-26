@@ -1,6 +1,9 @@
 #include "nd_clipboard.h"
 #include <stdlib.h>
 #include <string.h>
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 static unsigned long be32(const unsigned char *p)
 {return ((unsigned long)p[0]<<24)|((unsigned long)p[1]<<16)|((unsigned long)p[2]<<8)|p[3];}
 static void put32(unsigned char *p,unsigned long n)

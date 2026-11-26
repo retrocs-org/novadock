@@ -15,7 +15,8 @@ Right-click a tile and choose **Edit settings**:
   thumbnail then **Choose**, or double-click it. Arrow keys move the selection;
   Return chooses and Esc cancels. Small screens have Previous/Next pages; paging buttons are hidden when all icons fit.
   The library includes WHDLoad, Games, Demos, Apps, Arcade, Music, Graphics, Code, Movies,
-  Books, Disks, Network, Utilities, Favourites, Drawer, Workbench, Tools and Internet.
+  Books, Disks, Network, Utilities, Favourites, Drawer, Workbench, Tools and Internet,
+  the smart-home and network devices, and the Tilt set (see Launchers and icons).
 - **Custom icon or picture**: choose **Select** and browse to a game's `.info`
   file or another icon/picture. An existing custom file takes priority over the
   library selection automatically; clear the field to use the library icon.

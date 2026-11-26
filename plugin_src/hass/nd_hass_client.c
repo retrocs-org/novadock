@@ -15,24 +15,38 @@ static unsigned long ticks(void)
 {struct DateStamp d;DateStamp(&d);return ((unsigned long)d.ds_Days*1440UL+(unsigned long)d.ds_Minute)*3000UL+(unsigned long)d.ds_Tick;}
 void amihass_erase(void *p,unsigned long n)
 {volatile unsigned char *v=p;while(n--)*v++=0;}
-static int send_request(struct AmiHASSClient *c,int kind,const char *owner,const char *entity,const char *action,int offset,int refresh,const char *domain,const char *filter,const char *area)
+/* Keep the standalone SDK independent of the service JSON/parser module. */
+static int client_entity_id(const char *id)
+{unsigned int i,n=0;int dot=0;if(!id||strlen(id)>=96)return 0;for(i=0;id[i];++i){char c=id[i];if(c=='.'){if(dot||!n||!id[i+1])return 0;dot=1;n=0;}else{if(!((c>='a'&&c<='z')||(c>='0'&&c<='9')||c=='_'))return 0;++n;}}return dot&&n;}
+/* Optional entity list placed in items[] before the message is posted. */
+static const char (*send_ids)[96];static unsigned int send_count;
+static int send_request(struct AmiHASSClient *c,int kind,const char *owner,const char *entity,const char *action,int offset,int refresh,const char *domain,const char *filter,const char *area,const char *label)
 {
  struct AmiHASSMessage *m;struct MsgPort *server;int sent=0;
+ if(label && (strlen(label)>63 || strcspn(label,"\r\n")!=strlen(label)))return 0;
  if(!c || c->pending || (area && (strlen(area)>95 || (kind!=AMIHASS_LIST && kind!=AMIHASS_DEVICES))))return 0;
  if(!c->port)c->port=nd_reply_port();if(!c->port)return 0;
  m=AllocVec(sizeof(*m),MEMF_PUBLIC|MEMF_CLEAR);if(!m)return 0;
  m->magic=AMIHASS_MAGIC;m->abi=AMIHASS_ABI;m->kind=kind;m->offset=offset;m->refresh=refresh;
  if(owner){strncpy(m->owner,owner,sizeof(m->owner)-1);}if(entity){strncpy(m->entity,entity,sizeof(m->entity)-1);}if(action){strncpy(m->action,action,sizeof(m->action)-1);}
  if(domain)strncpy(m->domain,domain,sizeof(m->domain)-1);if(filter)strncpy(m->filter,filter,sizeof(m->filter)-1);
- if(area)strcpy(m->item.id,area);
+ if(area)strcpy(m->item.id,area);if(label)strcpy(m->item.name,label);
+ if(send_ids){unsigned int i;for(i=0;i<send_count;++i)strcpy(m->items[i].id,send_ids[i]);m->count=(LONG)send_count;}
  m->msg.mn_Length=sizeof(*m);m->msg.mn_ReplyPort=c->port;
  Forbid();server=(kind!=AMIHASS_STOP && kind!=AMIHASS_STATUS && kind!=AMIHASS_DIAGNOSTICS && FindPort("AmiHASS.Maintenance")) ? NULL:FindPort(AMIHASS_PORT);if(server){PutMsg(server,(struct Message *)m);sent=1;}Permit();
  if(!sent){FreeVec(m);return 0;}c->pending=m;c->started=ticks();return 1;
 }
 int amihass_send(struct AmiHASSClient *c,int kind,const char *owner,const char *entity,const char *action,int offset,int refresh,const char *domain,const char *filter)
-{return send_request(c,kind,owner,entity,action,offset,refresh,domain,filter,NULL);}
-int amihass_send_area(struct AmiHASSClient *c,int kind,const char *owner,const char *device,int offset,int refresh,const char *domain,const char *filter,const char *area)
-{return send_request(c,kind,owner,device,NULL,offset,refresh,domain,filter,area);}
+{return send_request(c,kind,owner,entity,action,offset,refresh,domain,filter,NULL,NULL);}
+/* ATTRIBUTES/HISTORY: poll while the reply is AMIHASS_WAIT (about once a second). */
+int amihass_attributes(struct AmiHASSClient *c,const char *owner,const char *entity,int offset,int fresh)
+{return send_request(c,AMIHASS_ATTRIBUTES,owner,entity,NULL,offset,fresh?1:0,NULL,NULL,NULL,NULL);}
+int amihass_history(struct AmiHASSClient *c,const char *owner,const char *entity,int hours,int offset)
+{return send_request(c,AMIHASS_HISTORY,owner,entity,NULL,offset,hours>0?hours:24,NULL,NULL,NULL,NULL);}
+int amihass_notifications(struct AmiHASSClient *c,const char *owner,const char *id,int offset)
+{return send_request(c,AMIHASS_NOTIFICATIONS,owner,id,NULL,offset,0,NULL,NULL,NULL,NULL);}
+int amihass_send_scope(struct AmiHASSClient *c,int kind,const char *owner,const char *device,int offset,int refresh,const char *domain,const char *filter,const char *area,const char *label)
+{return send_request(c,kind,owner,device,NULL,offset,refresh,domain,filter,area,label);}
 int amihass_subscribe(struct AmiHASSClient *c,const char *owner,const char *entity,unsigned int seconds)
 {if(seconds && (seconds<5 || seconds>3600))return 0;return amihass_send(c,AMIHASS_SUBSCRIBE,owner,entity,NULL,0,AMIHASS_QUERY_INTERVAL(seconds),NULL,NULL);}
 int amihass_unsubscribe(struct AmiHASSClient *c,const char *entity)
@@ -42,7 +56,7 @@ int amihass_unsubscribe(struct AmiHASSClient *c,const char *entity)
 static void release_selections(struct MsgPort *identity)
 {struct AmiHASSMessage *m;struct MsgPort *server;m=AllocVec(sizeof(*m),MEMF_PUBLIC|MEMF_CLEAR);if(!m)return;m->magic=AMIHASS_MAGIC;m->abi=AMIHASS_ABI;m->kind=AMIHASS_UNSUBSCRIBE;m->age=(ULONG)(unsigned long)identity;m->msg.mn_Length=sizeof(*m);Forbid();server=FindPort(AMIHASS_PORT);if(server)PutMsg(server,(struct Message *)m);Permit();if(!server)FreeVec(m);}
 struct AmiHASSMessage *amihass_reply(struct AmiHASSClient *c)
-{struct AmiHASSMessage *m;if(!c || !c->port)return NULL;m=(struct AmiHASSMessage *)GetMsg(c->port);if(m){c->pending=NULL;if(m->magic!=AMIHASS_MAGIC || m->abi!=AMIHASS_ABI || m->msg.mn_Length!=sizeof(*m) || m->count<0 || m->count>AMIHASS_PAGE || m->total<0){FreeVec(m);return NULL;}return m;}if(c->pending && ticks()-c->started>500UL)amihass_client_close(c);return NULL;}
+{struct AmiHASSMessage *m;if(!c || !c->port)return NULL;m=(struct AmiHASSMessage *)GetMsg(c->port);if(m){c->pending=NULL;if(m->magic!=AMIHASS_MAGIC || m->abi!=AMIHASS_ABI || m->msg.mn_Length!=sizeof(*m) || m->count<0 || m->count>AMIHASS_PAGE || m->total<0){FreeVec(m);return NULL;}return m;}if(c->pending){unsigned long now=ticks(),waited=now-c->started;/* A clock step (SNTP at boot) shows up as a huge or negative wait: restart it. */if(waited>3000UL)c->started=now;else if(waited>500UL)amihass_client_close(c);}return NULL;}
 void amihass_client_close(struct AmiHASSClient *c)
 {
  struct AmiHASSMessage *m;if(!c || !c->port)return;
@@ -51,16 +65,21 @@ void amihass_client_close(struct AmiHASSClient *c)
  if(c->pending)nd_reply_abandon(c->port);else nd_reply_delete(c->port);
  Permit();memset(c,0,sizeof(*c));
 }
+int amihass_query_many(struct AmiHASSClient *c,const char *owner,const char ids[][96],unsigned int count,int refresh,int subscribe)
+{struct AmiHASSMessage *m;unsigned int i;if(!c||c->pending||!owner||!*owner||strlen(owner)>19||!ids||!count||count>AMIHASS_PAGE)return 0;for(i=0;i<count;++i)if(!client_entity_id(ids[i]))return 0;
+ send_ids=ids;send_count=count;i=(unsigned int)send_request(c,subscribe ? AMIHASS_SUBSCRIBE_MANY:AMIHASS_QUERY_MANY,owner,NULL,NULL,0,refresh,NULL,NULL,NULL,NULL);send_ids=NULL;send_count=0;(void)m;return (int)i;}
+unsigned long amihass_client_signal(const struct AmiHASSClient *c)
+{return c && c->port ? 1UL<<c->port->mp_SigBit:0UL;}
 int amihass_launch(const char *name,const char *argument)
 {
  static const char *roots[]={"AmiHASS:","SYS:Utilities/AmiHASS","PROGDIR:","C:",NULL};
  char path[520],record[300],quoted[1100],command[1200];BPTR lock,in,out;FILE *f;int i,found=0;LONG rc;struct Process *self=(struct Process *)FindTask(NULL);APTR saved=self->pr_WindowPtr;
- if(strcmp(name,"AmiHASSPrefs") && strcmp(name,"AmiHASSService") && strcmp(name,"AmiHASSBrowser"))return 0;
- if(!strcmp(name,"AmiHASSBrowser") && argument)return 0;
+ if(strcmp(name,"AmiHASSPrefs") && strcmp(name,"AmiHASSService") && strcmp(name,"AmiHASSBrowser") && strcmp(name,"AmiHASSDashboard"))return 0;
+ if((!strcmp(name,"AmiHASSBrowser")||!strcmp(name,"AmiHASSDashboard")) && argument)return 0;
  if(argument && strcmp(argument,"CONFIG") && strcmp(argument,"SERVICE"))return 0;
  self->pr_WindowPtr=(APTR)-1L;
  record[0]=0;
- if(!strcmp(name,"AmiHASSBrowser"))strcpy(record,"SYS:Utilities");
+ if(!strcmp(name,"AmiHASSBrowser")||!strcmp(name,"AmiHASSDashboard"))strcpy(record,"SYS:Utilities");
  else {f=fopen(AMIHASS_CONFIG_FILE,"rb");
  if(f){char line[1100];int row,target=!strcmp(name,"AmiHASSPrefs") ? 6:5;
   if(fgets(line,sizeof(line),f) && !strcmp(line,"AMIHASSCFG1\n"))for(row=2;row<=target;++row){if(!fgets(line,sizeof(line),f))break;if(row==target){line[strcspn(line,"\r\n")]=0;if(strlen(line)<sizeof(record))strcpy(record,line);}}
@@ -85,3 +104,12 @@ int amihass_start(const char *unused)
 {int present;(void)unused;Forbid();if(FindPort("AmiHASS.Maintenance")){Permit();return 0;}present=FindPort(AMIHASS_PORT)!=NULL;Permit();return present || amihass_launch("AmiHASSService","SERVICE");}
 const char *amihass_problem(int r)
 {switch(r){case 9:return "Install/start AmiHASS service";case AMIHASS_OK:return "Connected";case AMIHASS_UNAVAILABLE:return "Entity unavailable; no action sent";case AMIHASS_WAIT:return "Updating...";case AMIHASS_UNCONFIGURED:return "Set up Home Assistant connection";case AMIHASS_STALE:return "Stale; last reading is not current";case AMIHASS_BUSY:return "Busy; try again shortly";case AMIHASS_UNSUPPORTED:return "Action is not supported for this entity";default:return "Connection/authentication failed; check server, token and curl";}}
+
+int amihass_send_area(struct AmiHASSClient *c,int kind,const char *owner,const char *entity,int offset,int refresh,const char *domain,const char *filter,const char *area){return amihass_send_scope(c,kind,owner,entity,offset,refresh,domain,filter,area,NULL);}
+
+int amihass_snapshot_size(struct AmiHASSClient *c,const char *owner,const char *entity,long offset,const char *version,int fresh,int small)
+{if(!entity||strncmp(entity,"camera.",7)||strlen(entity)>95||offset<0||offset>262144L||(offset&&(!version||!*version))||(version&&strlen(version)>19)||(fresh&&(offset||version)))return 0;return amihass_send(c,AMIHASS_SNAPSHOT,owner,entity,version,(int)offset,fresh?1:0,small ? "thumb":NULL,NULL);}
+int amihass_snapshot(struct AmiHASSClient *c,const char *owner,const char *entity,long offset,const char *version,int fresh)
+{return amihass_snapshot_size(c,owner,entity,offset,version,fresh,0);}
+const unsigned char *amihass_snapshot_data(const struct AmiHASSMessage *m,unsigned long *size)
+{if(!m||!size||m->magic!=AMIHASS_MAGIC||m->abi!=AMIHASS_ABI||m->kind!=AMIHASS_SNAPSHOT||m->result!=AMIHASS_OK||m->count||!memchr(m->item.updated,0,20)||!m->item.updated[0]||m->total<1||m->total>262144L||m->offset<0||m->offset>=m->total||m->refresh<1||m->refresh>AMIHASS_SNAPSHOT_BYTES||m->refresh>m->total-m->offset)return NULL;*size=(unsigned long)m->refresh;return (const unsigned char*)m->items;}

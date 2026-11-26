@@ -305,3 +305,6 @@ LONG nd_control_alerts(struct NDControlAlertsMessage *request)
  request->control.magic=ND_CONTROL_MAGIC;request->control.version=ND_CONTROL_VERSION;request->control.action=ND_CONTROL_ALERTS;
  return control_exchange(request,sizeof(*request),ND_CONTROL_TIMEOUT_SECONDS);
 }
+
+LONG nd_control_plugin_resources(struct NDControlPluginResourcesMessage *p)
+{if(!p)return ND_CONTROL_INVALID;p->control.magic=ND_CONTROL_MAGIC;p->control.version=ND_CONTROL_VERSION;p->control.action=ND_CONTROL_PLUGIN_RESOURCES;return control_exchange(p,sizeof(*p),ND_CONTROL_TIMEOUT_SECONDS);}

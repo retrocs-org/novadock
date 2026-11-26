@@ -27,6 +27,9 @@
 #define FETCH_PREFIX "T:NovaDockAminet-"
 #define FETCH_DIR_VALID(path) (!strncmp(path,FETCH_PREFIX,sizeof(FETCH_PREFIX)-1)||nd_download_staging_dir(path))
 #include "../weather/nd_fetch_worker.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 const char nd_version[]=ND_PLUGIN_VER_STRING(AMINET,"Aminet");long __stack=32768;
 struct AMJob {struct MsgPort *port;char name[80],directory[160],command[1800],target[240];ULONG started,received,total;int transferred,kind;};
 struct Library *IconBase=NULL;
@@ -88,15 +91,17 @@ static void am_response(const char *path,int kind)
 }
 static void am_job_events(void)
 {
- struct FetchMessage *m;char path[200],error[128];FILE *f;int kind;
+ struct FetchMessage *m;char path[200],error[128];FILE *f;int kind;unsigned long bytes=0;
  if(!job.port)return;
  while((m=(struct FetchMessage *)GetMsg(job.port))!=NULL){
   if(m->magic!=FETCH_MAGIC||m->msg.mn_Length!=sizeof(*m)){if(m->msg.mn_ReplyPort)ReplyMsg((struct Message *)m);continue;}
   if(m->kind==1){if(job.transferred)m->kind=-1;else{strcpy(m->command,job.command);strcpy(m->directory,job.directory);job.transferred=1;}ReplyMsg((struct Message *)m);}
   else if(m->kind==2){kind=job.kind;sprintf(path,"%s/response",m->directory);
+   f=fopen(path,"rb");if(f){if(!fseek(f,0,SEEK_END)){long length=ftell(f);if(length>0)bytes=(unsigned long)length;}fclose(f);}
    if(m->result){sprintf(path,"%s/fetch.log",m->directory);f=fopen(path,"rb");error[0]=0;if(f){if(!fgets(error,sizeof(error),f))error[0]=0;fclose(f);}error[strcspn(error,"\r\n")]=0;am_set_status(error[0] ? error:"Aminet transfer failed; check the network.");}
    else if(kind==4){if(am_exists(job.target))am_set_status("Not saved: destination already exists.");else if(Rename(path,job.target)){struct DiskObject *icon;char icon_path[246];sprintf(icon_path,"%s.info",job.target);if(IconBase&&!am_exists(icon_path)&&(icon=GetDefDiskObject(WBPROJECT))!=NULL){PutDiskObject(job.target,icon);FreeDiskObject(icon);}sprintf(error,"Saved: %.110s",job.target);am_set_status(error);}else am_set_status("Cannot save completed download; check free space.");}
    else am_response(path,kind);
+   nd_client_activity(NULL,ND_PLUGIN_OP_NETWORK,(m->result || (kind==4 && strncmp(status,"Saved:",6))) ? 3:2,kind,(LONG)bytes);
    fetch_clean(m->directory);FreeVec(m);am_job_close();break;
   }
  }
@@ -159,6 +164,7 @@ int main(int argc,char **argv)
  IconBase=OpenLibrary("icon.library",39);
  if(!IntuitionBase||!GfxBase||!GadToolsBase||!AslBase||!nd_client_init(&client,argv[1]))goto done;
  for(;;){int downloading=job.port && job.kind==4;event=0;if(reread){nd_plugin_option_string(argv[1],"DRAWER","RAM:",drawer,sizeof(drawer));reread=0;}am_job_events();if(downloading && !job.port)event|=nd_client_notify(&client,!strncmp(status,"Saved:",6) ? "Aminet download saved":"Aminet download failed",status,!strncmp(status,"Saved:",6) ? 0:2);am_progress();sprintf(value,"%.31s",job.port&&job.kind!=4 ? "Transferring...":status);
+  if(job.port)nd_client_activity(&client,ND_PLUGIN_OP_NETWORK,1,job.kind,(LONG)job.received);
   event|=nd_client_update_quiet(&client,"AMINET",value,ND_NO_METER,elapsed,500U);if(event&ND_EVENT_QUIT)break;if(event&ND_EVENT_SETTINGS)reread=1;
   if(event&ND_EVENT_CLICK){int new_window=!ui;if(am_open()){if(new_window){if(results.count)am_packages();else if(!job.port){listing=0;page=1;am_listing();}}am_download_state(job.port&&job.kind==4,job.received,job.total);am_status(status);}}
   am_action(am_event());elapsed=nd_client_wait_signals(&client,job.port ? 25U:500U,(ui ? 1UL<<ui->window->UserPort->mp_SigBit:0)|(job.port ? 1UL<<job.port->mp_SigBit:0));

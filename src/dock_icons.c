@@ -1,13 +1,20 @@
 /* NovaDock: Launcher icons: loading, scaling and reuse across reloads. */
 #include "dock_internal.h"
+#include <graphics/scale.h>
 #include "nd_artwork.h"
+#include "nd_task.h"
 
 /* Defined below, private to this file. */
 static int icon_source(const struct NDDock *dock,const struct NDConfig *cfg, int index,char *path);
 static ULONG icon_fingerprint(const struct NDDock *dock,const struct NDConfig *cfg, int index);
 static int adopt_icon_source(struct NDDock *dock,struct NDIconStash *stash, const struct NDConfig *previous,int index);
 static int icon_mask_pixel(const UBYTE *mask,int width,int x,int y);
-static Object *open_datatype_picture(struct NDDock *dock,const char *path, struct BitMap **bitmap, struct BitMap **mask,int *width,int *height, struct ColorRegister **palette, int *num_colors);
+static struct {struct NDTask task;int index;ULONG fingerprint;} icon_jobs[2];
+static UBYTE icon_load_state[ND_MAX_ITEMS];
+static void close_icon_jobs(void)
+{int i;for(i=0;i<2;++i)nd_task_close(&icon_jobs[i].task);memset(icon_load_state,0,sizeof(icon_load_state));}
+unsigned int active_icon_jobs(void){return (icon_jobs[0].task.port!=NULL)+(icon_jobs[1].task.port!=NULL);}
+unsigned long icon_job_signals(void){return nd_task_signals(&icon_jobs[0].task)|nd_task_signals(&icon_jobs[1].task);}
 static int build_datatype_icon(struct NDDock *dock,int index, int max_width,int max_height);
 static void release_plugin_artwork(struct NDDock *dock)
 {
@@ -18,24 +25,44 @@ static void release_plugin_artwork(struct NDDock *dock)
   nd_artwork_close(dock->plugin_artwork[i]);free(dock->plugin_artwork[i]);dock->plugin_artwork[i]=NULL;
  }
 }
-void load_plugin_artwork(struct NDDock *dock,int index)
+static void map_plugin_palette(struct NDDock *dock,struct NDArtwork *a)
 {
- const struct NDItem *item=&dock->conf.items[index];struct NDArtwork *a;char path[ND_ARTWORK_PATH];int j,k;
- if(item->kind!=ND_ITEM_PLUGIN || dock->plugin_artwork[index])return;
- if(!dock->plugin_art_key[index] && strncmp(item->caption,"ART:",4))return;
- if(!nd_artwork_path(dock->directory,item->command,path,sizeof(path)))return;
- for(j=0;j<ND_MAX_ITEMS;++j)if(dock->plugin_artwork[j]&&!strcmp(dock->plugin_artwork[j]->path,path)){dock->plugin_artwork[index]=dock->plugin_artwork[j];return;}
- a=(struct NDArtwork *)calloc(1,sizeof(*a));if(!a)return;dock->plugin_artwork[index]=a;
- if(nd_artwork_load(a,path) && dock->screen)for(k=1;k<16;++k){
+ int k;
+ if(!dock->screen || !a || !a->data || a->palette_ready)return;
+ for(k=1;k<16;++k){
   ULONG red=(ULONG)a->data[8+k*3]*0x01010101UL,green=(ULONG)a->data[9+k*3]*0x01010101UL,blue=(ULONG)a->data[10+k*3]*0x01010101UL;
-  LONG mapped;
-  /* FindColor does not reserve a pen: another window may recolour it later.
-   * Hold each RGB pen for the shared bank's lifetime, just like theme pens. */
-  mapped=ObtainBestPenA(dock->screen->ViewPort.ColorMap,red,green,blue,NULL);
+  LONG mapped=ObtainBestPenA(dock->screen->ViewPort.ColorMap,red,green,blue,NULL);
   if(mapped>=0)a->owned_pens[k]=1;
   else mapped=FindColor(dock->screen->ViewPort.ColorMap,red,green,blue,-1);
   a->mapped[k]=mapped>=0 ? (ULONG)mapped:0;
  }
+ a->palette_ready=1;
+}
+void map_plugin_artwork(struct NDDock *dock)
+{
+ int i;for(i=0;i<ND_MAX_ITEMS;++i)map_plugin_palette(dock,dock->plugin_artwork[i]);
+}
+void unmap_plugin_artwork(struct NDDock *dock)
+{
+ int i,k;struct NDArtwork *a;
+ if(!dock->screen)return;
+ for(i=0;i<ND_MAX_ITEMS;++i){
+  a=dock->plugin_artwork[i];if(!a || !a->palette_ready)continue;
+  for(k=1;k<16;++k){if(a->owned_pens[k])ReleasePen(dock->screen->ViewPort.ColorMap,a->mapped[k]);a->owned_pens[k]=0;a->mapped[k]=0;}
+  a->palette_ready=0;
+ }
+}
+void load_plugin_artwork(struct NDDock *dock,int index)
+{
+ const struct NDItem *item=&dock->conf.items[index];struct NDArtwork *a;char path[ND_ARTWORK_PATH];int j;
+ if(item->kind!=ND_ITEM_PLUGIN)return;
+ if(dock->plugin_artwork[index]){map_plugin_palette(dock,dock->plugin_artwork[index]);return;}
+ if(!strcmp(item->id,"MUSIC") && !item->media_capabilities && !dock->plugin_art_key[index])dock->plugin_art_key[index]=nd_artwork_key("music");
+ if(!dock->plugin_art_key[index] && strncmp(item->caption,"ART:",4))return;
+ if(!nd_artwork_path(dock->directory,item->command,path,sizeof(path)))return;
+ for(j=0;j<ND_MAX_ITEMS;++j)if(dock->plugin_artwork[j]&&!strcmp(dock->plugin_artwork[j]->path,path)){dock->plugin_artwork[index]=dock->plugin_artwork[j];map_plugin_palette(dock,dock->plugin_artwork[index]);return;}
+ a=(struct NDArtwork *)calloc(1,sizeof(*a));if(!a)return;dock->plugin_artwork[index]=a;
+ if(nd_artwork_load(a,path))map_plugin_palette(dock,a);
 }
 static void load_item_source(struct NDDock *dock,int i);
 static void build_one_scaled_icon(struct NDDock *dock,int i,int max_width,int max_height);
@@ -121,10 +148,11 @@ void stash_icon_sources(struct NDDock *dock,struct NDIconStash *stash)
     memset(stash,0,sizeof(*stash));
     for (i=0;i<dock->conf.count && i<ND_MAX_ITEMS;++i) {
         /* DataTypes items carry only a placeholder default icon. */
-        if (dock->datatype_icon_paths[i][0]) continue;
-        if (!dock->icons[i] && !dock->brushes[i]) continue;
+
+        if (!dock->icons[i] && !dock->brushes[i] && !dock->picture_sources[i]) continue;
         stash->icons[i]=dock->icons[i];dock->icons[i]=NULL;
         stash->brushes[i]=dock->brushes[i];dock->brushes[i]=NULL;
+        stash->pictures[i]=dock->picture_sources[i];dock->picture_sources[i]=NULL;
         stash->fingerprint[i]=icon_fingerprint(dock,&dock->conf,i);
         stash->usable[i]=1;
     }
@@ -172,6 +200,7 @@ static int adopt_icon_source(struct NDDock *dock,struct NDIconStash *stash,
             previous->items[j].kind!=dock->conf.items[index].kind) continue;
         dock->icons[index]=stash->icons[j];
         dock->brushes[index]=stash->brushes[j];
+        dock->picture_sources[index]=stash->pictures[j];stash->pictures[j]=NULL;icon_load_state[index]=2;
         if (stash->live) {
             dock->scaled_icon_bitmaps[index]=stash->scaled[j];stash->scaled[j]=NULL;
             dock->scaled_icon_masks[index]=stash->scaled_masks[j];stash->scaled_masks[j]=NULL;
@@ -199,6 +228,7 @@ void free_icon_stash(struct NDIconStash *stash)
         stash->brush_maps[i]=NULL;stash->brush_masks[i]=NULL;
         if (stash->icons[i] && IconBase) FreeDiskObject(stash->icons[i]);
         if (stash->brushes[i]) FreeVec(stash->brushes[i]);
+        if(stash->pictures[i])FreeVec(stash->pictures[i]);stash->pictures[i]=NULL;
         stash->icons[i]=NULL;stash->brushes[i]=NULL;stash->usable[i]=0;
     }
 }
@@ -206,85 +236,34 @@ void free_icon_stash(struct NDIconStash *stash)
  * The caller quietens requesters. */
 static void load_item_source(struct NDDock *dock,int i)
 {
-    static char path[ND_ICON_PATH_LEN];
-    int source;
-    load_plugin_artwork(dock,i);
-    source=icon_source(dock,&dock->conf,i,path);
-    if (source) ++dock->diagnostic_icons_loaded;
-    if (source==2) {
-        /* The program's own icon cannot be located safely for another
-         * running process; use Workbench's default tool icon. */
-        if (IconBase) dock->icons[i]=GetDefDiskObject(WBTOOL);
-        return;
-    }
-    if (!source) return;
-    if (has_iff_extension(path)) {
-        dock->brushes[i] = (struct NDILBM *)AllocVec(sizeof(struct NDILBM),
-                                         MEMF_PUBLIC | MEMF_CLEAR);
-        if (dock->brushes[i] && !nd_ilbm_load(path, dock->brushes[i])) {
-            FreeVec(dock->brushes[i]);
-            dock->brushes[i] = NULL;
-        }
-    } else {
-        int is_volume = dock->conf.items[i].kind == ND_ITEM_DRAWER &&
-                        dock->conf.items[i].command[0] &&
-                        dock->conf.items[i].command[
-                          strlen(dock->conf.items[i].command)-1] == ':';
-        int picture_path = !has_info_extension(path) &&
-                           has_filename_extension(path);
-        if (picture_path && DataTypesBase) {
-            strncpy(dock->datatype_icon_paths[i],path,
-                    sizeof(dock->datatype_icon_paths[i])-1);
-            dock->datatype_icon_paths[i][
-                sizeof(dock->datatype_icon_paths[i])-1]='\0';
-        }
-        if (!IconBase || picture_path) {
-            /* Keep a Workbench default as a graceful fallback when the
-             * named datatype is not installed on this machine. */
-            if (picture_path && IconBase)
-                dock->icons[i]=GetDefDiskObject(
-                    (dock->conf.items[i].kind==ND_ITEM_DRAWER ||
-                     dock->conf.items[i].kind==ND_ITEM_GROUP) ?
-                    WBDRAWER : WBTOOL);
-            return;
-        }
-        if (has_info_extension(path)) path[strlen(path) - 5] = '\0';
-        /* GetDiskObjectNew() mirrors Workbench for objects without a
-         * private .info by returning the proper system default icon.  A
-         * volume root is special: its icon base is <volume>:Disk, which
-         * is not itself a filesystem object, so request WBDISK directly
-         * when Disk.info is absent. */
-        if (IconBase->lib_Version >= 44) {
-            struct TagItem load_tags[5];
-            load_tags[0].ti_Tag = ICONGETA_GetPaletteMappedIcon;
-            /* Read embedded ColorIcon/NewIcon colours without allocating
-             * screen pens. GetPaletteMappedIcon=FALSE loses that palette. */
-            load_tags[0].ti_Data = TRUE;
-            load_tags[1].ti_Tag = ICONGETA_RemapIcon;
-            load_tags[1].ti_Data = FALSE;
-            load_tags[2].ti_Tag = ICONGETA_Screen;
-            load_tags[2].ti_Data = 0;
-            load_tags[3].ti_Tag = ICONGETA_GenerateImageMasks;
-            load_tags[3].ti_Data = TRUE;
-            load_tags[4].ti_Tag = TAG_DONE;
-            load_tags[4].ti_Data = 0;
-            dock->icons[i] = GetIconTagList(path,load_tags);
-        } else if (is_volume) {
-            dock->icons[i] = GetDiskObject(path);
-        } else if (IconBase->lib_Version >= 37) {
-            dock->icons[i] = GetDiskObjectNew(path);
-        } else {
-            dock->icons[i] = GetDiskObject(path);
-        }
-        if (is_volume) {
-            if (!dock->icons[i]) dock->icons[i] = GetDefDiskObject(WBDISK);
-        } else if (!dock->icons[i])
-            dock->icons[i] = GetDefDiskObject(
-                (dock->conf.items[i].kind == ND_ITEM_DRAWER ||
-                 dock->conf.items[i].kind == ND_ITEM_GROUP) ?
-                WBDRAWER : WBTOOL);
-    }
+ char path[ND_ICON_PATH_LEN],program[512],guard[64];struct NDIOJob request;const struct NDItem *item=&dock->conf.items[i];int slot,source;
+ if(icon_load_state[i])return;
+ load_plugin_artwork(dock,i);source=icon_source(dock,&dock->conf,i,path);
+ if(!source){icon_load_state[i]=2;return;}
+ for(slot=0;slot<2;++slot)if(!icon_jobs[slot].task.port){int busy;sprintf(guard,"NovaDock.Icon.%d",slot);Forbid();busy=FindPort(guard)!=NULL;Permit();if(!busy)break;}if(slot==2)return;
+ memset(&request,0,sizeof(request));
+ request.fallback=item->kind==ND_ITEM_DRAWER && item->command[0] && item->command[strlen(item->command)-1]==':' ? WBDISK:(item->kind==ND_ITEM_DRAWER || item->kind==ND_ITEM_GROUP) ? WBDRAWER:WBTOOL;
+ if(source!=2)strcpy(request.path,path);
+ request.iff=has_iff_extension(path);request.picture=!request.iff && !has_info_extension(path) && has_filename_extension(path);
+ request.preferences=item->kind==ND_ITEM_LAUNCH && !strcmp(item->command,"NovaDockPrefs") && !strcmp(ITEM_TEXT(item,ND_TEXT_ICON),"NovaDockPrefs");
+ strcpy(program,dock->directory);if(!AddPart(program,"SupportLog",sizeof(program)))return;sprintf(guard,"NovaDock.Icon.%d",slot);
+ if(!nd_task_start(&icon_jobs[slot].task,program,guard,ND_IO_ICON,&request,sizeof(request)))return;
+ icon_jobs[slot].task.dispose=nd_io_dispose;icon_jobs[slot].index=i;icon_jobs[slot].fingerprint=icon_fingerprint(dock,&dock->conf,i);icon_load_state[i]=1;++dock->diagnostic_icons_loaded;
 }
+void process_icon_jobs(struct NDDock *dock)
+{
+ int slot,max_width,max_height;
+ for(slot=0;slot<2;++slot){int active=icon_jobs[slot].task.port!=NULL;struct NDTaskPacket *m=nd_task_poll(&icon_jobs[slot].task);int i=icon_jobs[slot].index;
+  if(!m){if(active && !icon_jobs[slot].task.port && i>=0 && i<ND_MAX_ITEMS)icon_load_state[i]=2;continue;}
+  if(m->bytes==sizeof(struct NDIOJob) && i>=0 && i<dock->conf.count && icon_jobs[slot].fingerprint==icon_fingerprint(dock,&dock->conf,i)){
+   struct NDIOJob *result=(struct NDIOJob *)m->data;
+   dock->icons[i]=result->icon;result->icon=NULL;dock->brushes[i]=result->brush;result->brush=NULL;dock->picture_sources[i]=result->decoded;result->decoded=NULL;icon_load_state[i]=2;
+   if(dock->window && dock->screen){nd_icon_art_box(dock->tile_width,dock->tile_height,dock->conf.item_size==ND_ITEM_SIZE_TINY,&max_width,&max_height);remap_item_brush_colors(dock,i);build_one_scaled_icon(dock,i,max_width,max_height);build_one_brush(dock,i,max_width,max_height);mark_tile_dirty(dock,i);}
+  }
+  nd_io_dispose(m->data,m->bytes);FreeVec(m);
+ }
+}
+
 void load_icons_reusing(struct NDDock *dock,struct NDIconStash *stash,
                                const struct NDConfig *previous)
 {
@@ -311,8 +290,8 @@ void load_icons_reusing(struct NDDock *dock,struct NDIconStash *stash,
     }
     if (dock->ipc) process_ipc(dock,0);
     restore_requesters(requesters);
-    /* Everything is loaded now, including any startup leftovers. */
-    dock->icons_pending=0;
+    /* Reused sources are ready; new sources finish without blocking reload. */
+    dock->icons_pending=1;dock->icon_next=0;
 }
 void load_icons(struct NDDock *dock)
 {
@@ -352,124 +331,19 @@ int planar_icon_pixel(const struct Image *image,int x,int y)
  * NovaDock is running. We translate the source palette with FindColor later.
  * The returned bitmap/palette remain owned by the datatype object; the mask is
  * copied because PDTA_MaskPlane is only a plane pointer. */
-static Object *open_datatype_picture(struct NDDock *dock,const char *path,
-                                     struct BitMap **bitmap,
-                                     struct BitMap **mask,int *width,int *height,
-                                     struct ColorRegister **palette,
-                                     int *num_colors)
+static int build_datatype_icon(struct NDDock *dock,int index,int max_width,int max_height)
 {
-    Object *object;
-    struct BitMapHeader *header=NULL;
-    struct BitMap *dest=NULL,*mask_copy=NULL,source_mask;
-    struct ColorRegister *registers=NULL;
-    PLANEPTR mask_plane=NULL;
-    ULONG colors=0;
-    if (bitmap) *bitmap=NULL;
-    if (mask) *mask=NULL;
-    if (width) *width=0;
-    if (height) *height=0;
-    if (palette) *palette=NULL;
-    if (num_colors) *num_colors=0;
-    if (!dock || !dock->screen || !DataTypesBase || !path || !*path) return NULL;
-    object=NewDTObject((STRPTR)path,
-        DTA_SourceType,DTST_FILE,DTA_GroupID,GID_PICTURE,
-        PDTA_Remap,FALSE,TAG_DONE);
-    if (!object) return NULL;
-    if (!DoDTMethod(object,NULL,NULL,DTM_PROCLAYOUT,NULL,TRUE) ||
-        !GetDTAttrs(object,PDTA_BitMapHeader,(ULONG)&header,
-                    PDTA_BitMap,(ULONG)&dest,
-                    PDTA_ColorRegisters,(ULONG)&registers,
-                    PDTA_NumColors,(ULONG)&colors,
-                    PDTA_MaskPlane,(ULONG)&mask_plane,TAG_DONE) ||
-        !header || !dest || !registers || colors<1 || colors>256 ||
-        dest->Depth>8 || header->bmh_Width<1 || header->bmh_Height<1) {
-        DisposeDTObject(object);
-        return NULL;
-    }
-    if (mask_plane) {
-        mask_copy=AllocBitMap(header->bmh_Width,header->bmh_Height,
-                             1,BMF_CLEAR,NULL);
-        if (mask_copy) {
-            InitBitMap(&source_mask,1,header->bmh_Width,header->bmh_Height);
-            source_mask.Planes[0]=mask_plane;
-            BltBitMap(&source_mask,0,0,mask_copy,0,0,
-                      header->bmh_Width,header->bmh_Height,0xC0,1,NULL);
-            WaitBlit();
-        }
-    }
-    if (bitmap) *bitmap=dest;
-    if (mask) *mask=mask_copy;
-    else if (mask_copy) FreeBitMap(mask_copy);
-    if (width) *width=header->bmh_Width;
-    if (height) *height=header->bmh_Height;
-    if (palette) *palette=registers;
-    if (num_colors) *num_colors=(int)colors;
-    return object;
-}
-static int build_datatype_icon(struct NDDock *dock,int index,
-                               int max_width,int max_height)
-{
-    Object *object;
-    struct BitMap *source=NULL,*source_mask=NULL,*dest=NULL,*dest_mask=NULL;
-    struct ColorRegister *palette=NULL;
-    struct RastPort source_rp,source_mask_rp,dest_rp,dest_mask_rp;
-    LONG mapped[256];
-    int width,height,num_colors,fitted_width,fitted_height,x,y,sx,sy,opaque;
-    int max_pen,j;
-    LONG colour;
-    if (!dock->datatype_icon_paths[index][0]) return 0;
-    object=open_datatype_picture(dock,dock->datatype_icon_paths[index],
-                                 &source,&source_mask,&width,&height,
-                                 &palette,&num_colors);
-    if (!object) return 0;
-    nd_icon_fit(width,height,max_width,max_height,
-                &fitted_width,&fitted_height);
-    dest=AllocBitMap(fitted_width,fitted_height,
-        dock->screen->RastPort.BitMap->Depth,BMF_CLEAR,
-        dock->screen->RastPort.BitMap);
-    dest_mask=AllocBitMap(fitted_width,fitted_height,1,BMF_CLEAR,NULL);
-    if (!dest || !dest_mask) goto done;
-    InitRastPort(&source_rp);source_rp.BitMap=source;
-    InitRastPort(&dest_rp);dest_rp.BitMap=dest;
-    InitRastPort(&dest_mask_rp);dest_mask_rp.BitMap=dest_mask;
-    if (source_mask) {
-        InitRastPort(&source_mask_rp);source_mask_rp.BitMap=source_mask;
-    }
-    max_pen = dock->screen->RastPort.BitMap->Depth >= 8 ? 255 :
-              (1 << dock->screen->RastPort.BitMap->Depth) - 1;
-    for (j=0;j<256;++j) mapped[j]=-1;
-    for (j=0;j<num_colors;++j)
-        mapped[j]=FindColor(dock->screen->ViewPort.ColorMap,
-            RGBBYTE(palette[j].red),RGBBYTE(palette[j].green),
-            RGBBYTE(palette[j].blue),max_pen);
-    SetAPen(&dest_mask_rp,1);
-    for (y=0;y<fitted_height;++y) {
-        sy=(y*height)/fitted_height;
-        for (x=0;x<fitted_width;++x) {
-            sx=(x*width)/fitted_width;
-            opaque=!source_mask || ReadPixel(&source_mask_rp,sx,sy)>0;
-            if (!opaque) continue;
-            colour=ReadPixel(&source_rp,sx,sy);
-            if (colour<0 || colour>=num_colors || mapped[colour]<0) continue;
-            SetAPen(&dest_rp,(ULONG)mapped[colour]);
-            WritePixel(&dest_rp,x,y);
-            WritePixel(&dest_mask_rp,x,y);
-        }
-    }
-    dock->scaled_icon_bitmaps[index]=dest;
-    dock->scaled_icon_masks[index]=dest_mask;
-    dock->scaled_icon_width[index]=fitted_width;
-    dock->scaled_icon_height[index]=fitted_height;
-    dest=NULL;dest_mask=NULL;
-done:
-    if (dest) FreeBitMap(dest);
-    if (dest_mask) FreeBitMap(dest_mask);
-    if (source_mask) FreeBitMap(source_mask);
-    DisposeDTObject(object);
-    return dock->scaled_icon_bitmaps[index]!=NULL;
+ struct NDIconPicture *p=dock->picture_sources[index];struct BitMap *dest,*mask;struct RastPort rp,mrp;LONG mapped[256];int w,h,x,y,sx,sy,c,max_pen;
+ if(!p || !dock->screen || !p->width || !p->height || p->width>96 || p->height>96 || !p->colors || p->colors>256)return 0;
+ nd_icon_fit(p->width,p->height,max_width,max_height,&w,&h);dest=AllocBitMap(w,h,dock->screen->RastPort.BitMap->Depth,BMF_CLEAR,dock->screen->RastPort.BitMap);mask=AllocBitMap(w,h,1,BMF_CLEAR,NULL);
+ if(!dest || !mask){if(dest)FreeBitMap(dest);if(mask)FreeBitMap(mask);return 0;}
+ InitRastPort(&rp);InitRastPort(&mrp);rp.BitMap=dest;mrp.BitMap=mask;SetAPen(&mrp,1);max_pen=dock->screen->RastPort.BitMap->Depth>=8 ? 255:(1<<dock->screen->RastPort.BitMap->Depth)-1;
+ for(c=0;c<p->colors;++c)mapped[c]=FindColor(dock->screen->ViewPort.ColorMap,RGBBYTE(p->rgb[c][0]),RGBBYTE(p->rgb[c][1]),RGBBYTE(p->rgb[c][2]),max_pen);
+ for(y=0;y<h;++y)for(x=0;x<w;++x){unsigned int at;sy=y*p->height/h;sx=x*p->width/w;at=sy*p->width+sx;c=p->pixels[at];if(p->opaque[at] && c<p->colors && mapped[c]>=0){SetAPen(&rp,mapped[c]);WritePixel(&rp,x,y);WritePixel(&mrp,x,y);}}
+ dock->scaled_icon_bitmaps[index]=dest;dock->scaled_icon_masks[index]=mask;dock->scaled_icon_width[index]=w;dock->scaled_icon_height[index]=h;return 1;
 }
 /* Decode the normal icon into a cached bitmap fitted to the common
- * artwork area. Hover never allocates or substitutes artwork. */
+ * artwork area. Hover can magnify that same bitmap and mask. */
 static int render_icon(struct NDDock *dock,int i,int max_width,
                        int max_height,struct BitMap **out_bitmap,
                        struct BitMap **out_mask,int *out_width,int *out_height)
@@ -714,11 +588,141 @@ void build_brush_bitmaps(struct NDDock *dock)
     }
     if (dock->ipc) process_ipc(dock,0);
 }
+static int scale_hover_bitmap(struct BitMap *source,struct BitMap *dest,
+                              int width,int height,int zoom_width,int zoom_height)
+{
+    struct BitScaleArgs scale;
+    memset(&scale,0,sizeof(scale));
+    scale.bsa_SrcWidth=scale.bsa_XSrcFactor=width;
+    scale.bsa_SrcHeight=scale.bsa_YSrcFactor=height;
+    scale.bsa_XDestFactor=zoom_width;
+    scale.bsa_YDestFactor=zoom_height;
+    scale.bsa_SrcBitMap=source;
+    scale.bsa_DestBitMap=dest;
+    BitMapScale(&scale);
+    return scale.bsa_DestWidth==zoom_width && scale.bsa_DestHeight==zoom_height;
+}
+
+/* A bounded LRU retains neighbouring icons and their recent sizes. A shared
+ * scratch pair forced every neighbour to be scaled again on every paint. */
+static ULONG hover_bitmap_bytes(int width,int height,int depth)
+{
+    return (ULONG)((width+15)/16)*2UL*(ULONG)height*(ULONG)depth;
+}
+ULONG hover_cache_bytes(struct NDDock *dock)
+{
+    ULONG total=0;int i,depth=dock->screen->RastPort.BitMap->Depth;
+    for(i=0;i<ND_HOVER_CACHE_SLOTS;++i){
+        if(dock->hover_icons[i].bitmap)total+=hover_bitmap_bytes(ND_HOVER_ICON_LIMIT,ND_HOVER_ICON_LIMIT,depth);
+        if(dock->hover_icons[i].mask)total+=hover_bitmap_bytes(ND_HOVER_ICON_LIMIT,ND_HOVER_ICON_LIMIT,1);
+    }
+    for(i=0;i<ND_MAX_ITEMS;++i){
+        struct NDHoverWidget *c=&dock->hover_widgets[i];
+        if(c->bitmap)total+=hover_bitmap_bytes(c->capacity_width,c->capacity_height,depth);
+        if(c->mask)total+=hover_bitmap_bytes(c->capacity_width,c->capacity_height,1);
+    }
+    return total;
+}
+int hover_cache_reserve(struct NDDock *dock,ULONG bytes,int widget,int icon)
+{
+    ULONG budget,used,oldest;int i,chosen,kind;
+    budget=(AvailMem(MEMF_ANY)+hover_cache_bytes(dock))/8UL;
+    if(budget<131072UL)budget=131072UL;if(budget>1048576UL)budget=1048576UL;
+    if(dock->conf.hover_cache_kb>=128 && dock->conf.hover_cache_kb<=8192)budget=(ULONG)dock->conf.hover_cache_kb*1024UL;
+    dock->hover_cache_budget=budget;
+    for(;;){
+        used=hover_cache_bytes(dock);if(used<=budget && bytes<=budget-used)return 1;
+        chosen=-1;kind=0;oldest=~0UL;
+        for(i=0;i<ND_HOVER_CACHE_SLOTS;++i)if(i!=icon && (dock->hover_icons[i].bitmap||dock->hover_icons[i].mask) && dock->hover_icons[i].used<=oldest){chosen=i;kind=0;oldest=dock->hover_icons[i].used;}
+        for(i=0;i<ND_MAX_ITEMS;++i)if(i!=widget && (dock->hover_widgets[i].bitmap||dock->hover_widgets[i].mask) && dock->hover_widgets[i].used<=oldest){chosen=i;kind=1;oldest=dock->hover_widgets[i].used;}
+        if(chosen<0)return 0;
+        WaitBlit();
+        if(kind){struct NDHoverWidget *c=&dock->hover_widgets[chosen];if(c->bitmap)FreeBitMap(c->bitmap);if(c->mask)FreeBitMap(c->mask);memset(c,0,sizeof(*c));}
+        else{struct NDHoverScale *c=&dock->hover_icons[chosen];if(c->bitmap)FreeBitMap(c->bitmap);if(c->mask)FreeBitMap(c->mask);memset(c,0,sizeof(*c));}
+        ++dock->hover_cache_evictions;
+    }
+}
+int magnify_icon(struct NDDock *dock,int index,struct BitMap **bitmap,struct BitMap **mask,
+                 int *width,int *height,int zoom_width,int zoom_height)
+{
+    struct NDHoverScale *cache=NULL;
+    ULONG serial;
+    int i,slot=0;
+    /* A live plugin can change from a wide widget to compact artwork while
+     * its previous animation is still shrinking. Never scale past storage. */
+    if(index<0 || index>=ND_MAX_ITEMS || zoom_width<1 || zoom_height<1 ||
+       zoom_width>ND_HOVER_ICON_LIMIT || zoom_height>ND_HOVER_ICON_LIMIT ||
+       !bitmap || !mask || !*bitmap || !*mask || *width<1 || *height<1)return 0;
+    serial=dock->hover_banks[index].serial;
+    for(i=0;i<ND_HOVER_CACHE_SLOTS;++i){
+        struct NDHoverScale *c=&dock->hover_icons[i];
+        if(c->valid && c->index==index && c->source==*bitmap &&
+           c->source_mask==*mask && c->serial==serial &&
+           c->width==zoom_width && c->height==zoom_height &&
+           c->source_width==*width && c->source_height==*height){cache=c;break;}
+        if(!c->bitmap || c->used<dock->hover_icons[slot].used)slot=i;
+    }
+    if(!cache){
+        cache=&dock->hover_icons[slot];
+        cache->valid=0;
+        if(!hover_cache_reserve(dock,
+            (!cache->bitmap ? hover_bitmap_bytes(ND_HOVER_ICON_LIMIT,ND_HOVER_ICON_LIMIT,(*bitmap)->Depth):0)+
+            (!cache->mask ? hover_bitmap_bytes(ND_HOVER_ICON_LIMIT,ND_HOVER_ICON_LIMIT,1):0),-1,slot))return 0;
+        if(!cache->bitmap)
+            cache->bitmap=AllocBitMap(ND_HOVER_ICON_LIMIT,ND_HOVER_ICON_LIMIT,
+                (*bitmap)->Depth,BMF_CLEAR,dock->screen->RastPort.BitMap);
+        if(!cache->mask)
+            cache->mask=AllocBitMap(ND_HOVER_ICON_LIMIT,ND_HOVER_ICON_LIMIT,1,BMF_CLEAR,NULL);
+        if(!cache->bitmap || !cache->mask)return 0;
+        WaitBlit();
+        cache->valid=scale_hover_bitmap(*bitmap,cache->bitmap,*width,*height,zoom_width,zoom_height) &&
+                     scale_hover_bitmap(*mask,cache->mask,*width,*height,zoom_width,zoom_height);
+        cache->source=*bitmap;cache->source_mask=*mask;cache->index=index;
+        cache->width=zoom_width;cache->height=zoom_height;
+        cache->source_width=*width;cache->source_height=*height;cache->serial=serial;
+    }
+    if(!cache->valid)return 0;
+    cache->used=++dock->hover_cache_clock;
+    *bitmap=cache->bitmap;*mask=cache->mask;*width=zoom_width;*height=zoom_height;
+    return 1;
+}
+
+void release_hover_graphics(struct NDDock *dock)
+{
+    int i;
+    if(GfxBase)WaitBlit();
+    for(i=0;i<ND_HOVER_CACHE_SLOTS;++i){
+        if(dock->hover_icons[i].bitmap)FreeBitMap(dock->hover_icons[i].bitmap);
+        if(dock->hover_icons[i].mask)FreeBitMap(dock->hover_icons[i].mask);
+    }
+    memset(dock->hover_icons,0,sizeof(dock->hover_icons));
+    for(i=0;i<ND_MAX_ITEMS;++i){
+        if(dock->hover_banks[i].bitmap)FreeBitMap(dock->hover_banks[i].bitmap);
+        if(dock->hover_banks[i].mask)FreeBitMap(dock->hover_banks[i].mask);
+        if(dock->hover_widgets[i].bitmap)FreeBitMap(dock->hover_widgets[i].bitmap);
+        if(dock->hover_widgets[i].mask)FreeBitMap(dock->hover_widgets[i].mask);
+    }
+    memset(dock->hover_banks,0,sizeof(dock->hover_banks));
+    if(dock->hover_shelf)FreeBitMap(dock->hover_shelf);
+    if(dock->hover_frame)FreeBitMap(dock->hover_frame);
+    dock->hover_frame=NULL;dock->hover_frame_width=dock->hover_frame_height=0;
+    if(dock->hover_widget_mask)FreeBitMap(dock->hover_widget_mask);
+    memset(dock->hover_widgets,0,sizeof(dock->hover_widgets));
+    dock->hover_shelf=NULL;dock->hover_widget_mask=NULL;
+    dock->hover_shelf_valid=0;dock->hover_shelf_serial=0;dock->painting_mask=0;
+    memset(dock->hover_label_width,0,sizeof(dock->hover_label_width));
+    dock->hover_prev_valid=0;dock->hover_anim_valid=0;dock->hover_animating=0;
+    dock->hover_shelf_width=dock->hover_shelf_height=0;
+    dock->hover_cache_clock=0;
+}
+
 void release_icons(struct NDDock *dock)
 {
     int i;
+    close_icon_jobs();
     release_plugin_artwork(dock);
     if (GfxBase) WaitBlit();
+    release_hover_graphics(dock);
     for (i = 0; i < ND_MAX_ITEMS; ++i) {
         release_thumbnail(dock,i);
         if (dock->scaled_icon_bitmaps[i])
@@ -736,6 +740,7 @@ void release_icons(struct NDDock *dock)
         if (dock->icons[i] && IconBase) FreeDiskObject(dock->icons[i]);
         dock->icons[i] = NULL;
         if (dock->brushes[i]) FreeVec(dock->brushes[i]);
+        if(dock->picture_sources[i])FreeVec(dock->picture_sources[i]);dock->picture_sources[i]=NULL;
         dock->brushes[i] = NULL;
     }
 }
@@ -754,9 +759,11 @@ int load_pending_icons(struct NDDock *dock,int budget)
     nd_icon_art_box(dock->tile_width,dock->tile_height,tiny,&max_width,&max_height);
     requesters=quiet_requesters();
     while (dock->icon_next<dock->conf.count && dock->icon_next<ND_MAX_ITEMS) {
-        i=dock->icon_next++;
+        i=dock->icon_next;
         if (dock->ipc) process_ipc(dock,0);
-        if (!dock->icons[i] && !dock->brushes[i]) load_item_source(dock,i);
+        if (!dock->icons[i] && !dock->brushes[i] && !dock->picture_sources[i])load_item_source(dock,i);
+        if(!icon_load_state[i])break;
+        ++dock->icon_next;
         remap_item_brush_colors(dock,i);
         build_one_scaled_icon(dock,i,max_width,max_height);
         build_one_brush(dock,i,max_width,max_height);
@@ -766,6 +773,13 @@ int load_pending_icons(struct NDDock *dock,int budget)
     }
     restore_requesters(requesters);
     if (dock->icon_next>=dock->conf.count || dock->icon_next>=ND_MAX_ITEMS)
-        dock->icons_pending=0;
+        {dock->icons_pending=0;for(i=0;i<dock->conf.count;++i)if(icon_load_state[i]==1)dock->icons_pending=1;}
     return dock->icons_pending;
+}
+
+/* Explicit retry: keep settings and resident plugins; replace only artwork. */
+void reload_artwork(struct NDDock *dock)
+{
+ close_tooltip(dock);close_folder_popup(dock);release_icons(dock);load_icons(dock);
+ draw_all(dock);show_feedback(dock,"Reloading artwork...",0);
 }

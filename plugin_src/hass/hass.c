@@ -86,7 +86,7 @@ int main(int argc,char **argv)
   else if(was_connected && !loss_notified && state!=ND_HASS_WAIT && state!=AMIHASS_BUSY){event|=nd_client_notify(&dock,"AmiHASS unavailable",s.label,1);loss_notified=1;}
   if(!s.entity[0]){int live;Forbid();live=FindPort(AMIHASS_PORT)!=NULL;Permit();if(!live)state=9;}
   if(!s.entity[0]){nd_hass_source_close(&source);}
-  if(!s.entity[0] && state!=9)strcpy(value,"SELECT ENTITY");else if(state==ND_HASS_OK && nd_hass_available(&e))sprintf(value,"%.38s %.15s",e.state,e.unit);else strcpy(value,nd_hass_bridge_problem(state));
+  if(!s.entity[0] && state!=9)strcpy(value,"SELECT ENTITY");else if(state==ND_HASS_OK && nd_hass_available(&e))sprintf(value,"%.38s %.15s",e.state,e.unit);else strcpy(value,bridge.problem[0] ? bridge.problem:source.known&&source.available&&!source.connected ? nd_hass_source_label(&source):nd_hass_bridge_problem(state));
   if(panel && state==ND_HASS_OK && panel_map.signature!=signature(&bridge.controls)){
    pending_action[0]=0;nd_hass_level_cancel(&level_edit);
    nd_panel_close(panel);panel=controls(&s,&e,value,panel_actions,&button_count,&bridge.controls,&panel_map);
@@ -96,7 +96,9 @@ int main(int argc,char **argv)
       state==ND_HASS_OK && !s.read_only && !nd_hass_bridge_pending(&bridge) && nd_hass_percent_kind(&bridge.controls) && nd_hass_available(&e));
   if(panel && state==ND_HASS_OK && !pending_action[0]){char confirmed[40];if(panel_map.color>=0 && bridge.controls.color_known){sprintf(confirmed,"#%06lx",bridge.controls.rgb);nd_panel_sync_string(panel,(unsigned int)panel_map.color,confirmed);}if(panel_map.temperature>=0){amihass_number_text(bridge.controls.target,confirmed);nd_panel_sync_string(panel,(unsigned int)panel_map.temperature,confirmed);}}
   if(state==ND_HASS_OK){nd_hass_display(&e,s.display,value);if(!strncmp(s.entity,"media_player.",13)&&bridge.controls.media_title[0]&&!strcmp(s.display,"State"))snprintf(value,sizeof(value),"%.50s - %.35s",bridge.controls.media_title,bridge.controls.media_artist);}
-  if(panel){const char *feedback=nd_hass_bridge_feedback(&bridge);snprintf(detail,sizeof(detail),"%s%s%.70s",s.read_only ? "Read only; ":"",nd_hass_source_label(&source),feedback[0] ? "; ":"");if(feedback[0])strncat(detail,feedback,sizeof(detail)-strlen(detail)-1);else if(state!=ND_HASS_OK){strncat(detail,"; ",sizeof(detail)-strlen(detail)-1);strncat(detail,source.hint[0] ? source.hint:nd_hass_problem(state),sizeof(detail)-strlen(detail)-1);}
+  /* A successful readback must not hide a rejected quick action. */
+  if(bridge.problem[0])strcpy(value,nd_hass_bridge_status(&bridge));
+  if(panel){const char *feedback=nd_hass_bridge_feedback(&bridge);snprintf(detail,sizeof(detail),"%s%s%.70s",s.read_only ? "Read only; ":"",nd_hass_source_label(&source),feedback[0] ? "; ":"");if(feedback[0])strncat(detail,feedback,sizeof(detail)-strlen(detail)-1);else if(state!=ND_HASS_OK){strncat(detail,"; ",sizeof(detail)-strlen(detail)-1);strncat(detail,bridge.problem[0] ? bridge.problem:source.hint[0] ? source.hint:nd_hass_problem(state),sizeof(detail)-strlen(detail)-1);}
    {char reading[96];nd_hass_display(&e,"State",reading);nd_panel_set(panel,1,state==ND_HASS_OK ? reading:value);}nd_panel_set(panel,2,s.timestamp ? e.updated:"Hidden");nd_panel_set(panel,3,detail);
    if(panel_map.title>=0)nd_panel_set(panel,(unsigned int)panel_map.title,bridge.controls.media_title[0] ? bridge.controls.media_title:"Not reported");if(panel_map.artist>=0)nd_panel_set(panel,(unsigned int)panel_map.artist,bridge.controls.media_artist[0] ? bridge.controls.media_artist:"Not reported");
    if(panel_map.color>=0)nd_panel_enable(panel,(unsigned int)panel_map.color,state==ND_HASS_OK && !nd_hass_bridge_pending(&bridge));if(panel_map.temperature>=0)nd_panel_enable(panel,(unsigned int)panel_map.temperature,state==ND_HASS_OK && !nd_hass_bridge_pending(&bridge));

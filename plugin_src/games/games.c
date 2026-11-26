@@ -37,6 +37,9 @@
 #include "nd_games_filter.h"
 #include "nd_music_formats.h"
 #include "nd_whdload_status.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 
 #ifdef ND_MUSIC_LIBRARY
 #define COLLECTION_MUSIC 1
@@ -702,6 +705,7 @@ int main(int argc,char **argv)
     check_root(argv[1]);
     for (;;) {
         finished_games();
+        nd_client_activity(&client,ND_PLUGIN_OP_SCAN,scanner.head ? 1:scanner.errors ? 3:2,game_count,scanner.errors);
         if(!root_valid)strcpy(value,nd_whd_folder_value(root_status));
         else if(COLLECTION_MUSIC && !music_formats)strcpy(value,"NO FORMATS SELECTED");
         else if(scanner.head || game_count<0)strcpy(value,"INDEXING");
@@ -748,8 +752,10 @@ int main(int argc,char **argv)
             }
             Delay(1);elapsed=1;
         }
-        else if (panel.window) {Delay(5);elapsed=5;}
-        else elapsed=nd_client_wait(&client,nd_client_delay_ticks(&client,250));
+        /* An open list is event-driven (typing, clicks, Intuition ticks
+         * for the filter): sleep on its port instead of waking 10x/s. */
+        else elapsed=nd_client_wait_signals(&client,nd_client_delay_ticks(&client,250),
+            panel.window ? 1UL<<panel.window->UserPort->mp_SigBit : 0UL);
     }
     close_panel(&panel);
     nd_games_scan_cancel(&scanner);
@@ -759,6 +765,7 @@ int main(int argc,char **argv)
     while (running>0) {
         WaitPort(wb_reply);
         finished_games();
+        nd_client_activity(&client,ND_PLUGIN_OP_SCAN,scanner.head ? 1:scanner.errors ? 3:2,game_count,scanner.errors);
     }
     free_games();
     DeleteMsgPort(wb_reply);

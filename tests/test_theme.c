@@ -30,7 +30,10 @@ int main(void)
             assert(spec.position==ND_POSITION_CENTER);
         }
         assert(spec.font_mode>=ND_FONT_WORKBENCH && spec.font_mode<ND_FONT_COUNT);
-        assert(spec.label_mode>=ND_LABEL_ALWAYS && spec.label_mode<ND_LABEL_COUNT);
+        assert(spec.label_mode==ND_LABEL_ALWAYS);
+        nd_theme_defaults(i,&spec);
+        assert(spec.label_mode==ND_LABEL_ALWAYS);
+        assert(nd_theme_load(".",i,&spec)==1);
         assert(spec.spacer_width>=20 && spec.spacer_width<=140);
         assert(spec.spacer_line==0 || spec.spacer_line==1);
         assert(spec.spacer_line_width>=1 && spec.spacer_line_width<=8);
@@ -47,6 +50,13 @@ int main(void)
                     spec.rgb[1][2]-spec.rgb[0][2]);
         if (spec.shape!=ND_SHAPE_MINIMAL) assert(separation>=30);
     }
+    assert(nd_theme_load(".",ND_THEME_MACMODERN,&spec));
+    memset(&cfg,0,sizeof(cfg));nd_theme_apply_preferences(&cfg,&spec);
+    assert(cfg.theme_artwork && cfg.background_transparency==65);
+    assert(nd_theme_load(".",ND_THEME_MACGLASS,&spec) && spec.dock_style==1);
+    nd_theme_apply_preferences(&cfg,&spec);assert(cfg.background_transparency==35);
+    assert(nd_theme_load(".",ND_THEME_NORD,&spec));
+    nd_theme_apply_preferences(&cfg,&spec);assert(cfg.background_transparency==35);
     assert(nd_theme_load(".",ND_THEME_MOCHA,&spec)==1);
     assert(spec.shape==ND_SHAPE_CHAMFER && spec.spacer_line==0);
     assert(spec.spacer_width==48 && spec.spacer_line_width==2);

@@ -33,7 +33,7 @@ int main(int argc,char **argv)
   rate=ReadEClock(&clock);seconds=nd_system_seconds(clock.ev_hi,clock.ev_lo,rate);nd_system_uptime(seconds,uptime);
   which=!strcmp(display,"CPU") ? 0:!strcmp(display,"Workbench") ? 1:!strcmp(display,"Uptime") ? 2:(int)((rotate/250UL)%3UL);
   if(which==0)sprintf(value,"CPU %s",cpu);else if(which==1)sprintf(value,"WB %.20s",workbench);else sprintf(value,"%lu d %02lu:%02lu",seconds/86400UL,(seconds/3600UL)%24UL,(seconds/60UL)%60UL);
-  event=nd_client_update_quiet(&client,"SYSTEM",value,ND_NO_METER,elapsed,500U);
+  event=nd_client_update_art_quiet(&client,"SYSTEM",value,"system",0,elapsed,500U);
   if(event&ND_EVENT_QUIT)break;if(event&ND_EVENT_SETTINGS)reread=1;
   if((event&ND_EVENT_CLICK) && !panel){
    fields[0].label="CPU";fields[0].value=cpu;fields[0].limit=0;
@@ -43,7 +43,7 @@ int main(int argc,char **argv)
   }else if(event&ND_EVENT_CLICK)nd_panel_raise(panel);
   if(panel)nd_panel_set(panel,2,uptime);
   action=nd_panel_event(panel);if(action==-1 || action==100){nd_panel_close(panel);panel=NULL;}
-  elapsed=nd_client_wait_signals(&client,50U,nd_panel_signals(panel));rotate=(rotate+elapsed)%750UL;
+  elapsed=nd_client_wait_signals(&client,nd_system_wait(display,panel!=NULL,seconds,rotate),nd_panel_signals(panel));rotate=(rotate+elapsed)%750UL;
  }
  nd_panel_close(panel);nd_client_close(&client);result=0;
 done:

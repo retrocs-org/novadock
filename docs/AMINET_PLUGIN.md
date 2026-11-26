@@ -45,3 +45,18 @@ update. The plugin is not affiliated with Aminet.
 
 Parsing and transport were adapted from Beam68 under its MIT licence.
 The package includes `Aminet-parser-LICENSE.txt` with the original notice.
+
+## Live FS-UAE test
+
+Run `python3 tools/run_aminet_qa.py` from a configured source tree. The test
+starts a disposable AmigaOS 3.2.3 guest with host-socket networking enabled, opens
+the real Aminet browser, searches for JustName, selects the result and saves it
+through the normal ASL requester. It checks the archive header, compares the
+bytes with an independent HTTPS download, and tests LHA member CRCs. The package
+is never installed, extracted or executed. Existing persistent guest drives are
+not mounted. Network/service failures make this opt-in test fail; it is separate
+from the normal offline host suite. `--no-build` uses existing native binaries.
+
+Downloads validate the HTTP response, declared size, byte bounds and archive
+magic before the staged file is committed. Final numeric transfer statistics
+are reported even for files that complete between progress updates.

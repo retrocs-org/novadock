@@ -1,6 +1,7 @@
 #ifndef ND_SYSTEM_INFO_H
 #define ND_SYSTEM_INFO_H
 #include <stdio.h>
+#include <string.h>
 #include "nd_cpu_info.h"
 /* Divide a 64-bit E-clock without requiring compiler long-long support. */
 static unsigned long nd_system_seconds(unsigned long high,unsigned long low,unsigned long rate)
@@ -16,4 +17,17 @@ static unsigned long nd_system_seconds(unsigned long high,unsigned long low,unsi
 }
 static void nd_system_uptime(unsigned long seconds,char *out)
 {sprintf(out,"%lu d %02lu:%02lu:%02lu",seconds/86400UL,(seconds/3600UL)%24UL,(seconds/60UL)%60UL,seconds%60UL);}
+/* Closed tiles only wake for the next visible change or watchdog heartbeat.
+ * UI signals still interrupt this wait immediately. */
+static unsigned int nd_system_wait(const char *display,int panel,
+                                  unsigned long seconds,unsigned long rotate)
+{
+ unsigned long wait;
+ if(panel)return 50U;
+ if(!strcmp(display,"CPU") || !strcmp(display,"Workbench"))return 500U;
+ wait=(60UL-seconds%60UL)*50UL;
+ if(strcmp(display,"Uptime")){unsigned long turn=250UL-rotate%250UL;if(turn<wait)wait=turn;}
+ if(wait>500UL)wait=500UL;
+ return (unsigned int)wait;
+}
 #endif

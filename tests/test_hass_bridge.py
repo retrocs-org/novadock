@@ -116,11 +116,11 @@ with tempfile.TemporaryDirectory() as t:
 print('HASS bridge ABI, deferred startup, rate limiting, query/action readback, timeout and reconnect passed.')
 
 snapshot=json.loads((ROOT/'plugin_src/hass/service/sdk.json').read_text())
-assert snapshot['version']=='0.2' and snapshot['abi']==1
+assert snapshot['version']=='0.3' and snapshot['abi']==1
 for name,digest in snapshot['files'].items():
  if name=='amihass_client.c':
   data=(ROOT/'plugin_src/hass/nd_hass_client.c').read_text().replace('"nd_hass_native.h"','"amihass.h"').replace('"service/amihass_config.h"','"amihass_config.h"').encode()
- elif name=='core.c':data=(ROOT/'plugin_src/hass/nd_hass.c').read_text().replace('"nd_hass.h"','"amihass_core.h"').encode()
+ elif name=='core.c':data=(ROOT/'plugin_src/hass/nd_hass.c').read_text().replace('"nd_hass.h"','"amihass_core.h"').replace('"service/utf8_display.h"','"utf8_display.h"').encode()
  elif name=='nd_reply.h':data=(ROOT/'include/nd_reply.h').read_bytes()
  else:data=(ROOT/'plugin_src/hass/service'/name).read_bytes()
  assert hashlib.sha256(data).hexdigest()==digest, 'AmiHASS SDK snapshot differs: '+name

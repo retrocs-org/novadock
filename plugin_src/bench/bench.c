@@ -20,6 +20,9 @@
 #include "nd_text.h"
 #include "nd_bench.h"
 #include "nd_plugin_versions.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct Device *TimerBase=NULL;struct GfxBase *GfxBase=NULL;struct IntuitionBase *IntuitionBase=NULL;struct Library *GadToolsBase=NULL;
 const char nd_version[]=ND_PLUGIN_VER_STRING(BENCH,"Bench");long __stack=65536;
 #define HISTORY ND_BENCH_HISTORY

@@ -18,6 +18,14 @@ bank with the program and manifest as one transaction. Removal deletes the
 owned bank and its empty drawer. Other files in that drawer are left alone.
 Keep authoring sources in your project; only `Artwork.ndart` is needed at runtime.
 
+## Required Tiny and Normal artwork coverage
+
+Every plugin that displays artwork **must provide a recognizable icon in both Tiny and Normal (large) dock modes for every state it can send**. This includes idle, active, busy/loading, disabled, disconnected/unknown and sad/error states, plus every animation frame. Do not replace an icon with an empty tile or a text-only placeholder in Tiny mode. Preserve meaningful readings and state badges without covering the artwork.
+
+A single 32×32 `Artwork.ndart` source per state satisfies both sizes when the host can scale it clearly; duplicate small/large files are not required. The included plugins use this approach. Keep important features readable at the smallest supported tile, use transparent backgrounds, and verify Colourful and theme-coloured modes on RTG and classic planar screens. Every name/state combination passed to `nd_client_update_art_quiet()` or `nd_client_update_art_meter_quiet()` must exist in the shipped bank. Package the matching executable, manifest and complete `.assets` drawer together.
+
+Before release, run `make check` or `python3 tools/check_plugin.py .`. The included `tools/check_plugin_art.py` checks declared banks, binary bounds and every packaged state at Normal, Tiny, minimum Tiny and compressed 55×46 Normal sizes. It rejects missing banks and states whose pixels disappear when scaled. It cannot prove that an icon is recognizable or infer states selected dynamically by C code: compare your emitted name/state combinations with the bank and visually test every state in FS-UAE at both sizes, idle and magnified, on Bottom, Top, Left and Right docks. Include sad/error/offline states explicitly; successful connected screenshots alone do not establish coverage.
+
 ## Select a named frame and state
 
 Link the current `nd_client.c` and include `nd_client.h` as usual:
@@ -37,7 +45,7 @@ Use a separate frame for errors or pending operations. The bundled WHDLoad,
 MUSIC and SENSOR plugins each ship their sad status frame in their own bank. For hardware controls,
 select a frame from the confirmed reading, not the requested action.
 
-The helper negotiates support through an ABI 5 reply capability. Older docks
+The helper negotiates support through an ABI 5 reply capability and immediately republishes the first artwork state when support becomes known, without waiting for the next heartbeat. Older docks
 receive the ordinary text caption. Quiet updates retain the usual heartbeat
 and click/settings handling; there is no extra polling process or message.
 The reserved `ART:name:state` caption is internal to the helper. Badge support
@@ -111,3 +119,15 @@ calls execute in the dock. The host validates indices, caches screen bitmaps
 and uses existing Workbench pens. Keep normal status/heartbeat updates running
 and resend a frame after settings changes or screen reloads. Package static
 artwork as the fallback for hosts without this optional capability.
+
+### Independent live headings
+
+Artwork flag `ND_ARTWORK_HEADING` (8), combined with `ND_ARTWORK_VALUE` (1),
+reserves a separate content row for the update's caption above its value. The
+configured tile label remains a footer. This is useful for rotating sensor
+channels: use `nd_client_update_art_quiet` with a readable channel caption and a
+sensor-type artwork key. Keep names out of diagnostic events. Heading banks
+require a host accepting flag 8; older hosts reject the bank and retain their
+ordinary text fallback. The SDK packer validates all four presentation flags.
+
+Use `nd_client_update_art_meter_quiet()` when an artwork state accompanies a live meter or graph reading. Its arguments add `meter` between `state` and `elapsed_ticks`; it preserves the same quiet heartbeat and older-host text fallback as `nd_client_update_art_quiet()`. State banks are scaled for Tiny and Normal sizes, including busy, offline and sad/error frames.

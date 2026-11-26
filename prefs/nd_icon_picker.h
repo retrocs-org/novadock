@@ -11,28 +11,42 @@
 #include "nd_artwork.h"
 #include "nd_plugin_discovery.h"
 struct GfxBase *GfxBase=NULL;
+#include "nd_icon_rects.h"
 #define ND_ICON_PICKER_CHOICES ND_COLLECTION_ICON_COUNT
+/* Icons are decoded only when their page is first shown, and each is kept
+ * as a short list of solid rectangles (see nd_icon_rects.h) rather than a
+ * 32x32 pen table: opening the picker no longer reads all icon files, and a
+ * repaint issues less than half the RectFill calls. */
 struct NDIconPicker {
     struct NDPrefsLayout layout;
-    unsigned short pixels[ND_COLLECTION_ICON_COUNT][1024];
+    struct NDIconRect *rects[ND_COLLECTION_ICON_COUNT];
+    unsigned short rect_count[ND_COLLECTION_ICON_COUNT];
+    unsigned char loaded[ND_COLLECTION_ICON_COUNT];
     LONG pens[ND_COLLECTION_ICON_COUNT*ND_ICON_MAX_COLORS];
     int pen_count,rows,page,selected;
-    char title[96];
+    char title[96],root[300];
+    struct NDILBM *image;
     struct DrawInfo *draw;
 };
 static void icon_picker_load(struct PluginPrefs *p,struct NDIconPicker *pick)
 {
-    struct NDILBM *image;char root[300],path[340];int i,x,y,k;ULONG map[16];
-    struct Process *self=(struct Process *)FindTask(NULL);APTR old=self->pr_WindowPtr;
-    self->pr_WindowPtr=(APTR)-1L;
-    memset(pick->pixels,0xff,sizeof(pick->pixels));
-    if(nd_plugin_install_drawer(root,sizeof(root))){*FilePart(root)=0;AddPart(root,"Icons",sizeof(root));}
-    else strcpy(root,"PROGDIR:Icons");
-    image=AllocVec(sizeof(*image),MEMF_PUBLIC|MEMF_CLEAR);
-    if(image)for(i=0;i<ND_COLLECTION_ICON_COUNT;++i){
-        strcpy(path,root);
-        if(!AddPart(path,(STRPTR)FilePart((STRPTR)nd_collection_icons[i].path),sizeof(path)) || !nd_ilbm_load(path,image))continue;
-        for(k=0;k<image->colors;++k){
+    if(nd_plugin_install_drawer(pick->root,sizeof(pick->root))){*FilePart(pick->root)=0;AddPart(pick->root,"Icons",sizeof(pick->root));}
+    else strcpy(pick->root,"PROGDIR:Icons");
+    (void)p;
+}
+static void icon_picker_load_one(struct PluginPrefs *p,struct NDIconPicker *pick,int i)
+{
+    static long px[ND_ICON_RECT_SIDE*ND_ICON_RECT_SIDE];
+    struct NDILBM *image;char path[340];int x,y,k,n;ULONG map[ND_ICON_MAX_COLORS];
+    struct Process *self;APTR old;
+    if(i<0 || i>=ND_COLLECTION_ICON_COUNT || pick->loaded[i])return;
+    pick->loaded[i]=1;
+    if(!pick->image)pick->image=AllocVec(sizeof(*pick->image),MEMF_PUBLIC|MEMF_CLEAR);
+    image=pick->image;if(!image)return;
+    self=(struct Process *)FindTask(NULL);old=self->pr_WindowPtr;self->pr_WindowPtr=(APTR)-1L;
+    strcpy(path,pick->root);
+    if(AddPart(path,(STRPTR)FilePart((STRPTR)nd_collection_icons[i].path),sizeof(path)) && nd_ilbm_load(path,image)){
+        for(k=0;k<image->colors && k<ND_ICON_MAX_COLORS;++k){
             ULONG red=(ULONG)image->palette[k][0]*0x01010101UL;
             ULONG green=(ULONG)image->palette[k][1]*0x01010101UL;
             ULONG blue=(ULONG)image->palette[k][2]*0x01010101UL;
@@ -42,17 +56,37 @@ static void icon_picker_load(struct PluginPrefs *p,struct NDIconPicker *pick)
         }
         for(y=0;y<32;++y)for(x=0;x<32;++x){
             k=image->pixels[(y*image->height/32)*ND_ICON_MAX_DIM+x*image->width/32];
-            if(k!=image->transparent && k<image->colors)pick->pixels[i][y*32+x]=(unsigned short)map[k];
+            px[y*32+x]=(k!=image->transparent && k<image->colors && k<ND_ICON_MAX_COLORS) ? (long)map[k]:ND_ICON_RECT_CLEAR;
+        }
+        n=nd_icon_rects(px,NULL,0);
+        if(n>0){
+            pick->rects[i]=AllocVec((ULONG)n*sizeof(struct NDIconRect),MEMF_PUBLIC);
+            if(pick->rects[i]){(void)nd_icon_rects(px,pick->rects[i],n);pick->rect_count[i]=(unsigned short)n;}
         }
     }
-    if(image)FreeVec(image);self->pr_WindowPtr=old;
+    self->pr_WindowPtr=old;
+}
+static void icon_picker_free(struct NDIconPicker *pick)
+{
+    int i;
+    for(i=0;i<ND_COLLECTION_ICON_COUNT;++i)if(pick->rects[i]){FreeVec(pick->rects[i]);pick->rects[i]=NULL;}
+    if(pick->image){FreeVec(pick->image);pick->image=NULL;}
+}
+/* Decode the current page before painting: never inside GT_BeginRefresh(),
+ * which holds the window's layer while file I/O would run. */
+static void icon_picker_load_page(struct PluginPrefs *p,struct NDIconPicker *pick)
+{
+    int slot;
+    for(slot=0;slot<pick->rows*5;++slot)icon_picker_load_one(p,pick,pick->page*pick->rows*5+slot);
 }
 static const char *icon_picker_name(int index)
 {return nd_collection_icons[index].name;}
-static void icon_picker_paint(struct Window *win,struct NDIconPicker *pick)
+static void icon_picker_paint(struct PluginPrefs *p,struct Window *win,struct NDIconPicker *pick)
+/* P is unused now that loading happens before painting. */
 {
-    struct RastPort *rp=win->RPort;int slot,index,x,y,xx,yy,a,b,w,h,start,col,pen;
+    struct RastPort *rp=win->RPort;int slot,index,x,y,w,h,col,r;
     char caption[40];const struct NDPrefsLayout *lay=&pick->layout;
+    (void)p;
     SetDrMd(rp,JAM1);SetAPen(rp,pick->draw->dri_Pens[BACKGROUNDPEN]);
     RectFill(rp,6,nd_prefs_layout_y(lay,12),lay->window_width-7,nd_prefs_layout_y(lay,16+pick->rows*54)-1);
     for(slot=0;slot<pick->rows*5;++slot){
@@ -61,12 +95,11 @@ static void icon_picker_paint(struct Window *win,struct NDIconPicker *pick)
         w=nd_prefs_layout_w(lay,92);h=nd_prefs_layout_y(lay,50);
         SetAPen(rp,pick->draw->dri_Pens[index==pick->selected ? FILLPEN:BACKGROUNDPEN]);RectFill(rp,x,y,x+w-1,y+h-1);
         if(index<ND_COLLECTION_ICON_COUNT){
-            for(yy=0;yy<32;++yy)for(xx=0;xx<32;){
-                pen=pick->pixels[index][yy*32+xx];start=xx++;
-                while(xx<32 && pick->pixels[index][yy*32+xx]==pen)++xx;
-                if(pen==65535)continue;
-                a=x+nd_prefs_layout_x(lay,30+start);b=y+nd_prefs_layout_y(lay,2+yy);
-                SetAPen(rp,(ULONG)pen);RectFill(rp,a,b,x+nd_prefs_layout_x(lay,30+xx)-1,y+nd_prefs_layout_y(lay,3+yy)-1);
+            const struct NDIconRect *q;
+            for(r=0,q=pick->rects[index];q && r<pick->rect_count[index];++r,++q){
+                SetAPen(rp,(ULONG)q->pen);
+                RectFill(rp,x+nd_prefs_layout_x(lay,30+q->x0),y+nd_prefs_layout_y(lay,2+q->y0),
+                         x+nd_prefs_layout_x(lay,30+q->x1)-1,y+nd_prefs_layout_y(lay,2+q->y1)-1);
             }
         }
         strncpy(caption,icon_picker_name(index),sizeof(caption)-1);caption[sizeof(caption)-1]=0;
@@ -119,7 +152,7 @@ static void choose_collection_icon(struct PluginPrefs *p,int row)
     if(!win)goto finish;
     old_flags=p->win->IDCMPFlags;
     for(g=p->gadgets;g && enabled_count<128;g=g->NextGadget)if(!(g->Flags&GFLG_DISABLED)){enabled[enabled_count++]=g;OffGadget(g,p->win,NULL);}
-    ModifyIDCMP(p->win,IDCMP_REFRESHWINDOW);GT_RefreshWindow(win,NULL);icon_picker_paint(win,pick);
+    ModifyIDCMP(p->win,IDCMP_REFRESHWINDOW);GT_RefreshWindow(win,NULL);icon_picker_load_page(p,pick);icon_picker_paint(p,win,pick);
     while(!done){
         Wait((1UL<<win->UserPort->mp_SigBit)|(1UL<<p->win->UserPort->mp_SigBit));
         while((im=GT_GetIMsg(win->UserPort))!=NULL){
@@ -127,7 +160,7 @@ static void choose_collection_icon(struct PluginPrefs *p,int row)
             UWORD code=im->Code,id=kind==IDCMP_GADGETUP && im->IAddress ? ((struct Gadget *)im->IAddress)->GadgetID:0;
             int mx=im->MouseX,my=im->MouseY,redraw=0;GT_ReplyIMsg(im);
             if(kind==IDCMP_CLOSEWINDOW)done=1;
-            else if(kind==IDCMP_REFRESHWINDOW){GT_BeginRefresh(win);icon_picker_paint(win,pick);GT_EndRefresh(win,TRUE);}
+            else if(kind==IDCMP_REFRESHWINDOW){GT_BeginRefresh(win);icon_picker_paint(p,win,pick);GT_EndRefresh(win,TRUE);}
             else if(kind==IDCMP_MOUSEBUTTONS && code==SELECTDOWN){
                 int bx=mx*8/pick->layout.font_x,by=my*8/pick->layout.font_y;
                 slot=(by-16)/54*5+(bx-10)/96;
@@ -154,7 +187,7 @@ static void choose_collection_icon(struct PluginPrefs *p,int row)
                 }
                 if(previous)GT_SetGadgetAttrs(previous,win,NULL,GA_Disabled,(ULONG)(pick->page==0),TAG_DONE);
                 if(next)GT_SetGadgetAttrs(next,win,NULL,GA_Disabled,(ULONG)((pick->page+1)*pick->rows*5>=ND_ICON_PICKER_CHOICES),TAG_DONE);
-                icon_picker_paint(win,pick);
+                icon_picker_load_page(p,pick);icon_picker_paint(p,win,pick);
             }
         }
         while((im=GT_GetIMsg(p->win->UserPort))!=NULL){ULONG kind=im->Class;GT_ReplyIMsg(im);if(kind==IDCMP_REFRESHWINDOW){GT_BeginRefresh(p->win);GT_EndRefresh(p->win,TRUE);}}
@@ -169,6 +202,7 @@ finish:
     if(win)CloseWindow(win);if(gadgets)FreeGadgets(gadgets);
     for(i=0;i<pick->pen_count;++i)ReleasePen(p->screen->ViewPort.ColorMap,(ULONG)pick->pens[i]);
     if(pick->draw)FreeScreenDrawInfo(p->screen,pick->draw);
+    icon_picker_free(pick);
     if(GfxBase){CloseLibrary((struct Library *)GfxBase);GfxBase=NULL;}
     FreeVec(pick);
 }

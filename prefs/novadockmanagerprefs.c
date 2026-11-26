@@ -333,7 +333,7 @@ static void rescan(struct ManagerPage *p,const char *select_id)
 static void catalog_result(struct ManagerPage *p)
 {struct NDTaskPacket *reply;struct NDCatalogWork *work;int i,had=p->catalog_job.port!=NULL;reply=nd_task_poll(&p->catalog_job);if(!reply){if(had&&!p->catalog_job.port){p->catalog_loading=0;p->detail_ready=1;p->detail_found=0;catalog_controls(p);say(p,"NovaDock Plugins - worker did not reply; retry Refresh",0);show_details(p);}return;}work=(struct NDCatalogWork *)reply->data;
  if(reply->result||reply->bytes!=sizeof(*work)||(reply->action!=ND_CATALOG_INVENTORY&&reply->action!=ND_CATALOG_LOOKUP)||work->count<0||(reply->action==ND_CATALOG_LOOKUP&&work->count>1)||(reply->action==ND_CATALOG_INVENTORY&&work->count>ND_PLUGIN_CATALOG_MAX)){p->catalog_loading=0;p->detail_ready=1;p->detail_found=0;say(p,"NovaDock Plugins - scan failed; retry Refresh",0);}
- else if(reply->action==ND_CATALOG_INVENTORY){p->installed_count=work->count;memcpy(p->installed,work->value.rows,(size_t)work->count*sizeof(*p->installed));p->catalog_loading=0;GT_SetGadgetAttrs(p->list,p->win,NULL,GTLV_Labels,(ULONG)~0,TAG_DONE);build_rows(p);for(i=0;i<p->count;++i)if(!strcmp(p->ids[i],p->select_id))p->selected=i;GT_SetGadgetAttrs(p->list,p->win,NULL,GTLV_Labels,(ULONG)&p->rows,GTLV_Selected,(ULONG)(p->selected<0 ? ~0UL:(ULONG)p->selected),GTLV_MakeVisible,(ULONG)(p->selected<0 ? 0:p->selected),TAG_DONE);say(p,"NovaDock Preferences - Plugins",0);}
+ else if(reply->action==ND_CATALOG_INVENTORY){p->installed_count=work->count;memcpy(p->installed,work->value.rows,(size_t)work->count*sizeof(*p->installed));p->catalog_loading=0;GT_SetGadgetAttrs(p->list,p->win,NULL,GTLV_Labels,(ULONG)~0,TAG_DONE);build_rows(p);for(i=0;i<p->count;++i)if(!strcmp(p->ids[i],p->select_id))p->selected=i;if(work->count>=ND_PLUGIN_CATALOG_MAX){static char full[80];sprintf(full,"NovaDock Plugins - showing the first %d installed plugins",ND_PLUGIN_CATALOG_MAX);say(p,full,0);}GT_SetGadgetAttrs(p->list,p->win,NULL,GTLV_Labels,(ULONG)&p->rows,GTLV_Selected,(ULONG)(p->selected<0 ? ~0UL:(ULONG)p->selected),GTLV_MakeVisible,(ULONG)(p->selected<0 ? 0:p->selected),TAG_DONE);say(p,"NovaDock Preferences - Plugins",0);}
  else if(reply->action==ND_CATALOG_LOOKUP){p->detail_found=work->count==1;p->detail_ready=1;if(p->detail_found)p->other=work->value.entry;}
  FreeVec(reply);catalog_controls(p);show_details(p);}
 
@@ -582,7 +582,7 @@ static int open_manager(struct ManagerPage *p)
         !m_button(p,10,45,118,M_APPEARANCE,"Appearance") ||
         !m_button(p,10,69,118,M_ORGANIZE,"Organize") ||
         !m_button(p,10,93,118,M_MANAGER,"> Plugins") ||
-        !m_button(p,10,117,118,M_DIAGNOSTICS,"Diagnostics") ||
+        !m_button(p,10,117,118,M_DIAGNOSTICS,"Support") ||
         !m_button(p,10,141,118,M_UPDATES,"Update") ||
         !m_button(p,10,165,118,M_ABOUT,"About")) return 0;
     m_field(p,&ng,150,21,455,60,M_LIST,NULL);
@@ -622,7 +622,7 @@ static int open_manager(struct ManagerPage *p)
 int nd_pluginmanager_prefs_run(int argc,char **argv,char *plugin,int plugin_size)
 {
     struct ManagerPage *p;struct IntuiMessage *msg;
-    ULONG cls;UWORD id;LONG code;int result=20,i;
+    ULONG cls;UWORD id;LONG code;int result=20;
     (void)argc;(void)argv;
     p=(struct ManagerPage *)AllocVec(sizeof(*p),MEMF_PUBLIC|MEMF_CLEAR);
     if (!p) return 20;
@@ -653,7 +653,7 @@ int nd_pluginmanager_prefs_run(int argc,char **argv,char *plugin,int plugin_size
             cls=msg->Class;code=msg->Code;
             id=msg->IAddress ? ((struct Gadget *)msg->IAddress)->GadgetID : 0;
             GT_ReplyIMsg(msg);
-            if (cls==IDCMP_CLOSEWINDOW) {p->done=1;p->result=0;}
+            if (cls==IDCMP_CLOSEWINDOW || (cls==IDCMP_RAWKEY && code==0x45)) {p->done=1;p->result=0;}
             else if (cls==IDCMP_RAWKEY && code==ND_HELP_KEY) nd_prefs_help(p->screen);
             else if (cls==IDCMP_REFRESHWINDOW) {
                 GT_BeginRefresh(p->win);GT_EndRefresh(p->win,TRUE);

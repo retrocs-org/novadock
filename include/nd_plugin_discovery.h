@@ -6,6 +6,10 @@
 #include "nd_config.h"
 #include "nd_manifest.h"
 #define ND_DISCOVERY_MAX 8
+/* Discovery has its own bounded worker payload. Configurations also need
+ * space for launchers, drawers and retained definitions. */
+/* Matches the dock limit: every installed plugin must be able to appear in
+ * Add Item and the Plugin Manager.  A full catalogue is reported in the UI. */
 #define ND_PLUGIN_CATALOG_MAX ND_MAX_ITEMS
 struct NDPluginCatalogEntry {
     struct NDManifest manifest;

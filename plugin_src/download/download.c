@@ -19,6 +19,9 @@
 #define FETCH_PREFIX "T:NovaDockDownload-"
 #define FETCH_DIR_VALID(path) nd_download_staging_dir(path)
 #include "../weather/nd_fetch_worker.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 const char nd_version[]=ND_PLUGIN_VER_STRING(DOWNLOAD,"Download");
 long __stack=32768;
 struct Item {char url[ND_DOWNLOAD_PATH],target[ND_DOWNLOAD_PATH];};
@@ -108,7 +111,7 @@ int main(int argc,char **argv)
   event=job_events(&client);if(count&&!job.port){rc=start_job(argv[0]);if(rc<0)pop_queue();}
   meter=progress(bytes);sprintf(value,"%.31s",job.port ? bytes:status);sprintf(badge,"%d",count);
   event|=nd_client_set_badge(&client,count ? badge:"");
-  event|=nd_client_update_quiet(&client,"DOWNLOAD",value,meter,elapsed,500U);
+  event|=nd_client_update_art_meter_quiet(&client,"DOWNLOAD",value,"download",job.port ? 1U:strstr(status,"failed") || strstr(status,"timed out") ? 2U:0U,meter,elapsed,500U);
   if(event&ND_EVENT_QUIT)break;if(event&ND_EVENT_SETTINGS)reread=1;
   if(event&ND_EVENT_CLICK){if(panel)nd_panel_raise(panel);else panel=open_panel();}
   if(panel){nd_panel_set(panel,2,status);nd_panel_set(panel,3,count ? queue[0].target:"None");}

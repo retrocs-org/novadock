@@ -22,6 +22,9 @@
 #include "nd_clipboard.h"
 #include "nd_search.h"
 #include "nd_clipboard_popup.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 const char nd_version[]=ND_PLUGIN_VER_STRING(CLIPBOARD,"Clipboard");
 long __stack=16384;
 struct IntuitionBase *IntuitionBase=NULL;

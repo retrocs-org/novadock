@@ -70,6 +70,13 @@ def runtime_artwork(root=ROOT):
 
 def check_runtime(drawer, root=ROOT):
     drawer, root = Path(drawer), Path(root)
+    for program in ('Alerts','AmIRC','AmiRocket'):
+        for suffix in ('','.info','.ndplugin','.assets'):
+            retired=drawer/'Plugins'/(program+suffix)
+            if retired.exists():
+                raise ValueError('Retired notification component in runtime package: '+str(retired))
+    if (drawer/'Rexx/NovaDockNotify.amirx').exists():
+        raise ValueError('Retired notification hook in runtime package')
     expected = runtime_artwork(root)
     for name, payload in expected.items():
         bank = drawer/name

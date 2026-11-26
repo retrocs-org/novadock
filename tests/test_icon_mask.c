@@ -11,8 +11,8 @@ int main(void)
     assert(nd_icon_magicwb_rgb(4,rgb) && rgb[0]==123 && rgb[1]==123 && rgb[2]==123);
     assert(nd_icon_magicwb_rgb(6,rgb) && rgb[0]==170 && rgb[1]==144 && rgb[2]==124);
     assert(!nd_icon_magicwb_rgb(-1,rgb) && !nd_icon_magicwb_rgb(8,rgb) && !nd_icon_magicwb_rgb(0,NULL));
-    nd_icon_art_box(84,68,0,&w,&h);assert(w==48 && h==40);
-    nd_icon_art_box(168,68,0,&w,&h);assert(w==48 && h==40);
+    nd_icon_art_box(84,68,0,&w,&h);assert(w==48 && h==44);
+    nd_icon_art_box(168,68,0,&w,&h);assert(w==48 && h==44);
     nd_icon_art_box(40,28,1,&w,&h);assert(w==38 && h==26);
     nd_icon_art_box(30,42,0,&w,&h);assert(w==16 && h==18);
     assert(nd_icon_art_top(10,68,40,0)==15);

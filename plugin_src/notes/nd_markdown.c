@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "nd_markdown.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 static const char *colors[]={"#000000","#B22222","#164DAA","#146B38","#782A90","#666666"};
 static const char *faces[]={"font-family:Topaz;font-size:8px","font-family:Topaz;font-size:9px","font-family:Courier;font-size:13px"};
 static int same(struct NDMDStyle a,struct NDMDStyle b)
@@ -16,6 +19,8 @@ void nd_md_parse(const char *raw,struct NDMarkdown *v,unsigned int face,unsigned
         if(!p || raw[p-1]=='\n'){
             f.heading=0;f.face=face<3 ? face:0;h=0;while(h<5 && raw[p+h]=='#')++h;
             if(h && h<=4 && raw[p+h]==' '){f.heading=h;f.face=h==1 ? 2:h==2 ? 1:0;p+=h+1;}
+            /* "# " at the very end of a note leaves p on the terminator. */
+            if(!raw[p])break;
         }
         if(!strncmp(raw+p,"<span style=\"",13)){
             const char *end=strchr(raw+p,'>');

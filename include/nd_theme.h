@@ -10,6 +10,8 @@
 #define ND_THEME_BIND_POSITION (1U << 2)
 #define ND_THEME_BIND_FONT     (1U << 3)
 #define ND_THEME_BIND_LABELS   (1U << 4)
+#define ND_THEME_BIND_TRANSPARENCY (1U << 5)
+#define ND_THEME_BIND_ARTWORK (1U << 6)
 #define ND_THEME_BIND_ALL      (ND_THEME_BIND_SHAPE | ND_THEME_BIND_SIDE | \
                                 ND_THEME_BIND_POSITION | ND_THEME_BIND_FONT | \
                                 ND_THEME_BIND_LABELS)
@@ -27,6 +29,7 @@ struct NDThemeSpec {
     int spacer_line;
     int spacer_line_width;
     int spacer_line_color;
+    int background_transparency,theme_artwork,dock_style;
     int bevel;           /* BEVEL=YES: classic raised frame around the dock */
 };
 

@@ -8,9 +8,9 @@
 #include "nd_plugin_versions.h"
 static int find(struct NDConfig *cfg,const char *id){int i;for(i=0;i<cfg->count;++i)if(!strcmp(cfg->items[i].id,id))return i;return -1;}
 static int visible(struct NDConfig *cfg,int at){int i,n=0;for(i=0;i<at;++i)if(cfg->items[i].enabled)++n;return n;}
-int main(void){struct NDConfig *cfg=calloc(1,sizeof(*cfg)),*loaded=calloc(1,sizeof(*loaded));struct NDOptionDef defs[20];struct NDManifest m;int a,b,before,old_options;FILE *f;char long_label[40];assert(cfg && loaded);nd_default_config(cfg);
+int main(void){struct NDConfig *cfg=calloc(1,sizeof(*cfg)),*loaded=calloc(1,sizeof(*loaded));struct NDOptionDef defs[64];struct NDManifest m;int a,b,before,old_options;FILE *f;char long_label[40];assert(cfg && loaded);nd_default_config(cfg);
  assert(nd_parse_line(cfg,"PLUGIN=WHDLoad|Plugins/Games|WHDLOAD|METER|ON|NO"));a=find(cfg,"WHDLOAD");assert(a>=0 && nd_plugin_allows_multiple(&cfg->items[a]));assert(!strcmp(nd_option_get(cfg,"WHDLOAD","DRAWER"),""));
- assert(nd_option_set(cfg,"WHDLOAD","LABEL","Games"));assert(nd_option_set(cfg,"WHDLOAD","DRAWER","Work:Games"));assert(nd_add_plugin_instance(cfg,a));b=find(cfg,"WHDLOAD_2");assert(b>=0 && !strcmp(cfg->items[b].label,"Games"));
+ assert(nd_option_set(cfg,"WHDLOAD","LABEL","Games"));assert(nd_option_set(cfg,"WHDLOAD","DRAWER","Work:Games"));assert(nd_add_plugin_instance(cfg,a));b=find(cfg,"WHDLOAD_2");assert(b>=0 && !strcmp(cfg->items[b].label,"GAMES"));
  assert(!strcmp(nd_option_schema_id(cfg,"WHDLOAD_2"),"WHDLOAD"));assert(nd_option_collect(cfg,"WHDLOAD_2",defs,5)==5);assert(!strcmp(defs[1].type,"FILE"));
  assert(!strcmp(nd_option_get(cfg,"WHDLOAD","DRAWER"),"Work:Games"));
  assert(!strcmp(nd_option_get(cfg,"WHDLOAD","COMMAND"),"WHDLoad"));
@@ -23,9 +23,9 @@ int main(void){struct NDConfig *cfg=calloc(1,sizeof(*cfg)),*loaded=calloc(1,size
  assert(!nd_option_set(cfg,"WHDLOAD","ICON","unknown"));
  assert(nd_option_set(cfg,"WHDLOAD_2","ICON","Demos"));assert(!strcmp(nd_games_icon_path(cfg,"WHDLOAD_2"),"Work:Demos/Demo.info"));assert(nd_option_set(cfg,"WHDLOAD_2","ICON","Custom"));
  assert(!strcmp(nd_option_get(cfg,"WHDLOAD_2","DRAWER"),"Work:Games"));assert(nd_option_set(cfg,"WHDLOAD_2","LABEL","Demos"));assert(nd_option_set(cfg,"WHDLOAD_2","DRAWER","Work:Demos"));
- assert(!strcmp(cfg->items[a].label,"Games") && !strcmp(cfg->items[b].label,"Demos"));assert(!strcmp(nd_option_get(cfg,"WHDLOAD","DRAWER"),"Work:Games"));
+ assert(!strcmp(cfg->items[a].label,"GAMES") && !strcmp(cfg->items[b].label,"DEMOS"));assert(!strcmp(nd_option_get(cfg,"WHDLOAD","DRAWER"),"Work:Games"));
  memset(long_label,'x',sizeof(long_label)-1);long_label[sizeof(long_label)-1]=0;assert(!nd_option_set(cfg,"WHDLOAD_2","LABEL",long_label));assert(!nd_option_set(cfg,"WHDLOAD_2","LABEL",""));
- assert(nd_write_config(cfg,"whdload.cfg"));assert(nd_load_config(loaded,"whdload.cfg")==0);a=find(loaded,"WHDLOAD");b=find(loaded,"WHDLOAD_2");assert(a>=0 && b>=0);assert(!strcmp(loaded->items[b].label,"Demos"));assert(!strcmp(nd_option_get(loaded,"WHDLOAD_2","DRAWER"),"Work:Demos"));
+ assert(nd_write_config(cfg,"whdload.cfg"));assert(nd_load_config(loaded,"whdload.cfg")==0);a=find(loaded,"WHDLOAD");b=find(loaded,"WHDLOAD_2");assert(a>=0 && b>=0);assert(!strcmp(loaded->items[b].label,"DEMOS"));assert(!strcmp(nd_option_get(loaded,"WHDLOAD_2","DRAWER"),"Work:Demos"));
  assert(!strcmp(nd_games_icon_path(loaded,"WHDLOAD_2"),"Work:Demos/Demo.info"));
  assert(!strcmp(nd_option_get(loaded,"WHDLOAD_2","COMMAND"),"Work:Tools/WHDLoad Demo"));
  assert(!strcmp(nd_option_get(loaded,"WHDLOAD","COMMAND"),"WHDLoad"));
@@ -38,7 +38,7 @@ int main(void){struct NDConfig *cfg=calloc(1,sizeof(*cfg)),*loaded=calloc(1,size
  a=find(loaded,"WHDLOAD");assert(nd_remove_visible_item(loaded,visible(loaded,a)));
  assert(find(loaded,"WHDLOAD")>=0 && !loaded->items[find(loaded,"WHDLOAD")].enabled);
  assert(!strcmp(nd_option_get(loaded,"WHDLOAD","DRAWER"),""));assert(!strcmp(nd_games_icon_path(loaded,"WHDLOAD"),"Icons/WHDLoad.iff"));
- assert(!strcmp(loaded->items[find(loaded,"WHDLOAD")].label,"WHDLoad"));
+ assert(!strcmp(loaded->items[find(loaded,"WHDLOAD")].label,"WHDLOAD"));
  assert(!strcmp(nd_option_get(loaded,"WHDLOAD","COMMAND"),"WHDLoad"));
  assert(!strcmp(nd_option_get(loaded,"WHDLOAD_3","COMMAND"),"Work:Tools/WHDLoad Demo"));
  assert(nd_option_set(loaded,"WHDLOAD_3","ICON","Text"));assert(!strcmp(nd_games_icon_path(loaded,"WHDLOAD_3"),"Work:Demos/Demo.info"));
@@ -52,7 +52,7 @@ int main(void){struct NDConfig *cfg=calloc(1,sizeof(*cfg)),*loaded=calloc(1,size
   f=fopen("ENVARC:NovaDock/Cache/WHDLoad/WHDLOAD_3.idx","r");assert(f);fclose(f);
  }
  f=fopen("whdload-legacy.cfg","w");assert(f);fputs("PLUGIN=Old Games|Plugins/Games|WHDLOAD|METER|ON\nOPTIONDEF=WHDLOAD|DRAWER|Games drawer|TEXT||Games:\nOPTION.WHDLOAD.DRAWER=Old:Collection\n",f);fclose(f);
- assert(nd_load_config(loaded,"whdload-legacy.cfg")==0);assert(!strcmp(nd_option_get(loaded,"WHDLOAD","DRAWER"),"Old:Collection"));assert(!strcmp(nd_option_get(loaded,"WHDLOAD","LABEL"),"Old Games"));assert(nd_plugin_allows_multiple(&loaded->items[find(loaded,"WHDLOAD")]));
+ assert(nd_load_config(loaded,"whdload-legacy.cfg")==0);assert(!strcmp(nd_option_get(loaded,"WHDLOAD","DRAWER"),"Old:Collection"));assert(!strcmp(nd_option_get(loaded,"WHDLOAD","LABEL"),"OLD GAMES"));assert(nd_plugin_allows_multiple(&loaded->items[find(loaded,"WHDLOAD")]));
 
  {char path[520];
   f=fopen("custom-icon.info","wb");assert(f);fputs("icon",f);fclose(f);
@@ -82,22 +82,26 @@ int main(void){struct NDConfig *cfg=calloc(1,sizeof(*cfg)),*loaded=calloc(1,size
  assert(!strcmp(nd_option_get(loaded,"MUSICLIB","LABEL"),"MUSIC"));
  assert(!strcmp(loaded->items[find(loaded,"MUSICLIB_3")].label,"MUSIC"));
  assert(!strcmp(nd_option_get(loaded,"MUSICLIB_3","LABEL"),"MUSIC"));
- b=find(loaded,"MUSICLIB_2");assert(b>=0 && !strcmp(loaded->items[b].label,"SID tunes"));
+ b=find(loaded,"MUSICLIB_2");assert(b>=0 && !strcmp(loaded->items[b].label,"SID TUNES"));
  assert(nd_remove_visible_item(loaded,visible(loaded,b)));assert(find(loaded,"MUSICLIB_2")<0 && !strcmp(nd_option_get(loaded,"MUSICLIB","DRAWER"),"Music:Modules"));
  a=find(loaded,"MUSICLIB");assert(nd_remove_visible_item(loaded,visible(loaded,a)));
  assert(!strcmp(nd_option_get(loaded,"MUSICLIB","DRAWER"),"") && !strcmp(nd_option_get(loaded,"MUSICLIB","SID"),"YES"));
  assert(!strcmp(loaded->items[find(loaded,"MUSICLIB")].label,"MUSIC"));
  assert(nd_parse_line(cfg,"PLUGIN=SENSOR|Plugins/Sensors|SENSORS|METER|ON|NO"));
  assert(nd_manifest_builtin("SENSORS",&m) && m.multiple_instances);
- assert(nd_option_collect(cfg,"SENSORS",defs,20)==19);
+ assert(nd_option_collect(cfg,"SENSORS",defs,64)==35);
  assert(nd_option_set(cfg,"SENSORS","ZZ_TEMP","NO"));
+ assert(nd_option_set(cfg,"SENSORS","ROTATE","0") && nd_option_set(cfg,"SENSORS","RTC_CPU_TITLE","Accelerator"));
+ assert(nd_option_set(cfg,"SENSORS","I2C_00000042_TITLE","Fast RAM"));
+ {char too_long[33];memset(too_long,'a',32);too_long[32]=0;assert(!nd_option_set(cfg,"SENSORS","RTC_CPU_TITLE",too_long));assert(!nd_option_set(cfg,"SENSORS","I2C_00000042_TITLE",too_long));}
+
  assert(nd_write_config(cfg,"sensors.cfg") && nd_load_config(loaded,"sensors.cfg")==0);
  assert(!strcmp(nd_option_get(loaded,"SENSORS","ZZ_TEMP"),"NO"));
  assert(!strcmp(nd_option_get(loaded,"SENSORS","RTC_TEMP"),"YES"));
  a=find(loaded,"SENSORS");assert(nd_add_plugin_instance(loaded,a));b=find(loaded,"SENSORS_2");assert(b>=0);
  assert(!strcmp(nd_option_schema_id(loaded,"SENSORS_2"),"SENSORS"));
  assert(nd_option_set(loaded,"SENSORS_2","LABEL","Voltages") && nd_option_set(loaded,"SENSORS_2","ZZ_TEMP","YES"));
- assert(!strcmp(nd_option_get(loaded,"SENSORS","ZZ_TEMP"),"NO") && !strcmp(loaded->items[b].label,"Voltages"));
+ assert(!strcmp(nd_option_get(loaded,"SENSORS","ZZ_TEMP"),"NO") && !strcmp(loaded->items[b].label,"VOLTAGES"));
  assert(nd_remove_visible_item(loaded,visible(loaded,b)) && find(loaded,"SENSORS_2")<0);
  assert(!strcmp(nd_option_get(loaded,"SENSORS","ZZ_TEMP"),"NO"));
  free(cfg);free(loaded);puts("WHDLoad independent labels, folders, saved reload and legacy tests passed.");return 0;}

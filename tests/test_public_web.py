@@ -44,6 +44,7 @@ official_links = {
     'https://github.com/retrocs-org/novadock/releases',
     'https://bitskim.retrocs.org',
     'https://github.com/retrocs-org/amihass',
+    'https://aminotis.retrocs.org',
     'mailto:support@retrocs.org',
 }
 for file in pages:
@@ -55,7 +56,8 @@ for file in pages:
     assert not render.stderr, render.stderr.decode()
     contents = render.stdout
     contents.decode('ascii')
-    assert len(contents) < (22000 if file == 'features.php' else (24000 if file == 'marketplace.php' else 13000)), f'{file} is too large'
+    # Budget includes 48 plugin entries and the 15 bundled theme palettes.
+    assert len(contents) < (22000 if file == 'features.php' else (26000 if file == 'marketplace.php' else 13000)), f'{file} is too large'
     parser = Links()
     parser.feed(contents.decode('ascii'))
     assert parser.doctype, f'{file} lacks an HTML DOCTYPE'

@@ -4,6 +4,7 @@ from pathlib import Path
 import os,subprocess,tempfile
 ROOT=Path(__file__).resolve().parents[1]
 REFERENCE=r'''
+/* Values are stored through the option pool (option_store), as in config.c. */
 static int reference_option_set(struct NDConfig *cfg, const char *id, const char *key,
                   const char *value)
 {
@@ -30,7 +31,7 @@ static int reference_option_set(struct NDConfig *cfg, const char *id, const char
     }
     for (i=0; i<cfg->option_count; ++i) {
         if (!strcmp(cfg->options[i].id,id) && !strcmp(cfg->options[i].key,key)) {
-            copy_string(cfg->options[i].value,value,ND_OPT_VALUE_LEN);
+            if (!option_store(cfg,i,value)) return 0;
             if(!strcmp(id,"NET") && !strcmp(key,"VIEW"))apply_network_view(cfg,value);
             if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS") || !strcmp(schema,"HASS") || !strcmp(schema,"WATCH") || !strcmp(schema,"LOGS") || !strcmp(schema,"SHELF")) && !strcmp(key,"LABEL")){
                 int j;for(j=0;j<cfg->count;++j)if(cfg->items[j].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[j].id,id))
@@ -43,7 +44,10 @@ static int reference_option_set(struct NDConfig *cfg, const char *id, const char
     i=cfg->option_count++;
     copy_string(cfg->options[i].id,id,sizeof(cfg->options[i].id));
     copy_string(cfg->options[i].key,key,sizeof(cfg->options[i].key));
-    copy_string(cfg->options[i].value,value,sizeof(cfg->options[i].value));
+    cfg->options[i].value=0;
+    if (!option_store(cfg,i,value)) {
+        memset(&cfg->options[i],0,sizeof(cfg->options[i]));--cfg->option_count;return 0;
+    }
     if(!strcmp(id,"NET") && !strcmp(key,"VIEW"))apply_network_view(cfg,value);
     if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS") || !strcmp(schema,"HASS") || !strcmp(schema,"WATCH") || !strcmp(schema,"LOGS") || !strcmp(schema,"SHELF")) && !strcmp(key,"LABEL")){
                 int j;for(j=0;j<cfg->count;++j)if(cfg->items[j].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[j].id,id))

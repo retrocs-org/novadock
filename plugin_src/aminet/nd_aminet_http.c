@@ -11,6 +11,9 @@
 #include <stdio.h>
 #include "nd_aminet.h"
 #include "nd_aminet_http.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct Library *SocketBase;
 static char header[8192],buffer[4096],request[640];
 static unsigned long ticks(void)
@@ -39,6 +42,7 @@ int nd_aminet_fetch(const char *path,const char *destination,unsigned long limit
     struct hostent *host;struct sockaddr_in address;BPTR file=0;
     int fd=-1,ok=0,header_done=0;LONG nonblock=1,rc,socket_error=0;
     socklen_t optlen=sizeof(socket_error);
+    unsigned char prefix[32];unsigned int prefix_size=0;
     unsigned int used=0,sent=0,request_len;unsigned long done=0,start=ticks();long length=-1;
     set_error(error,error_cap,"Aminet transfer failed, timed out or was cancelled.");
     if(!path || path[0]!='/' || strlen(path)>400 || strchr(path,'\r') || strchr(path,'\n')) return 0;
@@ -97,6 +101,7 @@ int nd_aminet_fetch(const char *path,const char *destination,unsigned long limit
             if(n>limit-done || (length>=0 && n>(unsigned long)length-done)) {
                 set_error(error,error_cap,"Aminet response exceeds the transfer size limit.");goto cleanup;
             }
+            if(prefix_size<sizeof(prefix)){unsigned long take=n;if(take>sizeof(prefix)-prefix_size)take=sizeof(prefix)-prefix_size;memcpy(prefix+prefix_size,buffer+i,(size_t)take);prefix_size+=(unsigned int)take;}
             if(Write(file,buffer+i,n)!=(LONG)n) { set_error(error,error_cap,"Download write failed (check free space).");goto cleanup; }
             done+=n;
             if(progress && !progress(done,length>=0?(unsigned long)length:0UL))goto cleanup;
@@ -106,6 +111,7 @@ int nd_aminet_fetch(const char *path,const char *destination,unsigned long limit
     if(!header_done || !done || (length>=0 && done!=(unsigned long)length)) {
         set_error(error,error_cap,"Aminet transfer was empty or incomplete.");goto cleanup;
     }
+    if(require_length && !nd_aminet_archive_header(path,prefix,prefix_size)){set_error(error,error_cap,"Downloaded data is not the selected archive type.");goto cleanup;}
     if(!Flush(file)) { set_error(error,error_cap,"Cannot flush the download file.");goto cleanup; }
     ok=1;
 cleanup:

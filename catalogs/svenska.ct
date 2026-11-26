@@ -5,9 +5,6 @@
 MSG_0001
 Kan inte läsa lådans innehåll
 ; Cannot read drawer contents
-MSG_0002
-Lådan är tom
-; Drawer is empty
 MSG_0003
 Snabbtangentens startåtgärd misslyckades
 ; Hot-key Launcher Action failed
@@ -296,9 +293,6 @@ About NovaDock
 MSG_0123
 About NovaDock...
 ; About NovaDock...
-MSG_0124
-Drop rejected - invalid object or dock is full
-; Drop rejected - invalid object or dock is full
 MSG_0125
 Vissa objekt kunde inte flyttas till papperskorgen
 ; Some items could not be moved to the trash
@@ -455,9 +449,6 @@ Set Turbo Level...
 MSG_0180
 Configure Prism Wi-Fi...
 ; Configure Prism Wi-Fi...
-MSG_0181
-The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Diagnostics shows the recovery source;\nSave from Preferences repairs the current settings.
-; The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Diagnostics shows the recovery source;\nSave from Preferences repairs the current settings.
 MSG_0182
 Use recovered|Quit
 ; Use recovered|Quit
@@ -476,3 +467,108 @@ Opening icon ToolTypes
 MSG_0187
 Drop one Workbench icon at a time
 ; Drop one Workbench icon at a time
+MSG_0188
+Preferences are saving - try the drop again
+; Preferences are saving - try the drop again
+MSG_0189
+Väntar på att föregående ARexx-åtgärd ska bli klar
+; Waiting for the previous ARexx action to finish
+MSG_0190
+%s återställd
+; Restored %s
+MSG_0191
+%s flyttad tillbaka
+; Moved %s back
+MSG_0192
+Ångra borttagning
+; Undo remove
+MSG_0193
+Ångra flytt
+; Undo move
+MSG_0194
+Använd profil %s
+; Use profile %s
+MSG_0195
+Uppdatera profil %s
+; Update profile %s
+MSG_0196
+Profilen %s sparad
+; Saved profile %s
+MSG_0197
+Kunde inte spara profilen %s
+; Could not save profile %s
+MSG_0198
+Bytte till profilen %s
+; Switched to profile %s
+MSG_0199
+Kunde inte byta till profilen %s
+; Could not switch to profile %s
+MSG_0200
+The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Support shows the recovery source;\nSave from Preferences repairs the current settings.
+; The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Support shows the recovery source;\nSave from Preferences repairs the current settings.
+MSG_0202
+Could not save dock position
+; Could not save dock position
+MSG_0206
+Sensor readings...
+; Sensor readings...
+MSG_0207
+Next sensor
+; Next sensor
+MSG_0208
+Previous sensor
+; Previous sensor
+MSG_0209
+ARexx-inställningar sparade; de gäller efter nästa omladdning
+; ARexx settings saved; they apply after the next reload
+MSG_0210
+Program startar fortfarande. Försök igen om en stund.
+; Applications are still starting. Try again shortly.
+MSG_0212
+Väntar på diskavläsning
+; Waiting for disk reading
+MSG_0213
+Disk ej tillgänglig (DOS-fel %lu)
+; Disk unavailable (DOS error %lu)
+MSG_0214
+Sparat: %lus gammalt; DOS-fel %lu
+; Cached: %lus old; DOS error %lu
+MSG_0215
+Uppdaterat för %lus sedan%s
+; Last updated %lus ago%s
+MSG_0216
+Laddar om ikoner...
+; Reloading artwork...
+MSG_0217
+Kunde inte förbereda programstart.
+; Could not prepare application launch.
+MSG_0218
+Laddar... (Esc avbryter)
+; Loading... (Esc cancels)
+MSG_0219
+Ej tillgänglig (R provar igen)
+; Unavailable (R retries)
+MSG_0220
+ (sparat)
+;  (cached)
+MSG_0221
+ (gammalt)
+;  (stale)
+MSG_0222
+Startar %s...
+; Starting %s...
+MSG_0223
+Kunde inte starta %s (DOS-fel %lu).
+; Could not start %s (DOS error %lu).
+MSG_0224
+Kunde inte starta %s. Kontrollera sökväg och inställningar.
+; Could not start %s. Check its path and settings.
+MSG_0225
+Kunde inte starta %s: hjälpprocessen svarade inte.
+; Could not start %s: worker did not reply.
+MSG_0226
+%s: %u%% använt%s
+; %s: %u%% used%s
+MSG_0227
+Ladda om ikoner
+; Reload artwork

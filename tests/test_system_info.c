@@ -11,4 +11,9 @@ int main(void){char text[48];unsigned long rate,high,low,expected,i;
   assert(nd_system_seconds(high,low,rate)==expected);
  }
  assert(nd_system_seconds(0,123,0)==0);assert(nd_system_seconds(1,0,1)==0xffffffffUL);assert(nd_system_seconds(0xffffffffUL,0xffffffffUL,0xffffffffUL)==0xffffffffUL);
+ assert(nd_system_wait("CPU",0,12,0)==500 && nd_system_wait("Workbench",0,12,0)==500);
+ assert(nd_system_wait("Uptime",0,59,0)==50 && nd_system_wait("Uptime",0,58,0)==100);
+ assert(nd_system_wait("Uptime",0,0,0)==500 && nd_system_wait("Rotate",0,12,0)==250);
+ assert(nd_system_wait("Rotate",0,12,249)==1 && nd_system_wait("Rotate",0,59,0)==50);
+ assert(nd_system_wait("CPU",1,12,0)==50 && nd_system_wait("Uptime",1,12,0)==50);
  nd_system_uptime(90061UL,text);assert(!strcmp(text,"1 d 01:01:01"));puts("SYSTEM: CPU flags, 64-bit boot-clock division and day/time formatting passed.");return 0;}

@@ -18,11 +18,11 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / 'public-web'
 ROOT_FILES = ('Plugins/SensorsI2C.LICENSE', 'Aminet-parser-LICENSE.txt', '.gitignore', 'README.md', 'CHANGELOG.md', 'DEVELOPMENT.md', 'LICENSE', 'Makefile',
               'Makefile.cross', 'build.amiga', 'install.amiga', 'novadock.cfg',
-              'examples.rexx', 'NovaDock.info', 'NovaDockPrefs.info',
+              'examples.rexx', 'NovaDock.info', 'NovaDockPrefs.info', 'SupportReport.info',
               'Plugins/MusicPlayer.info', 'Plugins/RunningApps.info',
-              'Plugins/BitSkim.ndplugin', 'Plugins/BitSkim.info', 'Plugins/AmIRC.ndplugin', 'Plugins/AmIRC.info',
+              'Plugins/BitSkim.ndplugin', 'Plugins/BitSkim.info', 
               'Plugins/Clipboard.ndplugin', 'Plugins/Clipboard.info',
-              'Plugins/Network.ndplugin', 'Plugins/Network.info', 'Plugins/RunningApps.ndplugin', 'Plugins/Trash.ndplugin', 'Plugins/Games.ndplugin', 'Plugins/MusicLibrary.ndplugin', 'Plugins/Sensors.ndplugin', 'Plugins/Christmas.ndplugin', 'Plugins/Aquarium.ndplugin', 'Plugins/Places.ndplugin', 'Plugins/Saver.ndplugin', 'Plugins/Download.ndplugin', 'Plugins/System.ndplugin', 'Plugins/Actions.ndplugin',
+              'Plugins/Network.ndplugin', 'Plugins/Network.info', 'Plugins/RunningApps.ndplugin', 'Plugins/Trash.ndplugin', 'Plugins/Games.ndplugin', 'Plugins/MusicLibrary.ndplugin', 'Plugins/Sensors.ndplugin', 'Plugins/Christmas.ndplugin', 'Plugins/Aquarium.ndplugin', 'Plugins/Pet.ndplugin', 'Plugins/Places.ndplugin', 'Plugins/Saver.ndplugin', 'Plugins/Download.ndplugin', 'Plugins/System.ndplugin', 'Plugins/Actions.ndplugin',
               'Plugins/Mixer.ndplugin', 'Plugins/Screenshot.ndplugin', 'Plugins/ScreenMode.ndplugin', 'Install',
               'Install.info', 'NovaDock.guide', 'NovaDock.guide.info',
               'BitSkim-icon-LICENSE.txt', 'VERSION')
@@ -44,11 +44,17 @@ SDK_FILES = (
     ('include/nd_artwork.h', 'include/nd_artwork.h'),
     ('PLUGIN_SDK_ARTWORK.md', 'docs/PLUGIN_SDK_ARTWORK.md'),
     ('tools/pack_plugin_art.py', 'tools/pack_plugin_art.py'),
+    ('tools/check_plugin_art.py', 'tools/check_plugin_art.py'),
+    ('tools/check_plugin.py', 'plugin_src/template/check_plugin.py'),
     ('examples/arthello.c', 'plugin_src/template/arthello.c'),
     ('examples/ArtHello.ndplugin', 'plugin_src/template/ArtHello.ndplugin'),
     ('examples/artwork.json', 'plugin_src/template/artwork.json'),
     ('ArtHello.assets/Artwork.ndart', 'plugin_src/template/ArtHello.assets/Artwork.ndart'),
     ('include/nd_client.h', 'plugin_src/common/nd_client.h'),
+    ('include/nd_plugin_support.h', 'include/nd_plugin_support.h'),
+    ('include/nd_plugin_resources.h', 'plugin_src/common/nd_plugin_resources.h'),
+    ('src/nd_plugin_resources.c', 'plugin_src/common/nd_plugin_resources.c'),
+    ('PLUGIN_SDK_DIAGNOSTICS.md', 'docs/PLUGIN_SDK_DIAGNOSTICS.md'),
     ('src/nd_client.c', 'plugin_src/common/nd_client.c'),
     ('include/nd_option_runtime.h', 'include/nd_option_runtime.h'),
     ('src/nd_option_runtime.c', 'plugin_src/common/nd_option_runtime.c'),
@@ -100,6 +106,19 @@ def source_files():
             yield path
 
 
+def with_source_checksums(entries, prefix='NovaDock/'):
+    """Bind every project member to final bytes; replace any imported manifest."""
+    manifest = prefix+'SHA256SUMS'
+    entries = [(name, payload) for name, payload in entries if name != manifest]
+    sums = ''.join(hashlib.sha256(payload).hexdigest()+'  '+name[len(prefix):]+'\n'
+                   for name, payload in sorted(entries) if name.startswith(prefix))
+    return entries+[(manifest, sums.encode('utf-8'))]
+
+
+def source_archive_entries():
+    return with_source_checksums(archive_entries(source_files(), 'NovaDock/'))
+
+
 def zip_bytes(entries, timestamp=None):
     """Entries share the packaging time, independent of old source-file dates."""
     from io import BytesIO
@@ -109,7 +128,9 @@ def zip_bytes(entries, timestamp=None):
         for name, payload in sorted(entries):
             info = ZipInfo(name, date_time=stamp)
             info.compress_type = ZIP_DEFLATED
-            info.external_attr = 0o644 << 16
+            # Keep shell/Python entry points runnable after unzip on POSIX hosts.
+            executable = name.endswith(('.sh', '.py')) and payload[:2] == b'#!'
+            info.external_attr = (0o755 if executable else 0o644) << 16
             archive.writestr(info, payload, compress_type=ZIP_DEFLATED, compresslevel=9)
     return stream.getvalue()
 
@@ -160,7 +181,7 @@ def main():
         target = ROOT/'plugin-sdk'/member
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes((ROOT/source_name).read_bytes())
-    source = zip_bytes(archive_entries(source_files(), 'NovaDock/')+[drawer_entry], timestamp=packaged_at)
+    source = zip_bytes(source_archive_entries()+[drawer_entry], timestamp=packaged_at)
     download = WEB / 'downloads' / f'NovaDock-{VERSION}-source.zip'
     download.parent.mkdir(parents=True, exist_ok=True)
     # Keep the generated website package free of prior-version downloads.
@@ -195,11 +216,11 @@ def main():
     web_archive = args.out / f'NovaDock-{VERSION}-public-web-updated.zip'
     web_archive.write_bytes(zip_bytes(web_entries, timestamp=packaged_at))
 
-    full_entries = archive_entries(source_files(), 'NovaDock/')+[drawer_entry]
+    full_entries = source_archive_entries()+[drawer_entry]
     full_entries.extend(('NovaDock/public-web/' + name, data)
                         for name, data in web_entries)
     full_archive = args.out / f'NovaDock-{VERSION}-continued-source-and-site.zip'
-    full_archive.write_bytes(zip_bytes(full_entries, timestamp=packaged_at))
+    full_archive.write_bytes(zip_bytes(with_source_checksums(full_entries), timestamp=packaged_at))
     print(f'Website source download: {download}')
     print(f'SHA-256: {checksum}')
     print(f'Plugin SDK download: {sdk_download}')

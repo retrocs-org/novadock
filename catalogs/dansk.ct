@@ -1,0 +1,574 @@
+## version $VER: novadock.catalog 1.0 (23.11.2026)
+## language dansk
+## codeset 0
+; Danish translation of NovaDock dock messages
+MSG_0001
+Kan ikke læse skuffens indhold
+; Cannot read drawer contents
+MSG_0003
+Starthandling via genvejstast mislykkedes
+; Hot-key Launcher Action failed
+MSG_0006
+ARexx-starthandlingen returnerede en fejl
+; ARexx Launcher Action returned an error
+MSG_0007
+Programmet kører; intet vindue passede
+; Application is running; no window matched
+MSG_0008
+Starthandlingen kunne ikke startes
+; Launcher Action could not be started
+MSG_0009
+Docken er låst - højreklik på baggrunden for at låse op
+; Dock locked - right-click the background to unlock
+MSG_0010
+DOpus 4: hent frem
+; DOpus 4: bring to front
+MSG_0011
+DOpus 4: starter...
+; DOpus 4: starting...
+MSG_0012
+Kunne ikke fastgøre - docken er måske fuld
+; Could not pin - dock may be full
+MSG_0013
+Afstandsstykke tilføjet - træk det på plads
+; Spacer added - drag it into position
+MSG_0014
+Kunne ikke tilføje afstandsstykke - docken er måske fuld
+; Could not add spacer - dock may be full
+MSG_0015
+Rækker gælder for docks foroven og forneden
+; Rows apply to top and bottom docks
+MSG_0016
+Docken har allerede det største antal rækker
+; Dock already has the maximum rows
+MSG_0017
+Kunne ikke tilføje en række ved denne skærmstørrelse
+; Could not add row at this screen size
+MSG_0018
+Docken er låst op - træk og slip er slået til
+; Dock unlocked - drag and drop enabled
+MSG_0019
+Docken er låst
+; Dock locked
+MSG_0020
+Starthandling fra Værktøjer mislykkedes
+; Tools Launcher Action failed
+MSG_0022
+Åbn med mislykkedes
+; Open With failed
+MSG_0023
+Kopiering afvist - ugyldigt objekt
+; Copy rejected - invalid object
+MSG_0024
+Docken er låst - højreklik og vælg Lås docken op
+; Dock locked - right-click and choose Unlock dock
+MSG_0026
+Slip afvist - ikke nok hukommelse
+; Drop rejected - not enough memory
+MSG_0027
+Rediger: slip på en flise for at flytte; uden for docken fjerner
+; Edit: release on a tile to move; outside dock removes
+MSG_0028
+Siden er skiftet - træk elementet hen til målet
+; Page changed - drag the item to its destination
+MSG_0029
+Ingen ændring - slip på en flise eller udenfor for at fjerne
+; No change - drop on a tile or outside to remove
+MSG_0030
+En anden NovaDock kører, men svarede ikke.
+; Another NovaDock is running but did not respond.
+MSG_0031
+Ikke nok hukommelse til starthandlinger.
+; Not enough memory for launcher actions.
+MSG_0032
+Opsætningen har ingen aktive fliser.
+; The configuration has no enabled tiles.
+MSG_0033
+Kunne ikke registrere NovaDocks beskedporte\n(en anden dock startede samtidig, eller der er intet frit signal).
+; Could not register NovaDock's message ports\n(another dock started at the same moment, or no free signal).
+MSG_0034
+Den opsatte dock passer ikke på Workbench-skærmen.\nGør fliser, afstand eller antal elementer mindre i Indstillinger.
+; The configured dock does not fit on the Workbench screen.\nReduce tile size, gap or items in Preferences.
+MSG_0035
+OK
+; OK
+MSG_0036
+Der blev ikke fundet nogen gyldig indstillingsfil.\nENV:, ENVARC: og den medfølgende novadock.cfg (og deres\n.bak-kopier) indeholder alle fejl.\n\nStart med de indbyggede standardværdier? Dine filer\nforbliver urørte, indtil du gemmer fra Indstillinger.
+; No valid settings file was found.\nENV:, ENVARC: and the packaged novadock.cfg (and their\n.bak copies) all contain errors.\n\nStart with the built-in defaults? Your files are\nleft untouched until you save from Preferences.
+MSG_0037
+Brug standard|Afslut
+; Use defaults|Quit
+MSG_0038
+NovaDock-kalender
+; NovaDock Calendar
+MSG_0040
+Disk indsat: %.28s
+; Disk inserted: %.28s
+MSG_0041
+Disk fjernet: %.28s
+; Disk removed: %.28s
+MSG_0042
+Flyttede %s
+; Moved %s
+MSG_0043
+Fjernede %s
+; Removed %s
+MSG_0044
+%.20s tømt - kan fjernes sikkert
+; %.20s flushed - safe to remove
+MSG_0045
+Kunne ikke tømme %.20s
+; Could not flush %.20s
+MSG_0046
+Fastgjorde %.28s
+; Pinned %.28s
+MSG_0047
+Docken bruger nu %d rækker
+; Dock now uses %d rows
+MSG_0050
+Åbnet med %.31s
+; Opened with %.31s
+MSG_0051
+Åbnede %d elementer med %.31s
+; Opened %d items with %.31s
+MSG_0054
+Kopierer %d; %d afvist
+; Copying %d; %d rejected
+MSG_0055
+Tilføjede %s
+; Added %s
+MSG_0056
+Tilføjede %d elementer
+; Added %d items
+MSG_0057
+Start
+; Launch
+MSG_0058
+Rediger indstillinger...
+; Edit settings...
+MSG_0059
+Fjern
+; Remove
+MSG_0061
+Åbn
+; Open
+MSG_0062
+Vis indhold
+; Popup contents
+MSG_0063
+Tøm (kan fjernes sikkert)
+; Flush (safe to remove)
+MSG_0064
+Fastgør til docken
+; Pin to dock
+MSG_0070
+Rediger afstandsstykke...
+; Edit spacer...
+MSG_0071
+Fjern afstandsstykke
+; Remove spacer
+MSG_0072
+Lås docken op
+; Unlock dock
+MSG_0075
+Indstillinger...
+; Preferences...
+MSG_0076
+Afslut NovaDock
+; Quit NovaDock
+MSG_0077
+Januar
+; January
+MSG_0078
+Februar
+; February
+MSG_0079
+Marts
+; March
+MSG_0080
+April
+; April
+MSG_0081
+Maj
+; May
+MSG_0082
+Juni
+; June
+MSG_0083
+Juli
+; July
+MSG_0084
+August
+; August
+MSG_0085
+September
+; September
+MSG_0086
+Oktober
+; October
+MSG_0087
+November
+; November
+MSG_0088
+December
+; December
+MSG_0089
+Sø
+; Su
+MSG_0090
+Ma
+; Mo
+MSG_0091
+Ti
+; Tu
+MSG_0092
+On
+; We
+MSG_0093
+To
+; Th
+MSG_0094
+Fr
+; Fr
+MSG_0095
+Lø
+; Sa
+MSG_0096
+Lås docken
+; Lock dock
+MSG_0100
+Midlertidige fliser bliver i enden - fastgør en for at beholde den
+; Temporary tiles stay at the end - pin to keep one
+MSG_0101
+Midlertidige fliser følger deres disk eller program
+; Temporary tiles follow their disk or application
+MSG_0102
+Programmet har intet åbent vindue
+; Application has no open window
+MSG_0103
+Sendte Ctrl-C til %.28s
+; Sent Ctrl-C to %.28s
+MSG_0104
+%.28s kører ikke længere
+; %.28s is no longer running
+MSG_0108
+(tom)
+; (empty)
+MSG_0109
+Navn
+; Name
+MSG_0110
+Dato
+; Date
+MSG_0111
+Størrelse
+; Size
+MSG_0112
+Hent frem
+; Bring to front
+MSG_0113
+Næste vindue
+; Next window
+MSG_0114
+Send Ctrl-C
+; Send Ctrl-C
+MSG_0115
+Docken har allerede det mindste antal rækker
+; Dock already has the minimum rows
+MSG_0116
+Kunne ikke fjerne dockrækken
+; Could not remove dock row
+MSG_0119
+Tilføj element...
+; Add item...
+MSG_0120
+Kunne ikke starte standardmusikprogrammet
+; Could not start the default music application
+MSG_0121
+Starter standardmusikprogrammet
+; Starting the default music application
+MSG_0122
+Om NovaDock
+; About NovaDock
+MSG_0123
+Om NovaDock...
+; About NovaDock...
+MSG_0125
+Nogle elementer kunne ikke flyttes til papirkurven
+; Some items could not be moved to the trash
+MSG_0126
+Papirkurven er tom
+; The trash is empty
+MSG_0127
+Kunne ikke starte Papirkurv-pluginnet
+; Could not start the Trash plugin
+MSG_0128
+Flytter til papirkurven
+; Moving to the trash
+MSG_0129
+Flytter %d elementer til papirkurven
+; Moving %d items to the trash
+MSG_0130
+Åbn papirkurv
+; Open trash
+MSG_0131
+Tøm papirkurv...
+; Empty trash...
+MSG_0133
+Kunne ikke gemme indstillinger - se Diagnostics
+; Settings save failed - see Diagnostics
+MSG_0134
+Indstillinger ikke gemt - prøver igen
+; Settings not saved - will retry
+MSG_0136
+Udklipshistorik
+; Clipboard history
+MSG_0137
+Administrer historik...
+; Manage history...
+MSG_0138
+Kunne ikke ændre netværkstilstand - tjek netværksindstillingerne
+; Could not change network state - check Network settings
+MSG_0139
+Online
+; Online
+MSG_0140
+Offline
+; Offline
+MSG_0141
+Kunne ikke åbne netværksdetaljer
+; Could not open Network details
+MSG_0142
+Detaljer...
+; Details...
+MSG_0143
+Åbn BitSkim
+; Open BitSkim
+MSG_0145
+Slå modtagelse til/fra
+; Toggle receiving
+MSG_0147
+Annuller overførsel
+; Cancel transfer
+MSG_0148
+BitSkim tager imod én almindelig fil ad gangen
+; BitSkim accepts one regular file at a time
+MSG_0149
+Kunne ikke åbne BitSkim-hjælperen
+; Could not open BitSkim helper
+MSG_0150
+Send fil...
+; Send file...
+MSG_0151
+Kunne ikke åbne Running Apps
+; Could not open Running Apps
+MSG_0152
+Indstillinger ikke gemt - afslut igen for at kassere ændringerne
+; Settings not saved - quit again to discard changes
+MSG_0153
+Gemmer indstillinger...
+; Saving settings...
+MSG_0154
+Startede 1 arkiv; %d afvist
+; Started 1 archive; %d rejected
+MSG_0155
+Startede %d arkiver; %d afvist
+; Started %d archives; %d rejected
+MSG_0156
+Åbnede 1 element; %d mislykkedes
+; Opened 1 item; %d failed
+MSG_0157
+Åbnede %d elementer; %d mislykkedes
+; Opened %d items; %d failed
+MSG_0158
+Kopierer 1 element til %.28s
+; Copying 1 item to %.28s
+MSG_0159
+Kopierer %d elementer til %.28s
+; Copying %d items to %.28s
+MSG_0160
+Opdater
+; Refresh
+MSG_0161
+Kunne ikke åbne elementet i Archiver
+; Could not open item in Archiver
+MSG_0162
+Archiver åbnet for det sluppede element
+; Archiver opened for dropped item
+MSG_0163
+Archiver åbnet for %d elementer
+; Archiver opened for %d items
+MSG_0164
+Gennemse noter
+; Browse notes
+MSG_0165
+Tilføj ny note...
+; Add new note...
+MSG_0166
+NovaDock stoppede, men kunne ikke genstarte.\nStart NovaDock igen fra dets programikon.
+; NovaDock stopped, but could not restart.\nStart NovaDock again from its application icon.
+MSG_0167
+Genstart NovaDock
+; Restart NovaDock
+MSG_0168
+Ingen skuffe valgt. Åbn Rediger indstillinger.
+; No drawer selected. Open Edit settings.
+MSG_0169
+Den valgte skuffe findes ikke.
+; The selected drawer does not exist.
+MSG_0170
+Den valgte sti er en fil, ikke en skuffe.
+; The selected path is a file, not a drawer.
+MSG_0171
+Kan ikke læse den valgte skuffe.
+; Cannot read the selected drawer.
+MSG_0172
+Ikke nok hukommelse til at kontrollere skuffen.
+; Not enough memory to check the drawer.
+MSG_0173
+Den valgte skuffes enhed er ikke tilgængelig.
+; The selected drawer's volume is unavailable.
+MSG_0174
+Indekset er ufuldstændigt. Brug Rescan for at prøve igen.
+; Index incomplete. Use Rescan to try again.
+MSG_0175
+Kunne ikke åbne Warps Wi-Fi-indstillinger
+; Could not open Warp Wi-Fi settings
+MSG_0176
+Kunne ikke åbne Prisms Wi-Fi-indstillinger
+; Could not open Prism Wi-Fi settings
+MSG_0177
+Kunne ikke åbne Warps turboindstillinger
+; Could not open Warp turbo settings
+MSG_0178
+Opsæt Wi-Fi-netværk...
+; Configure Wi-Fi Network...
+MSG_0179
+Vælg turboniveau...
+; Set Turbo Level...
+MSG_0180
+Opsæt Prism Wi-Fi...
+; Configure Prism Wi-Fi...
+MSG_0182
+Brug gendannede|Afslut
+; Use recovered|Quit
+MSG_0183
+Tilføjer hyldegenveje
+; Adding shelf shortcuts
+MSG_0184
+Kunne ikke tilføje hyldegenveje
+; Could not add shelf shortcuts
+MSG_0185
+Oversigt over enhed...
+; Volume overview...
+MSG_0186
+Åbner ikonets ToolTypes
+; Opening icon ToolTypes
+MSG_0187
+Slip ét Workbench-ikon ad gangen
+; Drop one Workbench icon at a time
+MSG_0188
+Indstillingerne gemmes - prøv at slippe igen
+; Preferences are saving - try the drop again
+MSG_0189
+Venter på, at den forrige ARexx-handling bliver færdig
+; Waiting for the previous ARexx action to finish
+MSG_0190
+Gendannede %s
+; Restored %s
+MSG_0191
+Flyttede %s tilbage
+; Moved %s back
+MSG_0192
+Fortryd fjernelse
+; Undo remove
+MSG_0193
+Fortryd flytning
+; Undo move
+MSG_0194
+Brug profil %s
+; Use profile %s
+MSG_0195
+Opdater profil %s
+; Update profile %s
+MSG_0196
+Profil %s gemt
+; Saved profile %s
+MSG_0197
+Kunne ikke gemme profil %s
+; Could not save profile %s
+MSG_0198
+Skiftede til profil %s
+; Switched to profile %s
+MSG_0199
+Kunne ikke skifte til profil %s
+; Could not switch to profile %s
+MSG_0200
+The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Support shows the recovery source;\nSave from Preferences repairs the current settings.
+; The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Support shows the recovery source;\nSave from Preferences repairs the current settings.
+MSG_0202
+Could not save dock position
+; Could not save dock position
+MSG_0206
+Sensor readings...
+; Sensor readings...
+MSG_0207
+Next sensor
+; Next sensor
+MSG_0208
+Previous sensor
+; Previous sensor
+MSG_0209
+ARexx-indstillinger gemt; de træder i kraft efter næste genindlæsning
+; ARexx settings saved; they apply after the next reload
+MSG_0210
+Programmer starter stadig. Prøv igen om lidt.
+; Applications are still starting. Try again shortly.
+MSG_0212
+Venter på diskmaaling
+; Waiting for disk reading
+MSG_0213
+Disk ikke klar (DOS-fejl %lu)
+; Disk unavailable (DOS error %lu)
+MSG_0214
+Gemt: %lus gammel; DOS-fejl %lu
+; Cached: %lus old; DOS error %lu
+MSG_0215
+Opdateret for %lus siden%s
+; Last updated %lus ago%s
+MSG_0216
+Genindlæser ikoner...
+; Reloading artwork...
+MSG_0217
+Kunne ikke forberede programstart.
+; Could not prepare application launch.
+MSG_0218
+Indlæser... (Esc lukker)
+; Loading... (Esc cancels)
+MSG_0219
+Ikke klar (R prøver igen)
+; Unavailable (R retries)
+MSG_0220
+ (gemt)
+;  (cached)
+MSG_0221
+ (gammel)
+;  (stale)
+MSG_0222
+Starter %s...
+; Starting %s...
+MSG_0223
+Kunne ikke starte %s (DOS-fejl %lu).
+; Could not start %s (DOS error %lu).
+MSG_0224
+Kunne ikke starte %s. Kontroller sti og indstillinger.
+; Could not start %s. Check its path and settings.
+MSG_0225
+Kunne ikke starte %s: intet svar fra hjælpeproces.
+; Could not start %s: worker did not reply.
+MSG_0226
+%s: %u%% brugt%s
+; %s: %u%% used%s
+MSG_0227
+Genindlæs ikoner
+; Reload artwork

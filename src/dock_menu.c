@@ -1,5 +1,7 @@
 /* NovaDock: Context menus and their actions; launcher actions and tasks. */
 #include "dock_internal.h"
+#include "nd_trace.h"
+#include "nd_wait.h"
 #include "nd_warp_detect.h"
 
 /* Defined below, private to this file. */
@@ -64,6 +66,7 @@ void open_trash(struct NDDock *dock)
 /* Every plugin ends with Settings and Remove, after its own actions. */
 static int plugin_settings_action(const struct NDDock *dock,const struct NDItem *item)
 {
+    if(!strcmp(nd_option_schema_id(&dock->conf,item->id),"SENSORS"))return 3;
     if (!strcmp(item->id,"TRASH")) return 3;
     if (!strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW")) return 2+dock->popup_warp_present+dock->popup_prism_present;
     if (!strcmp(item->id,"CPU") && dock->popup_warp_present) return 1;
@@ -71,10 +74,37 @@ static int plugin_settings_action(const struct NDDock *dock,const struct NDItem 
     if (!strcmp(item->id,"CLIPBOARD") || !strcmp(item->id,"NOTES")) return 2;
     return plugin_can_launch(dock,item) ? 1 : 0;
 }
+/* Edit mode offers "Undo" for the last move or removal, as the second row. */
+static int dock_menu_rows(const struct NDDock *dock,int *rows);
+static int dock_has_undo(const struct NDDock *dock)
+{
+    return dock->edit_mode && dock->undo_kind!=ND_UNDO_NONE && dock->undo_config!=NULL;
+}
+/* The background (dock) menu, top to bottom.  Saved profiles other than
+ * the active one can be switched to; the active one can be updated. */
+enum {DM_LOCK,DM_UNDO,DM_ADD,DM_PREFS,DM_PROFILE_UPDATE,DM_ABOUT,DM_RESTART,DM_QUIT,DM_ARTWORK,
+      DM_PROFILE_USE=16};
+#define ND_DOCK_MENU_ROWS (9+ND_MENU_PROFILES)
+static int dock_menu_rows(const struct NDDock *dock,int *rows)
+{
+    int n=0,i;
+    rows[n++]=DM_LOCK;
+    if (dock_has_undo(dock)) rows[n++]=DM_UNDO;
+    rows[n++]=DM_ADD;rows[n++]=DM_PREFS;
+    for (i=0;i<dock->menu_profile_count && i<ND_MENU_PROFILES;++i) rows[n++]=DM_PROFILE_USE+i;
+    if (dock->conf.profile[0]) rows[n++]=DM_PROFILE_UPDATE;
+    rows[n++]=DM_ABOUT;rows[n++]=DM_ARTWORK;rows[n++]=DM_RESTART;rows[n++]=DM_QUIT;
+    return n;
+}
+static int dock_menu_row(const struct NDDock *dock,int index)
+{
+    int rows[ND_DOCK_MENU_ROWS],n=dock_menu_rows(dock,rows);
+    return index>=0 && index<n ? rows[index] : -1;
+}
 static int popup_count_for(const struct NDDock *dock)
 {
     const struct NDItem *item;
-    if (dock->popup_item == -2) return 6;
+    if (dock->popup_item == -2) {int rows[ND_DOCK_MENU_ROWS];return dock_menu_rows(dock,rows);}
     if (dock->popup_item<0 || dock->popup_item>=dock->conf.count) return 0;
     item=&dock->conf.items[dock->popup_item];
     if (item->kind==ND_ITEM_SPACER) return 2;
@@ -122,8 +152,25 @@ static const char *dock_actions[] = {
 static const char *popup_label_en(const struct NDDock *dock, int item)
 {
     if (dock->popup_item == -2) {
-        if (item==0) return dock->edit_mode ? "Lock dock" : "Unlock dock";
-        return dock_actions[item];
+        static char text[ND_PROFILE_LEN+40];
+        int row=dock_menu_row(dock,item);
+        if (row==DM_LOCK) return dock->edit_mode ? "Lock dock" : "Unlock dock";
+        if (row==DM_UNDO) return dock->undo_kind==ND_UNDO_REMOVE ? "Undo remove" : "Undo move";
+        if (row>=DM_PROFILE_USE) {
+            sprintf(text,nd_trf("Use profile %s"),dock->menu_profiles[row-DM_PROFILE_USE]);
+            return text;
+        }
+        if (row==DM_PROFILE_UPDATE) {
+            sprintf(text,nd_trf("Update profile %s"),dock->conf.profile);
+            return text;
+        }
+        if (row==DM_ADD) return dock_actions[1];
+        if (row==DM_PREFS) return dock_actions[2];
+        if (row==DM_ABOUT) return dock_actions[3];
+        if (row==DM_ARTWORK) return "Reload artwork";
+        if (row==DM_RESTART) return dock_actions[4];
+        if (row==DM_QUIT) return dock_actions[5];
+        return "";
     }
     if (dock->popup_item>=0) {
         const struct NDItem *it=&dock->conf.items[dock->popup_item];
@@ -134,6 +181,7 @@ static const char *popup_label_en(const struct NDDock *dock, int item)
         if (it->kind==ND_ITEM_DRAWER || it->kind==ND_ITEM_GROUP)
             return it->transient ? media_actions[item] : drawer_actions[item];
         if (it->kind==ND_ITEM_LAUNCH) return launcher_actions[item];
+        if(it->kind==ND_ITEM_PLUGIN && !strcmp(nd_option_schema_id(&dock->conf,it->id),"SENSORS")){static const char *actions[]={"Sensor readings...","Next sensor","Previous sensor","Edit settings...","Remove"};return actions[item];}
         if (it->kind==ND_ITEM_PLUGIN && is_trash_tile(dock,dock->popup_item))
             return trash_actions[item];
         if(it->kind==ND_ITEM_PLUGIN && (!strcmp(it->id,"NET") || !strcmp(it->id,"ROADSHOW"))){
@@ -160,6 +208,7 @@ void close_popup(struct NDDock *dock)
 {
     struct IntuiMessage *m;
     if (!dock->popup) return;
+    ND_TRACE_NOTE("dock.menu.close",dock->popup_item,0,0,0);
     while ((m = (struct IntuiMessage *)GetMsg(dock->popup->UserPort)) != NULL)
         ReplyMsg((struct Message *)m);
     CloseWindow(dock->popup);
@@ -191,6 +240,7 @@ void open_popup(struct NDDock *dock, int item, int x, int y)
     int px, py, popup_height, popup_width=175, width, count, i;
     if (item < -2 || item >= dock->conf.count || !dock->window ||
         dock->hidden || dock->box_pending) return;
+    ND_TRACE_NOTE("dock.menu.open",item,x,y,dock->box_pending);
     /* Plugins now get their own native context menu. */
     close_tooltip(dock);
     close_popup(dock);
@@ -199,6 +249,13 @@ void open_popup(struct NDDock *dock, int item, int x, int y)
     /* popup_count_for() depends on the target kind.  Set it before sizing the
      * window; close_popup() deliberately cleared the previous target. */
     dock->popup_item = item;
+    /* The dock menu lists saved profiles (other than the active one). */
+    if (item==-2) {
+        dock->menu_profile_count=list_profiles(dock->menu_profiles,ND_MENU_PROFILES,dock->conf.profile);
+        /* Leave space for all actions on a short planar screen. Additional
+         * profiles remain available in Preferences. */
+        while(dock->menu_profile_count>0 && 8+19*popup_count_for(dock)>dock->screen->Height-dock->screen->BarHeight)--dock->menu_profile_count;
+    }
     dock->popup_network_online=item>=0 && !strcmp(dock->conf.items[item].badge,"*");
     dock->popup_warp_present=0;dock->popup_prism_present=0;
     if(item>=0 && dock->conf.items[item].kind==ND_ITEM_PLUGIN &&
@@ -207,8 +264,8 @@ void open_popup(struct NDDock *dock, int item, int x, int y)
     if(item>=0 && dock->conf.items[item].kind==ND_ITEM_PLUGIN &&
        (!strcmp(dock->conf.items[item].id,"NET") || !strcmp(dock->conf.items[item].id,"ROADSHOW")))
         dock->popup_prism_present=nd_prism_driver_present();
-    px = dock->window->LeftEdge + x;
-    py = dock->window->TopEdge + y;
+    px = dock_left(dock) + x;
+    py = dock_top(dock) + y;
     count=popup_count_for(dock);
     popup_height=8+19*count;
     for(i=0;i<count;++i){width=TextLength(dock->window->RPort,(STRPTR)popup_label(dock,i),strlen(popup_label(dock,i)))+20;
@@ -228,6 +285,7 @@ void open_popup(struct NDDock *dock, int item, int x, int y)
         WA_Flags, WFLG_REPORTMOUSE | WFLG_SIMPLE_REFRESH | WFLG_ACTIVATE,
         TAG_DONE);
     if (dock->popup) {
+        dock->popup_opened=diagnostic_ticks();
         /* The first action is the default: Launch for an app/drawer and the
          * primary settings action for a plugin or the dock background. */
         dock->popup_hot = 0;
@@ -271,9 +329,19 @@ static int send_rexx_action(struct NDDock *dock,const char *port,
 {
     struct MsgPort *target;
     struct RexxMsg *request;
-    int delivered=0;
+    ULONG now,micros;
+    int delivered=0,slot;
     if (!dock || !RexxSysBase || !valid_rexx_action_port(port) ||
         !command || !*command) return 0;
+    /* A busy target would otherwise collect every repeated click and run
+     * them all when it recovers.  Ignore further clicks to that port until
+     * it answers; other ports stay usable (limits per target port). */
+    CurrentTime(&now,&micros);
+    slot=nd_rexx_admit(dock->rexx_track,port,(unsigned long)now);
+    if (slot<0) {
+        show_feedback(dock,"Waiting for the previous ARexx action to finish",1);
+        return 1;
+    }
     if (!dock->rexx_reply) {
         dock->rexx_reply=CreateMsgPort();
         if (!dock->rexx_reply) return 0;
@@ -292,6 +360,7 @@ static int send_rexx_action(struct NDDock *dock,const char *port,
         DeleteRexxMsg(request);
         return 0;
     }
+    nd_rexx_track(dock->rexx_track,slot,request,port,(unsigned long)now);
     ++dock->rexx_pending;
     return 1;
 }
@@ -302,6 +371,7 @@ void process_rexx_replies(struct NDDock *dock,int report)
     if (!dock->rexx_reply) return;
     while ((reply=(struct RexxMsg *)GetMsg(dock->rexx_reply))!=NULL) {
         if (reply->rm_Result1!=0) ++failed;
+        nd_rexx_release(dock->rexx_track,reply);
         DeleteArgstring(reply->rm_Args[0]);
         DeleteRexxMsg(reply);
         if (dock->rexx_pending>0) --dock->rexx_pending;
@@ -314,12 +384,21 @@ void process_rexx_replies(struct NDDock *dock,int report)
  * ignored rather than freed underneath a late ReplyMsg. */
 void stop_rexx_replies(struct NDDock *dock)
 {
-    int waited;
+    ULONG now,micros,waited;
+    struct NDWaitTimer timer;
     if (!dock->rexx_reply) return;
-    for (waited=0;dock->rexx_pending>0 && waited<50;++waited) {
+    /* Give targets that may still answer up to a second, sleeping on the
+     * reply port.  Requests already given up on (unanswered for
+     * ND_REXX_EXPIRE seconds) are not waited for: quitting with a hung
+     * target used to cost five seconds. */
+    timer.port=NULL;timer.io=NULL;timer.open=0;
+    for (waited=0;waited<50;waited+=10) {
         process_rexx_replies(dock,0);
-        if (dock->rexx_pending>0) Delay(5);
+        CurrentTime(&now,&micros);
+        if (dock->rexx_pending<=0 || !nd_rexx_live(dock->rexx_track,(unsigned long)now)) break;
+        (void)nd_wait_port(&timer,dock->rexx_reply,10UL);
     }
+    nd_wait_timer_close(&timer);
     process_rexx_replies(dock,0);
     if (dock->rexx_pending>0) {
         Forbid();
@@ -331,51 +410,20 @@ void stop_rexx_replies(struct NDDock *dock)
 }
 int launch_action(struct NDDock *dock,const struct NDItem *item)
 {
-    char command[ND_COMMAND_LEN*3+8];
-    char info_path[ND_COMMAND_LEN+6];
-    BPTR path_lock=0;
-    int path_exists=0,workbench_object=0;
     if (!dock || !item ||
         (item->kind!=ND_ITEM_LAUNCH && item->kind!=ND_ITEM_DRAWER &&
          item->kind!=ND_ITEM_GROUP)) return 0;
     if (!strcmp(item->command,"@quit")) { dock->running=0;return 1; }
+    if (item->kind==ND_ITEM_LAUNCH && !strcmp(item->command,"NovaDockPrefs"))
+        return launch_companion(dock,"NovaDockPrefs",ITEM_TEXT(item,ND_TEXT_ARGS));
     if (item->kind==ND_ITEM_GROUP) { open_folder_popup(dock,
         (int)(item-dock->conf.items));return 1; }
     if (item->kind==ND_ITEM_DRAWER) { open_drawer(item->command);return 1; }
     if (item->launch_mode==ND_LAUNCH_AREXX)
         return send_rexx_action(dock,item->command,ITEM_TEXT(item,ND_TEXT_ARGS));
-    if (!strchr(item->command,'"') && !strchr(item->command,'\n') &&
-        !strchr(item->command,'\r')) {
-        path_lock=Lock((STRPTR)item->command,ACCESS_READ);
-        if (path_lock) {
-            path_exists=1;workbench_object=1;UnLock(path_lock);
-        } else if (strlen(item->command)+5<sizeof(info_path)) {
-            strcpy(info_path,item->command);strcat(info_path,".info");
-            path_lock=Lock((STRPTR)info_path,ACCESS_READ);
-            if (path_lock) {workbench_object=1;UnLock(path_lock);}
-        }
-    }
-    if (item->launch_mode==ND_LAUNCH_WORKBENCH ||
-        (item->launch_mode==ND_LAUNCH_AUTO && workbench_object &&
-         !ITEM_TEXT(item,ND_TEXT_ARGS)[0] && !ITEM_TEXT(item,ND_TEXT_WORKDIR)[0])) {
-        if (WorkbenchBase && WorkbenchBase->lib_Version>=44 &&
-            OpenWorkbenchObject((STRPTR)item->command,TAG_DONE)) return 1;
-        if (!path_exists || strchr(item->command,'"')) return 0;
-    }
-    if (path_exists) {
-        if (!nd_quote_path(command,sizeof(command),item->command)) return 0;
-    } else {
-        if (strlen(item->command)>=sizeof(command)) return 0;
-        strcpy(command,item->command);
-    }
-    if (ITEM_TEXT(item,ND_TEXT_ARGS)[0]) {
-        if (strlen(command)+strlen(ITEM_TEXT(item,ND_TEXT_ARGS))+2>=sizeof(command)) return 0;
-        strcat(command," ");strcat(command,ITEM_TEXT(item,ND_TEXT_ARGS));
-    }
-    return launch_command_at(command,ITEM_TEXT(item,ND_TEXT_WORKDIR),
-                             path_exists ? icon_stack(item->command) :
-                             ND_DEFAULT_STACK);
+    return queue_launcher(dock,item);
 }
+
 int launch_default_music_application(struct NDDock *dock)
 {
     struct NDItem launcher;
@@ -615,6 +663,10 @@ static int plugin_popup_action(struct NDDock *dock, int index, int action)
         return 0;
     }
     if (action==settings+1) return remove_dragged_item(dock,index);
+    if(!strcmp(nd_option_schema_id(&dock->conf,item->id),"SENSORS")){
+        if(action>=0 && action<3)dock->plugin_event2[index]|=action==0 ? ND_EVENT2_SENSOR_DETAILS:action==1 ? ND_EVENT2_SENSOR_NEXT:ND_EVENT2_SENSOR_PREVIOUS;
+        return 0;
+    }
     if (is_trash_tile(dock,index)) {
         if (action==0) open_trash(dock);
         else if (action==1) {
@@ -779,8 +831,10 @@ static int remove_row_from_dock(struct NDDock *dock)
 void set_edit_mode(struct NDDock *dock,int on)
 {
     dock->edit_mode=on ? 1 : 0;
+    if (!dock->edit_mode) release_undo(dock);   /* undo lasts one edit session */
     refresh_drop_zones(dock);
     dock->drop_preview=0;
+    dock->music_press_action=dock->music_hover_action=0;
     dock->press_item=-1;dock->drag_to=-1;dock->drag_after=0;dock->is_drag=0;
     draw_all(dock);
     show_feedback(dock,dock->edit_mode ?
@@ -789,24 +843,37 @@ void set_edit_mode(struct NDDock *dock,int on)
 }
 static int dock_popup_action(struct NDDock *dock, int action)
 {
-    switch (action) {
-    case 0:
+    char name[ND_PROFILE_LEN];
+    switch (dock_menu_row(dock,action)) {
+    case DM_LOCK:
         set_edit_mode(dock,!dock->edit_mode);
         break;
-    case 1:
+    case DM_UNDO:
+        (void)undo_last_edit(dock);
+        break;
+    case DM_ADD:
         if (!launch_companion(dock,"NovaDockPrefs","PAGE=ADD FOCUSED=1") &&
             dock->screen) DisplayBeep(dock->screen);
         break;
-    case 2:
+    case DM_PREFS:
         if (!launch_companion(dock,"NovaDockPrefs",NULL) && dock->screen)
             DisplayBeep(dock->screen);
         break;
-    case 3:
+    case DM_PROFILE_UPDATE:
+        strcpy(name,dock->conf.profile);(void)save_profile(dock,name);
+        break;
+    case DM_ABOUT:
         open_about(dock);
         break;
-    case 4: dock->restart_requested=1; dock->running=0; return 1;
-    case 5: dock->restart_requested=0; dock->running=0; return 1;
-    default: break;
+    case DM_ARTWORK: reload_artwork(dock);break;
+    case DM_RESTART: dock->restart_requested=1; dock->running=0; return 1;
+    case DM_QUIT: dock->restart_requested=0; dock->running=0; return 1;
+    default:
+        if (dock_menu_row(dock,action)>=DM_PROFILE_USE) {
+            strcpy(name,dock->menu_profiles[dock_menu_row(dock,action)-DM_PROFILE_USE]);
+            (void)use_profile(dock,name);
+        }
+        break;
     }
     return 0;
 }
@@ -814,10 +881,11 @@ void popup_events(struct NDDock *dock)
 {
     struct IntuiMessage *m;
     ULONG cls, code;
-    WORD my;
+    WORD my;UWORD qualifier;
     int row, index;
     while (dock->popup && (m = (struct IntuiMessage *)GetMsg(dock->popup->UserPort)) != NULL) {
-        cls = m->Class; code = m->Code; my = m->MouseY;
+        cls = m->Class; code = m->Code; my = m->MouseY;qualifier=m->Qualifier;
+        ND_TRACE_NOTE("dock.menu.event",(LONG)cls,(LONG)code,my,dock->popup_item);
         ReplyMsg((struct Message *)m);
         if (cls == IDCMP_REFRESHWINDOW) {
             BeginRefresh(dock->popup); draw_popup(dock);
@@ -858,6 +926,15 @@ void popup_events(struct NDDock *dock)
                 } else if (popup_action(dock, index, row)) return;
             } }
             return;
+        } else if(cls==IDCMP_INACTIVEWINDOW && IntuitionBase->ActiveWindow==dock->window &&
+                  !((qualifier | (InputBase?PeekQualifier():0))&IEQUALIFIER_LEFTBUTTON) &&
+                  (((qualifier | (InputBase?PeekQualifier():0))&IEQUALIFIER_RBUTTON) ||
+                   diagnostic_ticks()-dock->popup_opened<15UL)){
+            /* Commodities and the original click can queue dock activation
+             * before the popup exists but deliver it afterwards. This is
+             * still the opening right click, not a switch to another app. */
+            ND_TRACE_NOTE("dock.menu.focus_repair",0,0,0,0);
+            ActivateWindow(dock->popup);
         } else if (cls == IDCMP_INACTIVEWINDOW || cls == IDCMP_RAWKEY ||
                    (cls == IDCMP_MOUSEBUTTONS && code == MENUDOWN)) {
             close_popup(dock);

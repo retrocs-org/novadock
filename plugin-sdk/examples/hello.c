@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "nd_client.h"
 #include "nd_option_runtime.h"
+#include "nd_plugin_resources.h"
 
 /* Version string for the AmigaDOS Version command (kept global so the
  * linker never discards it). */
@@ -41,6 +42,7 @@ int main(int argc, char **argv)
         if (event & ND_EVENT_QUIT) break;
         if (event & ND_EVENT_CLICK) {
             clicked = !clicked;
+            nd_client_activity(&client,ND_PLUGIN_OP_ACTION,2,clicked,0);
             /* A badge on the tile's corner; docks without badges ignore it. */
             event |= nd_client_set_badge(&client, clicked ? "1" : "");
             if (event & ND_EVENT_QUIT) break;

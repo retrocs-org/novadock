@@ -8,6 +8,9 @@
 #include <string.h>
 #include "nd_text.h"
 #include "../clipboard/nd_clipboard.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 int nd_text_copy(const char *text)
 {struct MsgPort *port=CreateMsgPort();struct IOClipReq *io=NULL;unsigned char *data=NULL;unsigned long size;int ok=0;
  if(!text || strlen(text)>11000)goto done;if(port)io=(struct IOClipReq *)CreateIORequest(port,sizeof(*io));data=AllocVec(strlen(text)+32,MEMF_PUBLIC);

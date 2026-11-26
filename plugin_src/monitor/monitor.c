@@ -17,6 +17,7 @@
 #include "nd_alerts.h"
 #include "nd_client.h"
 #include "nd_reply.h"
+#include "nd_wait.h"
 #include "nd_list.h"
 #include "nd_panel.h"
 #include "nd_text.h"
@@ -24,6 +25,9 @@
 #include "nd_interaction.h"
 #include "nd_monitor.h"
 #include "../clipboard/nd_clipboard.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 #ifdef ND_MONITOR_LOGS
 #define MONITOR_ID "LOGS"
 #define MONITOR_ART "logs"
@@ -172,13 +176,14 @@ done:FreeDosObject(DOS_FIB,fib);Close(f);
 #endif
 static int worker(const char *parent)
 {
- struct MonitorMessage *m=AllocVec(sizeof(*m),MEMF_PUBLIC|MEMF_CLEAR);struct MsgPort *reply=nd_reply_port(),*guard=NULL;char name[64];int i,replied=0,owned=0;
+ struct MonitorMessage *m=AllocVec(sizeof(*m),MEMF_PUBLIC|MEMF_CLEAR);struct MsgPort *reply=nd_reply_port(),*guard=NULL;char name[64];int replied=0,owned=0;
  ((struct Process *)FindTask(NULL))->pr_WindowPtr=(APTR)-1;
  if(!m || !reply){if(m)FreeVec(m);if(reply)nd_reply_delete(reply);return 20;}
  m->magic=MONITOR_MAGIC;m->kind=1;m->message.mn_Length=sizeof(*m);m->message.mn_ReplyPort=reply;
  if(!send_to(parent,m)){FreeVec(m);nd_reply_delete(reply);return 10;}
- for(i=0;i<150 && !replied;i+=2){if(GetMsg(reply))replied=1;else Delay(2);}
- if(!replied){nd_reply_abandon(reply);return 10;}nd_reply_delete(reply);m->message.mn_ReplyPort=NULL;
+ if(nd_wait_port(NULL,reply,150UL) && GetMsg(reply))replied=1;
+ /* Atomic with the parent: do not abandon an already delivered reply. */
+ Forbid();if(!replied && GetMsg(reply))replied=1;if(!replied)nd_reply_abandon(reply);Permit();if(!replied)return 10;nd_reply_delete(reply);m->message.mn_ReplyPort=NULL;
  if(m->kind!=1){FreeVec(m);return 10;}
  guard=CreateMsgPort();sprintf(name,"NovaDock.%s.Work.%s",MONITOR_ID,m->id);
  if(guard){guard->mp_Node.ln_Name=name;Forbid();if(!FindPort(name)){AddPort(guard);owned=1;}Permit();}

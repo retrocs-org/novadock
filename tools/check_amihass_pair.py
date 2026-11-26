@@ -7,7 +7,7 @@ def check(bridge):
     values=dict(line.split('=',1) for line in (bridge/'VERSION').read_text().splitlines() if '=' in line)
     snapshot=json.loads((ROOT/'plugin_src/hass/service/sdk.json').read_text())
     if values['VERSION']!=snapshot['version']:raise ValueError('AmiHASS release differs from the tested SDK pair; review and update the pairing explicitly')
-    mapping={'amihass.h':'SDK/amihass.h','amihass_core.h':'SDK/amihass_core.h','amihass_config.h':'SDK/amihass_config.h','amihass_client.c':'SDK/amihass_client.c','core.c':'src/core.c','nd_reply.h':'SDK/nd_reply.h'}
+    mapping={'amihass.h':'SDK/amihass.h','amihass_core.h':'SDK/amihass_core.h','amihass_config.h':'SDK/amihass_config.h','amihass_client.c':'SDK/amihass_client.c','core.c':'src/core.c','nd_reply.h':'SDK/nd_reply.h','utf8_display.h':'SDK/utf8_display.h'}
     hashes={}
     for name,path in mapping.items():
         data=(bridge/path).read_bytes();digest=hashlib.sha256(data).hexdigest()

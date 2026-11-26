@@ -17,13 +17,17 @@
 #include "nd_sensor_native.h"
 #include "nd_i2c_cache.h"
 #include "nd_sensor_status.h"
+#include "nd_sensor_art.h"
 #define FETCH_GUARD "NovaDock.Sensors.Fetch"
 #define FETCH_PREFIX "T:NovaDockSensors-"
 #include "../weather/nd_fetch_worker.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 const char nd_version[]=ND_PLUGIN_VER_STRING(SENSORS,"Sensors");
 long __stack=32768;
 static struct NDI2CCache i2c;
-struct Settings {unsigned long selected,i2c_selected;int i2c_enabled;unsigned int interval,rtc_age;char warp[180],label[32];};
+struct Settings {unsigned long selected,i2c_selected;int i2c_enabled;unsigned int interval,rtc_age,rotate;int click_next;char warp[180],label[32],titles[ND_SENSOR_COUNT][32],i2c_titles[ND_I2C_MAX][32];};
 struct Job {struct MsgPort *port;char name[80],directory[160],command[1800];unsigned long started;int transferred;};
 static struct NDSensors readings;
 static struct Job job;
@@ -31,17 +35,22 @@ static unsigned long clock_ticks(void){return weather_ticks();}
 static int apply(void *context,const char *key,const char *value)
 {
  struct Settings *s=context;int i=nd_sensor_index(key);unsigned long n;
- if(nd_i2c_key(key)){char option[16];unsigned int j;for(j=0;j<i2c.count;++j){nd_i2c_option(i2c.readings[j].id,option);if(!strcmp(option,key)){if(!strcmp(value,"NO"))s->i2c_selected&=~(1UL<<j);else if(!strcmp(value,"YES"))s->i2c_selected|=1UL<<j;else return 0;}}}
+ for(i=0;i<ND_SENSOR_COUNT;++i){char title[32];sprintf(title,"%s_TITLE",nd_sensor_defs[i].key);if(!strcmp(key,title)){if(strlen(value)>31)return 0;strcpy(s->titles[i],value);return 1;}}
+ i=nd_sensor_index(key);
+ if(nd_i2c_title_key(key)){char option[32];unsigned int j;if(strlen(value)>31)return 0;for(j=0;j<i2c.count;++j){nd_i2c_option(i2c.readings[j].id,option);strcat(option,"_TITLE");if(!strcmp(option,key))strcpy(s->i2c_titles[j],value);}}
+ else if(nd_i2c_key(key)){char option[16];unsigned int j;for(j=0;j<i2c.count;++j){nd_i2c_option(i2c.readings[j].id,option);if(!strcmp(option,key)){if(!strcmp(value,"NO"))s->i2c_selected&=~(1UL<<j);else if(!strcmp(value,"YES"))s->i2c_selected|=1UL<<j;else return 0;}}}
  else if(!strcmp(key,"I2C")){s->i2c_enabled=!strcmp(value,"YES");}
  else if(!strcmp(key,"LABEL")){if(!*value || strlen(value)>31)return 0;strcpy(s->label,value);}
  else if(i>=0){if(!strcmp(value,"YES"))s->selected|=1UL<<i;else if(!strcmp(value,"NO"))s->selected&=~(1UL<<i);else return 0;}
+ else if(!strcmp(key,"ROTATE")){n=strtoul(value,NULL,10);if(n<=60)s->rotate=(unsigned int)n;}
+ else if(!strcmp(key,"CLICK")){s->click_next=!strcmp(value,"Next sensor");}
  else if(!strcmp(key,"INTERVAL")){n=strtoul(value,NULL,10);if(n>=2 && n<=60)s->interval=(unsigned int)n;}
  else if(!strcmp(key,"RTC_MAX_AGE")){n=strtoul(value,NULL,10);if(n>=30 && n<=86400)s->rtc_age=(unsigned int)n;}
  else if(!strcmp(key,"WARPTOOL")){if(strlen(value)>=sizeof(s->warp))return 0;strcpy(s->warp,value);}
  return 1;
 }
 static void read_settings(const char *id,struct Settings *s)
-{memset(s,0,sizeof(*s));s->selected=ND_SENSOR_ALL;s->i2c_selected=0xffffffffUL;s->i2c_enabled=1;strcpy(s->label,"SENSOR");s->interval=5;s->rtc_age=120;strcpy(s->warp,"C:WarpTool");nd_plugin_options_effective(id,apply,s);}
+{memset(s,0,sizeof(*s));s->selected=ND_SENSOR_ALL;s->i2c_selected=0xffffffffUL;s->i2c_enabled=1;strcpy(s->label,"SENSOR");s->interval=5;s->rotate=5;s->rtc_age=120;strcpy(s->warp,"C:WarpTool");nd_plugin_options_effective(id,apply,s);}
 static void job_close(void)
 {fetch_close_port(job.port);memset(&job,0,sizeof(job));}
 static int start_warp(const char *program,const char *tool)
@@ -124,16 +133,16 @@ static void publish_health(const char *id,const struct Settings *s,unsigned long
 }
 static struct NDPanel *open_panel(const struct Settings *s,int *page)
 {
- static const char *buttons[]={"Previous","Next","Refresh","Close"};struct NDPanelField fields[4];char text[4][128],labels[4][20];int i;
+ static const char *buttons[]={"Previous","Next","Refresh","Close","Next sensor"};struct NDPanelField fields[4];char text[4][128],labels[4][20];int i;
  panel_rows(s,page,text,labels);for(i=0;i<4;++i){fields[i].label=labels[i];fields[i].value=text[i];fields[i].limit=0;}
- return nd_panel_open("NovaDock Sensors",fields,4,buttons,4);
+ return nd_panel_open("NovaDock Sensors",fields,4,buttons,5);
 }
 static void update_panel(struct NDPanel *p,const struct Settings *s,int *page)
 {char text[4][128],labels[4][20];int i;panel_rows(s,page,text,labels);for(i=0;i<4;++i){nd_panel_set_label(p,i,labels[i]);nd_panel_set(p,i,text[i]);}}
 int main(int argc,char **argv)
 {
  struct NDClient client;struct NDPanel *panel=NULL;struct Settings settings;unsigned int event,elapsed=0;
- unsigned long now,sampled=0,warped=0,rotated=0,mask,extra,i2c_started=0;int reread=1,force=1,page=0,current=-1,i,action,fresh_warp;
+ unsigned long now,sampled=0,warped=0,rotated=0,mask,extra,i2c_started=0;int reread=1,force=1,page=0,current=-1,i,action,fresh_warp,advance=0;unsigned long actions;const char *art;
  char value[32],caption[32],status_path[100];
  if(argc==3 && !strcmp(argv[1],"WORK"))return fetch_worker(argv[2]);
  if(argc<2)return 20;((struct Process *)FindTask(NULL))->pr_WindowPtr=(APTR)-1;
@@ -152,25 +161,34 @@ int main(int argc,char **argv)
    nd_sensor_publish(argv[1],&readings,now);publish_health(argv[1],&settings,now);if(panel)update_panel(panel,&settings,&page);force=0;
   }
   if(job_events()){nd_sensor_publish(argv[1],&readings,now);publish_health(argv[1],&settings,now);if(panel)update_panel(panel,&settings,&page);}
-  mask=visible(&settings);strcpy(caption,settings.label);strcpy(value,nd_sensor_summary(&readings,&i2c,settings.selected,settings.i2c_selected,settings.i2c_enabled,now));
+  art="Sensor";mask=visible(&settings);strcpy(caption,settings.label);strcpy(value,nd_sensor_summary(&readings,&i2c,settings.selected,settings.i2c_selected,settings.i2c_enabled,now));
   if(current<0 || current>=ND_SENSOR_COUNT+(int)i2c.count ||
-     (current<ND_SENSOR_COUNT ? !(mask&(1UL<<current)):!i2c_visible(&settings,(unsigned int)(current-ND_SENSOR_COUNT))) || now<rotated || now-rotated>=5){
+     (current<ND_SENSOR_COUNT ? !(mask&(1UL<<current)):!i2c_visible(&settings,(unsigned int)(current-ND_SENSOR_COUNT))) || now<rotated || (settings.rotate && now-rotated>=settings.rotate) || advance){
    int total=ND_SENSOR_COUNT+(int)i2c.count,next;current=current<0 ? total-1:current;
-   for(i=1;i<=total;++i){next=(current+i)%total;if(next<ND_SENSOR_COUNT ? (mask&(1UL<<next))!=0:i2c_visible(&settings,(unsigned int)(next-ND_SENSOR_COUNT))){current=next;break;}}rotated=now;
+   for(i=1;i<=total;++i){next=(current+(advance<0 ? total-i:i))%total;if(next<ND_SENSOR_COUNT ? (mask&(1UL<<next))!=0:i2c_visible(&settings,(unsigned int)(next-ND_SENSOR_COUNT))){current=next;break;}}rotated=now;advance=0;
   }
   if(current>=0 && current<ND_SENSOR_COUNT && (mask&(1UL<<current))){
-   strcpy(caption,strcmp(settings.label,"SENSOR") ? settings.label:nd_sensor_defs[current].short_label);nd_sensor_format(current,readings.value[current],value);
-  }else if(current>=ND_SENSOR_COUNT && i2c_visible(&settings,(unsigned int)(current-ND_SENSOR_COUNT))){nd_i2c_format(&i2c.readings[current-ND_SENSOR_COUNT],value);mask=1;}
+   strcpy(caption,settings.titles[current][0] ? settings.titles[current]:nd_sensor_defs[current].short_label);art=nd_sensor_art(current);nd_sensor_format(current,readings.value[current],value);
+  }else if(current>=ND_SENSOR_COUNT && i2c_visible(&settings,(unsigned int)(current-ND_SENSOR_COUNT))){
+   strncpy(caption,settings.i2c_titles[current-ND_SENSOR_COUNT][0] ? settings.i2c_titles[current-ND_SENSOR_COUNT]:i2c.readings[current-ND_SENSOR_COUNT].name,sizeof(caption)-1);caption[sizeof(caption)-1]=0;
+   nd_i2c_format(&i2c.readings[current-ND_SENSOR_COUNT],value);art=nd_sensor_named_art(i2c.readings[current-ND_SENSOR_COUNT].name,i2c.readings[current-ND_SENSOR_COUNT].unit);mask=1;
+  }
+  nd_client_activity(&client,ND_PLUGIN_OP_SCAN,mask ? 2:3,(LONG)readings.available,(LONG)i2c.count);
   if(!mask)event=nd_client_update_art_quiet(&client,caption,value,"SadSensor",0,elapsed,500U);
-  else event=nd_client_update_quiet(&client,caption,value,ND_NO_METER,elapsed,500U);
+  else event=nd_client_update_art_quiet(&client,caption,value,art,0,elapsed,500U);
+  actions=nd_client_events2(&client);
+  if(actions&ND_EVENT2_REFRESH)force=1;
+  if(actions&ND_EVENT2_SENSOR_NEXT)advance=1;
+  if(actions&ND_EVENT2_SENSOR_PREVIOUS)advance=-1;
   if(event&ND_EVENT_QUIT)break;if(event&ND_EVENT_SETTINGS)reread=1;
-  if(event&ND_EVENT_CLICK){if(panel)nd_panel_raise(panel);else panel=open_panel(&settings,&page);force=1;}
+  if((event&ND_EVENT_CLICK) && settings.click_next)advance=1;
+  if(((event&ND_EVENT_CLICK) && !settings.click_next) || (actions&ND_EVENT2_SENSOR_DETAILS)){if(panel)nd_panel_raise(panel);else panel=open_panel(&settings,&page);force=1;}
   while(panel && (action=nd_panel_event(panel))!=0){
    if(action==-1 || action==103){nd_panel_close(panel);panel=NULL;}
-   else{if(action==100 && page>0)--page;if(action==101)++page;if(action==102)force=1;update_panel(panel,&settings,&page);}
+   else{if(action==100 && page>0)--page;if(action==101)++page;if(action==102)force=1;if(action==104)advance=1;update_panel(panel,&settings,&page);}
   }
   extra=nd_panel_signals(panel)|(job.port ? 1UL<<job.port->mp_SigBit:0);
-  elapsed=nd_client_wait_signals(&client,job.port ? 25U:100U,extra);
+  elapsed=advance ? 0:nd_client_wait_signals(&client,job.port ? 25U:100U,extra);
  }
  job_close();nd_panel_close(panel);if(nd_sensor_status_path(argv[1],status_path,sizeof(status_path)-8)){DeleteFile(status_path);strcat(status_path,".health");DeleteFile(status_path);}nd_client_close(&client);return 0;
 }

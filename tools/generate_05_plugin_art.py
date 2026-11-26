@@ -4,8 +4,9 @@ import argparse
 import math
 from pathlib import Path
 from pack_plugin_art import build_bank
+from plugin_art_colours import colourful_palette
+from artifact_compare import same_artifact
 ROOT=Path(__file__).resolve().parents[1]
-PALETTE=[(0,0,0),(36,44,57),(124,157,186),(232,239,245),(143,194,205),(170,194,140),(192,113,118),(170,194,140),(124,157,186)]+[(0,0,0)]*7
 ROLES=[0,1,2,3,4,5]+[0]*10
 
 def pixels(kind,state):
@@ -61,12 +62,12 @@ def main():
  from generate_info_icons import Canvas,disk_object
  for program,kind in [('Bench','bench'),('QR','qr'),('Moon','moon'),('Colour','colour'),('Agenda','agenda'),('Pictures','pictures')]:
   frames=[dict(name=kind,state=i,pixels=pixels(kind,i)) for i in range(16 if kind=='moon' else 2)]
-  bank=build_bank(frames,PALETTE,ROLES);canvas=Canvas(32,32)
+  bank=build_bank(frames,colourful_palette(kind),ROLES);canvas=Canvas(32,32)
   for y,row in enumerate(frames[0]['pixels']):
    for x,c in enumerate(row):canvas.pixel(x,y,min(c,3))
   for target,data in [(ROOT/'Plugins'/(program+'.assets')/'Artwork.ndart',bank),(ROOT/'Plugins'/(program+'.info'),disk_object(canvas))]:
    if args.check:
-    if not target.is_file() or target.read_bytes()!=data:raise SystemExit('Regenerate '+str(target))
+    if not target.is_file() or not same_artifact(target.read_bytes(),data):raise SystemExit('Regenerate '+str(target))
    else:target.parent.mkdir(parents=True,exist_ok=True);target.write_bytes(data)
  print('0.5 plugin artwork and Workbench icons are current.')
 if __name__=='__main__':main()

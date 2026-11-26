@@ -19,7 +19,7 @@ assert '\n\n' not in cd, 'novadock.cd has a blank line'
 
 def conversions(text):
     # nd_trf compares only the conversion letters, skipping flags/precision.
-    return [m[-1] for m in re.findall(r'%[^sdu]*[sdu]', text)]
+    return [m.group(1) for m in re.finditer(r'%(?:%|[-+ #0.0-9]*(l?[sdu]))', text) if m.group(1)]
 
 
 catalogs = sorted((ROOT / 'catalogs').glob('*.ct'))

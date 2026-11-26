@@ -39,6 +39,22 @@ class PackageAssetsTests(unittest.TestCase):
             (root/'Plugins/Lamp.v1.assets/Artwork.ndart').unlink()
             with self.assertRaisesRegex(ValueError, 'Missing'): checks.runtime_artwork(root)
 
+    def test_retired_notification_components_cannot_return(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            drawer=Path(tmp)/'runtime';root=Path(tmp)/'source'
+            (root/'Plugins').mkdir(parents=True)
+            for program in ('Alerts','AmIRC','AmiRocket'):
+                for suffix in ('','.info','.ndplugin','.assets'):
+                    target=drawer/'Plugins'/(program+suffix)
+                    target.parent.mkdir(parents=True,exist_ok=True)
+                    if suffix=='.assets':target.mkdir()
+                    else:target.write_bytes(b'old component')
+                    with self.assertRaisesRegex(ValueError,'Retired'):checks.check_runtime(drawer,root)
+                    if target.is_dir():target.rmdir()
+                    else:target.unlink()
+            target=drawer/'Rexx/NovaDockNotify.amirx';target.parent.mkdir();target.write_text('old hook')
+            with self.assertRaisesRegex(ValueError,'Retired'):checks.check_runtime(drawer,root)
+
     def test_banks_are_valid_not_only_present(self):
         for payload in (b'bad', b'NDAR\0\3'+bytes(80), b'NDAR\0\1'+bytes(80)):
             with self.assertRaises(ValueError): checks.validate_bank(payload)

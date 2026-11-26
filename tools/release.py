@@ -165,12 +165,13 @@ def build_commands(out, python=None):
     py = python or sys.executable
     return [
         (py, 'tools/update_version.py', '--check'),
+        (py, 'tools/build_identity.py', '--check'),
         (py, 'tools/release_notes.py', '--check'),
         (py, 'tools/update_site_chrome.py', '--check'),
         (py, 'tools/generate_catalog.py', '--check'),
         (py, 'tools/make_amigaguide.py', '--check'),
         (py, 'tools/generate_info_icons.py', '--check'),
-        ('sh', 'tests/run_host_tests.sh'),
+        (py, 'tools/run_plugin_qa.py', '--output', str(out/'plugin-qa')),
         ('sh', 'scripts/make-release.sh', str(out), '--aminet'),
         (py, 'tools/package_release.py', '--out', str(out), '--release-dir', str(out)),
         (py, 'tests/test_public_web.py'),
@@ -181,7 +182,7 @@ def plan(args):
     import shlex
     cfg = config(args.config)  # No credential lookup, build or API call.
     destinations(cfg)
-    print('Target: AmigaOS m68k (68000, OS 3.0+); native runtime checks are separate.')
+    print('Target: AmigaOS m68k (68000, OS 3.0+); bundled-plugin host/native QA runs before packaging.')
     for command in build_commands(args.output.resolve(), cfg.get('env', {}).get('NOVADOCK_RELEASE_PYTHON')):
         print(shlex.join(command))
     print('Record source fingerprint, native binaries, compiler and exact package checksums.')
@@ -286,6 +287,9 @@ def build(args):
     out.mkdir(parents=True, exist_ok=True)
     write_json(out/'build-state.json', {'phase': 'building', 'source_sha256': before, 'inputs': inputs})
     run(*commands[-4], env=env)
+    env['ND_SKIP_BUILD']='1'
+    env['ND_REQUIRE_PLUGIN_QA']='1'
+    env['ND_PLUGIN_QA_EVIDENCE']=str(out/'plugin-qa/report.json')
     run(*commands[-3], env=env)
     after_inputs = provenance.source_inputs(ROOT)
     if provenance.fingerprint(after_inputs) != before:
@@ -307,7 +311,7 @@ def build(args):
                                for name in ('vc', 'vbccm68k', 'vasmm68k_mot', 'vlink')
                                if env.get('VBCC') and (Path(env['VBCC'])/'bin'/name).is_file()}},
               'checks': {'host_tests': 'passed', 'native_build': 'passed',
-                         'runtime': 'not recorded; complete docs/RELEASE_CHECKLIST.md separately'}}
+                         'runtime': 'bundled-plugin host/native QA passed; physical hardware checks remain separate'}}
     proof = ROOT/'build/provenance/amiga.json'
     proof.parent.mkdir(parents=True, exist_ok=True)
     write_json(proof, record)

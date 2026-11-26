@@ -6,6 +6,13 @@ root=Path(__file__).resolve().parents[1]
 s=(root/'src/dock_timers.c').read_text();a=s.index('    if(it->kind==ND_ITEM_PLUGIN && !strcmp(it->id,"CPU")){');b=s.index('    } else if (!strcmp(it->id,"RAM"))',a)
 branch=s[a:b]+'    }\n'
 h='''#include <assert.h>
+#define dock_left(d) ((d)->window->LeftEdge)
+#define dock_top(d) ((d)->window->TopEdge)
+#define dock_width(d) ((d)->window->Width)
+#define dock_height(d) ((d)->window->Height)
+#define dock_view_x(d) 0
+#define dock_view_y(d) 0
+
 #include <string.h>
 #include <stdio.h>
 #include "nd_cpu_info.h"

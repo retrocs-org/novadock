@@ -5,9 +5,6 @@
 MSG_0001
 Inhalt der Schublade kann nicht gelesen werden
 ; Cannot read drawer contents
-MSG_0002
-Schublade ist leer
-; Drawer is empty
 MSG_0003
 Startaktion per Tastenkürzel fehlgeschlagen
 ; Hot-key Launcher Action failed
@@ -296,9 +293,6 @@ MSG_0122
 MSG_0123
 Über NovaDock...
 ; About NovaDock...
-MSG_0124
-Ablegen abgelehnt - ungültiges Objekt oder Dock voll
-; Drop rejected - invalid object or dock is full
 MSG_0125
 Einige Objekte konnten nicht in den Mülleimer verschoben werden
 ; Some items could not be moved to the trash
@@ -455,9 +449,6 @@ Set Turbo Level...
 MSG_0180
 Configure Prism Wi-Fi...
 ; Configure Prism Wi-Fi...
-MSG_0181
-The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Diagnostics shows the recovery source;\nSave from Preferences repairs the current settings.
-; The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Diagnostics shows the recovery source;\nSave from Preferences repairs the current settings.
 MSG_0182
 Use recovered|Quit
 ; Use recovered|Quit
@@ -476,3 +467,108 @@ Opening icon ToolTypes
 MSG_0187
 Drop one Workbench icon at a time
 ; Drop one Workbench icon at a time
+MSG_0188
+Preferences are saving - try the drop again
+; Preferences are saving - try the drop again
+MSG_0189
+Warte auf das Ende der vorherigen ARexx-Aktion
+; Waiting for the previous ARexx action to finish
+MSG_0190
+%s wiederhergestellt
+; Restored %s
+MSG_0191
+%s zurückverschoben
+; Moved %s back
+MSG_0192
+Entfernen rückgängig
+; Undo remove
+MSG_0193
+Verschieben rückgängig
+; Undo move
+MSG_0194
+Profil %s verwenden
+; Use profile %s
+MSG_0195
+Profil %s aktualisieren
+; Update profile %s
+MSG_0196
+Profil %s gespeichert
+; Saved profile %s
+MSG_0197
+Profil %s konnte nicht gespeichert werden
+; Could not save profile %s
+MSG_0198
+Zu Profil %s gewechselt
+; Switched to profile %s
+MSG_0199
+Konnte nicht zu Profil %s wechseln
+; Could not switch to profile %s
+MSG_0200
+The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Support shows the recovery source;\nSave from Preferences repairs the current settings.
+; The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Support shows the recovery source;\nSave from Preferences repairs the current settings.
+MSG_0202
+Could not save dock position
+; Could not save dock position
+MSG_0206
+Sensor readings...
+; Sensor readings...
+MSG_0207
+Next sensor
+; Next sensor
+MSG_0208
+Previous sensor
+; Previous sensor
+MSG_0209
+ARexx-Einstellungen gespeichert; sie gelten nach dem nächsten Neuladen
+; ARexx settings saved; they apply after the next reload
+MSG_0210
+Programme starten noch. Bitte gleich erneut versuchen.
+; Applications are still starting. Try again shortly.
+MSG_0212
+Warte auf Laufwerksdaten
+; Waiting for disk reading
+MSG_0213
+Laufwerk nicht verfügbar (DOS-Fehler %lu)
+; Disk unavailable (DOS error %lu)
+MSG_0214
+Cache: %lus alt; DOS-Fehler %lu
+; Cached: %lus old; DOS error %lu
+MSG_0215
+Zuletzt vor %lus aktualisiert%s
+; Last updated %lus ago%s
+MSG_0216
+Grafiken werden neu geladen...
+; Reloading artwork...
+MSG_0217
+Programmstart konnte nicht vorbereitet werden.
+; Could not prepare application launch.
+MSG_0218
+Laden... (Esc beendet)
+; Loading... (Esc cancels)
+MSG_0219
+Nicht verfügbar (R erneut)
+; Unavailable (R retries)
+MSG_0220
+ (Cache)
+;  (cached)
+MSG_0221
+ (veraltet)
+;  (stale)
+MSG_0222
+Starte %s...
+; Starting %s...
+MSG_0223
+%s konnte nicht starten (DOS-Fehler %lu).
+; Could not start %s (DOS error %lu).
+MSG_0224
+%s konnte nicht starten. Pfad und Einstellungen prüfen.
+; Could not start %s. Check its path and settings.
+MSG_0225
+%s konnte nicht starten: Hilfsprozess antwortet nicht.
+; Could not start %s: worker did not reply.
+MSG_0226
+%s: %u%% belegt%s
+; %s: %u%% used%s
+MSG_0227
+Grafiken neu laden
+; Reload artwork

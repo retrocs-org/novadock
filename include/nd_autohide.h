@@ -9,6 +9,11 @@ struct NDRect { int left, top, width, height; };
 int nd_dock_rect(const struct NDConfig *cfg, const struct NDLayout *layout,
                  int screen_width, int screen_height, int bar_height,
                  struct NDRect *rect);
+/* Reserve magnification canvas around a CUSTOM shelf without moving its
+ * saved visible origin or letting any part of the canvas leave the screen. */
+int nd_dock_rect_padded(const struct NDConfig *cfg,const struct NDLayout *layout,
+                 int screen_width,int screen_height,int bar_height,int padding,
+                 struct NDRect *rect,int *axis_offset);
 int nd_hidden_rect(const struct NDConfig *cfg, int screen_width,
                    int screen_height, int bar_height, struct NDRect *rect);
 /* A five-Hz timer; this is a minimum idle interval, not wall-clock precision. */

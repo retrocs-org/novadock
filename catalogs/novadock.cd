@@ -9,9 +9,6 @@
 MSG_0001 (1//)
 Cannot read drawer contents
 ;
-MSG_0002 (2//)
-Drawer is empty
-;
 MSG_0003 (3//)
 Hot-key Launcher Action failed
 ;
@@ -300,9 +297,6 @@ About NovaDock
 MSG_0123 (123//)
 About NovaDock...
 ;
-MSG_0124 (124//)
-Drop rejected - invalid object or dock is full
-;
 MSG_0125 (125//)
 Some items could not be moved to the trash
 ;
@@ -459,9 +453,6 @@ Set Turbo Level...
 MSG_0180 (180//)
 Configure Prism Wi-Fi...
 ;
-MSG_0181 (181//)
-The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Diagnostics shows the recovery source;\nSave from Preferences repairs the current settings.
-;
 MSG_0182 (182//)
 Use recovered|Quit
 ;
@@ -479,3 +470,108 @@ Opening icon ToolTypes
 ;
 MSG_0187 (187//)
 Drop one Workbench icon at a time
+;
+MSG_0188 (188//)
+Preferences are saving - try the drop again
+;
+MSG_0189 (189//)
+Waiting for the previous ARexx action to finish
+;
+MSG_0190 (190//)
+Restored %s
+;
+MSG_0191 (191//)
+Moved %s back
+;
+MSG_0192 (192//)
+Undo remove
+;
+MSG_0193 (193//)
+Undo move
+;
+MSG_0194 (194//)
+Use profile %s
+;
+MSG_0195 (195//)
+Update profile %s
+;
+MSG_0196 (196//)
+Saved profile %s
+;
+MSG_0197 (197//)
+Could not save profile %s
+;
+MSG_0198 (198//)
+Switched to profile %s
+;
+MSG_0199 (199//)
+Could not switch to profile %s
+;
+MSG_0200 (200//)
+The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Support shows the recovery source;\nSave from Preferences repairs the current settings.
+;
+MSG_0202 (202//)
+Could not save dock position
+;
+MSG_0206 (206//)
+Sensor readings...
+;
+MSG_0207 (207//)
+Next sensor
+;
+MSG_0208 (208//)
+Previous sensor
+;
+MSG_0209 (209//)
+ARexx settings saved; they apply after the next reload
+;
+MSG_0210 (210//)
+Applications are still starting. Try again shortly.
+;
+MSG_0212 (212//)
+Waiting for disk reading
+;
+MSG_0213 (213//)
+Disk unavailable (DOS error %lu)
+;
+MSG_0214 (214//)
+Cached: %lus old; DOS error %lu
+;
+MSG_0215 (215//)
+Last updated %lus ago%s
+;
+MSG_0216 (216//)
+Reloading artwork...
+;
+MSG_0217 (217//)
+Could not prepare application launch.
+;
+MSG_0218 (218//)
+Loading... (Esc cancels)
+;
+MSG_0219 (219//)
+Unavailable (R retries)
+;
+MSG_0220 (220//)
+ (cached)
+;
+MSG_0221 (221//)
+ (stale)
+;
+MSG_0222 (222//)
+Starting %s...
+;
+MSG_0223 (223//)
+Could not start %s (DOS error %lu).
+;
+MSG_0224 (224//)
+Could not start %s. Check its path and settings.
+;
+MSG_0225 (225//)
+Could not start %s: worker did not reply.
+;
+MSG_0226 (226//)
+%s: %u%% used%s
+;
+MSG_0227 (227//)
+Reload artwork

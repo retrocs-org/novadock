@@ -1,5 +1,6 @@
 /* On-demand drawer shortcuts, personal bookmarks and mounted volumes. */
 #include <exec/types.h>
+#include <exec/memory.h>
 #include <dos/dos.h>
 #include <dos/dosextens.h>
 #include <dos/dostags.h>
@@ -17,6 +18,9 @@
 #include "nd_list.h"
 #include "nd_volume.h"
 #include "../clipboard/nd_clipboard_popup.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct IntuitionBase *IntuitionBase=NULL;struct GfxBase *GfxBase=NULL;
 struct Library *WorkbenchBase=NULL;
 const char nd_version[]=ND_PLUGIN_VER_STRING(PLACES,"Places");long __stack=16384;
@@ -77,9 +81,11 @@ static int open_place(const char *path)
 }
 static void volume_rows(struct NDList *list)
 {
- struct Settings s;static char rows[ND_PLACES_MAX][160];const char *pointers[ND_PLACES_MAX];struct InfoData info;struct NDVolumeSpace space;BPTR lock;int i;char text[100];
+ struct Settings s;static char rows[ND_PLACES_MAX][160];const char *pointers[ND_PLACES_MAX];struct InfoData *info;struct NDVolumeSpace space;BPTR lock;int i;char text[100];
  memset(&s,0,sizeof(s));strcpy(s.system,"NO");collect(&s);
- for(i=0;i<places.count;++i){memset(&space,0,sizeof(space));lock=Lock(places.items[i].path,ACCESS_READ);if(lock){memset(&info,0,sizeof(info));if(Info(lock,&info) && info.id_NumBlocks>0 && info.id_NumBlocksUsed>=0 && info.id_BytesPerBlock>0){space.total=(unsigned long)info.id_NumBlocks;space.used=(unsigned long)info.id_NumBlocksUsed;space.block_bytes=(unsigned long)info.id_BytesPerBlock;}UnLock(lock);}nd_volume_summary(&space,text);sprintf(rows[i],"%.48s  %.99s",places.items[i].path,text);pointers[i]=rows[i];}nd_list_rows(list,pointers,(unsigned int)places.count);
+ /* Info() requires a longword-aligned public buffer. */
+ info=AllocVec(sizeof(*info),MEMF_PUBLIC);
+ for(i=0;i<places.count;++i){memset(&space,0,sizeof(space));lock=info ? Lock(places.items[i].path,ACCESS_READ):0;if(lock){memset(info,0,sizeof(*info));if(Info(lock,info) && info->id_NumBlocks>0 && info->id_NumBlocksUsed>=0 && info->id_BytesPerBlock>0){space.total=(unsigned long)info->id_NumBlocks;space.used=(unsigned long)info->id_NumBlocksUsed;space.block_bytes=(unsigned long)info->id_BytesPerBlock;}UnLock(lock);}nd_volume_summary(&space,text);sprintf(rows[i],"%.48s  %.99s",places.items[i].path,text);pointers[i]=rows[i];}if(info)FreeVec(info);nd_list_rows(list,pointers,(unsigned int)places.count);
 }
 static int volumes(void)
 {static const char *buttons[]={"Open","Refresh","Close"};struct NDList *list;int action,selected;((struct Process *)FindTask(NULL))->pr_WindowPtr=(APTR)-1;WorkbenchBase=OpenLibrary("workbench.library",36);list=nd_list_open("Mounted volumes",buttons,3);if(!list)return 20;volume_rows(list);for(;;){action=nd_list_event(list);if(action==-1 || action==102)break;if(action==100){selected=nd_list_selected(list);if(selected>=0 && selected<places.count)open_place(places.items[selected].path);}if(action==101)volume_rows(list);if(!action)Wait(nd_list_signals(list));}nd_list_close(list);if(WorkbenchBase)CloseLibrary(WorkbenchBase);return 0;}

@@ -19,6 +19,9 @@
 #include <string.h>
 #include "nd_hass_native.h"
 #include "nd_hass_picker.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct IntuitionBase *IntuitionBase=NULL;
 struct Library *GadToolsBase=NULL,*AslBase=NULL;
 struct Chooser {struct Screen *screen;struct Window *window;struct Gadget *gadgets,*list,*filter,*room,*status,*room_button,*extra;APTR visual;struct List labels;struct Node nodes[ND_HASS_PICKER_MAX];char lines[ND_HASS_PICKER_MAX][160],status_text[160],normal_title[96];struct NDHassPicker model;};

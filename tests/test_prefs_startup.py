@@ -20,6 +20,7 @@ program=r'''
 #include <stdlib.h>
 #include <string.h>
 #include "nd_prefs_snapshot.h"
+#include "nd_trace.h"
 #include "nd_plugin_discovery.h"
 #include "nd_options.h"
 #include "nd_prefs_nav.h"

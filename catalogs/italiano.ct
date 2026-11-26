@@ -1,0 +1,574 @@
+## version $VER: novadock.catalog 1.0 (23.11.2026)
+## language italiano
+## codeset 0
+; Italian translation of NovaDock dock messages
+MSG_0001
+Impossibile leggere il contenuto del cassetto
+; Cannot read drawer contents
+MSG_0003
+Azione di avvio da tasto rapido non riuscita
+; Hot-key Launcher Action failed
+MSG_0006
+L'azione di avvio ARexx ha restituito un errore
+; ARexx Launcher Action returned an error
+MSG_0007
+L'applicazione è in esecuzione; nessuna finestra corrisponde
+; Application is running; no window matched
+MSG_0008
+Impossibile eseguire l'azione di avvio
+; Launcher Action could not be started
+MSG_0009
+Dock bloccato - clic destro sullo sfondo per sbloccare
+; Dock locked - right-click the background to unlock
+MSG_0010
+DOpus 4: porta in primo piano
+; DOpus 4: bring to front
+MSG_0011
+DOpus 4: avvio in corso...
+; DOpus 4: starting...
+MSG_0012
+Impossibile fissare - il dock potrebbe essere pieno
+; Could not pin - dock may be full
+MSG_0013
+Spaziatore aggiunto - trascinalo in posizione
+; Spacer added - drag it into position
+MSG_0014
+Impossibile aggiungere lo spaziatore - dock pieno?
+; Could not add spacer - dock may be full
+MSG_0015
+Le righe valgono per i dock in alto e in basso
+; Rows apply to top and bottom docks
+MSG_0016
+Il dock ha già il numero massimo di righe
+; Dock already has the maximum rows
+MSG_0017
+Impossibile aggiungere una riga a questa risoluzione
+; Could not add row at this screen size
+MSG_0018
+Dock sbloccato - trascinamento attivo
+; Dock unlocked - drag and drop enabled
+MSG_0019
+Dock bloccato
+; Dock locked
+MSG_0020
+Azione di avvio Strumenti non riuscita
+; Tools Launcher Action failed
+MSG_0022
+Apri con non riuscito
+; Open With failed
+MSG_0023
+Copia rifiutata - oggetto non valido
+; Copy rejected - invalid object
+MSG_0024
+Dock bloccato - clic destro e scegli Sblocca dock
+; Dock locked - right-click and choose Unlock dock
+MSG_0026
+Rilascio rifiutato - memoria insufficiente
+; Drop rejected - not enough memory
+MSG_0027
+Modifica: rilascia su un riquadro per spostare; fuori dal dock rimuove
+; Edit: release on a tile to move; outside dock removes
+MSG_0028
+Pagina cambiata - trascina l'elemento a destinazione
+; Page changed - drag the item to its destination
+MSG_0029
+Nessuna modifica - rilascia su un riquadro o fuori per rimuovere
+; No change - drop on a tile or outside to remove
+MSG_0030
+Un altro NovaDock è in esecuzione ma non ha risposto.
+; Another NovaDock is running but did not respond.
+MSG_0031
+Memoria insufficiente per le azioni di avvio.
+; Not enough memory for launcher actions.
+MSG_0032
+La configurazione non ha riquadri attivi.
+; The configuration has no enabled tiles.
+MSG_0033
+Impossibile registrare le porte messaggi di NovaDock\n(un altro dock avviato nello stesso momento, o nessun segnale libero).
+; Could not register NovaDock's message ports\n(another dock started at the same moment, or no free signal).
+MSG_0034
+Il dock configurato non entra nello schermo Workbench.\nRiduci dimensione, spaziatura o elementi in Preferenze.
+; The configured dock does not fit on the Workbench screen.\nReduce tile size, gap or items in Preferences.
+MSG_0035
+OK
+; OK
+MSG_0036
+Nessun file di impostazioni valido trovato.\nENV:, ENVARC: e il novadock.cfg fornito (e le loro\ncopie .bak) contengono tutti errori.\n\nAvviare con le impostazioni predefinite? I tuoi file\nrestano intatti finché non salvi da Preferenze.
+; No valid settings file was found.\nENV:, ENVARC: and the packaged novadock.cfg (and their\n.bak copies) all contain errors.\n\nStart with the built-in defaults? Your files are\nleft untouched until you save from Preferences.
+MSG_0037
+Usa predefinite|Esci
+; Use defaults|Quit
+MSG_0038
+Calendario NovaDock
+; NovaDock Calendar
+MSG_0040
+Disco inserito: %.28s
+; Disk inserted: %.28s
+MSG_0041
+Disco rimosso: %.28s
+; Disk removed: %.28s
+MSG_0042
+Spostato %s
+; Moved %s
+MSG_0043
+Rimosso %s
+; Removed %s
+MSG_0044
+%.20s svuotato - rimozione sicura
+; %.20s flushed - safe to remove
+MSG_0045
+Impossibile svuotare %.20s
+; Could not flush %.20s
+MSG_0046
+Fissato %.28s
+; Pinned %.28s
+MSG_0047
+Il dock ora usa %d righe
+; Dock now uses %d rows
+MSG_0050
+Aperto con %.31s
+; Opened with %.31s
+MSG_0051
+Aperti %d elementi con %.31s
+; Opened %d items with %.31s
+MSG_0054
+Copia di %d; %d rifiutati
+; Copying %d; %d rejected
+MSG_0055
+Aggiunto %s
+; Added %s
+MSG_0056
+Aggiunti %d elementi
+; Added %d items
+MSG_0057
+Avvia
+; Launch
+MSG_0058
+Modifica impostazioni...
+; Edit settings...
+MSG_0059
+Rimuovi
+; Remove
+MSG_0061
+Apri
+; Open
+MSG_0062
+Mostra contenuto
+; Popup contents
+MSG_0063
+Svuota (rimozione sicura)
+; Flush (safe to remove)
+MSG_0064
+Fissa nel dock
+; Pin to dock
+MSG_0070
+Modifica spaziatore...
+; Edit spacer...
+MSG_0071
+Rimuovi spaziatore
+; Remove spacer
+MSG_0072
+Sblocca dock
+; Unlock dock
+MSG_0075
+Preferenze...
+; Preferences...
+MSG_0076
+Esci da NovaDock
+; Quit NovaDock
+MSG_0077
+Gennaio
+; January
+MSG_0078
+Febbraio
+; February
+MSG_0079
+Marzo
+; March
+MSG_0080
+Aprile
+; April
+MSG_0081
+Maggio
+; May
+MSG_0082
+Giugno
+; June
+MSG_0083
+Luglio
+; July
+MSG_0084
+Agosto
+; August
+MSG_0085
+Settembre
+; September
+MSG_0086
+Ottobre
+; October
+MSG_0087
+Novembre
+; November
+MSG_0088
+Dicembre
+; December
+MSG_0089
+Do
+; Su
+MSG_0090
+Lu
+; Mo
+MSG_0091
+Ma
+; Tu
+MSG_0092
+Me
+; We
+MSG_0093
+Gi
+; Th
+MSG_0094
+Ve
+; Fr
+MSG_0095
+Sa
+; Sa
+MSG_0096
+Blocca dock
+; Lock dock
+MSG_0100
+I riquadri temporanei restano in fondo - fissane uno per tenerlo
+; Temporary tiles stay at the end - pin to keep one
+MSG_0101
+I riquadri temporanei seguono il loro disco o applicazione
+; Temporary tiles follow their disk or application
+MSG_0102
+L'applicazione non ha finestre aperte
+; Application has no open window
+MSG_0103
+Inviato Ctrl-C a %.28s
+; Sent Ctrl-C to %.28s
+MSG_0104
+%.28s non è più in esecuzione
+; %.28s is no longer running
+MSG_0108
+(vuoto)
+; (empty)
+MSG_0109
+Nome
+; Name
+MSG_0110
+Data
+; Date
+MSG_0111
+Dimensione
+; Size
+MSG_0112
+Porta in primo piano
+; Bring to front
+MSG_0113
+Finestra successiva
+; Next window
+MSG_0114
+Invia Ctrl-C
+; Send Ctrl-C
+MSG_0115
+Il dock ha già il numero minimo di righe
+; Dock already has the minimum rows
+MSG_0116
+Impossibile rimuovere la riga del dock
+; Could not remove dock row
+MSG_0119
+Aggiungi elemento...
+; Add item...
+MSG_0120
+Impossibile avviare l'applicazione musicale predefinita
+; Could not start the default music application
+MSG_0121
+Avvio dell'applicazione musicale predefinita
+; Starting the default music application
+MSG_0122
+Informazioni su NovaDock
+; About NovaDock
+MSG_0123
+Informazioni su NovaDock...
+; About NovaDock...
+MSG_0125
+Alcuni elementi non sono stati spostati nel cestino
+; Some items could not be moved to the trash
+MSG_0126
+Il cestino è vuoto
+; The trash is empty
+MSG_0127
+Impossibile avviare il plugin Cestino
+; Could not start the Trash plugin
+MSG_0128
+Spostamento nel cestino
+; Moving to the trash
+MSG_0129
+Spostamento di %d elementi nel cestino
+; Moving %d items to the trash
+MSG_0130
+Apri cestino
+; Open trash
+MSG_0131
+Svuota cestino...
+; Empty trash...
+MSG_0133
+Salvataggio impostazioni non riuscito - vedi Diagnostics
+; Settings save failed - see Diagnostics
+MSG_0134
+Impostazioni non salvate - nuovo tentativo
+; Settings not saved - will retry
+MSG_0136
+Cronologia appunti
+; Clipboard history
+MSG_0137
+Gestisci cronologia...
+; Manage history...
+MSG_0138
+Impossibile cambiare lo stato di rete - controlla le impostazioni Rete
+; Could not change network state - check Network settings
+MSG_0139
+In linea
+; Online
+MSG_0140
+Non in linea
+; Offline
+MSG_0141
+Impossibile aprire i dettagli di rete
+; Could not open Network details
+MSG_0142
+Dettagli...
+; Details...
+MSG_0143
+Apri BitSkim
+; Open BitSkim
+MSG_0145
+Attiva/disattiva ricezione
+; Toggle receiving
+MSG_0147
+Annulla trasferimento
+; Cancel transfer
+MSG_0148
+BitSkim accetta un solo file normale alla volta
+; BitSkim accepts one regular file at a time
+MSG_0149
+Impossibile aprire l'assistente BitSkim
+; Could not open BitSkim helper
+MSG_0150
+Invia file...
+; Send file...
+MSG_0151
+Impossibile aprire Running Apps
+; Could not open Running Apps
+MSG_0152
+Impostazioni non salvate - esci di nuovo per scartare le modifiche
+; Settings not saved - quit again to discard changes
+MSG_0153
+Salvataggio impostazioni...
+; Saving settings...
+MSG_0154
+Avviato 1 archivio; %d rifiutati
+; Started 1 archive; %d rejected
+MSG_0155
+Avviati %d archivi; %d rifiutati
+; Started %d archives; %d rejected
+MSG_0156
+Aperto 1 elemento; %d non riusciti
+; Opened 1 item; %d failed
+MSG_0157
+Aperti %d elementi; %d non riusciti
+; Opened %d items; %d failed
+MSG_0158
+Copia di 1 elemento in %.28s
+; Copying 1 item to %.28s
+MSG_0159
+Copia di %d elementi in %.28s
+; Copying %d items to %.28s
+MSG_0160
+Aggiorna
+; Refresh
+MSG_0161
+Impossibile aprire l'elemento in Archiver
+; Could not open item in Archiver
+MSG_0162
+Archiver aperto per l'elemento rilasciato
+; Archiver opened for dropped item
+MSG_0163
+Archiver aperto per %d elementi
+; Archiver opened for %d items
+MSG_0164
+Sfoglia note
+; Browse notes
+MSG_0165
+Aggiungi nuova nota...
+; Add new note...
+MSG_0166
+NovaDock si è fermato, ma non è riuscito a riavviarsi.\nAvvia di nuovo NovaDock dalla sua icona.
+; NovaDock stopped, but could not restart.\nStart NovaDock again from its application icon.
+MSG_0167
+Riavvia NovaDock
+; Restart NovaDock
+MSG_0168
+Nessun cassetto selezionato. Apri Modifica impostazioni.
+; No drawer selected. Open Edit settings.
+MSG_0169
+Il cassetto selezionato non esiste.
+; The selected drawer does not exist.
+MSG_0170
+Il percorso selezionato è un file, non un cassetto.
+; The selected path is a file, not a drawer.
+MSG_0171
+Impossibile leggere il cassetto selezionato.
+; Cannot read the selected drawer.
+MSG_0172
+Memoria insufficiente per controllare il cassetto.
+; Not enough memory to check the drawer.
+MSG_0173
+Il volume del cassetto selezionato non è disponibile.
+; The selected drawer's volume is unavailable.
+MSG_0174
+Indice incompleto. Usa Rescan per riprovare.
+; Index incomplete. Use Rescan to try again.
+MSG_0175
+Impossibile aprire le impostazioni Wi-Fi di Warp
+; Could not open Warp Wi-Fi settings
+MSG_0176
+Impossibile aprire le impostazioni Wi-Fi di Prism
+; Could not open Prism Wi-Fi settings
+MSG_0177
+Impossibile aprire le impostazioni turbo di Warp
+; Could not open Warp turbo settings
+MSG_0178
+Configura rete Wi-Fi...
+; Configure Wi-Fi Network...
+MSG_0179
+Imposta livello turbo...
+; Set Turbo Level...
+MSG_0180
+Configura Wi-Fi Prism...
+; Configure Prism Wi-Fi...
+MSG_0182
+Usa recuperate|Esci
+; Use recovered|Quit
+MSG_0183
+Aggiunta delle scorciatoie dello scaffale
+; Adding shelf shortcuts
+MSG_0184
+Impossibile aggiungere le scorciatoie dello scaffale
+; Could not add shelf shortcuts
+MSG_0185
+Panoramica volume...
+; Volume overview...
+MSG_0186
+Apertura dei ToolTypes dell'icona
+; Opening icon ToolTypes
+MSG_0187
+Rilascia una sola icona Workbench alla volta
+; Drop one Workbench icon at a time
+MSG_0188
+Le preferenze vengono salvate - riprova il rilascio
+; Preferences are saving - try the drop again
+MSG_0189
+Attesa del termine dell'azione ARexx precedente
+; Waiting for the previous ARexx action to finish
+MSG_0190
+%s ripristinato
+; Restored %s
+MSG_0191
+%s riportato indietro
+; Moved %s back
+MSG_0192
+Annulla rimozione
+; Undo remove
+MSG_0193
+Annulla spostamento
+; Undo move
+MSG_0194
+Usa profilo %s
+; Use profile %s
+MSG_0195
+Aggiorna profilo %s
+; Update profile %s
+MSG_0196
+Profilo %s salvato
+; Saved profile %s
+MSG_0197
+Impossibile salvare il profilo %s
+; Could not save profile %s
+MSG_0198
+Passato al profilo %s
+; Switched to profile %s
+MSG_0199
+Impossibile passare al profilo %s
+; Could not switch to profile %s
+MSG_0200
+The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Support shows the recovery source;\nSave from Preferences repairs the current settings.
+; The current settings could not be loaded.\nA validated recovery copy is available.\n\nUse recovered settings? Your files remain unchanged.\nPreferences > Support shows the recovery source;\nSave from Preferences repairs the current settings.
+MSG_0202
+Could not save dock position
+; Could not save dock position
+MSG_0206
+Sensor readings...
+; Sensor readings...
+MSG_0207
+Next sensor
+; Next sensor
+MSG_0208
+Previous sensor
+; Previous sensor
+MSG_0209
+Impostazioni ARexx salvate; valgono dopo il prossimo ricaricamento
+; ARexx settings saved; they apply after the next reload
+MSG_0210
+Avvio programmi in corso. Riprovare tra poco.
+; Applications are still starting. Try again shortly.
+MSG_0212
+In attesa dei dati del disco
+; Waiting for disk reading
+MSG_0213
+Disco non disponibile (errore DOS %lu)
+; Disk unavailable (DOS error %lu)
+MSG_0214
+Cache: %lus fa; errore DOS %lu
+; Cached: %lus old; DOS error %lu
+MSG_0215
+Aggiornato %lus fa%s
+; Last updated %lus ago%s
+MSG_0216
+Ricaricamento icone...
+; Reloading artwork...
+MSG_0217
+Impossibile preparare avvio del programma.
+; Could not prepare application launch.
+MSG_0218
+Caricamento... (Esc annulla)
+; Loading... (Esc cancels)
+MSG_0219
+Non disponibile (R riprova)
+; Unavailable (R retries)
+MSG_0220
+ (cache)
+;  (cached)
+MSG_0221
+ (obsoleto)
+;  (stale)
+MSG_0222
+Avvio di %s...
+; Starting %s...
+MSG_0223
+Impossibile avviare %s (errore DOS %lu).
+; Could not start %s (DOS error %lu).
+MSG_0224
+Impossibile avviare %s. Verificare percorso e impostazioni.
+; Could not start %s. Check its path and settings.
+MSG_0225
+Impossibile avviare %s: il processo non risponde.
+; Could not start %s: worker did not reply.
+MSG_0226
+%s: %u%% usato%s
+; %s: %u%% used%s
+MSG_0227
+Ricarica icone
+; Reload artwork

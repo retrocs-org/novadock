@@ -16,5 +16,17 @@ static void nd_hass_source_poll(struct NDHassSource *s,const char *owner,unsigne
  if(!s->client.pending && !s->wait){s->attempted=1;if(!nd_hass_send(&s->client,AMIHASS_STATUS,owner,NULL,NULL,0,0,NULL,NULL)){s->available=s->connected=0;s->wait=250U;}}
 }
 static const char *nd_hass_source_label(const struct NDHassSource *s)
-{return s->attempted&&!s->available ? ND_HASS_BRIDGE_START:s->known && (s->features&ND_HASS_FEATURE_CURRENT)!=ND_HASS_FEATURE_CURRENT ? ND_HASS_BRIDGE_UPDATE:s->known ? (s->sample ? "Sample data":s->connected ? "Home Assistant":s->state):"Checking bridge";}
+{
+ if(s->attempted&&!s->available)return ND_HASS_BRIDGE_START;
+ if(!s->known)return "Checking bridge";
+ if((s->features&ND_HASS_FEATURE_CURRENT)!=ND_HASS_FEATURE_CURRENT)return ND_HASS_BRIDGE_UPDATE;
+ if(s->sample)return "Sample data";if(s->connected)return "Home Assistant";
+ if(!strcmp(s->state,AMIHASS_SERVER_AUTH_REJECTED))return "Check AmiHASS credentials";
+ if(!strcmp(s->state,AMIHASS_SERVER_NETWORK_DOWN))return "AmiHASS network unavailable";
+ if(!strcmp(s->state,AMIHASS_SERVER_UNCONFIGURED))return "Configure AmiHASS";
+ if(!strcmp(s->state,AMIHASS_SERVER_RETRY_WAIT))return "AmiHASS reconnect pending";
+ if(!strcmp(s->state,AMIHASS_SERVER_CONNECTING))return "AmiHASS connecting";
+ if(!strcmp(s->state,AMIHASS_SERVER_DISCONNECTED))return "AmiHASS disconnected";
+ return s->state;
+}
 #endif

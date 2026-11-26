@@ -1,3 +1,7 @@
+#include "nd_build_id.h"
+#include "nd_trace.h"
+#include "nd_support.h"
+#include <dos/dostags.h>
 /* Diagnostics section for live telemetry, counter reset and text snapshots. */
 #define D_UPDATES 950
 #define IntuitionBase NDDiagnosticsIntuitionBase
@@ -38,7 +42,12 @@
 #define D_PLUGIN_MANAGER 412
 #define D_RECOVERY 413
 #define D_LOW_RESOURCE 414
-#define D_ROWS 72
+#define D_ADVANCED 418
+#define D_ACTIVITY 420
+#define D_LOGGING 415
+#define D_BUNDLE 416
+#define D_MARK 417
+#define D_ROWS 80
 #define D_REPORT_PATH "RAM:NovaDock-Diagnostics.txt"
 
 struct IntuitionBase *IntuitionBase=NULL;
@@ -127,6 +136,24 @@ static void build_rows(struct DiagnosticsPage *p)
         ULONG oldest=0;
         int have_oldest=0;
         add_row(p,"Dock runtime:","Running - live counters");
+        if(snapshot.support_version==3){
+            add_row(p,"Support capture:",snapshot.support_level==2 ? "Detailed trace":snapshot.support_level==1 ? "Logging":"Off");
+            add_row(p,"Live disk save:",snapshot.support_persist ? "NovaDock:SupportLogs":"Off (RAM capture only)");
+            sprintf(value,"%lu queued, %lu dropped, %lu errors",snapshot.support_queued,snapshot.support_dropped,snapshot.support_errors);
+            add_row(p,"Log writer:",value);
+        }
+        if(snapshot.aminotis_version==1){
+            sprintf(value,"%s; %lu delivered / %lu dropped",snapshot.aminotis_enabled ? "On":"Off",snapshot.aminotis.delivered,snapshot.aminotis.dropped);
+            add_row(p,"AmiNotis:",value);
+            sprintf(value,"%s (result %u)",ND_AMINOTIS_FAILURE_NAME(snapshot.aminotis.last_failure),snapshot.aminotis.last_result);
+            add_row(p,"Forwarding failure:",value);
+        }
+        if(snapshot.render_version==1){
+            sprintf(value,"%lu us average, %lu us peak",snapshot.frame_average_us,snapshot.frame_peak_us);
+            add_row(p,"Magnification frame:",value);
+            sprintf(value,"%lu / %lu KB, %lu evictions",snapshot.hover_cache_bytes/1024UL,snapshot.hover_cache_budget/1024UL,snapshot.hover_cache_evictions);
+            add_row(p,"Graphics cache:",value);
+        }
         if (seconds<3600UL)
             sprintf(value,"%lum %lus",seconds/60UL,seconds%60UL);
         else sprintf(value,"%luh %lum",seconds/3600UL,(seconds/60UL)%60UL);
@@ -300,7 +327,7 @@ static int save_report(struct DiagnosticsPage *p)
     int i,ok=1;
     f=fopen(D_REPORT_PATH,"w");
     if (!f) return 0;
-    if (fprintf(f,"NovaDock " ND_VERSION " diagnostics snapshot\n\n")<0) ok=0;
+    if (fprintf(f,"NovaDock " ND_VERSION " diagnostics snapshot\nBuild ID: " ND_BUILD_ID "\n\n")<0) ok=0;
     for (i=0;i<p->count;++i)
         if (fprintf(f,"%s\n",p->text[i])<0) ok=0;
     if (fclose(f)!=0) ok=0;
@@ -367,6 +394,102 @@ static void low_resource(struct DiagnosticsPage *p)
     }
     ND_PREFS_MARK_DIRTY();refresh_rows(p);
 }
+/* Support settings apply independently from dock layout Use/Test/Save. */
+static void logging_settings(struct DiagnosticsPage *p)
+{
+    struct NDSupportSettings settings;
+    struct Gadget *gadgets=NULL,*last,*mode,*disk;struct NewGadget ng;
+    struct Window *win;struct IntuiMessage *msg;struct NDPrefsLayout layout;
+    static STRPTR levels[]={"Off","Logging","Detailed trace",NULL};
+    ULONG cls;UWORD id,code;int done=0,ok;BPTR lock;
+#ifdef ND_TRACE
+    nd_support_load(&settings,1);
+#else
+    nd_support_load(&settings,0);
+#endif
+    nd_prefs_layout_init(&layout,p->layout.font_x,p->layout.font_y,p->screen->Width,p->screen->Height,p->screen->BarHeight,450,158);
+    if(!nd_prefs_layout_fits(&layout,10,12))return;
+    if(!CreateContext(&gadgets))return;last=gadgets;
+    d_field(p,&ng,125,22,300,18,1,"Capture:");
+    mode=last=CreateGadget(CYCLE_KIND,last,&ng,GTCY_Labels,(ULONG)levels,GTCY_Active,(ULONG)settings.level,TAG_DONE);
+    d_field(p,&ng,22,54,24,12,2,"Save logs to disk");ng.ng_Flags=PLACETEXT_RIGHT;
+    disk=last=CreateGadget(CHECKBOX_KIND,last,&ng,GTCB_Checked,(ULONG)settings.persist,TAG_DONE);
+    d_field(p,&ng,22,80,406,26,0,NULL);ng.ng_Flags=0;
+    last=CreateGadget(TEXT_KIND,last,&ng,GTTX_Text,(ULONG)"NovaDock:SupportLogs (rotating)",TAG_DONE);
+    d_field(p,&ng,22,120,120,18,3,"Cancel");ng.ng_Flags=PLACETEXT_IN;last=CreateGadget(BUTTON_KIND,last,&ng,TAG_DONE);
+    d_field(p,&ng,165,120,120,18,4,"Use");ng.ng_Flags=PLACETEXT_IN;last=CreateGadget(BUTTON_KIND,last,&ng,TAG_DONE);
+    d_field(p,&ng,308,120,120,18,5,"Save");ng.ng_Flags=PLACETEXT_IN;last=CreateGadget(BUTTON_KIND,last,&ng,TAG_DONE);
+    win=last&&mode&&disk ? OpenWindowTags(NULL,WA_PubScreen,(ULONG)p->screen,
+        WA_Left,nd_prefs_layout_left(&layout),WA_Top,nd_prefs_layout_top(&layout),WA_Width,layout.window_width,WA_Height,layout.window_height,
+        WA_Title,(ULONG)"Support - logging and trace",WA_Gadgets,(ULONG)gadgets,WA_DragBar,TRUE,WA_CloseGadget,TRUE,WA_DepthGadget,TRUE,WA_Activate,TRUE,
+        WA_IDCMP,CYCLEIDCMP|CHECKBOXIDCMP|BUTTONIDCMP|IDCMP_CLOSEWINDOW|IDCMP_REFRESHWINDOW|IDCMP_RAWKEY,WA_Flags,WFLG_SMART_REFRESH|WFLG_ACTIVATE,TAG_DONE):NULL;
+    if(win){GT_RefreshWindow(win,NULL);while(!done){
+        ND_TRACE_WAIT(1UL<<win->UserPort->mp_SigBit);
+        while((msg=GT_GetIMsg(win->UserPort))!=NULL){
+            cls=msg->Class;code=msg->Code;id=msg->IAddress?((struct Gadget *)msg->IAddress)->GadgetID:0;GT_ReplyIMsg(msg);
+            if (cls==IDCMP_CLOSEWINDOW || (cls==IDCMP_RAWKEY && code==0x45))done=1;
+            else if(cls==IDCMP_REFRESHWINDOW){GT_BeginRefresh(win);GT_EndRefresh(win,TRUE);}
+            else if(cls==IDCMP_GADGETUP){
+                if(id==1)settings.level=(int)code;
+                else if(id==2)settings.persist=(disk->Flags&GFLG_SELECTED)!=0;
+                else if(id==3)done=1;
+                else if(id==4||id==5){
+                    lock=CreateDir("ENV:NovaDock");if(lock)UnLock(lock);
+                    ok=nd_support_write(ND_SUPPORT_ENV,&settings);
+                    if(ok){
+                        ND_TRACE_RELOAD();(void)nd_control_send(ND_CONTROL_SUPPORT_FLUSH);
+                        if(id==5){lock=CreateDir("ENVARC:NovaDock");if(lock)UnLock(lock);ok=nd_support_write(ND_SUPPORT_ENVARC,&settings);}
+                        if(ok)done=1;
+                        else SetWindowTitles(win,(STRPTR)"Capture applied for this boot; permanent save failed",(STRPTR)-1);
+                    }else SetWindowTitles(win,(STRPTR)"Could not apply support settings - check disk space",(STRPTR)-1);
+                    if(!ok){const char *error=nd_support_error();
+                        struct EasyStruct request={sizeof(request),0,"Support settings could not be saved","%s","OK"};
+                        EasyRequestArgs(win,&request,NULL,(APTR)&error);DisplayBeep(p->screen);
+                    }
+                }
+            }
+        }
+        ND_TRACE_PULSE();
+    }CloseWindow(win);refresh_rows(p);}
+    FreeGadgets(gadgets);
+}
+static void save_bundle(struct DiagnosticsPage *p)
+{
+    BPTR in,out;LONG rc;
+    ND_TRACE_FLUSH();(void)nd_control_send(ND_CONTROL_SUPPORT_FLUSH);
+    in=Open("NIL:",MODE_OLDFILE);out=Open("NIL:",MODE_NEWFILE);
+    if(!in||!out){if(in)Close(in);if(out)Close(out);return;}
+    rc=SystemTags("NovaDock:SupportReport SHOW",SYS_Input,in,SYS_Output,out,SYS_Asynch,TRUE,NP_StackSize,32768UL,TAG_DONE);
+    if(rc<0){Close(in);Close(out);SetWindowTitles(p->win,(STRPTR)"Support collector missing - update the installation",(STRPTR)-1);}
+}
+static void advanced_support(struct DiagnosticsPage *p)
+{
+    struct EasyStruct choice={sizeof(choice),0,"Advanced support tools",
+        "Create report records logs and plugin activity automatically.\nManual tools are for troubleshooting with support.",
+        "Logging|Activity|More...|Close"};
+    struct EasyStruct more={sizeof(more),0,"Advanced support tools", "Choose a manual diagnostic action.",
+        "Snapshot|Reset counters|Mark event|Back"};
+    LONG result;BPTR in,out;
+    for(;;){
+        result=EasyRequestArgs(p->win,&choice,NULL,NULL);if(!result)break;
+        if(result==1)logging_settings(p);
+        else if(result==2){
+            in=Open("NIL:",MODE_OLDFILE);out=Open("NIL:",MODE_NEWFILE);
+            if(!in||!out||SystemTags("NovaDock:SupportReport ACTIVITY",SYS_Input,in,SYS_Output,out,SYS_Asynch,TRUE,NP_StackSize,65536UL,TAG_DONE)<0){
+                if(in)Close(in);if(out)Close(out);SetWindowTitles(p->win,(STRPTR)"Could not open plugin activity",(STRPTR)-1);
+            }
+        }else if(result==3){
+            result=EasyRequestArgs(p->win,&more,NULL,NULL);
+            if(result==1)SetWindowTitles(p->win,(STRPTR)(save_report(p)?"Snapshot saved: RAM:NovaDock-Diagnostics.txt":"Could not save snapshot"),(STRPTR)-1);
+            else if(result==2)reset_counters(p);
+            else if(result==3){
+#if defined(ND_TRACE) || defined(ND_RUNTIME_TRACE)
+                ND_TRACE_RELOAD();if(nd_trace_level){ND_TRACE_FLUSH();nd_trace_marker();(void)nd_control_send(ND_CONTROL_SUPPORT_MARK);}
+#endif
+            }
+        }
+    }
+}
 static int open_page(struct DiagnosticsPage *p)
 {
     struct NewGadget ng;
@@ -376,7 +499,7 @@ static int open_page(struct DiagnosticsPage *p)
         font_y=p->screen->RastPort.Font->tf_YSize;
     }
     nd_prefs_layout_init(&p->layout,font_x,font_y,
-        p->screen->Width,p->screen->Height,p->screen->BarHeight,620,207);
+        p->screen->Width,p->screen->Height,p->screen->BarHeight,620,239);
     if (!nd_prefs_layout_fits(&p->layout,10,12)) return 0;
     width=p->layout.window_width;height=p->layout.window_height;
     x=nd_prefs_layout_left(&p->layout);y=nd_prefs_layout_top(&p->layout);
@@ -387,24 +510,24 @@ static int open_page(struct DiagnosticsPage *p)
         !d_button(p,10,45,118,D_APPEARANCE,"Appearance") ||
         !d_button(p,10,69,118,D_DOCKBAR,"Organize") ||
         !d_button(p,10,93,118,D_PLUGIN_MANAGER,"Plugins") ||
-        !d_button(p,10,117,118,D_DIAGNOSTICS,"> Diagnostics") ||
+        !d_button(p,10,117,118,D_DIAGNOSTICS,"> Support") ||
         !d_button(p,10,141,118,D_UPDATES,"Update") ||
         !d_button(p,10,165,118,D_ABOUT,"About")) return 0;
-    d_field(p,&ng,145,24,460,112,D_LIST,"Runtime performance");
+    d_field(p,&ng,145,24,460,112,D_LIST,"System status (included in reports)");
     ng.ng_Flags=PLACETEXT_ABOVE;
     p->list=p->last=CreateGadget(LISTVIEW_KIND,p->last,&ng,
         GTLV_Labels,(ULONG)&p->rows,GTLV_ReadOnly,TRUE,TAG_DONE);
-    if (!p->last || !d_button(p,145,147,220,D_RECOVERY,"Recover settings") ||
-        !d_button(p,375,147,230,D_LOW_RESOURCE,"Low-resource preset") ||
-        !d_button(p,229,175,80,D_RESET,"Reset") ||
-        !d_button(p,315,175,106,D_SAVE_REPORT,"Save report") ||
-        !d_button(p,427,175,86,D_REFRESH,"Refresh") ||
-        !d_button(p,519,175,86,D_CLOSE,"Close")) return 0;
+    if (!p->last || !d_button(p,145,147,220,D_BUNDLE,"Create report...") ||
+        !d_button(p,385,147,220,D_ADVANCED,"Advanced...") ||
+        !d_button(p,145,175,220,D_RECOVERY,"Recover settings...") ||
+        !d_button(p,385,175,220,D_LOW_RESOURCE,"Low-resource preset") ||
+        !d_button(p,145,203,100,D_REFRESH,"Refresh") ||
+        !d_button(p,505,203,100,D_CLOSE,"Close")) return 0;
     p->win=OpenWindowTags(NULL,WA_PubScreen,(ULONG)p->screen,
         WA_Left,x,WA_Top,y,WA_Width,width,WA_Height,height,
         WA_Title,(ULONG)(ND_PREFS_IS_DIRTY() ?
-            "NovaDock Preferences - Diagnostics *" :
-            "NovaDock Preferences - Diagnostics"),
+            "NovaDock Preferences - Support *" :
+            "NovaDock Preferences - Support"),
         WA_Gadgets,(ULONG)p->gadgets,WA_DragBar,TRUE,WA_CloseGadget,TRUE,
         WA_Activate,TRUE,WA_DepthGadget,TRUE,
         WA_IDCMP,LISTVIEWIDCMP|IDCMP_CLOSEWINDOW|IDCMP_REFRESHWINDOW|IDCMP_RAWKEY,
@@ -426,12 +549,12 @@ int nd_diagnostics_prefs_run(int argc,char **argv)
     p->screen=LockPubScreen("Workbench");
     if (!p->screen || !open_page(p)) goto done;
     while (!p->done) {
-        Wait(1UL<<p->win->UserPort->mp_SigBit);
+        ND_TRACE_WAIT(1UL<<p->win->UserPort->mp_SigBit);
         while ((msg=GT_GetIMsg(p->win->UserPort))!=NULL) {
             cls=msg->Class;rawcode=msg->Code;
             id=msg->IAddress ? ((struct Gadget *)msg->IAddress)->GadgetID : 0;
             GT_ReplyIMsg(msg);
-            if (cls==IDCMP_CLOSEWINDOW) {p->done=1;p->result=0;}
+            if (cls==IDCMP_CLOSEWINDOW || (cls==IDCMP_RAWKEY && rawcode==0x45)) {p->done=1;p->result=0;}
             else if (cls==IDCMP_RAWKEY && rawcode==ND_HELP_KEY) nd_prefs_help(p->screen);
             else if (cls==IDCMP_REFRESHWINDOW) {
                 GT_BeginRefresh(p->win);GT_EndRefresh(p->win,TRUE);
@@ -444,6 +567,16 @@ int nd_diagnostics_prefs_run(int argc,char **argv)
                 else if (id==D_ABOUT) {p->done=1;p->result=ND_PREF_NAV_ABOUT;}
                 else if (id==D_RECOVERY) recover_settings(p);
                 else if (id==D_LOW_RESOURCE) low_resource(p);
+                else if(id==D_ADVANCED)advanced_support(p);
+                else if (id==D_LOGGING) logging_settings(p);
+                else if (id==D_BUNDLE) save_bundle(p);
+                else if (id==D_MARK) {
+#if defined(ND_TRACE) || defined(ND_RUNTIME_TRACE)
+                    ND_TRACE_RELOAD();
+                    if(nd_trace_level){nd_trace_marker();(void)nd_control_send(ND_CONTROL_SUPPORT_MARK);SetWindowTitles(p->win,(STRPTR)"Support - reproduction marker recorded",(STRPTR)-1);}
+                    else SetWindowTitles(p->win,(STRPTR)"Enable capture under Logging before marking an event",(STRPTR)-1);
+#endif
+                }
                 else if (id==D_RESET) reset_counters(p);
                 else if (id==D_SAVE_REPORT) {
                     if (save_report(p))
@@ -461,8 +594,10 @@ int nd_diagnostics_prefs_run(int argc,char **argv)
                 else if (id==D_CLOSE) {p->done=1;p->result=0;}
             }
         }
+        ND_TRACE_PULSE();
     }
     result=p->result;
+    ND_TRACE_FLUSH();
 done:
     if (p->win) CloseWindow(p->win);
     if (p->gadgets) FreeGadgets(p->gadgets);

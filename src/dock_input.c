@@ -1,5 +1,6 @@
 /* NovaDock: Workbench and Commodities: AppWindow, AppMenus, hot keys, paths. */
 #include "dock_internal.h"
+#include "nd_trace.h"
 
 /* Defined below, private to this file. */
 static void attach_appmenus(struct NDDock *dock);
@@ -75,17 +76,17 @@ static ULONG drop_zone_hook(__reg("a0") struct Hook *hook,
         left=after ? x+w-3 : x;right=left+2;
     }
     /* A hook may draw only within its own drop zone. */
-    if (left<message->adzm_DropZoneBox.Left) left=message->adzm_DropZoneBox.Left;
-    if (top<message->adzm_DropZoneBox.Top) top=message->adzm_DropZoneBox.Top;
-    if (right>=message->adzm_DropZoneBox.Left+message->adzm_DropZoneBox.Width)
-        right=message->adzm_DropZoneBox.Left+message->adzm_DropZoneBox.Width-1;
-    if (bottom>=message->adzm_DropZoneBox.Top+message->adzm_DropZoneBox.Height)
-        bottom=message->adzm_DropZoneBox.Top+message->adzm_DropZoneBox.Height-1;
+    if (left<(message->adzm_DropZoneBox.Left+dock_view_x(dock))) left=(message->adzm_DropZoneBox.Left+dock_view_x(dock));
+    if (top<(message->adzm_DropZoneBox.Top+dock_view_y(dock))) top=(message->adzm_DropZoneBox.Top+dock_view_y(dock));
+    if (right>=(message->adzm_DropZoneBox.Left+dock_view_x(dock))+message->adzm_DropZoneBox.Width)
+        right=(message->adzm_DropZoneBox.Left+dock_view_x(dock))+message->adzm_DropZoneBox.Width-1;
+    if (bottom>=(message->adzm_DropZoneBox.Top+dock_view_y(dock))+message->adzm_DropZoneBox.Height)
+        bottom=(message->adzm_DropZoneBox.Top+dock_view_y(dock))+message->adzm_DropZoneBox.Height-1;
     if (right<left || bottom<top) return 0;
     rp=*message->adzm_RastPort;
     SetDrMd(&rp,COMPLEMENT);
     SetAfPt(&rp,NULL,0);
-    RectFill(&rp,left,top,right,bottom);
+    RectFill(&rp,left-dock_view_x(dock),top-dock_view_y(dock),right-dock_view_x(dock),bottom-dock_view_y(dock));
     return 0;
 }
 static int add_drop_zones(struct NDDock *dock)
@@ -104,12 +105,12 @@ static int add_drop_zones(struct NDDock *dock)
         if (!item_visible(dock,i)) continue;
         tile_coords(dock,i,&x,&y);tile_dimensions(dock,i,&w,&h);
         for (after=0;after<2;++after) {
-            box.Left=x;box.Top=y;box.Width=w;box.Height=h;
+            box.Left=x-dock_view_x(dock);box.Top=y-dock_view_y(dock);box.Width=w;box.Height=h;
             if (vertical(dock)) {
-                box.Top=y+(after ? h/2 : 0);
+                box.Top=y-dock_view_y(dock)+(after ? h/2 : 0);
                 box.Height=after ? h-h/2 : h/2;
             } else {
-                box.Left=x+(after ? w/2 : 0);
+                box.Left=x-dock_view_x(dock)+(after ? w/2 : 0);
                 box.Width=after ? w-w/2 : w/2;
             }
             if (!AddAppWindowDropZoneA(dock->app_window,1,(ULONG)(i*2+after),tags))
@@ -234,6 +235,27 @@ int start_hotkeys(struct NDDock *dock)
             }
         }
     }
+    if(dock->conf.hover_magnification){
+        static const UBYTE classes[]={IECLASS_RAWMOUSE,IECLASS_POINTERPOS,IECLASS_NEWPOINTERPOS};
+        int c;
+        /* Observe movement even while Intuition sends IDCMP to another
+         * active window. These senders never swallow or alter input. */
+        for(c=0;c<3;++c){
+            IX pointer;
+            CxObj *pointer_filter=CreateCxObj(CX_FILTER,0,0);
+            CxObj *pointer_sender=CxSender(dock->hotkey_port,ND_CX_POINTER_ID);
+            memset(&pointer,0,sizeof(pointer));pointer.ix_Version=IX_VERSION;
+            pointer.ix_Class=classes[c];
+            if(pointer_filter && pointer_sender){
+                SetFilterIX(pointer_filter,&pointer);
+                AttachCxObj(pointer_filter,pointer_sender);
+                AttachCxObj(dock->hotkey_broker,pointer_filter);
+            }else{
+                if(pointer_filter)DeleteCxObjAll(pointer_filter);
+                if(pointer_sender)DeleteCxObjAll(pointer_sender);
+            }
+        }
+    }
     for (i=0;i<dock->action_count;++i) {
         struct NDItem *item=&dock->action_items[i];
         if (!ITEM_TEXT(item,ND_TEXT_HOTKEY)[0] ||
@@ -261,6 +283,7 @@ void rebuild_hotkeys(struct NDDock *dock)
 void process_hotkeys(struct NDDock *dock)
 {
     CxMsg *message;
+    int pointer_moved=0;
     while (dock->hotkey_port &&
            (message=(CxMsg *)GetMsg(dock->hotkey_port))!=NULL) {
         ULONG type=CxMsgType(message);
@@ -281,6 +304,7 @@ void process_hotkeys(struct NDDock *dock)
             dock->activate_popup_pending=1;
             ActivateWindow(dock->window);
         }
+        if(type==CXM_IEVENT && id==ND_CX_POINTER_ID)pointer_moved=1;
         ReplyMsg((struct Message *)message);
         if (type==CXM_IEVENT && id==ND_CX_DISK_ID) {
             if (dock->media_scan_ticks>ND_MEDIA_EVENT_TICKS)
@@ -299,7 +323,9 @@ void process_hotkeys(struct NDDock *dock)
         else if (type==CXM_COMMAND && id==CXCMD_ENABLE)
             ActivateCxObj(dock->hotkey_broker,1L);
     }
+    if(pointer_moved)update_hover_pointer(dock);
 }
+
 int build_wb_path(const struct WBArg *arg, char *out, int out_size,
                          int *kind)
 {

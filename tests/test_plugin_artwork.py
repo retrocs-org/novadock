@@ -4,7 +4,7 @@ from pathlib import Path
 import importlib.util,os,struct,subprocess,sys,tempfile
 ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'tools'))
 from pack_plugin_art import build_bank
-from generate_plugin_status_art import SOURCES,source_frames
+from generate_plugin_status_art import SOURCES,source_frames,status_frames
 import generate_hass_device_icons as hass
 from generate_collection_icons import PALETTE
 bank=(ROOT/'Plugins/HASS.assets/Artwork.ndart').read_bytes()
@@ -27,11 +27,11 @@ for kind in hass.KINDS:
 status_paths=[]
 for program,folder,name in SOURCES:
     path=ROOT/'Plugins'/(program+'.assets')/'Artwork.ndart';status_paths.append(path)
-    frames,palette=source_frames(ROOT/'plugin_src'/folder/'artwork'/(name+'.json'))
+    frames,palette=status_frames(program,folder,name)
     data=path.read_bytes();assert data==build_bank(frames,palette)
-    assert struct.unpack_from('>H',data,6)[0]==1
+    assert struct.unpack_from('>H',data,6)[0]==len(frames)
     pixels=[[0]*32 for _ in range(32)]
-    label,state,reserved,n,offset=struct.unpack_from('>24sBBHI',data,56)
+    label,state,reserved,n,offset=struct.unpack_from('>24sBBHI',data,72 if data[5]==2 else 56)
     assert label.rstrip(b'\0').decode()==name and not state and not reserved
     for j in range(n):
         x,y,w,h,color=data[offset+j*5:offset+j*5+5]
@@ -42,16 +42,24 @@ for program,folder,name in SOURCES:
     assert name not in (ROOT/'src/dock_draw.c').read_text()
 program=r'''
 #include <assert.h>
+#define dock_left(d) ((d)->window->LeftEdge)
+#define dock_top(d) ((d)->window->TopEdge)
+#define dock_width(d) ((d)->window->Width)
+#define dock_height(d) ((d)->window->Height)
+#define dock_view_x(d) 0
+#define dock_view_y(d) 0
+
 #include <string.h>
 #include "nd_artwork.h"
 #include "nd_hass_art.h"
 typedef unsigned short UWORD;
 struct NDClient {UWORD host_artwork,host_artwork_meta,art_sending,art_state,art_mode,quiet_valid;unsigned long art_key;};
 #define ND_NO_METER 65535U
-static char shown[32];
-static unsigned int nd_client_update_quiet(struct NDClient *c,const char *caption,const char *value,unsigned int meter,unsigned int elapsed,unsigned int heartbeat){(void)c;assert(!strcmp(value,"off")&&meter==65535U&&elapsed==50&&heartbeat==500);strcpy(shown,caption);return 123;}
+#define ND_EVENT_QUIT 2U
+static char shown[32];static unsigned int expected_meter=65535U;static int negotiate,calls;
+static unsigned int nd_client_update_quiet(struct NDClient *c,const char *caption,const char *value,unsigned int meter,unsigned int elapsed,unsigned int heartbeat){++calls;if(negotiate){c->host_artwork_meta=negotiate==1;c->host_artwork=negotiate<3;}assert(!strcmp(value,"off")&&meter==expected_meter&&(elapsed==50||(negotiate&&elapsed==0))&&heartbeat==500);strcpy(shown,caption);return negotiate ? 1U:123U;}
 '''
-s=(ROOT/'plugin_src/common/nd_client.c').read_text();program+=s[s.index('unsigned int nd_client_update_art_quiet('):s.index('unsigned int nd_client_thumbnail(')]
+s=(ROOT/'plugin_src/common/nd_client.c').read_text();program+=s[s.index('unsigned int nd_client_update_art_meter_quiet('):s.index('unsigned int nd_client_thumbnail(')]
 program+=r'''
 int main(int argc,char **argv){struct NDArtwork a;struct NDClient c;unsigned char *d;unsigned int n,state;unsigned long i;char path[520],caption[32],name[24];const unsigned char *off,*on;
  assert(argc==5);memset(&a,0,sizeof(a));assert(nd_artwork_load(&a,argv[1]));
@@ -81,6 +89,11 @@ int main(int argc,char **argv){struct NDArtwork a;struct NDClient c;unsigned cha
  i=nd_artwork_u32(d+56+28);d[i]=32;assert(!nd_artwork_validate(d,a.size));memcpy(d,a.data,a.size);d[i+2]=0;assert(!nd_artwork_validate(d,a.size));
  free(d);nd_artwork_close(&a);
  {const char *names[]={"SadWHDLoad","SadMusic","SadSensor"};for(i=0;i<3;++i){assert(nd_artwork_load(&a,argv[i+2]));assert(nd_artwork_frame(&a,names[i],0,&n)&&n);assert(!nd_artwork_frame(&a,names[i],1,&n));nd_artwork_close(&a);}}
+ c.host_artwork_meta=0;c.host_artwork=1;expected_meter=73;nd_client_update_art_meter_quiet(&c,"LAMP","off","Bulb",0,73,50,500);assert(!strcmp(shown,"ART:Bulb:0"));
+ c.host_artwork=0;nd_client_update_art_meter_quiet(&c,"LAMP","off","Bulb",0,73,50,500);assert(!strcmp(shown,"LAMP"));
+ memset(&c,0,sizeof(c));negotiate=1;calls=0;assert(nd_client_update_art_meter_quiet(&c,"LAMP","off","Bulb",0,73,50,500)==1);assert(calls==2&&c.art_mode==2&&c.art_key==nd_artwork_key("Bulb"));
+ memset(&c,0,sizeof(c));negotiate=2;calls=0;nd_client_update_art_meter_quiet(&c,"LAMP","off","Bulb",0,73,50,500);assert(calls==2&&c.art_mode==1&&!strcmp(shown,"ART:Bulb:0"));
+ memset(&c,0,sizeof(c));negotiate=3;calls=0;nd_client_update_art_meter_quiet(&c,"LAMP","off","Bulb",0,73,50,500);assert(calls==1&&!strcmp(shown,"LAMP"));
  assert(!a.data&&!a.size);assert(!nd_artwork_load(&a,"missing-artwork-bank"));return 0;}
 '''
 with tempfile.TemporaryDirectory() as t:

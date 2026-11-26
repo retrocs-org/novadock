@@ -13,6 +13,9 @@
 #include "nd_option_runtime.h"
 #include "nd_plugin_versions.h"
 #include "nd_agenda_job.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 const char nd_version[]=ND_PLUGIN_VER_STRING(AGENDA,"Agenda");long __stack=65536;
 static int work(unsigned int action,void *data,unsigned int bytes,const char *parent)
 {struct NDAgendaJob *j=data;FILE *f;BPTR lock;LONG error;int ok;(void)parent;if(bytes!=sizeof(*j)||!memchr(j->path,0,sizeof(j->path))||strncmp(j->path,"ENVARC:NovaDock/Agenda/",sizeof("ENVARC:NovaDock/Agenda/")-1)||strstr(j->path,".."))return 0;

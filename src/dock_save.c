@@ -1,4 +1,5 @@
 #include "dock_internal.h"
+#include "nd_wait.h"
 int init_settings_writer(struct NDDock *dock)
 {
     dock->save_port=CreateMsgPort();if(!dock->save_port)return 0;
@@ -17,11 +18,21 @@ static void release_config(struct NDDock *dock,struct NDConfig *cfg)
 {
     if(cfg && cfg!=dock->save_snapshot && cfg!=dock->edit_config)FreeVec(cfg);
 }
+/* A saved edit must not shadow the next external Preferences write. */
+void release_saved_settings_edit(struct NDDock *dock)
+{
+    if(!dock->rexx_apply_pending && !dock->save_state.active &&
+       dock->save_state.revision==dock->save_state.saved &&
+       dock->edit_config!=dock->save_snapshot){
+        FreeVec(dock->edit_config);dock->edit_config=NULL;
+    }
+}
 /* Take ownership of COPY as the newest unsaved configuration.  The edit it
  * replaces is freed unless SaveConfig is still writing it. */
 void accept_settings_save(struct NDDock *dock,struct NDConfig *copy)
 {
     struct NDConfig *old=dock->edit_config;
+    if(!dock->undo_keep)dock->undo_kind=ND_UNDO_NONE;   /* see apply_configuration() */
     dock->edit_config=copy;
     release_config(dock,old);
     nd_save_changed(&dock->save_state);
@@ -109,7 +120,8 @@ void process_settings_writer(struct NDDock *dock)
                 drop_snapshot(dock);
                 if(dock->save_state.revision==dock->save_state.saved){
                     dock->save_quit_refused=0;
-                    FreeVec(dock->edit_config);dock->edit_config=NULL;
+                    /* Queued ARexx SETs still apply from EDIT_CONFIG. */
+                    release_saved_settings_edit(dock);
                 }else if(!m->env_ok || !m->envarc_ok){
                     show_feedback(dock,"Settings not saved - will retry",1);
                     fire_hook(dock,"SAVE_FAILED","");
@@ -135,7 +147,7 @@ void settings_save_tick(struct NDDock *dock,int quantum,int force)
         dock->save_env_ok=dock->save_envarc_ok=0;
         dock->save_last_ticks=dock->save_env_ticks=dock->save_envarc_ticks=0;
     }
-    busy=!force && (dock->press_item>=0 || dock->is_drag || dock->popup ||
+    busy=!force && (dock->press_item>=0 || dock->grip_drag || dock->is_drag || dock->popup ||
                     dock->calendar || dock->folder_popup);
     if(force && !(dock->save_state.last_failed && dock->save_state.quiet>ND_SAVE_IDLE_TICKS))
         dock->save_state.quiet=0;
@@ -158,8 +170,10 @@ static void quit_wait_refresh(struct NDDock *dock)
 }
 int finish_settings_saves(struct NDDock *dock)
 {
-    int told=0,step;
-    ULONG start=diagnostic_ticks();
+    int told=0,step,result=1;
+    ULONG start=diagnostic_ticks(),mask;
+    struct NDWaitTimer timer;
+    timer.port=NULL;timer.io=NULL;timer.open=0;
     dock->write_owner=NULL;
     while(dock->save_state.revision!=dock->save_state.saved){
         settings_save_tick(dock,1,1);
@@ -167,20 +181,30 @@ int finish_settings_saves(struct NDDock *dock)
          * claimed is its own to finish or free when the dock leaves. */
         step=nd_save_quit_step(&dock->save_state,diagnostic_ticks()-start,
                                dock->save_quit_refused);
-        if(step==ND_SAVE_QUIT_LEAVE)return 1;
+        if(step==ND_SAVE_QUIT_LEAVE)break;
         if(step==ND_SAVE_QUIT_REFUSE){
             dock->save_quit_refused=1;
             dock->running=1;
             show_feedback(dock,"Settings not saved - quit again to discard changes",1);
-            return 0;
+            result=0;break;
         }
         if (!told && diagnostic_ticks()-start>25UL) {
             show_feedback(dock,"Saving settings...",0);told=1;
         }
         quit_wait_refresh(dock);
-        process_ipc(dock,0);process_control(dock,1);Delay(1);
+        process_ipc(dock,0);process_control(dock,1);
+        /* Sleep until the writer, a plugin, a control client or the window
+         * needs attention (at most 1/5 s, so the quit policy still runs),
+         * instead of waking every tick. */
+        mask=0;
+        if(dock->save_port)mask|=1UL<<dock->save_port->mp_SigBit;
+        if(dock->ipc)mask|=1UL<<dock->ipc->mp_SigBit;
+        if(dock->control)mask|=1UL<<dock->control->mp_SigBit;
+        if(dock->window)mask|=1UL<<dock->window->UserPort->mp_SigBit;
+        (void)nd_wait_signals(&timer,mask,10UL);
     }
-    return 1;
+    nd_wait_timer_close(&timer);
+    return result;
 }
 void close_settings_writer(struct NDDock *dock)
 {

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "nd_manifest.h"
+#include "nd_plugin_versions.h"
 #include "nd_options.h"
 
 static int load(struct NDManifest *m,const char *file,const char **lines)
@@ -36,11 +37,12 @@ int main(void)
     struct NDOptionDef defs[16];
     int i,n,before;
 
-    assert(nd_manifest_bundled_id("AMIROCKET"));
-    assert(nd_manifest_builtin("AMIROCKET",&m));
-    assert(!strcmp(m.name,"AmiRocket") && !strcmp(m.version,"0.1"));
+    assert(!nd_manifest_bundled_id("AMIROCKET"));
+    assert(!nd_manifest_builtin("AMIROCKET",&m));
+    assert(!nd_manifest_builtin("AMIRC",&m));
+    assert(!nd_manifest_builtin("ALERTS",&m));
     assert(load(&m,"Work:NovaDock/Plugins/DemoForecast",weather));
-    assert(!strcmp(m.id,"DEMOFORECAST") && !strcmp(m.name,"DemoForecast"));
+    assert(!strcmp(m.id,"DEMOFORECAST") && !strcmp(m.name,"DEMOFORECAST"));
     assert(m.graph==1 && m.abi==2 && m.multiple_instances &&
            m.option_count==3);
     assert(nd_manifest_bundled_id("RUNNINGAPPS"));
@@ -50,7 +52,7 @@ int main(void)
       assert(load(&m,"Plugins/Extended",l) && m.abi==5); }
     /* Name defaults to the executable's file name. */
     { static const char *l[]={"NOVADOCK_ID=X1",NULL};
-      assert(load(&m,"Plugins/Ticker",l) && !strcmp(m.name,"Ticker") && m.abi==1); }
+      assert(load(&m,"Plugins/Ticker",l) && !strcmp(m.name,"TICKER") && m.abi==1); }
     /* Rejections carry a reason. */
     { static const char *l[]={"NOVADOCK_NAME=NoId",NULL};
       assert(!load(&m,"P",l) && strstr(m.error,"ID")); }

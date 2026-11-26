@@ -12,6 +12,9 @@
 #include "nd_option_runtime.h"
 #include "nd_plugin_versions.h"
 #include "nd_moon.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct Library *MathIeeeDoubBasBase=NULL;
 const char nd_version[]=ND_PLUGIN_VER_STRING(MOON,"Moon");long __stack=65536;
 struct MoonJob {long days;unsigned long seconds;char latitude[96],longitude[96],offset[96];struct NDMoon moon;};

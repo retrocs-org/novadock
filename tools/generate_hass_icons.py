@@ -3,6 +3,7 @@
 from pathlib import Path
 import argparse
 from generate_collection_icons import Canvas, png, ilbm
+from artifact_compare import same_artifact
 ROOT=Path(__file__).resolve().parents[1]
 def artwork(sad=False):
     c=Canvas();b=c.box;l=c.line
@@ -47,7 +48,7 @@ def main():
     for name,sad in [('HASS',False),('SadHASS',True)]:
         pixels=artwork(sad);files[ROOT/'plugin_src/hass/artwork'/f'{name}.png']=png(pixels);files[ROOT/'plugin_src/hass/artwork'/f'{name}.iff']=ilbm(pixels)
     for path,data in files.items():
-        if args.check:assert path.read_bytes()==data, str(path)+' requires regeneration'
+        if args.check:assert same_artifact(path.read_bytes(),data), str(path)+' requires regeneration'
         else:path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(data)
     print('HASS connected/sad PNG, ILBM and theme-aware runtime artwork are current.')
 if __name__=='__main__':main()

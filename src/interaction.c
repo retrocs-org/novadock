@@ -166,8 +166,80 @@ int nd_parse_rexx(const char *text, struct NDRexxCommand *cmd)
         }
         return 1;
     }
+    if (!strcmp(verb,"GET") || !strcmp(verb,"SET") || !strcmp(verb,"THEME")) {
+        size_t n;
+        int theme=!strcmp(verb,"THEME");
+        if (!theme) {
+            /* Keys are upper-case words; OPTION.<id>.<key> keeps its case
+             * after the prefix because plugin ids and keys are stored as is. */
+            if (!word(&p,cmd->text2,ND_RX_KEY_LEN)) return 0;
+            for (n=0;cmd->text2[n];++n) {
+                unsigned char c=(unsigned char)cmd->text2[n];
+                if (!isalnum(c) && c!='_' && c!='.' && c!='-') return 0;
+            }
+            if (strncmp(cmd->text2,"OPTION.",7) && strncmp(cmd->text2,"option.",7))
+                for (n=0;cmd->text2[n];++n) cmd->text2[n]=(char)toupper((unsigned char)cmd->text2[n]);
+            else memcpy(cmd->text2,"OPTION.",7);
+        }
+        if (!strcmp(verb,"GET")) {
+            if (!at_end(p)) return 0;
+            cmd->action=ND_RX_GET;
+            return 1;
+        }
+        if (!rest(p,cmd->text,sizeof(cmd->text))) return 0;
+        if (theme) strcpy(cmd->text2,"THEME");
+        cmd->action=theme ? ND_RX_THEME : ND_RX_SET;
+        return 1;
+    }
+    if (!strcmp(verb,"PROFILE")) {
+        /* PROFILE name, PROFILE USE name, PROFILE SAVE name,
+         * PROFILE DELETE name, PROFILE LIST.  Names are checked by the dock. */
+        char sub[8];
+        const char *q=p;
+        size_t n;
+        if (at_end(p)) return 0;
+        cmd->first=ND_RX_PROFILE_USE;
+        if (*p!='"' && word(&q,sub,sizeof(sub))) {
+            for (n=0;sub[n];++n) sub[n]=(char)toupper((unsigned char)sub[n]);
+            if (!strcmp(sub,"LIST")) {
+                if (!at_end(q)) return 0;
+                cmd->action=ND_RX_PROFILE;cmd->first=ND_RX_PROFILE_LIST;
+                return 1;
+            }
+            if (!strcmp(sub,"USE") || !strcmp(sub,"SAVE") || !strcmp(sub,"DELETE")) {
+                cmd->first=!strcmp(sub,"SAVE") ? ND_RX_PROFILE_SAVE :
+                           !strcmp(sub,"DELETE") ? ND_RX_PROFILE_DELETE : ND_RX_PROFILE_USE;
+                p=q;
+            }
+        }
+        if (!rest(p,cmd->text,sizeof(cmd->text))) return 0;
+        /* A quoted name keeps its spaces; strip the quotes. */
+        n=strlen(cmd->text);
+        if (n>=2 && cmd->text[0]=='"' && cmd->text[n-1]=='"') {
+            memmove(cmd->text,cmd->text+1,n-2);cmd->text[n-2]='\0';
+        }
+        if (!cmd->text[0]) return 0;
+        cmd->action=ND_RX_PROFILE;
+        return 1;
+    }
+    if (!strcmp(verb,"INFO")) {
+        if (!number(&p,&cmd->first) || !at_end(p)) return 0;
+        cmd->action=ND_RX_INFO;
+        return 1;
+    }
+    if (!strcmp(verb,"STATUS") && *p) {
+        char key[8];
+        size_t n;
+        if (!word(&p,key,sizeof(key)) || !at_end(p)) return 0;
+        for (n=0;key[n];++n) key[n]=(char)toupper((unsigned char)key[n]);
+        if (strcmp(key,"DETAIL")) return 0;
+        cmd->action=ND_RX_STATUS;cmd->first=1;
+        return 1;
+    }
     if (*p) return 0;
     if (!strcmp(verb,"PING")) cmd->action=ND_RX_PING;
+    else if (!strcmp(verb,"SAVE")) cmd->action=ND_RX_SAVE;
+    else if (!strcmp(verb,"UNDO")) cmd->action=ND_RX_UNDO;
     else if (!strcmp(verb,"VERSION")) cmd->action=ND_RX_VERSION;
     else if (!strcmp(verb,"STATUS")) cmd->action=ND_RX_STATUS;
     else if (!strcmp(verb,"RELOAD")) cmd->action=ND_RX_RELOAD;

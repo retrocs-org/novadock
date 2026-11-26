@@ -1,6 +1,6 @@
 NOVADOCK_ID=AGENDA
 NOVADOCK_NAME=AGENDA
-NOVADOCK_VERSION=0.1
+NOVADOCK_VERSION=0.1.2
 NOVADOCK_AUTHOR=NovaDock
 NOVADOCK_DESCRIPTION=Persistent tasks, dated and recurring reminders, completion controls and a due badge.
 NOVADOCK_LICENSE=MIT

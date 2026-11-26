@@ -13,6 +13,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "nd_qr_view.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct IntuitionBase *IntuitionBase=NULL;struct GfxBase *GfxBase=NULL;
 static char view_error[96]="Preview could not be opened";
 const char *nd_qr_view_error(void){return view_error;}

@@ -13,6 +13,9 @@
 #include "nd_text.h"
 #include "nd_plugin_versions.h"
 #include "nd_calc.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct Library *MathIeeeDoubBasBase=NULL;
 const char nd_version[]=ND_PLUGIN_VER_STRING(CALC,"Calc");long __stack=65536;
 static char expressions[ND_CALC_HISTORY][160],results[ND_CALC_HISTORY][48];static unsigned int count;

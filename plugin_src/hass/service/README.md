@@ -1,31 +1,26 @@
 # AmiHASS client interface
 
-Vendored public headers from AmiHASS 0.2, local ABI 1.
-The SDK client implementation is ../nd_hass_client.c; only its header include
-is adapted to NovaDock. Per-tile UI and dock IPC remain in the HASS plugin.
-AmiHASSService and credential storage are separate, in the AmiHASS project.
-Refresh these headers and the client together when changing the ABI.
+Vendored public headers, REST/control policy and client from AmiHASS 0.3,
+local ABI 1. `sdk.json` records the exact upstream SHA-256 values, including
+the UTF-8 display helper. Only the client/core include paths are adapted to
+NovaDock. AmiHASS remains a separate service and owns credentials and HTTP.
 
-`SDK/amihass.h`, `SDK/amihass_core.h` and `SDK/amihass_client.c` from the bridge
-are tracked by the SHA-256 snapshot in sdk.json. The dock regression checks that
-those exact bytes are used (apart from the client header include). ABI 1 also
-provides read-only diagnostic pages; no credential data enters the dock.
+The tested pair is NovaDock 0.6 / AmiHASS 0.3. Feature-capable AmiHASS 0.2
+services remain supported: required areas, combined catalogue filters and
+subscriptions are negotiated by STATUS rather than the version string.
+Optional 0.3 operations (batch reads, labels, cameras, history, attributes,
+notifications and additional device controls) are not automatically exposed
+in NovaDock's current tile UI merely because their SDK definitions exist.
 
-The current snapshot adds room-scoped LIST/DEVICES, SUBSCRIBE/UNSUBSCRIBE,
-per-selection refresh preferences and credential-free source/connection hints.
-The dock renews only selected-entity leases and releases them through SDK close.
-These additive operations retain ABI 1. An older service may explicitly reject
-SUBSCRIBE; only then does the adapter fall back to legacy QUERY. Room filtering
-requires the matching service build. The dock has no credential or HTTP transport.
+The 0.3 client tolerates boot-time clock adjustments. Shared control parsing
+also includes current climate step validation and metadata extensions.
+Selection-capacity replies back off and show a specific reason. Authentication
+rejection is shown as a credentials problem. Door/cover actions refused by the
+service explain its Script doors setting; NovaDock never changes that policy
+or identifies itself as the AmiHASS Dashboard to bypass it. Local confirmation
+and read-only settings continue to apply. Code-protected devices remain outside
+NovaDock's current control UI.
 
-The final 0.4 client also checks STATUS feature.areas,
-feature.catalogue_filters and feature.subscriptions metadata. Discovery fails
-closed for unadvertised support. AMIHASS_AREAS supplies the paged room picker.
-
-NovaDock 0.5 is paired with AmiHASS 0.2. Newer services remain compatible when
-they advertise the required features; version strings alone do not grant support.
 Run `python3 tools/check_amihass_pair.py --bridge ../AmiHASS` before packaging.
-
-The current 0.5 snapshot includes lock/unlock/latch capabilities, friendly door
-state labels and stricter cover-stop readback. Confirmation UI remains in the
-dock client. PIN-protected locks remain read-only. Wire ABI 1 is unchanged.
+The pairing check verifies headers, client, policy parser, display helper and
+reply ownership against the independent service repository.

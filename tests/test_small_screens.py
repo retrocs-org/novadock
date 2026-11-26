@@ -69,7 +69,7 @@ specs=[
  ('prefs/novadockappearanceprefs.c','static int open_editor(', 'setup_gadget','prefs_appearance',None,[('create_button',False)]),
  ('prefs/novadockitemprefs.c','static int open_ui(', 'ng_init','prefs_organize',219,[('button',False)]),
  ('prefs/novadockmanagerprefs.c','static int open_manager(', 'm_field','prefs_plugins',240,[('m_button',False)]),
- ('prefs/novadockdiagnosticsprefs.c','static int open_ui(', 'd_field','prefs_diagnostics',207,[('d_button',False)]),
+ ('prefs/novadockdiagnosticsprefs.c','static int open_ui(', 'd_field','prefs_diagnostics',239,[('d_button',False)]),
  ('prefs/novadockadditemprefs.c','static int open_add_ui(', 'add_ng','prefs_add',None,[('add_button',False),('add_string',False),('add_readonly_string',False)]),
  ('prefs/novadocklauncherprefs.c','static int open_ui(', 'ng_init','prefs_launcher',None,[('button',False)]),
  ('prefs/novadocklayoutprefs.c','static int open_page(', 'ng_init','prefs_layouts',175,[('button',False)]),
@@ -82,6 +82,8 @@ for file,sig,helper,name,height,buttons in specs:
  body=function(s,sig)
  hf=function(s,'static void '+helper+'(')
  hf=re.sub(r'struct (?:Prefs|AppearancePrefs|ItemPage|ManagerPage|DiagnosticsPage|AddItemPage|Editor|LayoutPage|AboutPage) \*','struct Page *',hf).replace(helper+'(',name+'(')
+
+ if name=='prefs_appearance':helpers.append('\n'.join(re.findall(r'^#define A_\w+ \d+$',s,re.M)))
  helpers.append(hf)
  for focused in ([0,1] if name=='prefs_launcher' else [0]):
   rows=[]
@@ -98,14 +100,14 @@ for file,sig,helper,name,height,buttons in specs:
    label=literal(args[7]);flags='PLACETEXT_LEFT'
    found=re.search(r'ng\.ng_Flags\s*=\s*(PLACETEXT_\w+)',tail)
    if found:flags=found[1]
-   rows.append(f'{name}(p,&g,{",".join(vals)},0,{label});check(p,&g,{flags});')
+   rows.append(f'{name}(p,&g,{",".join(vals)},{args[6] if name=="prefs_appearance" else "0"},{label});check(p,&g,{flags});')
   for btn,_ in buttons:
    for args,tail in calls(source,btn):
     if len(args)<6:continue
     vals=args[1:4]
     if any(re.search(r'[A-Za-z_]',v) for v in vals):continue
     label=literal(args[5]);flag='PLACETEXT_LEFT' if 'string' in btn else 'PLACETEXT_IN'
-    rows.append(f'{name}(p,&g,{",".join(vals)},16,0,{label});check(p,&g,{flag});')
+    rows.append(f'{name}(p,&g,{",".join(vals)},16,{args[4] if name=="prefs_appearance" else "0"},{label});check(p,&g,{flag});')
   if name=='prefs_add':
    # Drawer/group fields authored relative to their type's first row.
    for top in (56,84):
@@ -114,20 +116,24 @@ for file,sig,helper,name,height,buttons in specs:
      if len(vals)!=3 or not any('top' in v for v in vals):continue
      vals=[v.replace('top',str(top)) for v in vals]
      rows.append(f'{name}(p,&g,{",".join(vals)},16,0,{literal(args[5])});check(p,&g,PLACETEXT_LEFT);')
-  if name=='prefs_appearance':h='compact ? 239:267'
+  if name=='prefs_appearance':h='compact ? 239:468'
   elif name=='prefs_add':h='compact ? 230:330'
   elif name=='prefs_launcher':h=f'compact ? 238:{301 if focused else 320}'
   else:h=str(height)
-  compact_height=279 if name=='prefs_appearance' else 342 if name=='prefs_add' else (313 if focused else 332)
+  compact_height=480 if name=='prefs_appearance' else 342 if name=='prefs_add' else (313 if focused else 332)
   compact=f'height-11<{compact_height}' if name in ('prefs_appearance','prefs_add','prefs_launcher') else '0'
   width=500 if name=='prefs_layouts' else 620
   overlap=1 if name in ('prefs_appearance','prefs_launcher') else 0
-  cases.append(f'''avoid_overlap={overlap};rect_count=0;page="{name}{focused}";compact={compact};p->compact=compact;p->focused={focused};
+  case=f'''avoid_overlap={overlap};rect_count=0;page="{name}{focused}";compact={compact};p->compact=compact;p->focused={focused};
  nd_prefs_layout_init(&p->layout,8,8,640,height,11,{width},{h});assert(nd_prefs_layout_fits(&p->layout,10,12));
- '''+'\n'.join(rows))
+ '''+'\n'.join(rows)
+  cases.append(case)
+  if name=='prefs_appearance':
+   cases[-1]=case.replace('compact=height-11<480','compact=1')
+   cases.append(case.replace('640,height,11,620','1024,height,11,compact ? 620:700'))
 code=pre+'\n'.join(helpers)+'''\nint main(void){int height,compact;struct Page value,*p=&value;struct Screen screen;struct NewGadget g;
  memset(p,0,sizeof(*p));p->screen=&screen;
- for(height=256;height<=480;height+=224){\n'''+ '\n'.join(cases)+'''
+ for(height=256;height<=704;height+=224){\n'''+ '\n'.join(cases)+'''
  }
  printf("Small screens: %d source-derived Preferences gadget bounds/captions checked at 640x256 and 640x480.\\n",checks);return 0;}
 '''

@@ -59,6 +59,11 @@ int main(void)
     assert(nd_aminet_http_header("HTTP/1.0 200 OK\r\nContent-Length: 123\r\n\r\n",1000,&length) && length==123);
     assert(nd_aminet_http_header("HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n",1000,&length) && length==-1);
     assert(nd_aminet_http_header("HTTP/1.1 200 OK\r\ncontent-length: 1000\r\nContent-Encoding: identity\r\n\r\n",1000,&length) && length==1000);
+    /* Header names and the identity token are case-insensitive (RFC 9110). */
+    assert(nd_aminet_http_header("HTTP/1.1 200 OK\r\nCONTENT-LENGTH: 7\r\nTRANSFER-ENCODING: Identity\r\n\r\n",1000,&length) && length==7);
+    assert(!nd_aminet_http_header("HTTP/1.1 200 OK\r\ntransfer-encoding: CHUNKED\r\n\r\n",1000,&length));
+    assert(!nd_aminet_http_header("HTTP/1.1 200 OK\r\ncontent-encoding: gzip\r\n\r\n",1000,&length));
+    assert(!nd_aminet_http_header("HTTP/1.1 200 OK\r\nContent-Length: 5\r\ncontent-length: 5\r\n\r\n",1000,&length));
     assert(!nd_aminet_http_header("HTTP/1.1 404 Missing\r\n\r\n",1000,&length));
     assert(!nd_aminet_http_header("HTTP/1.1 301 Moved\r\nLocation: http://evil/\r\n\r\n",1000,&length));
     assert(!nd_aminet_http_header("HTTP/1.1 200 OK\r\nContent-Length: 1001\r\n\r\n",1000,&length));

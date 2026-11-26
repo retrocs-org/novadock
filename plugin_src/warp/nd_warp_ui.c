@@ -25,6 +25,9 @@
 #include "nd_warp_detect.h"
 #include "nd_interaction.h"
 #include "../prism/nd_prism.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 struct IntuitionBase *IntuitionBase=NULL;
 struct Library *GadToolsBase=NULL;
 #define WARP_MAGIC 0x4e445743UL

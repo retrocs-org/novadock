@@ -21,12 +21,12 @@ int main(void)
     fclose(marker);
     nd_default_config(&original);
     assert(nd_parse_line(&original, "PLUGIN=New|Plugins/New|NEWID|GRAPH|OFF") == 1);
-    assert(original.count == 15);
-    assert(original.items[14].graph && !original.items[14].enabled);
+    assert(original.count == 16);
+    assert(original.items[15].graph && !original.items[15].enabled);
     assert(nd_parse_line(&original, "PLUGIN=Bad|Plugins/Bad|BA1|GRAPH|MAYBE") == 0);
     assert(nd_parse_line(&original, "PLUGIN=Bad|Plugins/Bad|BA2|GRAPH|ON|EXTRA") == 0);
     assert(nd_parse_line(&original, "PLUGIN=Old|Plugins/Old|OLDID") == 1);
-    assert(original.items[15].enabled && !original.items[15].graph);
+    assert(original.items[16].enabled && !original.items[16].graph);
     original.side = ND_SIDE_TOP;
     original.position = ND_POSITION_END;
     original.font_mode = ND_FONT_BOLD;
@@ -93,7 +93,7 @@ int main(void)
     runtime.item_size=ND_ITEM_SIZE_NORMAL;
     assert(!nd_config_runtime_equal(&original,&runtime));
     runtime = original;
-    assert(nd_compact_enabled(&runtime) == 7);
+    assert(nd_compact_enabled(&runtime) == 8);
     for (i = 0; i < runtime.count; ++i) assert(runtime.items[i].enabled);
     assert(nd_layout_fit(&runtime, 800, 256, 13, &layout));
     assert(layout.width <= 800);

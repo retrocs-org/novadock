@@ -30,8 +30,12 @@ SRC=$DEST/src
 VBCC_ROOT=$DEST/vbcc
 
 if [ -x "$VBCC_ROOT/bin/vc" ] && [ -f "$VBCC_ROOT/config/aos68k" ]; then
-    say "toolchain already present in $VBCC_ROOT"
-    exit 0
+    if grep -q startup-novadock.o "$VBCC_ROOT/config/aos68k"; then
+        say "toolchain already present in $VBCC_ROOT"
+        exit 0
+    fi
+    say "toolchain in $VBCC_ROOT links the stock startup.o; remove it and re-run"
+    exit 1
 fi
 
 say "fetching vbcc, vasm and vlink sources ($AMIGA_DEV_REV)"
@@ -87,6 +91,9 @@ else
 fi
 NDK_H=$(CDPATH= cd "$NDK_H" && pwd)
 
+# The stock startup.o reads its saved exit words from below the stack pointer;
+# link a patched copy instead (see tools/vbcc_startup.py).
+python3 "$(dirname "$0")/../tools/vbcc_startup.py" patch "$VBCC_ROOT/lib/startup.o" "$VBCC_ROOT/lib/startup-novadock.o"
 say "writing $VBCC_ROOT/config/aos68k (NDK: $NDK_H)"
 # NDK 3.2 headers come first so OS 3.2 calls and its vbcc inlines are used;
 # vbcc's own directory still supplies the C library headers.
@@ -99,9 +106,9 @@ cat >"$VBCC_ROOT/config/aos68k" <<EOF
 -ccv=vbccm68k -hunkdebug %s -o= %s %s -O=%ld $INC
 -as=vasmm68k_mot -quiet -Fhunk -phxass -opt-fconst -nowarn=62 %s -o %s
 -asv=vasmm68k_mot -Fhunk -phxass -opt-fconst -nowarn=62 %s -o %s
--ld=vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib "$VBCC_ROOT/lib/startup.o" %s %s $L -lvc -o %s
+-ld=vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib "$VBCC_ROOT/lib/startup-novadock.o" %s %s $L -lvc -o %s
 -l2=vlink -bamigahunk -x -Bstatic -Cvbcc -nostdlib %s %s $L -o %s
--ldv=vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib "$VBCC_ROOT/lib/startup.o" %s %s $L -lvc -o %s
+-ldv=vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib "$VBCC_ROOT/lib/startup-novadock.o" %s %s $L -lvc -o %s
 -l2v=vlink -bamigahunk -t -x -Bstatic -Cvbcc -nostdlib %s %s $L -o %s
 -ldnodb=-s -Rshort
 -ul=-l%s

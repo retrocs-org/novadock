@@ -550,8 +550,9 @@ int main(int argc,char **argv)
                 WindowToFront(panel.window);ActivateWindow(panel.window);
             }else open_panel(&panel);
         }
-        if (panel.window) {Delay(5);elapsed=5;}
-        else elapsed=nd_client_wait(&client,250);
+        /* The panel is event-driven: sleep until it or the dock needs us. */
+        elapsed=nd_client_wait_signals(&client,250,
+            panel.window ? 1UL<<panel.window->UserPort->mp_SigBit : 0UL);
     }
     close_panel(&panel);nd_client_close(&client);
     CloseLibrary((struct Library *)GfxBase);

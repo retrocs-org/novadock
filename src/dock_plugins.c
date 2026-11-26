@@ -1,6 +1,10 @@
+#include "nd_aminotis.h"
+#include "nd_plugin_labels.h"
+#include "nd_trace.h"
 /* NovaDock: Plugin processes, the plugin protocol and the watchdog. */
 #include "dock_internal.h"
 #include "nd_reply.h"
+#include "nd_artwork.h"
 
 /* Defined below, private to this file. */
 static int launch_plugin(struct NDDock *dock,int index,int restarted);
@@ -107,11 +111,17 @@ void christmas_startup(struct NDDock *dock)
  lock=CreateDir("ENV:NovaDock");if(lock)UnLock(lock);
  (void)nd_write_config(next,"ENV:NovaDock/novadock.cfg");
  (void)nd_christmas_remember(history);
- dock->conf=*next;
+ dock->conf=*next;invalidate_settings_cache(dock);
 done:
  if(next)FreeVec(next);if(permanent)FreeVec(permanent);
 }
 
+static int plugin_launch_feedback(struct NDDock *dock,int index,const char *status,int result)
+{
+    struct NDItem *item=&dock->conf.items[index];
+    item->online=0;strcpy(item->value,status);item->meter=ND_NO_METER;
+    sync_plugin_twins(dock,index);mark_tile_dirty(dock,index);return result;
+}
 static int launch_plugin(struct NDDock *dock,int index,int restarted)
 {
     char cmd[1100], path[520];
@@ -131,13 +141,16 @@ static int launch_plugin(struct NDDock *dock,int index,int restarted)
         (ULONG)nd_watchdog_backoff_ticks(dock->watchdog_failures[index]);
     /* "@..." plugin commands are passive tiles fed by ARexx SETVALUE. */
     if (it->command[0]=='@') return 0;
-    if (!resolve_plugin_executable(dock,it->command,path,sizeof(path))) return 0;
-    if (!nd_quote_path(cmd,sizeof(cmd)-ND_ID_LEN-2,path)) return 0;
+    if (!resolve_plugin_executable(dock,it->command,path,sizeof(path)))
+        return plugin_launch_feedback(dock,index,"MISSING PLUGIN",0);
+    if (!nd_quote_path(cmd,sizeof(cmd)-ND_ID_LEN-2,path))
+        return plugin_launch_feedback(dock,index,"FAILED TO START",0);
     strcat(cmd," ");strcat(cmd,it->id);
     dock->plugin_task[index]=NULL;
     dock->plugin_woken[index]=0;
     dock->plugin_wake_port[index]=0;
-    return launch_command(cmd);
+    if(!launch_command(cmd))return plugin_launch_feedback(dock,index,"FAILED TO START",0);
+    return plugin_launch_feedback(dock,index,"STARTING",1);
 }
 /* Run plugin tile INDEX's program as a helper: "<program> ID VERB [path]",
  * then wake the resident so it notices the work at once.  PATH must be
@@ -305,14 +318,12 @@ struct NDItem *item_by_id(struct NDDock *dock, const char *id)
             !strcmp(dock->conf.items[i].id, id)) return &dock->conf.items[i];
     return NULL;
 }
-void sync_plugin_twins(struct NDDock *dock,int source)
+static void sync_plugin_twin(struct NDDock *dock,int source,int i)
 {
     const struct NDItem *from=&dock->conf.items[source];
-    int i,changed;
-    for (i=0;i<dock->conf.count;++i) {
+    int changed;
+    {
         struct NDItem *to=&dock->conf.items[i];
-        if (i==source || to->kind!=ND_ITEM_PLUGIN || strcmp(to->id,from->id))
-            continue;
         changed=to->online!=from->online || to->meter!=from->meter ||
                 strcmp(to->caption,from->caption) || strcmp(to->value,from->value) ||
                 to->media_capabilities!=from->media_capabilities ||
@@ -338,12 +349,54 @@ void sync_plugin_twins(struct NDDock *dock,int source)
         if (changed) mark_tile_dirty(dock,i);
     }
 }
+void sync_plugin_twins(struct NDDock *dock,int source)
+{
+    const struct NDItem *from=&dock->conf.items[source];
+    int i;
+    for (i=0;i<dock->conf.count;++i) {
+        const struct NDItem *to=&dock->conf.items[i];
+        if (i==source || to->kind!=ND_ITEM_PLUGIN || strcmp(to->id,from->id))
+            continue;
+        sync_plugin_twin(dock,source,i);
+    }
+}
+/* ID classes the packet path tests on every update.  One strcmp against the
+ * cached ID replaces up to eight string compares per packet. */
+#define ND_IPC_NETWORK   0x01U  /* NET or ROADSHOW: online/offline hooks */
+#define ND_IPC_NO_GRAPH  0x02U  /* DOPUS4/ARCHIVE never scroll a graph */
+#define ND_IPC_BITSKIM   0x04U
+#define ND_IPC_CPU       0x08U
+#define ND_IPC_ARCHIVE   0x20U
+static unsigned int ipc_kind(struct NDDock *dock,int index)
+{
+    const char *id=dock->conf.items[index].id;
+    if (strcmp(dock->ipc_kind_id[index],id) || !dock->ipc_kind[index]) {
+        unsigned int k=0x80U;   /* computed */
+        if (!strcmp(id,"NET") || !strcmp(id,"ROADSHOW")) k|=ND_IPC_NETWORK;
+        if (!strcmp(id,"DOPUS4")) k|=ND_IPC_NO_GRAPH;
+        if (!strcmp(id,"ARCHIVE")) k|=ND_IPC_NO_GRAPH|ND_IPC_ARCHIVE;
+        if (!strcmp(id,"BITSKIM")) k|=ND_IPC_BITSKIM;
+        if (!strcmp(id,"CPU")) k|=ND_IPC_CPU;
+        strncpy(dock->ipc_kind_id[index],id,ND_ID_LEN-1);
+        dock->ipc_kind_id[index][ND_ID_LEN-1]='\0';
+        dock->ipc_kind[index]=(unsigned char)k;
+    }
+    return dock->ipc_kind[index];
+}
+/* sync_plugin_twins() for twins the caller already found. */
+static void sync_twin_list(struct NDDock *dock,int source,const unsigned char *twins,int count)
+{
+    int t;
+    for (t=0;t<count;++t) sync_plugin_twin(dock,source,twins[t]);
+}
 static int receive_plugin_artwork(struct NDDock *dock,int index,const struct NDExtMessage *ext)
 {
     struct NDItem *item=&dock->conf.items[index];
     ULONG key=ext && (ext->flags&ND_EXT_HAS_ARTWORK) && ext->reserved<=255 ? ext->reserved2[0]:0;
     UWORD state=key ? ext->reserved:0;
-    int changed=dock->plugin_art_key[index]!=key || dock->plugin_art_state[index]!=state;
+    int changed;
+    if(!key && !strcmp(item->id,"MUSIC"))key=nd_artwork_key("music");
+    changed=dock->plugin_art_key[index]!=key || dock->plugin_art_state[index]!=state;
     dock->plugin_art_key[index]=key;dock->plugin_art_state[index]=state;
     if(key || !strncmp(item->caption,"ART:",4))load_plugin_artwork(dock,index);
     return changed;
@@ -374,8 +427,16 @@ void process_ipc(struct NDDock *dock, int quitting)
     int index, changed,i,packet_abandoned,graph_only,has_graph,has_media;
     unsigned int packets=0;
     unsigned char abandoned[ND_MAX_ITEMS];
+    unsigned char twins[ND_MAX_ITEMS];
+    int twin_count=0;
+    unsigned int kind;
+    ND_TRACE_START(render_start);
     memset(abandoned,0,sizeof(abandoned));
     while ((m = next_plugin_packet(dock,&packets)) != NULL) {
+#if defined(ND_TRACE) || defined(ND_RUNTIME_TRACE)
+        ULONG trace_start=nd_trace_level ? nd_trace_now():0;int trace_slot=-1;
+#endif
+        ND_TRACE_END(NDT_PACKET,nd_trace_now());
         if (m->exec_msg.mn_Length < sizeof(struct NDMessage)) {
             dock->diagnostic_reclaimed_replies+=(ULONG)nd_reply_finish((struct Message *)m);
             continue;
@@ -399,17 +460,39 @@ void process_ipc(struct NDDock *dock, int quitting)
             ext = m->version==ND_EXT_ABI_VERSION ? (struct NDExtMessage *)m : NULL;
             /* Capabilities describe the host, not this message's command.
              * Badge/notice replies must not revoke negotiated artwork support. */
-            if (ext) ext->event2=ND_EVENT2_HOST_THUMBNAIL|ND_EVENT2_HOST_ALERTS|ND_EVENT2_HOST_ARTWORK|ND_EVENT2_HOST_ARTWORK_META;
+            if (ext) ext->event2=ND_EVENT2_HOST_LONG_NOTICE|ND_EVENT2_HOST_THUMBNAIL|ND_EVENT2_HOST_ALERTS|ND_EVENT2_HOST_ARTWORK|ND_EVENT2_HOST_ARTWORK_META|ND_EVENT2_HOST_SUPPORT|
+                (nd_trace_level==2 ? ND_EVENT2_SUPPORT_TRACE:nd_trace_level==1 ? ND_EVENT2_SUPPORT_LOGGING:0)|
+                (dock->plugin_sampler ? ND_EVENT2_SUPPORT_SAMPLE:0);
             has_graph = m->version==ND_GRAPH_ABI_VERSION ||
                         (ext && (ext->flags&ND_EXT_HAS_GRAPH));
             has_media = m->version==ND_MEDIA_ABI_VERSION ||
                         (ext && (ext->flags&ND_EXT_HAS_MEDIA));
             if (item) {
+#if defined(ND_TRACE) || defined(ND_RUNTIME_TRACE)
+                trace_slot=(int)(item-dock->conf.items);
+#endif
+                ND_TRACE_TILE_KIND((unsigned int)(item-dock->conf.items),nd_option_schema_id(&dock->conf,item->id));
+                ND_TRACE_PACKET((unsigned int)(item-dock->conf.items),m->command==ND_MSG_BADGE,has_graph);
                 m->event = ND_EVENT_NONE;
-                if(m->command==ND_MSG_THUMBNAIL){
+                if(m->command==ND_MSG_SUPPORT){
+                    const struct NDPluginSupportStats *stats=&((struct NDPluginSupportMessage *)m)->stats;
+                    index=(int)(item-dock->conf.items);
+                    if(!ext || m->exec_msg.mn_Length<sizeof(struct NDPluginSupportMessage) || stats->version!=ND_PLUGIN_SUPPORT_VERSION || stats->operation>=ND_PLUGIN_OP_COUNT || stats->phase>3)m->event=ND_EVENT_QUIT;
+                    else{
+                        ULONG now=diagnostic_ticks(),period=nd_trace_level==2 ? 50UL:250UL;
+                        if(!dock->plugin_support_stamp[index] || now-dock->plugin_support_stamp[index]>=period){
+                            dock->plugin_support[index]=*stats;strcpy(dock->plugin_support_id[index],item->id);dock->plugin_support_stamp[index]=now;
+                            nd_trace_plugin_support((unsigned int)index,stats);
+                        }
+                    }
+                    /* Metadata must not consume pending click, media or settings actions. */
+                }else if(m->command==ND_MSG_THUMBNAIL){
                     index=(int)(item-dock->conf.items);
                     if(!ext||m->exec_msg.mn_Length<sizeof(struct NDThumbnailMessage)||!nd_thumbnail_valid(&((struct NDThumbnailMessage *)m)->picture))m->event=ND_EVENT_QUIT;
                     else if(receive_thumbnail(dock,index,&((struct NDThumbnailMessage *)m)->picture))mark_tile_dirty(dock,index);
+                }else if(m->command==ND_MSG_NOTICE_LONG){
+                    if(!ext || m->exec_msg.mn_Length<sizeof(struct NDNoticeMessage))m->event=ND_EVENT_QUIT;
+                    else{struct NDNoticeMessage *notice=(struct NDNoticeMessage *)m;notice->title[80]=0;notice->text[512]=0;dock_alert(dock,m->id,notice->title,notice->text,m->meter);}
                 }else if(m->command==ND_MSG_NOTICE){
                     dock_alert(dock,m->id,m->caption,m->value,m->meter);
                 } else if (m->command == ND_MSG_UPDATE) {
@@ -421,10 +504,12 @@ void process_ipc(struct NDDock *dock, int quitting)
                      * stranded on a tile which owns no process.  This runs
                      * before the media branch below, so a control pressed on
                      * a second view goes out in this reply, not the next. */
+                    twin_count=0;
                     for (i=0;i<dock->conf.count;++i) {
                         struct NDItem *view=&dock->conf.items[i];
                         if (i==index || view->kind!=ND_ITEM_PLUGIN ||
                             strcmp(view->id,item->id)) continue;
+                        twins[twin_count++]=(unsigned char)i;
                         item->clicks+=view->clicks;
                         view->clicks=0;
                         dock->plugin_event2[index]|=dock->plugin_event2[i];
@@ -434,7 +519,9 @@ void process_ipc(struct NDDock *dock, int quitting)
                             view->settings_dirty=0;
                         }
                         if (view->media_event) {
-                            item->media_event|=view->media_event;
+                            item->media_event=(unsigned short)nd_media_merge(
+                                item->media_event,view->media_event,
+                                ND_EVENT_MEDIA_PLAY_PAUSE);
                             if ((view->media_event&ND_EVENT_MEDIA_VOLUME) &&
                                 view->media_volume_request<=100U)
                                 item->media_volume_request=
@@ -455,8 +542,9 @@ void process_ipc(struct NDDock *dock, int quitting)
                      * changing meter therefore needs no full tile repaint. */
                     graph_only = item->online;
                     if (m->caption[0]) {
-                        if (strcmp(item->caption, m->caption)) changed = 1;
-                        strncpy(item->caption, m->caption, sizeof(item->caption) - 1);
+                        const char *caption=nd_plugin_name_equal(m->caption,item->label) ? item->label:m->caption;
+                        if (strcmp(item->caption,caption)) changed = 1;
+                        strncpy(item->caption,caption,sizeof(item->caption) - 1);
                         item->caption[sizeof(item->caption) - 1] = '\0';
                     }
                     if(receive_plugin_artwork(dock,index,ext))changed=1;
@@ -511,7 +599,8 @@ void process_ipc(struct NDDock *dock, int quitting)
                      * older client could never receive them. */
                     if (ext) ext->event2|=dock->plugin_event2[index];
                     dock->plugin_event2[index]=0;
-                    if (!strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW")) {
+                    kind=ipc_kind(dock,index);
+                    if (kind&ND_IPC_NETWORK) {
                         /* OFFLINE, or packet rates / ONLINE.  Transitions
                          * only: the first report after start-up sets the
                          * state without running a hook. */
@@ -545,14 +634,13 @@ void process_ipc(struct NDDock *dock, int quitting)
                     }
                     nd_graph_push(&dock->history[index], sample_a, sample_b);
                     ++dock->graph_samples[index];
-                    if (item->graph && strcmp(item->id,"DOPUS4") &&
-                        strcmp(item->id,"ARCHIVE")) {
+                    if (item->graph && !(kind&ND_IPC_NO_GRAPH)) {
                         if (graph_only) {
                             dock->graph_step[index]=1;
                             changed=0;
                         } else changed = 1;
                     } else graph_only = 0;
-                    if(!strcmp(item->id,"BITSKIM")){
+                    if(kind&ND_IPC_BITSKIM){
                         m->event|=item->media_event&ND_EVENT_BITSKIM_ACTIONS;
                         item->media_event&=~ND_EVENT_BITSKIM_ACTIONS;
                     }
@@ -572,17 +660,17 @@ void process_ipc(struct NDDock *dock, int quitting)
                         item->settings_dirty=0;
                         m->event |= ND_EVENT_SETTINGS;
                     }
-                    if(changed && (!strcmp(item->id,"NET") || !strcmp(item->id,"ROADSHOW")) &&
+                    if(changed && (kind&ND_IPC_NETWORK) &&
                        (!strcmp(item->value,"ACTION FAILED") || !strcmp(item->value,"WORKER FAILED")))
                         show_feedback(dock,"Could not change network state - check Network settings",1);
-                    if((!strcmp(item->id,"CPU") || (changed && (!strcmp(item->id,"ARCHIVE") || nd_collection_plugin_path(item->command)))) && dock->tip_item==index)
+                    if(dock->tip_item==index && ((kind&ND_IPC_CPU) || (changed && ((kind&ND_IPC_ARCHIVE) || nd_collection_plugin_path(item->command)))))
                         close_tooltip(dock);
                     if (changed) {
                         if (dock->dirty_tiles[index])
                             ++dock->diagnostic_coalesced_updates;
                         mark_tile_dirty(dock,index);
                     } else if (!graph_only) ++dock->diagnostic_unchanged_updates;
-                    sync_plugin_twins(dock,index);
+                    sync_twin_list(dock,index,twins,twin_count);
                 } else if (m->command == ND_MSG_BADGE) {
                     char badge[ND_BADGE_LEN];
                     strncpy(badge,m->value,ND_BADGE_LEN-1);
@@ -625,6 +713,9 @@ void process_ipc(struct NDDock *dock, int quitting)
             }
         }
         dock->diagnostic_reclaimed_replies+=(ULONG)nd_reply_finish((struct Message *)m);
+#if defined(ND_TRACE) || defined(ND_RUNTIME_TRACE)
+        if(trace_slot>=0)nd_trace_packet_time((unsigned int)trace_slot,trace_start);
+#endif
     }
     if (!quitting) for (i=0;i<dock->conf.count;++i)
         if (abandoned[i] &&
@@ -639,6 +730,7 @@ void process_ipc(struct NDDock *dock, int quitting)
     /* A running timer coalesces simultaneous plugin messages into one paint
      * pass. If timer.device is unavailable, retain the immediate fallback. */
     if (!dock->timer_open && !quitting) flush_dirty_tiles(dock);
+    ND_TRACE_END(NDT_IPC,render_start);
 }
 int register_port(struct NDDock *dock)
 {
@@ -749,4 +841,4 @@ void wake_pending_plugins(struct NDDock *dock)
 }
 
 void dock_alert(struct NDDock *dock,const char *source,const char *title,const char *text,unsigned int severity)
-{int i;nd_alerts_add(&dock->alerts,source,title,text,severity,(diagnostic_ticks()-dock->alerts_started)/ND_DIAGNOSTIC_TICKS_PER_SECOND);for(i=0;i<dock->conf.count;++i)if(!strcmp(dock->conf.items[i].id,"ALERTS"))wake_plugin(dock,i);}
+{unsigned long before=dock->alerts.sequence;nd_alerts_add(&dock->alerts,source,title,text,severity,(diagnostic_ticks()-dock->alerts_started)/ND_DIAGNOSTIC_TICKS_PER_SECOND);if(dock->alerts.sequence!=before)nd_aminotis_post(dock->conf.send_alerts_aminotis,source,title,text,severity);}

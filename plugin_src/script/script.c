@@ -162,7 +162,7 @@ int main(int argc,char **argv)
             if (problem) {strcpy(value,problem);meter=ND_NO_METER;}
             click_pending=0;run_now=0;since=0;
         }
-        event=nd_client_update_quiet(&client,caption,value,meter,elapsed,500U);
+        event=nd_client_update_art_meter_quiet(&client,caption,value,"script",run.timed_out ? 2U:run.msg ? 1U:0U,meter,elapsed,500U);
         if (badge_set) {event|=nd_client_set_badge(&client,badge);badge_set=0;}
         if (event&ND_EVENT_QUIT) break;
         if (event&ND_EVENT_SETTINGS) {reread=1;run_now=1;}

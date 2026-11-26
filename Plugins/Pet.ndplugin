@@ -1,0 +1,13 @@
+NOVADOCK_ID=PET
+NOVADOCK_PROGRAM=Pet
+NOVADOCK_NAME=PET
+NOVADOCK_VERSION=0.1.1
+NOVADOCK_AUTHOR=NovaDock
+NOVADOCK_DESCRIPTION=An animated companion: a cat, Gerald the grumpy stapler, a dog, a rabbit or Bob the ball.
+NOVADOCK_LICENSE=MIT
+NOVADOCK_FEATURES=click,artwork
+NOVADOCK_ABI=1
+NOVADOCK_OPTION=CHARACTER|Character|CHOICE|Cat,Gerald,Dog,Rabbit,Bob|Cat
+NOVADOCK_OPTION=NAME|Name|TEXT||Whiskers
+NOVADOCK_OPTION=SPEED|Animation speed|CHOICE|Slow,Normal,Fast|Normal
+NOVADOCK_OPTION=SLEEP|Minutes before napping|UINT|1,30|2

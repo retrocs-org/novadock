@@ -12,6 +12,7 @@
 #include "nd_config.h"
 #include "nd_artwork.h"
 #include "nd_manifest.h"
+#include "nd_retired_plugins.h"
 #include "nd_manifest_file.h"
 #include "nd_plugin_discovery.h"
 #include "nd_catalog_cache.h"
@@ -124,6 +125,7 @@ static void catalog_consider(struct CatalogWalk *w,const char *dir,
     } else {++cache_misses;r=read_icon_manifest(path,m);}
     /* A normal application icon is not a plugin manifest. */
     if (r<0) {if(stable && w->considered<=128 && w->negative_count++<ND_PLUGIN_CATALOG_MAX){strncpy(e->command,path,sizeof(e->command)-1);e->bundled=-1;catalog_remember(w,path,e,before);}return;}
+    if (nd_plugin_retired(m->id)) return;
     if (!r || (!cached && !nd_manifest_finish(m))) {
         if (!w->diagnostics) return;
         strncpy(e->problem,m->error[0] ? m->error : "invalid manifest",sizeof(e->problem)-1);

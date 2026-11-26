@@ -2,7 +2,20 @@
 #define ND_LAYOUT_H
 #include "nd_config.h"
 #define ND_LAYOUT_BORDER 7
+#define ND_DRAG_BAR_SIZE 16
+int nd_drag_offset(int origin,int delta,int length,int dock_length);
+int nd_drag_snap(int position,int delta,int length,int dock_length);
 #define ND_LAYOUT_MARGIN 5
+#define ND_HOVER_ICON_LIMIT 128
+#define ND_HOVER_FIXED 0
+#define ND_HOVER_ART 1
+#define ND_HOVER_WIDGET 2
+struct NDHoverLayoutItem {
+    int anchor,centre,base_width,base_height,width,height,label,vertical,kind,row,cross_shift;
+};
+void nd_hover_layout(struct NDHoverLayoutItem *items,int count,int focus,int gap,int left,int right);
+void nd_hover_layout_at(struct NDHoverLayoutItem *items,int count,int position,int gap,int left,int right);
+int nd_hover_size(int distance,int radius,int strength,int max_width,int max_height,int *width,int *height);
 struct NDLayout {
     int tile_width;
     int tile_height;
@@ -43,4 +56,8 @@ int nd_layout_row_used_cells(const struct NDConfig *cfg,int row,int columns);
  * produce 0 x 0; valid images are never enlarged. */
 void nd_icon_fit(int width, int height, int max_width, int max_height,
                  int *fitted_width, int *fitted_height);
+/* Distance-based growth inside explicit bounds; artwork and widgets use
+ * different limits. The in-tile fallback grows by up to 25%. */
+int nd_icon_wave_size(int distance,int radius,int max_width,int max_height,int *width,int *height);
+int nd_icon_hover_size(int tile_width,int tile_height,int tiny,int *width,int *height);
 #endif

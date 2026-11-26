@@ -116,6 +116,7 @@ package_epoch=$("$PYTHON" "$project_root/tools/archive_timestamps.py" "$drawer" 
 archive="$work/$name.lha"
 (cd "$work" && "$lha" -a1o5 "$archive" NovaDock NovaDock.info >/dev/null)
 "$lha" -t "$archive" >/dev/null
+"$PYTHON" "$project_root/tools/check_lha_compatibility.py" "$archive"
 
 # Unpack it again and compare every file, including Workbench .info data.
 check="$work/check"
@@ -127,6 +128,16 @@ cmp -s "$work/NovaDock.info" "$check/NovaDock.info"
     "$check/NovaDock" "$check/NovaDock.info"
 "$PYTHON" "$project_root/tools/check_package_assets.py" --runtime-drawer "$check/NovaDock"
 "$PYTHON" "$project_root/tools/check_plugin_health.py" "$check/NovaDock"
+# Coverage is mandatory for every local package. Complete native evidence is
+# mandatory for release.py and run_plugin_qa.py --package; bind it to this drawer.
+"$PYTHON" "$project_root/tools/check_plugin_qa.py"
+if [ "${ND_REQUIRE_PLUGIN_QA:-0}" = 1 ] && [ -z "${ND_PLUGIN_QA_EVIDENCE:-}" ]; then
+    echo "NovaDock: run tools/run_plugin_qa.py before packaging this release." >&2
+    exit 1
+fi
+if [ -n "${ND_PLUGIN_QA_EVIDENCE:-}" ]; then
+    "$PYTHON" "$project_root/tools/check_plugin_qa.py" --drawer "$check/NovaDock" --evidence "$ND_PLUGIN_QA_EVIDENCE"
+fi
 
 "$PYTHON" - "$archive" <<'CHECK'
 from pathlib import Path

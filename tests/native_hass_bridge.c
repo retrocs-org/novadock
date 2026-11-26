@@ -22,7 +22,7 @@ static struct AmiHASSMessage *exchange(struct AmiHASSClient *c,int kind,int offs
 int main(void)
 {
     struct NDHassBridge tile;struct AmiHASSClient observer;
-    struct AmiHASSMessage *m;BPTR lock,in,out;LONG rc;int i,result=10,owned=0;
+    struct AmiHASSMessage *m;BPTR lock,in,out;LONG rc;int i,offset,total,result=10,owned=0;
     memset(&tile,0,sizeof(tile));memset(&observer,0,sizeof(observer));
     if(running()){puts("FAIL: this test requires its own isolated bridge.");return 10;}
     lock=Lock("ENVARC:AmiHASS/Private/connection",ACCESS_READ);
@@ -44,18 +44,21 @@ int main(void)
     if(i==120){puts("FAIL: unconfigured bridge did not reach the tile.");goto finished;}
     nd_hass_bridge_action(&tile,"HASS_QA","sensor.novadock_qa","Toggle");
     nd_hass_bridge_close(&tile);
-    m=exchange(&observer,AMIHASS_DIAGNOSTICS,0);
-    if(!m){puts("FAIL: no diagnostic reply from bridge.");goto finished;}
-    rc=m->result==AMIHASS_OK && m->count==16 && m->total==24;
-    for(i=0;i<m->count;++i){const char *key=m->items[i].id;
-        if(!strcmp(key,"ipc.actions") || !strcmp(key,"http.actions") ||
-           !strcmp(key,"http.polls") || !strcmp(key,"http.catalogue"))
-            if(strtoul(m->items[i].state,NULL,10)!=0)rc=0;}
-    FreeVec(m);if(!rc){puts("FAIL: unexpected HTTP/action traffic.");goto finished;}
-    m=exchange(&observer,AMIHASS_DIAGNOSTICS,16);
-    if(!m)goto finished;rc=m->result==AMIHASS_OK && m->count==8;FreeVec(m);
-    if(!rc)goto finished;
-    puts("PASS: tile state and both diagnostic pages work; no HTTP or device actions.");
+    offset=0;total=-1;
+    do {
+        m=exchange(&observer,AMIHASS_DIAGNOSTICS,offset);
+        if(!m){puts("FAIL: no diagnostic reply from bridge.");goto finished;}
+        rc=m->result==AMIHASS_OK && m->offset==offset && m->count>0 &&
+           m->count<=AMIHASS_PAGE && m->total>=offset+m->count &&
+           (total<0 || m->total==total);
+        if(total<0)total=m->total;
+        for(i=0;i<m->count && i<AMIHASS_PAGE;++i){const char *key=m->items[i].id;
+            if(!strcmp(key,"ipc.actions") || !strncmp(key,"http.",5))
+                if(strtoul(m->items[i].state,NULL,10)!=0)rc=0;}
+        offset+=m->count;FreeVec(m);
+        if(!rc){puts("FAIL: invalid diagnostic page or unexpected traffic.");goto finished;}
+    }while(offset<total);
+    printf("PASS: tile state and all %d diagnostic rows work; no HTTP or device actions.\n",total);
     result=0;
 finished:
     nd_hass_bridge_close(&tile);

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "nd_sensors.h"
+#include "../plugin_src/sensors/nd_sensor_art.h"
 struct Registers {unsigned int version,temperature;int reads;};
 static unsigned int read16(void *context,unsigned int offset)
 {struct Registers *r=context;++r->reads;switch(offset){case 0xc0:return r->version;case 0xe0:return r->temperature;case 0xe2:return 180;case 0xe4:return 100;default:assert(0);return 0;}}
@@ -58,5 +59,13 @@ int main(void)
  f=tmpfile();assert(f);fputs("NDSENS2 100 1\nZZ_TEMP 50000 100\nZZ_TEMP 60000 100\n",f);rewind(f);assert(!nd_sensor_snapshot_read(f,&copy,100,120));fclose(f);
  f=tmpfile();assert(f);fputs("NDSENS2 100 3\nZZ_TEMP 50000 100\n",f);rewind(f);assert(!nd_sensor_snapshot_read(f,&copy,100,120));fclose(f);
  f=tmpfile();assert(f);fputs("NDSENS2 100 1\nZZ_TEMP 50000 100\n",f);rewind(f);assert(!nd_sensor_snapshot_read(f,&copy,99,120));rewind(f);assert(!nd_sensor_snapshot_read(f,&copy,300,120));fclose(f);
+ assert(!strcmp(nd_sensor_art(7),"SensorCPU") && !strcmp(nd_sensor_art(10),"SensorFPGA"));
+ assert(!strcmp(nd_sensor_named_art("RAM temperature","C"),"SensorRAM"));
+ assert(!strcmp(nd_sensor_named_art("FPGA probe","C"),"SensorFPGA"));
+ assert(!strcmp(nd_sensor_named_art("CPU external","C"),"SensorCPU"));
+ assert(!strcmp(nd_sensor_named_art("Board supply","V"),"SensorPower"));
+ assert(!strcmp(nd_sensor_named_art("RTC battery","%"),"SensorBattery"));
+ assert(!strcmp(nd_sensor_named_art("Chassis fan","rpm"),"SensorFan"));
+ assert(!strcmp(nd_sensor_named_art("Unknown device",""),"Sensor"));
  puts("Sensors: firmware-gated read-only ZZ registers, Warp parsing, bounds, formatting, stale readings and strict snapshots passed.");return 0;
 }

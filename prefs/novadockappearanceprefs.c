@@ -1,3 +1,5 @@
+#include "nd_metric_art.h"
+#include "nd_icon_colors.h"
 /* Appearance page for the unified NovaDock Preferences application.
  * Native GadTools/Intuition, OS 3.0+, baseline 68000.  Editing updates only
  * the local sample; Test is the explicit reversible live-preview action.
@@ -5,7 +7,6 @@
 #define A_UPDATES 950
 #define IntuitionBase NDAppearanceIntuitionBase
 #define GadToolsBase NDAppearanceGadToolsBase
-#define GfxBase NDAppearanceGfxBase
 #define AslBase NDAppearanceAslBase
 #include <exec/types.h>
 #include <graphics/gfxbase.h>
@@ -29,6 +30,8 @@
 #include "nd_prefs_session.h"
 #include "nd_numeric_gadget.h"
 #include "nd_theme.h"
+#include "nd_backdrop.h"
+#include "nd_ilbm.h"
 #include "nd_prefs_layout.h"
 #include "nd_prefs_help.h"
 
@@ -54,12 +57,25 @@
 #define A_LABELS 123
 #define A_SIZE 124
 #define A_IMPORT_THEME 127
-#define A_COLOR_COUNT 8
+#define A_BACKGROUND 128
+#define A_HOVER_MAGNIFICATION 129
+#define A_TOOLTIPS 130
+#define A_TRANSPARENCY 131
+#define A_COLOURFUL 132
+#define A_ALWAYS_ON_TOP 133
+#define A_AUTO_HIDE 134
+#define A_HIDE_DELAY 135
+#define A_HOVER_ANIMATION 136
+#define A_DRAG_BAR 137
+#define A_COLOR_COUNT 33
+#define A_METRIC_COLORS 13
 #define RGBBYTE(n) ((ULONG)(n) * 0x01010101UL)
 
 struct IntuitionBase *IntuitionBase = NULL;
 struct Library *GadToolsBase = NULL;
-struct GfxBase *GfxBase = NULL;
+/* Preferences pages are active one at a time. The shared artwork renderer
+ * uses the same graphics.library base as the active Appearance page. */
+extern struct GfxBase *GfxBase;
 struct Library *AslBase = NULL;
 
 struct AppearanceTheme {
@@ -69,6 +85,7 @@ struct AppearanceTheme {
 
 struct AppearancePrefs {
     int compact;
+    int notify_reload;
     struct NDConfig *cfg;
     struct NDConfig *baseline;
     struct Screen *screen;
@@ -81,6 +98,10 @@ struct AppearancePrefs {
     struct Gadget *g_position;
     struct Gadget *g_font;
     struct Gadget *g_labels;
+    struct Gadget *g_drag_bar;
+    struct Gadget *g_tooltips,*g_transparency,*g_colourful,*g_top,*g_auto_hide,*g_delay,*g_hover_animation;
+    struct Gadget *g_background;
+    struct Gadget *g_hover_magnification;
     struct Gadget *g_size;
     struct Gadget *g_shape;
     struct Gadget *g_width;
@@ -94,6 +115,9 @@ struct AppearancePrefs {
     int theme_count;
     int theme_capacity;
     LONG pens[A_COLOR_COUNT];
+    UBYTE pen_owned[A_COLOR_COUNT];
+    struct NDBackdrop background;
+    char preview_theme[ND_THEME_ID_LEN];
     int done;
     int status;
 };
@@ -105,9 +129,10 @@ static STRPTR appearance_shapes[] = {"Rounded", "Square", "Chamfer", "Minimal", 
  * plugin, not as transient dock tiles. */
 static STRPTR appearance_running[] = {"Off", "Mark", NULL};
 #define RUNNING_STATE(cfg) ((cfg)->running_apps ? 1 : 0)
-static STRPTR appearance_positions[] = {"Start", "Center", "End", NULL};
+static STRPTR appearance_positions[] = {"Start", "Center", "End", "Custom", NULL};
 static STRPTR appearance_fonts[] = {"Workbench", "Topaz 8", "Bold", NULL};
 static STRPTR appearance_labels[] = {"Always", "Hover", "Hidden", NULL};
+static STRPTR appearance_backgrounds[] = {"Solid", "Artwork", "Wallpaper", NULL};
 static STRPTR appearance_item_sizes[] = {"Normal", "Tiny", NULL};
 
 static int text_equal(const char *a,const char *b)
@@ -247,10 +272,44 @@ static void free_theme_catalogue(struct AppearancePrefs *p)
     p->theme_count=0;
     p->theme_capacity=0;
 }
+static ULONG background_choice(const struct NDConfig *cfg)
+{
+    return cfg->theme_artwork ? 1UL : cfg->wallpaper_match ? 2UL : 0UL;
+}
 static void setup_gadget(struct AppearancePrefs *p, struct NewGadget *ng,
                          int x, int y, int w, int h, UWORD id, STRPTR name)
 {
-    if(p->compact && x>=130 && y>=121)y-=28;
+    if(p->compact){
+        switch(id){
+        case A_THEME:x=190;y=21;w=130;break;
+        case A_SHAPE:x=380;y=21;w=100;break;
+        case A_RUNNING:x=535;y=21;w=70;break;
+        case A_SIDE:x=255;y=93;w=115;break;
+        case A_POSITION:x=500;y=93;w=105;break;
+        case A_FONT:x=240;y=111;w=140;break;
+        case A_SIZE:x=505;y=111;w=100;break;
+        case A_LABELS:x=255;y=129;w=115;break;
+        case A_BACKGROUND:x=505;y=129;w=100;break;
+        case A_WIDTH:x=198;y=147;w=44;break;
+        case A_HEIGHT:x=310;y=147;w=44;break;
+        case A_GAP:x=398;y=147;w=38;break;
+        case A_HOVER_MAGNIFICATION:x=552;y=147;w=44;break;
+        case A_COLOURFUL:x=160;y=165;w=18;break;
+        case A_TOOLTIPS:x=430;y=165;w=18;break;
+        case A_HOVER_ANIMATION:x=522;y=165;w=18;break;
+        case A_DRAG_BAR:x=430;y=183;w=18;break;
+        case A_TRANSPARENCY:x=285;y=183;w=50;break;
+        case A_ALWAYS_ON_TOP:x=160;y=201;w=18;break;
+        case A_AUTO_HIDE:x=350;y=201;w=18;break;
+        case A_HIDE_DELAY:x=552;y=201;w=44;break;
+        case A_IMPORT_THEME:x=132;y=219;w=82;break;
+        case A_REVERT:x=222;y=219;w=82;break;
+        case A_TEST:x=312;y=219;w=82;break;
+        case A_USE:x=402;y=219;w=82;break;
+        case A_SAVE:x=492;y=219;w=82;break;
+        default:break;
+        }
+    }
     memset(ng,0,sizeof(*ng));
     ng->ng_LeftEdge=nd_prefs_layout_x(&p->layout,x);
     ng->ng_TopEdge=nd_prefs_layout_y(&p->layout,y);
@@ -277,9 +336,12 @@ static void theme_rgb(struct AppearancePrefs *p,const char *theme_id,
                       UBYTE rgb[A_COLOR_COUNT][3])
 {
     struct NDThemeSpec spec;
+    int k;
     if (!nd_theme_load_id(p->theme_root,theme_id,&spec))
         nd_theme_load_id("SYS:NovaDock",theme_id,&spec);
-    memcpy(rgb,spec.rgb,A_COLOR_COUNT*3);
+    memcpy(rgb,spec.rgb,ND_THEME_COLOR_COUNT*3);
+    nd_icon_palette(spec.rgb,p->cfg->colourful_icons,rgb+ND_THEME_COLOR_COUNT);
+    for(k=1;k<=4;++k)nd_metric_palette(spec.rgb,p->cfg->colourful_icons,k,rgb+A_METRIC_COLORS+(k-1)*5);
 }
 
 static void free_pens(struct AppearancePrefs *p)
@@ -287,21 +349,31 @@ static void free_pens(struct AppearancePrefs *p)
     int i;
     if (!p->screen) return;
     for (i=0;i<A_COLOR_COUNT;++i) {
-        if (p->pens[i]>=0)
+        if (p->pens[i]>=0 && p->pen_owned[i])
             ReleasePen(p->screen->ViewPort.ColorMap,p->pens[i]);
-        p->pens[i]=-1;
+        p->pens[i]=-1;p->pen_owned[i]=0;
     }
 }
 
 static void obtain_pens(struct AppearancePrefs *p)
 {
     UBYTE rgb[A_COLOR_COUNT][3];
-    int i;
+    int i,max_pen;
     free_pens(p);
+    max_pen=p->screen->RastPort.BitMap->Depth>=8 ? 255:
+            (1<<p->screen->RastPort.BitMap->Depth)-1;
     theme_rgb(p,nd_config_theme_id(p->cfg),rgb);
-    for (i=0;i<A_COLOR_COUNT;++i)
+    for (i=0;i<A_COLOR_COUNT;++i) {
         p->pens[i]=ObtainBestPenA(p->screen->ViewPort.ColorMap,
                       RGBBYTE(rgb[i][0]),RGBBYTE(rgb[i][1]),RGBBYTE(rgb[i][2]),NULL);
+        if(p->pens[i]>max_pen){
+            ReleasePen(p->screen->ViewPort.ColorMap,p->pens[i]);
+            p->pens[i]=-1;
+        }
+        p->pen_owned[i]=p->pens[i]>=0;
+        if(p->pens[i]<0)p->pens[i]=FindColor(p->screen->ViewPort.ColorMap,
+                      RGBBYTE(rgb[i][0]),RGBBYTE(rgb[i][1]),RGBBYTE(rgb[i][2]),max_pen);
+    }
 }
 
 static ULONG preview_pen(struct AppearancePrefs *p, int index)
@@ -342,15 +414,17 @@ static void preview_tiny_running(struct AppearancePrefs *p,int x,int y,int w)
 {
     struct RastPort *rp=p->win->RPort;
     SetAPen(rp,preview_pen(p,7));
-    RectFill(rp,x+w-9,y+4,x+w-6,y+7);
+    RectFill(rp,x+w/2-1,y,x+w/2+1,y+1);
 }
 
 static void preview_tiny_icon(struct AppearancePrefs *p,int x,int y,
                               int w,int h,int artwork,int running)
 {
     struct RastPort *rp=p->win->RPort;
-    int size=h-8,ix,iy,cx,cy;
-    if (size>w-8) size=w-8;
+    int margin=artwork==2 ? 8-4*p->cfg->hover_magnification/100:8;
+    int size=h-margin,ix,iy,cx,cy;
+    if (size>w-margin) size=w-margin;
+    if(!p->compact && p->cfg->item_size!=ND_ITEM_SIZE_TINY && !p->cfg->hover_magnification && size>48)size=48;
     if (size<8) size=8;
     ix=x+(w-size)/2;iy=y+(h-size)/2;
     cx=ix+size/2;cy=iy+size/2;
@@ -395,7 +469,7 @@ static void preview_tiny_icon(struct AppearancePrefs *p,int x,int y,
         RectFill(rp,cx-size/3-1,cy-2,cx-size/3+2,cy+4);
         RectFill(rp,cx+size/3-2,cy-2,cx+size/3+1,cy+4);
     }
-    if (running) preview_tiny_running(p,x,y,w);
+    if (running) preview_tiny_running(p,ix,iy+size+2,size);
 }
 
 static void preview_tiny_clock(struct AppearancePrefs *p,int x,int y,int w,int h)
@@ -412,10 +486,11 @@ static void preview_tiny_clock(struct AppearancePrefs *p,int x,int y,int w,int h
     Move(rp,cx,cy);Draw(rp,cx+rad-3,cy-2);
 }
 
+static void preview_metric(struct AppearancePrefs *p,int kind,int x,int y,int w,int h);
+
 static void preview_tiny_sample(struct AppearancePrefs *p,int kind,
                                 int x,int y,int w,int h)
 {
-    int meter_x=x+5,meter_w=w-10;
     switch (kind) {
     case 0:
         preview_tiny_icon(p,x,y,w,h,0,0);
@@ -433,47 +508,103 @@ static void preview_tiny_sample(struct AppearancePrefs *p,int kind,
         preview_centered_text(p,x,y+h/2+3,w,3,"EXTR");
         break;
     case 5:
-        preview_centered_text(p,x,y+9,w,3,"RAM");
-        preview_meter(p,meter_x,y+14,meter_w,5,28);
-        preview_meter(p,meter_x,y+h-6,meter_w,7,61);
+        preview_metric(p,2,x,y,w,h);
         break;
     case 6:
-        preview_centered_text(p,x,y+10,w,3,"CPU");
-        preview_meter(p,meter_x,y+h-6,meter_w,5,37);
+        preview_metric(p,1,x,y,w,h);
+        break;
+    case 8:
+        preview_metric(p,4,x,y,w,h);
         break;
     default:
         if (!strcmp(nd_option_get(p->cfg,"CLOCK","FORMAT"),"ANALOG"))
             preview_tiny_clock(p,x,y,w,h);
         else
-            preview_centered_text(p,x,y+h/2+3,w,3,"12:34");
+            preview_metric(p,3,x,y,w,h);
         break;
+    }
+}
+
+struct PreviewMetric {struct AppearancePrefs *p;int x,y,size,kind;};
+static void preview_metric_box(void *ctx,int ink,int x,int y,int w,int h)
+{
+    struct PreviewMetric *p=(struct PreviewMetric *)ctx;
+    int color=A_METRIC_COLORS+(p->kind-1)*5+ink;
+    struct RastPort *rp=p->p->win->RPort;
+    int left=x*p->size/48,top=y*p->size/48;
+    int right=(x+w)*p->size/48,bottom=(y+h)*p->size/48;
+    if(right<=left || bottom<=top)return;
+    SetAPen(rp,preview_pen(p->p,color));
+    RectFill(rp,p->x+left,p->y+top,p->x+right-1,p->y+bottom-1);
+}
+static void preview_metric_text_box(void *ctx,int ink,int x,int y,int w,int h)
+{
+    struct PreviewMetric *m=(struct PreviewMetric *)ctx;
+    struct RastPort *rp=m->p->win->RPort;
+    SetAPen(rp,preview_pen(m->p,ink));
+    RectFill(rp,x,y,x+w-1,y+h-1);
+}
+static void preview_metric(struct AppearancePrefs *p,int kind,int x,int y,int w,int h)
+{
+    struct PreviewMetric m;int baseline;
+    int tiny=p->compact || p->cfg->item_size==ND_ITEM_SIZE_TINY;
+    m.p=p;m.kind=kind;m.size=h-(tiny ? 4:24);
+    if(m.size>w-(tiny ? 4:12))m.size=w-(tiny ? 4:12);
+    if(m.size>48)m.size=48;
+    if(m.size<16)return;
+    m.x=x+(w-m.size)/2;m.y=y+(h-(tiny ? 0:16)-m.size)/2;
+    nd_metric_art(&m,preview_metric_box,kind);
+    baseline=m.y+25*m.size/48+p->win->RPort->TxBaseline/2;
+    if(kind==2){
+        preview_metric_box(&m,3,7,16,34*28/100,5);
+        preview_metric_box(&m,4,7,27,34*61/100,5);
+    }else if(kind==4){
+        if(tiny){
+            nd_metric_tiny_text(&m,preview_metric_text_box,A_METRIC_COLORS+17,"42",m.x+12*m.size/48,m.y+13*m.size/48,28*m.size/48);
+            nd_metric_tiny_text(&m,preview_metric_text_box,A_METRIC_COLORS+19,"12",m.x+12*m.size/48,m.y+24*m.size/48,28*m.size/48);
+        }else{
+            preview_centered_text(p,m.x+12*m.size/48,m.y+19*m.size/48,28*m.size/48,A_METRIC_COLORS+17,"42");
+            preview_centered_text(p,m.x+12*m.size/48,m.y+29*m.size/48,28*m.size/48,A_METRIC_COLORS+19,"12");
+        }
+    }else{
+        int ink=A_METRIC_COLORS+(kind-1)*5+2;
+        const char *value=kind==1 ? "37%":"12:34";
+        if(tiny)nd_metric_tiny_text(&m,preview_metric_text_box,ink,value,m.x+4*m.size/48,m.y+25*m.size/48-2,40*m.size/48);
+        else preview_centered_text(p,m.x+4*m.size/48,baseline,40*m.size/48,ink,value);
+        if(kind==1)preview_metric_box(&m,3,11,33,26*37/100,2);
     }
 }
 
 static void preview_normal_sample(struct AppearancePrefs *p,int kind,
                                   int x,int y,int w,int h)
 {
-    int meter_x=x+6,meter_w=w-12;
+    int focused=kind==(p->cfg->hover_magnification ? 0:1);
+    int label=nd_label_visible(p->cfg->label_mode,0,focused);
+    if(p->cfg->label_mode==ND_LABEL_HOVER && p->cfg->hover_magnification)label=0;
     switch (kind) {
     case 0:
         /* A real launcher-like Shell sample: artwork, label and optional
          * running-app mark instead of a generic SHELL text rectangle. */
         preview_tiny_icon(p,x,y+2,w,h-18,2,p->cfg->running_apps);
-        preview_centered_text(p,x,y+h-5,w,3,"SHELL");
+        if(label)preview_centered_text(p,x,y+h-5,w,3,"SHELL");
         break;
     case 1:
-        preview_centered_text(p,x,y+10,w,3,"CLOCK");
-        preview_tiny_clock(p,x,y+10,w,h-12);
+        if(label)preview_centered_text(p,x,y+h-5,w,3,"CLOCK");
+        if(!strcmp(nd_option_get(p->cfg,"CLOCK","FORMAT"),"ANALOG"))
+            preview_tiny_clock(p,x,y+2,w,h-18);
+        else preview_metric(p,3,x,y,w,h);
         break;
     case 2:
-        preview_centered_text(p,x,y+10,w,3,"CPU");
-        preview_centered_text(p,x,y+h/2+3,w,3,"37%");
-        preview_meter(p,meter_x,y+h-7,meter_w,5,37);
+        if(label)preview_centered_text(p,x,y+h-5,w,3,"CPU");
+        preview_metric(p,1,x,y,w,h);
+        break;
+    case 3:
+        if(label)preview_centered_text(p,x,y+h-5,w,3,"RAM");
+        preview_metric(p,2,x,y,w,h);
         break;
     default:
-        preview_centered_text(p,x,y+10,w,3,"RAM");
-        preview_meter(p,meter_x,y+h/2,meter_w,5,28);
-        preview_meter(p,meter_x,y+h-7,meter_w,7,61);
+        if(label)preview_centered_text(p,x,y+h-5,w,3,"NET");
+        preview_metric(p,4,x,y,w,h);
         break;
     }
 }
@@ -481,6 +612,11 @@ static void preview_normal_sample(struct AppearancePrefs *p,int kind,
 static void preview_tile(struct AppearancePrefs *p,int x,int y,int w,int h,int color)
 {
     struct RastPort *rp=p->win->RPort;
+    if (color==2) {
+        nd_tile_highlight(rp,x,y,w,h,p->cfg->shape,preview_pen(p,2),preview_pen(p,5));
+        return;
+    }
+    if (p->background.parts[0].bitmap) return;
     SetAPen(rp,preview_pen(p,color));
     if (p->cfg->shape==ND_SHAPE_MINIMAL) {
         /* Minimal has no decorative progress-like baseline. */
@@ -493,7 +629,7 @@ static void preview_tile(struct AppearancePrefs *p,int x,int y,int w,int h,int c
         RectFill(rp,x,y+2,x+w,y+h-2);
     } else RectFill(rp,x,y,x+w,y+h);
     if (p->cfg->shape==ND_SHAPE_MINIMAL || w<8 || h<8) return;
-    SetAPen(rp,preview_pen(p,color==2 ? 5 : 2));
+    SetAPen(rp,preview_pen(p,2));
     if (p->cfg->shape==ND_SHAPE_CHAMFER) {
         Move(rp,x+5,y);Draw(rp,x+w-5,y);
         Move(rp,x+5,y);Draw(rp,x,y+5);Draw(rp,x,y+h-5);
@@ -513,77 +649,176 @@ static void preview_tile(struct AppearancePrefs *p,int x,int y,int w,int h,int c
     }
 }
 
-static void preview_background(struct AppearancePrefs *p,int x,int y,int w,int h)
+struct PreviewGeometry {
+    int left,top,width,height;
+    int row_x,row_y,tile_width,tile_height;
+};
+
+/* Keep the form's preview area fixed, but fit the shelf to the sample row.
+ * Coordinates remain in baseline font units until they are painted. */
+static void preview_geometry(struct AppearancePrefs *p,struct PreviewGeometry *g)
 {
-    struct RastPort *rp=p->win->RPort;
-    SetAPen(rp,preview_pen(p,0));
-    RectFill(rp,x,y,x+w,y+h);
+    int grip=p->cfg->drag_bar ? 12:0;
+    int available=p->layout.base_width-12-140+1;
+    int area_height=(p->compact ? 86:138)-46+1;
+    int sample_width=(p->layout.base_width>620 ? 534:454)-grip;
+    g->left=140;g->top=46;g->width=available;g->height=area_height;
+    g->tile_width=(sample_width-12)/5;
+    g->tile_height=p->compact ? 30:78;
+    g->row_x=147+grip;g->row_y=p->compact ? 51:55;
+    if (p->cfg->item_size==ND_ITEM_SIZE_TINY) {
+        g->tile_width=70;g->tile_height=p->compact ? 24:48;
+        g->width=5*g->tile_width+12+14+grip;
+        g->height=g->tile_height+(p->compact ? 8:14);
+        g->left+=(available-g->width)/2;
+        g->top+=(area_height-g->height)/2;
+        g->row_x=g->left+7+grip;
+        g->row_y=g->top+(g->height-g->tile_height)/2;
+    }
+}
+
+static int preview_thickness(struct AppearancePrefs *p)
+{
+    struct PreviewGeometry g;
+    preview_geometry(p,&g);
+    return nd_prefs_layout_y(&p->layout,g.top+g.height-1)-
+           nd_prefs_layout_y(&p->layout,g.top)+1;
+}
+
+/* Prepare only when a setting changes. Refresh messages just draw the cache. */
+static void prepare_preview(struct AppearancePrefs *p)
+{
+    const char *theme=nd_config_theme_id(p->cfg);
+    if (strcmp(p->preview_theme,theme)) {
+        nd_backdrop_free(&p->background,p->screen);
+        obtain_pens(p);
+        strcpy(p->preview_theme,theme);
+    }
+    if (!p->cfg->theme_artwork) {
+        nd_backdrop_free(&p->background,p->screen);
+    } else if (p->background.thickness!=preview_thickness(p)) {
+        struct DrawInfo *info=GetScreenDrawInfo(p->screen);
+        ULONG matte=info ? info->dri_Pens[BACKGROUNDPEN] : 0;
+        if (info) FreeScreenDrawInfo(p->screen,info);
+        nd_backdrop_load(&p->background,p->screen,p->theme_root,theme,
+                         preview_thickness(p),0,matte,NULL);
+    }
+}
+
+static void appearance_sections(struct AppearancePrefs *p)
+{
+    static const char *names[]={"Layout","Icons and labels","Background and effects","Behaviour"};
+    static const int rows[]={150,244,314,384};
+    struct DrawInfo *info;struct RastPort *rp;int i,x,y;
+    if(p->compact)return;
+    rp=p->win->RPort;info=GetScreenDrawInfo(p->screen);if(!info)return;
+    for(i=0;i<4;++i){
+        x=nd_prefs_layout_x(&p->layout,148);y=nd_prefs_layout_y(&p->layout,rows[i]);
+        SetAPen(rp,info->dri_Pens[TEXTPEN]);Move(rp,x,y);Text(rp,(STRPTR)names[i],strlen(names[i]));
+        x+=TextLength(rp,(STRPTR)names[i],strlen(names[i]))+10;
+        SetAPen(rp,info->dri_Pens[SHADOWPEN]);Move(rp,x,y-3);Draw(rp,nd_prefs_layout_x(&p->layout,685),y-3);
+    }
+    FreeScreenDrawInfo(p->screen,info);
 }
 
 static void draw_preview(struct AppearancePrefs *p)
 {
     struct RastPort *rp;
-    static const int tiny_kinds[4]={2,7,6,5};
-    int x,y,w,h,gap=3,i,column,columns=4,samples=4,start_x;
-    int sx,sy,sw,sh;
+    struct DrawInfo *info;
+    struct PreviewGeometry geometry;
+    static const int tiny_kinds[5]={2,7,6,5,8};
+    int x,y,w,h,gap=3,i,column,columns=5,samples=5,start_x;
+    int sx,sy,sw,sh,preview_x,preview_y,preview_w,preview_h;
     if (!p->win) return;
-    obtain_pens(p);
     rp=p->win->RPort;
     SetDrMd(rp,JAM1);
-    preview_background(p,nd_prefs_layout_x(&p->layout,140),
+    appearance_sections(p);
+    /* Clear the whole reserved area, including the old larger shelf and
+     * transparent corners, before painting the new footprint. */
+    info=GetScreenDrawInfo(p->screen);
+    SetAPen(rp,info ? info->dri_Pens[BACKGROUNDPEN]:0);
+    RectFill(rp,nd_prefs_layout_x(&p->layout,140),
         nd_prefs_layout_y(&p->layout,46),
-        nd_prefs_layout_w(&p->layout,468),
-        nd_prefs_layout_y(&p->layout,p->compact ? 40:68));
-    SetAPen(rp,preview_pen(p,4));
-    Move(rp,nd_prefs_layout_x(&p->layout,140),nd_prefs_layout_y(&p->layout,46));
-    Draw(rp,nd_prefs_layout_x(&p->layout,608),nd_prefs_layout_y(&p->layout,46));
-    Draw(rp,nd_prefs_layout_x(&p->layout,608),nd_prefs_layout_y(&p->layout,p->compact ? 86:114));
-    Draw(rp,nd_prefs_layout_x(&p->layout,140),nd_prefs_layout_y(&p->layout,p->compact ? 86:114));
-    Draw(rp,nd_prefs_layout_x(&p->layout,140),nd_prefs_layout_y(&p->layout,46));
-    /* Both sizes compare the same four representative items.  Tiny keeps
-     * their real compact proportions and centres the shorter row instead of
-     * substituting an unrelated eight-item sample. */
-    if (p->cfg->item_size==ND_ITEM_SIZE_TINY) {
-        w=70;h=48;
-        start_x=147+(454-(columns*w+(columns-1)*gap))/2;
-        y=56;
-    } else {
-        w=(454-(columns-1)*gap)/columns;h=58;
-        start_x=147;y=51;
+        nd_prefs_layout_x(&p->layout,p->layout.base_width-12),
+        nd_prefs_layout_y(&p->layout,p->compact ? 86:138));
+    if (info) FreeScreenDrawInfo(p->screen,info);
+    preview_geometry(p,&geometry);
+    preview_x=nd_prefs_layout_x(&p->layout,geometry.left);
+    preview_y=nd_prefs_layout_y(&p->layout,geometry.top);
+    preview_w=nd_prefs_layout_x(&p->layout,geometry.left+geometry.width-1)-preview_x+1;
+    preview_h=preview_thickness(p);
+    if (!nd_backdrop_paint(&p->background,rp,preview_x,preview_y,preview_w,
+                           0,0,preview_w,preview_h)) {
+        SetAPen(rp,preview_pen(p,0));
+        RectFill(rp,preview_x,preview_y,preview_x+preview_w-1,preview_y+preview_h-1);
+        SetAPen(rp,preview_pen(p,4));
+        Move(rp,preview_x,preview_y); Draw(rp,preview_x+preview_w-1,preview_y);
+        Draw(rp,preview_x+preview_w-1,preview_y+preview_h-1);
+        Draw(rp,preview_x,preview_y+preview_h-1); Draw(rp,preview_x,preview_y);
     }
-    if(p->compact){h=30;y=51;}
+    /* Both sizes compare the same five representative items. */
+    w=geometry.tile_width;h=geometry.tile_height;
+    start_x=geometry.row_x;y=geometry.row_y;
+    if(p->cfg->drag_bar){
+        int gx=preview_x+8,gy=preview_y+preview_h/2,j;
+        for(j=-6;j<=6;j+=4){
+            SetAPen(rp,preview_pen(p,6));RectFill(rp,gx,gy+j,gx+5,gy+j+1);
+            SetAPen(rp,preview_pen(p,3));RectFill(rp,gx,gy+j,gx+4,gy+j);
+        }
+    }
     for (i=0;i<samples;++i) {
         column=i%columns;x=start_x+column*(w+gap);
         sx=nd_prefs_layout_x(&p->layout,x);
         sy=nd_prefs_layout_y(&p->layout,y);
         sw=nd_prefs_layout_w(&p->layout,w);
         sh=nd_prefs_layout_y(&p->layout,h);
-        preview_tile(p,sx,sy,sw,sh,i==1 ? 2 : 1);
+        preview_tile(p,sx,sy,sw,sh,(!p->cfg->hover_magnification && i==1) ? 2 : 1);
         if (p->compact || p->cfg->item_size==ND_ITEM_SIZE_TINY) {
             preview_tiny_sample(p,tiny_kinds[i],sx,sy,sw,sh);
         } else {
             preview_normal_sample(p,i,sx,sy,sw,sh);
         }
+    }    if(!p->compact && p->cfg->item_size!=ND_ITEM_SIZE_TINY && p->cfg->label_mode==ND_LABEL_HOVER && p->cfg->hover_magnification){
+        int bx=nd_prefs_layout_x(&p->layout,147)+nd_prefs_layout_w(&p->layout,w)/2-26;
+        int by=preview_y+2,bw=52,bh=rp->TxHeight+6;
+        SetAPen(rp,preview_pen(p,0));RectFill(rp,bx,by,bx+bw-1,by+bh-1);
+        SetAPen(rp,preview_pen(p,5));Move(rp,bx,by);Draw(rp,bx+bw-1,by);Draw(rp,bx+bw-1,by+bh-1);Draw(rp,bx,by+bh-1);Draw(rp,bx,by);
+        preview_centered_text(p,bx,by+3+rp->TxBaseline,bw,3,"Shell");
     }
+
 }
 
 static void set_gadgets(struct AppearancePrefs *p)
 {
-    char width_text[8],height_text[8],gap_text[8];
+    char width_text[8],height_text[8],gap_text[8],hover_text[8],transparency_text[8],delay_text[8];
     int tiny=p->cfg->item_size==ND_ITEM_SIZE_TINY;
     if (tiny) p->cfg->label_mode=ND_LABEL_HIDDEN;
     sprintf(width_text,"%d",p->cfg->tile_width);
     sprintf(height_text,"%d",p->cfg->tile_height);
     sprintf(gap_text,"%d",p->cfg->gap);
+    sprintf(hover_text,"%d",p->cfg->hover_magnification);
+    sprintf(transparency_text,"%d",p->cfg->background_transparency);
+    sprintf(delay_text,"%d",p->cfg->hide_delay);
     GT_SetGadgetAttrs(p->g_theme,p->win,NULL,
                       GTCY_Active,catalogue_index(p,nd_config_theme_id(p->cfg)),
                       TAG_DONE);
     GT_SetGadgetAttrs(p->g_side,p->win,NULL,GTCY_Active,p->cfg->side,TAG_DONE);
     GT_SetGadgetAttrs(p->g_position,p->win,NULL,GTCY_Active,p->cfg->position,TAG_DONE);
     GT_SetGadgetAttrs(p->g_font,p->win,NULL,GTCY_Active,p->cfg->font_mode,TAG_DONE);
+    GT_SetGadgetAttrs(p->g_colourful,p->win,NULL,GTCB_Checked,(ULONG)p->cfg->colourful_icons,TAG_DONE);
+    GT_SetGadgetAttrs(p->g_top,p->win,NULL,GTCB_Checked,(ULONG)p->cfg->always_on_top,TAG_DONE);
+    GT_SetGadgetAttrs(p->g_auto_hide,p->win,NULL,GTCB_Checked,(ULONG)p->cfg->auto_hide,TAG_DONE);
+    GT_SetGadgetAttrs(p->g_delay,p->win,NULL,GTST_String,(ULONG)delay_text,GA_Disabled,(ULONG)!p->cfg->auto_hide,TAG_DONE);
+    GT_SetGadgetAttrs(p->g_tooltips,p->win,NULL,GTCB_Checked,(ULONG)p->cfg->tooltips,TAG_DONE);
+    GT_SetGadgetAttrs(p->g_drag_bar,p->win,NULL,GTCB_Checked,(ULONG)p->cfg->drag_bar,TAG_DONE);
+    GT_SetGadgetAttrs(p->g_hover_animation,p->win,NULL,GTCB_Checked,(ULONG)p->cfg->hover_animation,TAG_DONE);
     GT_SetGadgetAttrs(p->g_labels,p->win,NULL,
                       GTCY_Active,p->cfg->label_mode,
                       GA_Disabled,(ULONG)tiny,TAG_DONE);
+    GT_SetGadgetAttrs(p->g_background,p->win,NULL,GTCY_Active,background_choice(p->cfg),TAG_DONE);
+    GT_SetGadgetAttrs(p->g_hover_magnification,p->win,NULL,GTST_String,
+                      (ULONG)hover_text,TAG_DONE);
+    GT_SetGadgetAttrs(p->g_transparency,p->win,NULL,GTST_String,(ULONG)transparency_text,TAG_DONE);
     GT_SetGadgetAttrs(p->g_size,p->win,NULL,GTCY_Active,p->cfg->item_size,TAG_DONE);
     GT_SetGadgetAttrs(p->g_shape,p->win,NULL,GTCY_Active,p->cfg->shape,TAG_DONE);
     GT_SetGadgetAttrs(p->g_width,p->win,NULL,GTST_String,(ULONG)width_text,TAG_DONE);
@@ -591,29 +826,34 @@ static void set_gadgets(struct AppearancePrefs *p)
     GT_SetGadgetAttrs(p->g_gap,p->win,NULL,GTST_String,(ULONG)gap_text,TAG_DONE);
     GT_SetGadgetAttrs(p->g_running,p->win,NULL,
                       GTCY_Active,RUNNING_STATE(p->cfg),TAG_DONE);
+    prepare_preview(p);
     draw_preview(p);
 }
 
 static int collect_numbers(struct AppearancePrefs *p, int report)
 {
-    LONG w,h,gap;
+    LONG w,h,gap,hover,transparency,delay=p->cfg->hide_delay;
     if (!nd_numeric_gadget_read(p->g_width,p->win,&w) ||
         !nd_numeric_gadget_read(p->g_height,p->win,&h) ||
-        !nd_numeric_gadget_read(p->g_gap,p->win,&gap)) {
+        !nd_numeric_gadget_read(p->g_gap,p->win,&gap) ||
+        !nd_numeric_gadget_read(p->g_hover_magnification,p->win,&hover) ||
+        !nd_numeric_gadget_read(p->g_transparency,p->win,&transparency) ||
+        (p->cfg->auto_hide && !nd_numeric_gadget_read(p->g_delay,p->win,&delay))) {
         if (report) {
-            SetWindowTitles(p->win,(STRPTR)"NovaDock Appearance - enter numeric dimensions",(STRPTR)-1);
+            SetWindowTitles(p->win,(STRPTR)"NovaDock Appearance - enter whole numbers",(STRPTR)-1);
             DisplayBeep(p->screen);
         }
         return 0;
     }
-    if (w<55 || w>140 || h<46 || h>100 || gap<0 || gap>16) {
+    if (w<55 || w>140 || h<46 || h>100 || gap<0 || gap>16 || hover<0 || hover>100 || transparency<0 || transparency>100 || delay<1 || delay>60) {
         if (report) {
-            SetWindowTitles(p->win,(STRPTR)"NovaDock Appearance - invalid dimensions",(STRPTR)-1);
+            SetWindowTitles(p->win,(STRPTR)"NovaDock Appearance - check sizes, percentages and hide delay (1-60)",(STRPTR)-1);
             DisplayBeep(p->screen);
         }
         return 0;
     }
     p->cfg->tile_width=(int)w;p->cfg->tile_height=(int)h;p->cfg->gap=(int)gap;
+    p->cfg->hover_magnification=(int)hover;p->cfg->background_transparency=(int)transparency;p->cfg->hide_delay=(int)delay;
     return 1;
 }
 
@@ -720,6 +960,67 @@ static int theme_removable(struct AppearancePrefs *p,const char *id)
            file_exists(path);
 }
 
+/* ---- Theme artwork: imported with a pack, or picked as a backdrop ---- */
+static const char *const theme_images[]={"Backdrop.iff","BackdropLeft.iff","BackdropRight.iff",NULL};
+/* Indexed ILBM the dock can use as backdrop artwork: at most 96 x 96 pixels
+ * and 16 colours, which nd_ilbm_load() enforces. */
+static int backdrop_image_valid(const char *path)
+{
+    struct NDILBM *art=(struct NDILBM *)AllocVec(sizeof(*art),MEMF_ANY);
+    int ok;
+    if (!art) return 0;
+    ok=nd_ilbm_load(path,art)!=0;
+    FreeVec(art);
+    return ok;
+}
+/* Copy SOURCE to DEST through a temporary file, so an interrupted copy
+ * never replaces a working image with a partial one. */
+static int install_file(const char *source,const char *dest)
+{
+    char temporary[600];
+    if ((int)strlen(dest)+5>=(int)sizeof(temporary)) return 0;
+    strcpy(temporary,dest);strcat(temporary,".tmp");
+    DeleteFile((STRPTR)temporary);
+    if (!copy_file(source,temporary)) {DeleteFile((STRPTR)temporary);return 0;}
+    DeleteFile((STRPTR)dest);
+    if (!Rename((STRPTR)temporary,(STRPTR)dest)) {DeleteFile((STRPTR)temporary);return 0;}
+    return 1;
+}
+/* A pack's Images/Backdrop*.iff go beside its imported theme.cfg.  Returns
+ * how many were installed, or -1 when one was present but not usable. */
+static int import_theme_images(const char *source_drawer,const char *theme_dir)
+{
+    char source_images[512],images[512],source[560],dest[560];
+    int i,installed=0,bad=0;
+    if (!join_path(source_images,sizeof(source_images),source_drawer,"Images") ||
+        !join_path(images,sizeof(images),theme_dir,"Images")) return 0;
+    for (i=0;theme_images[i];++i) {
+        if (!join_path(source,sizeof(source),source_images,theme_images[i]) ||
+            !file_exists(source)) continue;
+        if (!backdrop_image_valid(source)) {bad=1;continue;}
+        create_settings_dir(images);
+        if (join_path(dest,sizeof(dest),images,theme_images[i]) && install_file(source,dest)) ++installed;
+        else bad=1;
+    }
+    return bad ? -1 : installed;
+}
+/* Delete the artwork an import or the picker installed, and Images if empty. */
+static void remove_theme_images(const char *theme_dir)
+{
+    char images[512],path[560],extra[570];
+    int i;
+    BPTR lock;
+    if (!join_path(images,sizeof(images),theme_dir,"Images")) return;
+    for (i=0;theme_images[i];++i)
+        if (join_path(path,sizeof(path),images,theme_images[i])) {
+            DeleteFile((STRPTR)path);
+            sprintf(extra,"%s.tmp",path);DeleteFile((STRPTR)extra);
+        }
+    lock=Lock((STRPTR)images,ACCESS_READ);
+    if (lock) {UnLock(lock);DeleteFile((STRPTR)images);}
+}
+
+
 static int remove_selected_theme(struct AppearancePrefs *p,const char *id)
 {
     struct EasyStruct es;
@@ -747,6 +1048,7 @@ static int remove_selected_theme(struct AppearancePrefs *p,const char *id)
         sprintf(extra,"%s%s",path,leftovers[i]);
         DeleteFile((STRPTR)extra);
     }
+    remove_theme_images(theme_dir);
     /* Succeeds only for an empty drawer: other files are never touched. */
     lock=Lock((STRPTR)theme_dir,ACCESS_READ);
     if (lock) {UnLock(lock);DeleteFile((STRPTR)theme_dir);}
@@ -760,13 +1062,14 @@ static int remove_selected_theme(struct AppearancePrefs *p,const char *id)
     return 1;
 }
 
+
 static int install_selected_theme(struct AppearancePrefs *p)
 {
     struct FileRequester *fr;
     struct NDThemeSpec spec;
     char source[512],themes_dir[512],theme_dir[512];
-    char destination[512],temporary[512],backup[512],id[ND_THEME_ID_LEN];
-    int had_destination,ok=0;
+    char destination[512],temporary[512],backup[512],id[ND_THEME_ID_LEN],source_drawer[512];
+    int had_destination,ok=0,images;
     BPTR lock;
     if (!AslBase) {
         SetWindowTitles(p->win,(STRPTR)"NovaDock Appearance - file requester unavailable",(STRPTR)-1);
@@ -786,6 +1089,7 @@ static int install_selected_theme(struct AppearancePrefs *p)
         DisplayBeep(p->screen);return 0;
     }
     strncpy(source,fr->fr_Drawer,sizeof(source)-1);source[sizeof(source)-1]=0;
+    strcpy(source_drawer,source);
     if (!AddPart(source,fr->fr_File,sizeof(source))) source[0]=0;
     FreeAslRequest(fr);
     if (!source[0] || !join_path(themes_dir,sizeof(themes_dir),p->theme_root,"Themes") ||
@@ -811,15 +1115,94 @@ static int install_selected_theme(struct AppearancePrefs *p)
     }
     DeleteFile((STRPTR)backup);
     nd_config_set_theme(p->cfg,id);
+    p->preview_theme[0]=0;
     nd_theme_apply_preferences(p->cfg,&spec);
     nd_theme_apply_spacers(p->cfg,&spec);
     ND_PREFS_MARK_DIRTY();ok=1;
-    SetWindowTitles(p->win,(STRPTR)"NovaDock Appearance - theme imported",(STRPTR)-1);
+    /* The pack's backdrop artwork comes along with its theme.cfg. */
+    images=import_theme_images(source_drawer,theme_dir);
+    SetWindowTitles(p->win,(STRPTR)(images<0 ?
+        "NovaDock Appearance - theme imported; some artwork was not usable" : images ?
+        "NovaDock Appearance - theme and artwork imported" :
+        "NovaDock Appearance - theme imported"),(STRPTR)-1);
     return ok;
 failed_temp:
     DeleteFile((STRPTR)temporary);
 failed:
     SetWindowTitles(p->win,(STRPTR)"NovaDock Appearance - theme import failed",(STRPTR)-1);
+    DisplayBeep(p->screen);return 0;
+}
+
+/* Backdrop image...: pick an ILBM as the dock's backdrop artwork.  An
+ * imported theme takes it directly; for a bundled theme a "Custom" theme is
+ * created from the current one (its colours, shape and placement), so
+ * bundled themes are never modified.  The new centre replaces any end caps,
+ * which would not match it. */
+static int pick_backdrop_image(struct AppearancePrefs *p)
+{
+    struct FileRequester *fr;
+    struct NDThemeSpec spec;
+    char image[512],themes_dir[512],theme_dir[512],images[512],path[560],source_cfg[512];
+    char target[ND_THEME_ID_LEN],current[ND_THEME_ID_LEN];
+    int i,user_theme;
+    if (!AslBase) {DisplayBeep(p->screen);return 0;}
+    fr=(struct FileRequester *)AllocAslRequestTags(ASL_FileRequest,
+        ASLFR_TitleText,(ULONG)"Select a backdrop image (ILBM, up to 96x96, 16 colours)",
+        ASLFR_Window,(ULONG)p->win,ASLFR_SleepWindow,TRUE,
+        ASLFR_DoPatterns,TRUE,ASLFR_InitialPattern,(ULONG)"#?.(iff|ilbm)",TAG_DONE);
+    if (!fr) return 0;
+    if (!AslRequest(fr,NULL)) {FreeAslRequest(fr);return 0;}
+    strncpy(image,fr->fr_Drawer,sizeof(image)-1);image[sizeof(image)-1]=0;
+    if (!AddPart(image,fr->fr_File,sizeof(image))) image[0]=0;
+    FreeAslRequest(fr);
+    if (!image[0] || !backdrop_image_valid(image)) {
+        SetWindowTitles(p->win,(STRPTR)"NovaDock Appearance - needs an ILBM of up to 96x96 pixels and 16 colours",(STRPTR)-1);
+        DisplayBeep(p->screen);return 0;
+    }
+    strncpy(current,nd_config_theme_id(p->cfg),sizeof(current)-1);current[sizeof(current)-1]=0;
+    if (!join_path(themes_dir,sizeof(themes_dir),p->theme_root,"Themes")) return 0;
+    user_theme=nd_theme_index_from_id(current)<0 &&
+               join_path(theme_dir,sizeof(theme_dir),themes_dir,current) &&
+               join_path(path,sizeof(path),theme_dir,"theme.cfg") && file_exists(path);
+    strcpy(target,user_theme ? current : "Custom");
+    if (!join_path(theme_dir,sizeof(theme_dir),themes_dir,target) ||
+        !join_path(images,sizeof(images),theme_dir,"Images") ||
+        !join_path(path,sizeof(path),theme_dir,"theme.cfg")) goto failed;
+    create_settings_dir(themes_dir);create_settings_dir(theme_dir);
+    if (!user_theme) {
+        /* Custom starts as a copy of the current theme, renamed. */
+        FILE *in,*out;
+        char line[200];
+        int ok=1;
+        if (!join_path(source_cfg,sizeof(source_cfg),themes_dir,current)) goto failed;
+        strcat(source_cfg,"/theme.cfg");
+        in=fopen(source_cfg,"r");
+        if (!in) {sprintf(source_cfg,"SYS:NovaDock/Themes/%s/theme.cfg",current);in=fopen(source_cfg,"r");}
+        out=fopen(path,"w");
+        if (!out) {if (in) fclose(in);goto failed;}
+        if (fputs("NAME=Custom\n",out)<0) ok=0;
+        while (in && ok && fgets(line,sizeof(line),in))
+            if (strncmp(line,"NAME=",5) && fputs(line,out)<0) ok=0;
+        if (in) fclose(in);
+        if (fclose(out)!=0) ok=0;
+        if (!ok) {DeleteFile((STRPTR)path);goto failed;}
+    }
+    create_settings_dir(images);
+    for (i=1;theme_images[i];++i)
+        if (join_path(source_cfg,sizeof(source_cfg),images,theme_images[i])) DeleteFile((STRPTR)source_cfg);
+    if (!join_path(source_cfg,sizeof(source_cfg),images,theme_images[0]) ||
+        !install_file(image,source_cfg) ||
+        !nd_theme_load_id(p->theme_root,target,&spec)) goto failed;
+    nd_config_set_theme(p->cfg,target);
+    nd_theme_apply_preferences(p->cfg,&spec);
+    nd_theme_apply_spacers(p->cfg,&spec);
+    p->cfg->theme_artwork=1;p->cfg->wallpaper_match=0;
+    p->preview_theme[0]=0;
+    ND_PREFS_MARK_DIRTY();
+    SetWindowTitles(p->win,(STRPTR)"NovaDock Appearance - backdrop set; Test or Save to apply",(STRPTR)-1);
+    return 1;
+failed:
+    SetWindowTitles(p->win,(STRPTR)"NovaDock Appearance - backdrop image could not be installed",(STRPTR)-1);
     DisplayBeep(p->screen);return 0;
 }
 
@@ -841,8 +1224,10 @@ static int apply_appearance(struct AppearancePrefs *p, int permanent,int finish)
         if (!nd_control_write_config(p->cfg,"ENVARC:NovaDock/novadock.cfg")) return 0;
     }
     if (!nd_control_write_config(p->cfg,"ENV:NovaDock/novadock.cfg")) return 0;
-    rc=nd_control_reload();
+    rc=ND_CONTROL_OK;
     if (finish) {
+        /* Close this window before the dock samples its desktop background. */
+        p->notify_reload=1;
         /* The requested configuration is already safely in ENV: (and in
          * ENVARC: for Save).  A missing, old, or temporarily busy dock must
          * not trap Use/Save in Preferences; it will read the file on its next
@@ -850,6 +1235,7 @@ static int apply_appearance(struct AppearancePrefs *p, int permanent,int finish)
         ND_PREFS_MARK_CLEAN();ND_PREFS_CLEAR_PREVIEW();
         p->done=1;p->status=0;
     } else {
+        rc=nd_control_reload();
         ND_PREFS_MARK_PREVIEW();
         if (rc==ND_CONTROL_OK || rc==ND_CONTROL_NOHOST)
             SetWindowTitles(p->win,(STRPTR)"NovaDock Preferences - Appearance (test active)",(STRPTR)-1);
@@ -869,15 +1255,15 @@ static int apply_appearance(struct AppearancePrefs *p, int permanent,int finish)
 static int open_editor(struct AppearancePrefs *p)
 {
     struct NewGadget ng;
-    char width_text[8],height_text[8],gap_text[8];
+    char width_text[8],height_text[8],gap_text[8],hover_text[8],transparency_text[8],delay_text[8];
     int left,top,width,height,font_x=8,font_y=8;
     if (p->screen->RastPort.Font) {
         font_x=p->screen->RastPort.Font->tf_XSize;
         font_y=p->screen->RastPort.Font->tf_YSize;
     }
-    p->compact=(p->screen->Height-p->screen->BarHeight)*8/font_y<279;
+    p->compact=(p->screen->Height-p->screen->BarHeight)*8/font_y<480 || p->screen->Width*8/font_x<720;
     nd_prefs_layout_init(&p->layout,font_x,font_y,
-        p->screen->Width,p->screen->Height,p->screen->BarHeight,620,p->compact ? 239:267);
+        p->screen->Width,p->screen->Height,p->screen->BarHeight,(p->compact ? 620:700),p->compact ? 239:468);
     if (!nd_prefs_layout_fits(&p->layout,10,12)) return 0;
     width=p->layout.window_width;height=p->layout.window_height;
     left=nd_prefs_layout_left(&p->layout);top=nd_prefs_layout_top(&p->layout);
@@ -887,69 +1273,116 @@ static int open_editor(struct AppearancePrefs *p)
     sprintf(width_text,"%d",p->cfg->tile_width);
     sprintf(height_text,"%d",p->cfg->tile_height);
     sprintf(gap_text,"%d",p->cfg->gap);
+    sprintf(hover_text,"%d",p->cfg->hover_magnification);
+    sprintf(transparency_text,"%d",p->cfg->background_transparency);
+    sprintf(delay_text,"%d",p->cfg->hide_delay);
     if (!create_button(p,10,21,118,A_GENERAL,"General") ||
         !create_button(p,10,45,118,A_APPEARANCE,"> Appearance") ||
         !create_button(p,10,69,118,A_ITEMS,"Organize") ||
         !create_button(p,10,93,118,A_PLUGIN_MANAGER,"Plugins") ||
-        !create_button(p,10,117,118,A_DIAGNOSTICS,"Diagnostics") ||
+        !create_button(p,10,117,118,A_DIAGNOSTICS,"Support") ||
         !create_button(p,10,141,118,A_UPDATES,"Update") ||
         !create_button(p,10,165,118,A_ABOUT,"About")) return 0;
-    setup_gadget(p,&ng,190,21,130,16,A_THEME,"Theme:");
+    setup_gadget(p,&ng,160,288,18,12,A_COLOURFUL,"Colourful icons");
+    ng.ng_Flags=PLACETEXT_RIGHT;
+    p->g_colourful=p->last=CreateGadget(CHECKBOX_KIND,p->last,&ng,GTCB_Checked,(ULONG)p->cfg->colourful_icons,TAG_DONE);
+    if(!p->last)return 0;
+    setup_gadget(p,&ng,160,404,18,12,A_ALWAYS_ON_TOP,"Always on top");
+    ng.ng_Flags=PLACETEXT_RIGHT;
+    p->g_top=p->last=CreateGadget(CHECKBOX_KIND,p->last,&ng,GTCB_Checked,(ULONG)p->cfg->always_on_top,TAG_DONE);
+    if(!p->last)return 0;
+    setup_gadget(p,&ng,350,404,18,12,A_AUTO_HIDE,"Auto hide");
+    ng.ng_Flags=PLACETEXT_RIGHT;
+    p->g_auto_hide=p->last=CreateGadget(CHECKBOX_KIND,p->last,&ng,GTCB_Checked,(ULONG)p->cfg->auto_hide,TAG_DONE);
+    if(!p->last)return 0;
+    setup_gadget(p,&ng,620,404,44,16,A_HIDE_DELAY,"Hide delay:");
+    p->g_delay=p->last=CreateGadget(STRING_KIND,p->last,&ng,GTST_String,(ULONG)delay_text,GTST_MaxChars,2,GA_TabCycle,TRUE,GA_Disabled,(ULONG)!p->cfg->auto_hide,TAG_DONE);
+    if(!p->last)return 0;
+    setup_gadget(p,&ng,450,288,18,12,A_TOOLTIPS,"Tooltips");
+    ng.ng_Flags=PLACETEXT_RIGHT;
+    p->g_tooltips=p->last=CreateGadget(CHECKBOX_KIND,p->last,&ng,
+        GTCB_Checked,(ULONG)p->cfg->tooltips,TAG_DONE);
+    if(!p->last)return 0;
+    setup_gadget(p,&ng,200,21,180,16,A_THEME,"Theme:");
     p->g_theme=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
         GTCY_Labels,(ULONG)p->theme_labels,
         GTCY_Active,catalogue_index(p,nd_config_theme_id(p->cfg)),TAG_DONE);
     if (!p->last) return 0;
-    setup_gadget(p,&ng,380,21,100,16,A_SHAPE,"Shape:");
+    setup_gadget(p,&ng,535,21,150,16,A_SHAPE,"Shape:");
     p->g_shape=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
         GTCY_Labels,(ULONG)appearance_shapes,GTCY_Active,p->cfg->shape,TAG_DONE);
     if (!p->last) return 0;
-    setup_gadget(p,&ng,535,21,70,16,A_RUNNING,"Apps:");
+    setup_gadget(p,&ng,560,218,125,16,A_RUNNING,"Apps:");
     p->g_running=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
         GTCY_Labels,(ULONG)appearance_running,
         GTCY_Active,RUNNING_STATE(p->cfg),TAG_DONE);
     if (!p->last) return 0;
-    setup_gadget(p,&ng,255,121,115,16,A_SIDE,"Dock side:");
+    setup_gadget(p,&ng,250,170,115,16,A_SIDE,"Dock side:");
     p->g_side=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
         GTCY_Labels,(ULONG)appearance_sides,GTCY_Active,p->cfg->side,TAG_DONE);
     if (!p->last) return 0;
-    setup_gadget(p,&ng,500,121,105,16,A_POSITION,"Position:");
+    setup_gadget(p,&ng,560,170,125,16,A_POSITION,"Position:");
     p->g_position=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
         GTCY_Labels,(ULONG)appearance_positions,GTCY_Active,p->cfg->position,TAG_DONE);
     if (!p->last) return 0;
-    setup_gadget(p,&ng,240,149,140,16,A_FONT,"Font:");
+    setup_gadget(p,&ng,250,264,140,16,A_FONT,"Font:");
     p->g_font=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
         GTCY_Labels,(ULONG)appearance_fonts,GTCY_Active,p->cfg->font_mode,TAG_DONE);
     if (!p->last) return 0;
-    setup_gadget(p,&ng,505,149,100,16,A_SIZE,"Size:");
+    setup_gadget(p,&ng,250,194,115,16,A_SIZE,"Size:");
     p->g_size=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
         GTCY_Labels,(ULONG)appearance_item_sizes,
         GTCY_Active,p->cfg->item_size,TAG_DONE);
     if (!p->last) return 0;
-    setup_gadget(p,&ng,255,177,115,16,A_LABELS,"Labels:");
+    setup_gadget(p,&ng,560,264,125,16,A_LABELS,"Labels:");
     p->g_labels=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
         GTCY_Labels,(ULONG)appearance_labels,GTCY_Active,p->cfg->label_mode,
         GA_Disabled,(ULONG)(p->cfg->item_size==ND_ITEM_SIZE_TINY),TAG_DONE);
     if (!p->last) return 0;
-    setup_gadget(p,&ng,230,205,50,16,A_WIDTH,"Width:");
+    setup_gadget(p,&ng,250,334,140,16,A_BACKGROUND,"Background:");
+    p->g_background=p->last=CreateGadget(CYCLE_KIND,p->last,&ng,
+        GTCY_Labels,(ULONG)appearance_backgrounds,
+        GTCY_Active,background_choice(p->cfg),TAG_DONE);
+    if (!p->last) return 0;
+    setup_gadget(p,&ng,450,194,44,16,A_WIDTH,"Width:");
     p->g_width=p->last=CreateGadget(STRING_KIND,p->last,&ng,
         GTST_String,(ULONG)width_text,GTST_MaxChars,3,
         GA_TabCycle,TRUE,TAG_DONE);
     if (!p->last) return 0;
-    setup_gadget(p,&ng,365,205,50,16,A_HEIGHT,"Height:");
+    setup_gadget(p,&ng,620,194,44,16,A_HEIGHT,"Height:");
     p->g_height=p->last=CreateGadget(STRING_KIND,p->last,&ng,
         GTST_String,(ULONG)height_text,GTST_MaxChars,3,
         GA_TabCycle,TRUE,TAG_DONE);
     if (!p->last) return 0;
-    setup_gadget(p,&ng,500,205,45,16,A_GAP,"Gap:");
+    setup_gadget(p,&ng,250,218,44,16,A_GAP,"Gap:");
     p->g_gap=p->last=CreateGadget(STRING_KIND,p->last,&ng,
         GTST_String,(ULONG)gap_text,GTST_MaxChars,2,
         GA_TabCycle,TRUE,TAG_DONE);
     if (!p->last) return 0;
-    if (!create_button(p,132,235,82,A_IMPORT_THEME,"Import...") ||
-        !create_button(p,222,235,82,A_REVERT,"Revert") ||
-        !create_button(p,312,235,82,A_TEST,"Test") ||
-        !create_button(p,402,235,82,A_USE,"Use") ||
-        !create_button(p,492,235,82,A_SAVE,"Save")) return 0;
+    setup_gadget(p,&ng,250,358,44,16,A_HOVER_MAGNIFICATION,"Magnify %:");
+    p->g_hover_magnification=p->last=CreateGadget(STRING_KIND,p->last,&ng,
+        GTST_String,(ULONG)hover_text,GTST_MaxChars,3,GA_TabCycle,TRUE,TAG_DONE);
+    if (!p->last) return 0;
+    /* Magnified tiles ease in and out instead of snapping. */
+    setup_gadget(p,&ng,450,360,18,12,A_DRAG_BAR,"Show drag bar");
+    ng.ng_Flags=PLACETEXT_RIGHT;
+    p->g_drag_bar=p->last=CreateGadget(CHECKBOX_KIND,p->last,&ng,
+        GTCB_Checked,(ULONG)p->cfg->drag_bar,TAG_DONE);
+    if(!p->last)return 0;
+    setup_gadget(p,&ng,320,360,18,12,A_HOVER_ANIMATION,"Animate");
+    ng.ng_Flags=PLACETEXT_RIGHT;
+    p->g_hover_animation=p->last=CreateGadget(CHECKBOX_KIND,p->last,&ng,
+        GTCB_Checked,(ULONG)p->cfg->hover_animation,TAG_DONE);
+    if (!p->last) return 0;
+    setup_gadget(p,&ng,620,334,44,16,A_TRANSPARENCY,"Transparency %:");
+    p->g_transparency=p->last=CreateGadget(STRING_KIND,p->last,&ng,
+        GTST_String,(ULONG)transparency_text,GTST_MaxChars,3,GA_TabCycle,TRUE,TAG_DONE);
+    if(!p->last)return 0;
+    if (!create_button(p,162,436,90,A_IMPORT_THEME,"Import...") ||
+        !create_button(p,262,436,90,A_REVERT,"Revert") ||
+        !create_button(p,362,436,90,A_TEST,"Test") ||
+        !create_button(p,462,436,90,A_USE,"Use") ||
+        !create_button(p,562,436,90,A_SAVE,"Save")) return 0;
     p->win=OpenWindowTags(NULL,WA_PubScreen,(ULONG)p->screen,
         WA_Left,left,WA_Top,top,WA_Width,width,WA_Height,height,
         WA_Title,(ULONG)(ND_PREFS_IS_DIRTY() ?
@@ -960,6 +1393,7 @@ static int open_editor(struct AppearancePrefs *p)
         WA_IDCMP,IDCMP_GADGETUP|IDCMP_CLOSEWINDOW|IDCMP_REFRESHWINDOW|IDCMP_RAWKEY,
         WA_Flags,WFLG_SMART_REFRESH|WFLG_ACTIVATE,TAG_DONE);
     if (!p->win) return 0;
+    prepare_preview(p);
     GT_RefreshWindow(p->win,NULL);draw_preview(p);
     return 1;
 }
@@ -985,6 +1419,19 @@ static void on_gadget(struct AppearancePrefs *p,UWORD id,UWORD code)
         if (code<ND_POSITION_COUNT) {p->cfg->position=code;ND_PREFS_MARK_DIRTY();draw_preview(p);} break;
     case A_FONT:
         if (code<ND_FONT_COUNT) {p->cfg->font_mode=code;ND_PREFS_MARK_DIRTY();draw_preview(p);} break;
+    case A_COLOURFUL:
+        p->cfg->colourful_icons=code!=0;ND_PREFS_MARK_DIRTY();obtain_pens(p);draw_preview(p);break;
+    case A_ALWAYS_ON_TOP:
+        p->cfg->always_on_top=code!=0;ND_PREFS_MARK_DIRTY();break;
+    case A_AUTO_HIDE:
+        p->cfg->auto_hide=code!=0;ND_PREFS_MARK_DIRTY();
+        GT_SetGadgetAttrs(p->g_delay,p->win,NULL,GA_Disabled,(ULONG)!code,TAG_DONE);break;
+    case A_TOOLTIPS:
+        p->cfg->tooltips=code!=0;ND_PREFS_MARK_DIRTY();break;
+    case A_DRAG_BAR:
+        p->cfg->drag_bar=code!=0;ND_PREFS_MARK_DIRTY();draw_preview(p);break;
+    case A_HOVER_ANIMATION:
+        p->cfg->hover_animation=code!=0;ND_PREFS_MARK_DIRTY();break;
     case A_LABELS:
         if (p->cfg->item_size!=ND_ITEM_SIZE_TINY && code<ND_LABEL_COUNT) {
             p->cfg->label_mode=code;ND_PREFS_MARK_DIRTY();draw_preview(p);
@@ -996,6 +1443,20 @@ static void on_gadget(struct AppearancePrefs *p,UWORD id,UWORD code)
                 p->cfg->label_mode=ND_LABEL_HIDDEN;
             ND_PREFS_MARK_DIRTY();set_gadgets(p);
         } break;
+    case A_BACKGROUND:
+        if (code<=2) {
+            /* Solid, Artwork, or Wallpaper: solid colours derived from the
+             * desktop behind the dock when it opens (palette screens). */
+            p->cfg->theme_artwork=code==1;
+            p->cfg->wallpaper_match=code==2;
+            ND_PREFS_MARK_DIRTY();
+            prepare_preview(p);
+            draw_preview(p);
+            SetWindowTitles(p->win,(STRPTR)(code==1 && !p->background.parts[0].bitmap ?
+                "NovaDock Appearance - theme has no usable artwork" :
+                "NovaDock Preferences - Appearance *"),(STRPTR)-1);
+        }
+        break;
     case A_SHAPE:
         if (code<ND_SHAPE_COUNT) {p->cfg->shape=code;ND_PREFS_MARK_DIRTY();draw_preview(p);} break;
     case A_RUNNING:
@@ -1004,15 +1465,27 @@ static void on_gadget(struct AppearancePrefs *p,UWORD id,UWORD code)
             p->cfg->running_section=0;
             ND_PREFS_MARK_DIRTY();draw_preview(p);
         } break;
-    case A_WIDTH: case A_HEIGHT: case A_GAP:
+    case A_WIDTH: case A_HEIGHT: case A_GAP: case A_HOVER_MAGNIFICATION: case A_TRANSPARENCY: case A_HIDE_DELAY:
         if (collect_numbers(p,0)) {ND_PREFS_MARK_DIRTY();draw_preview(p);}break;
     case A_REVERT:
         { int i;
         nd_config_set_theme(p->cfg,nd_config_theme_id(p->baseline));
         p->cfg->shape=p->baseline->shape;
+        p->cfg->theme_artwork=p->baseline->theme_artwork;
+        p->cfg->wallpaper_match=p->baseline->wallpaper_match;
+        p->cfg->background_transparency=p->baseline->background_transparency;
+        p->cfg->hover_magnification=p->baseline->hover_magnification;
         p->cfg->side=p->baseline->side;p->cfg->position=p->baseline->position;
+        p->cfg->position_offset=p->baseline->position_offset;
         p->cfg->font_mode=p->baseline->font_mode;
         p->cfg->label_mode=p->baseline->label_mode;
+        p->cfg->tooltips=p->baseline->tooltips;
+        p->cfg->hover_animation=p->baseline->hover_animation;
+        p->cfg->drag_bar=p->baseline->drag_bar;
+        p->cfg->colourful_icons=p->baseline->colourful_icons;
+        p->cfg->always_on_top=p->baseline->always_on_top;
+        p->cfg->auto_hide=p->baseline->auto_hide;p->cfg->hide_delay=p->baseline->hide_delay;
+        obtain_pens(p);
         p->cfg->item_size=p->baseline->item_size;
         p->cfg->tile_width=p->baseline->tile_width;
         p->cfg->tile_height=p->baseline->tile_height;p->cfg->gap=p->baseline->gap;
@@ -1031,21 +1504,24 @@ static void on_gadget(struct AppearancePrefs *p,UWORD id,UWORD code)
         ND_PREFS_MARK_DIRTY();set_gadgets(p);}break;
     case A_IMPORT_THEME: {
         const char *selected=nd_config_theme_id(p->cfg);
-        LONG choice=1;
-        if (theme_removable(p,selected)) {
-            struct EasyStruct es;
-            ULONG args[1];
-            memset(&es,0,sizeof(es));
-            es.es_StructSize=sizeof(es);
-            es.es_Title=(UBYTE *)"NovaDock Appearance";
-            es.es_TextFormat=(UBYTE *)"%s is an imported theme.\n\nImport another theme, or remove this one?";
-            es.es_GadgetFormat=(UBYTE *)"Import...|Remove...|Cancel";
-            args[0]=(ULONG)selected;
-            choice=EasyRequestArgs(p->win,&es,NULL,args);
-        }
-        /* Either way, rebuild this page so GadTools gets the new list. */
+        int removable=theme_removable(p,selected);
+        struct EasyStruct es;
+        ULONG args[1];
+        LONG choice;
+        memset(&es,0,sizeof(es));
+        es.es_StructSize=sizeof(es);
+        es.es_Title=(UBYTE *)"NovaDock Appearance";
+        es.es_TextFormat=(UBYTE *)(removable ?
+            "%s is an imported theme.\n\nImport a theme pack, pick a backdrop image,\nor remove this theme?" :
+            "Import a theme pack (theme.cfg with its Images),\nor pick a backdrop image for %s?");
+        es.es_GadgetFormat=(UBYTE *)(removable ? "Import...|Backdrop...|Remove...|Cancel" :
+                                                 "Import...|Backdrop...|Cancel");
+        args[0]=(ULONG)selected;
+        choice=EasyRequestArgs(p->win,&es,NULL,args);
+        /* Any change rebuilds this page so GadTools gets the new list. */
         if ((choice==1 && install_selected_theme(p)) ||
-            (choice==2 && remove_selected_theme(p,selected))) {
+            (choice==2 && pick_backdrop_image(p)) ||
+            (choice==3 && removable && remove_selected_theme(p,selected))) {
             p->done=1;p->status=ND_PREF_NAV_APPEARANCE;
         }
         break;
@@ -1080,7 +1556,7 @@ static void editor_loop(struct AppearancePrefs *p)
             cls=msg->Class;code=msg->Code;
             id=msg->IAddress ? ((struct Gadget *)msg->IAddress)->GadgetID : 0;
             GT_ReplyIMsg(msg);
-            if (cls==IDCMP_CLOSEWINDOW) {p->done=1;p->status=0;}
+            if (cls==IDCMP_CLOSEWINDOW || (cls==IDCMP_RAWKEY && code==0x45)) {p->done=1;p->status=0;}
             else if (cls==IDCMP_RAWKEY && code==ND_HELP_KEY) nd_prefs_help(p->screen);
             else if (cls==IDCMP_REFRESHWINDOW) {
                 GT_BeginRefresh(p->win);draw_preview(p);GT_EndRefresh(p->win,TRUE);
@@ -1146,11 +1622,13 @@ int nd_appearance_prefs_run(int argc,char **argv)
     if (!p->screen || !open_editor(p)) goto done;
     editor_loop(p);result=p->status;
 done:
+    if (p->screen) nd_backdrop_free(&p->background,p->screen);
     free_pens(p);
     if (p->win) CloseWindow(p->win);
     if (p->gadgets) FreeGadgets(p->gadgets);
     if (p->vi) FreeVisualInfo(p->vi);
     if (p->screen) UnlockPubScreen(NULL,p->screen);
+    if (p->notify_reload) (void)nd_control_reload();
     if (AslBase) CloseLibrary(AslBase);
     if (GfxBase) CloseLibrary((struct Library *)GfxBase);
     if (GadToolsBase) CloseLibrary(GadToolsBase);

@@ -42,6 +42,8 @@ __pycache__/
 /public-web/downloads/
 /compat/
 
+/Plugins/AmiNotis
+/Plugins/Preferences
 /Plugins/Timer
 /Plugins/Notes
 
@@ -57,6 +59,7 @@ __pycache__/
 
 /Plugins/Actions
 /Plugins/Aquarium
+/Plugins/Pet
 /Plugins/Download
 /Plugins/System
 
@@ -103,3 +106,12 @@ __pycache__/
 /Plugins/Colour
 /Plugins/Agenda
 /Plugins/Pictures
+# Host test leftovers (tests/run_host_tests.sh removes them; an interrupted
+# run can leave them behind)
+/tests/*.cfg.bak
+/tests/*.cfg.old
+/tests/.drag_menu_test.cfg*
+/fuzz-out/
+
+/SupportLog
+/SupportReport

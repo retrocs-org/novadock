@@ -14,7 +14,7 @@ plugin control-panel inputs. Physical-device testing remains a separate release 
 
 ## Connect through AmiHASS
 
-1. Install the separate **AmiHASS 0.2** package using **Install**.
+1. Install the separate **AmiHASS 0.3** package using **Install**.
 2. Configure AmiHASS's networking requirements (`C:curl`, CA certificates for HTTPS and your TCP/IP stack). The dock plugin itself makes no HTTP requests.
 3. Open **SYS:Prefs/AmiHASSPrefs**, choose **Server Settings**, enter your server origin and enter a long-lived Home Assistant token or import it from a local text file. Credentials stay in AmiHASS.
 4. Save Server Settings. Set the polling interval in General settings (10 to 3600 seconds, default 30), then Save the main Preferences.
@@ -123,7 +123,7 @@ the confirmed state. Release the slider to send one request through AmiHASS;
 
 The slider appears only when AmiHASS reports brightness support. Older service
 builds without control metadata, on/off-only lights and other entity types keep
-their existing controls. Use an updated AmiHASS 0.2 service for dimming.
+their existing controls. Use AmiHASS 0.3 for the current dimming implementation.
 
 The dock reads the confirmed level after a request and picks up changes made by
 other clients. The slider is disabled while awaiting a reply or while data is
@@ -224,7 +224,7 @@ status/shutdown operations, ownership and a read-only C example.
 
 ## Integration checks
 
-The public AmiHASS 0.2/ABI 1 snapshot is recorded in
+The public AmiHASS 0.3/ABI 1 snapshot is recorded in
 `plugin_src/hass/service/sdk.json`, including hashes for the protocol, client
 and portable request/metadata decoder. Optional `QUERY.items[]` control
 metadata extends ABI 1 without changing its message size. Older replies remain
@@ -267,9 +267,10 @@ Open cover, Close cover and Stop cover buttons. Unsupported controls are omitted
 
 All actions still go to the Amiga AmiHASS service through structured Exec
 messages. The plugin does not connect to Home Assistant. Fan and cover controls
-require the matching updated AmiHASS 0.2 service; optional metadata extends the
+require AmiHASS 0.2 or newer with matching capabilities; optional metadata extends the
 existing ABI 1 message without changing its layout. Older bridges leave these
-controls unavailable. Locks remain read-only.
+controls unavailable. Lock actions require the metadata and confirmation
+described under Smart locks and doors below.
 
 Percentage changes submit on release. A released value or numeric/color edit
 can wait briefly for an in-flight query, with a bounded lifetime. Closing,
@@ -319,7 +320,7 @@ Push transport remains future work; the new subscriptions use shared polling.
 
 ## Bridge compatibility
 
-The tested release pair is **NovaDock 0.5 with AmiHASS 0.2**. Install and
+The tested release pair is **NovaDock 0.6 with AmiHASS 0.3**. Install and
 configure the bridge separately; no credentials belong in NovaDock. A missing
 service shows **Start AmiHASS 0.2+ service** and connection failures must not
 retain a successful Sample data label. Newer bridges are accepted by their
@@ -368,7 +369,7 @@ bridge reports them. The default State tile display shows track information.
 Read-only tiles show metadata and Refresh but expose no mutating controls.
 
 Playback and volume commands use the public Exec-port C SDK. The updated
-AmiHASS 0.2 service owns all network calls, validates advertised capabilities
+AmiHASS service owns all network calls, validates advertised capabilities
 and supplies sample media playback, volume and track changes for offline tests.
 Older service builds without media metadata safely leave these controls absent.
 Commands are not replayed after outages; volume and playback use confirmed
@@ -404,7 +405,45 @@ capabilities are verified, its action picker offers Show controls. Unsupported
 actions are removed; failed queries leave the picker read-only. No Home
 Assistant credentials or HTTP calls are handled by the dock.
 
-These controls require the current AmiHASS 0.2 build with lock metadata. Older
+These controls require AmiHASS 0.2 or newer with lock metadata. Older
 ABI 1 services remain usable for supported existing entities; missing lock
 metadata never enables an action. Integration QA uses only the bridge's shared
 sample front-door lock and garage door, with no real lock or door commands.
+
+
+### AmiHASS 0.3 compatibility
+
+The current plugin uses the AmiHASS 0.3 SDK while retaining ABI 1 and the
+required feature handshake for compatible 0.2 services. Its existing controls
+use the updated climate step validation. A full entity-selection table now
+shows its own status and waits before retrying; authentication rejection points
+to AmiHASS credentials instead of displaying the protocol state name.
+
+AmiHASS 0.3 can block lock/cover opening from external clients unless its
+**Script doors** setting is enabled. NovaDock still asks for local confirmation
+and shows the service refusal when that setting is off. It does not change the
+setting, send a delayed retry, or impersonate AmiHASS Dashboard. Use AmiHASS
+Preferences to choose the service policy. Code-protected devices stay outside
+NovaDock's current control UI.
+
+The new AmiHASS cameras, labels, history, attribute browsing, notifications and
+additional device types are optional future tile features. Updating the SDK
+does not add those interfaces to the current HASS popup.
+
+
+### Offline compatibility check
+
+Run `python3 tools/run_hass_qa.py --bridge ../AmiHASS` from the NovaDock source
+folder after building the paired AmiHASS service. The tool verifies the SDK
+snapshot, then runs the production NovaDock adapter against that service in a
+separate, hidden FS-UAE guest. It checks the native wire sizes, unconfigured
+status, brightness, RGB, climate, sample-lock actions,
+diagnostic pagination and service shutdown. It uses a private RAM configuration,
+shared sample entities and no network. The existing Workbench session stays open.
+Use `--output <new-folder>` to retain the fixture and logs at a chosen location.
+
+Host regression `tests/test_hass_service03.py` additionally covers Fahrenheit
+setpoint validation, selection-capacity backoff and recovery, authentication
+messages, additive capabilities and refusal feedback without action replay.
+AmiHASS sample mode bypasses the live door policy; those refusal replies are
+tested with simulated service messages in the host regression.

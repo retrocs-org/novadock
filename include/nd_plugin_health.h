@@ -13,6 +13,10 @@ static int nd_health_has(const char *value,const char *word)
 static struct NDPluginHealth nd_plugin_health(const char *schema,int online,int stale,const char *value)
 {
  struct NDPluginHealth h;h.label="Running";h.help="Plugin is responding. Edit its tile settings to change its configuration.";
+ if(!value)value="";if(!schema)schema="";
+ if(!strcmp(value,"MISSING PLUGIN")){h.label="Missing plugin";h.help="Reinstall the plugin package or correct its executable in Plugins.";return h;}
+ if(!strncmp(value,"FAILED",6) || (!strcmp(value,"ERROR") || !strncmp(value,"ERROR:",6) || !strncmp(value,"ERROR ",6))){h.label="Error";h.help="Check the plugin settings and Diagnostics for its reported error.";return h;}
+ if(!strcmp(value,"STARTING") && (!online || strcmp(schema,"NET"))){h.label="Starting";h.help="Waiting for the plugin to send its first reading.";return h;}
  if(stale || !strcmp(value,"NOT RESPONDING")){h.label="Not responding";h.help="The plugin process stopped replying. Check Diagnostics; restart NovaDock after saving.";return h;}
  if(!online){h.label="Offline";h.help="No plugin heartbeat. Check the executable and its required libraries; see Diagnostics.";return h;}
  if(!strcmp(schema,"HASS")){
@@ -24,6 +28,9 @@ static struct NDPluginHealth nd_plugin_health(const char *schema,int online,int 
   else if(nd_health_has(value,"Waiting") || nd_health_has(value,"busy")){h.label="Waiting";h.help="AmiHASS is updating. Use its Preferences status/logs if the wait persists.";}
  }else if(!strcmp(schema,"NET")){
   if(!strcmp(value,"OFFLINE")){h.label="Network offline";h.help="The plugin is running. Use Online to connect, or open Network details to inspect the stack.";}
+  else if(!strcmp(value,"ACTION FAILED") || !strcmp(value,"WORKER FAILED") || !strcmp(value,"NO REPLY")){h.label="Connection issue";h.help="Open Network details to inspect the failed operation and driver status.";}
+  else if(!strcmp(value,"NO ROADSHOW") || !strcmp(value,"DEVICE BUSY")){h.label="Unavailable";h.help="Check that Roadshow and the configured network driver are installed and available.";}
+  else if(!strcmp(value,"WAIT STACK")){h.label="Waiting";h.help="Waiting for the network stack to finish its current operation.";}
   else if(!strcmp(value,"STARTING") || !strcmp(value,"STOPPING")){h.label="Changing network";h.help="Wait for the current operation. Open Network details if it does not finish.";}
  }else if(!strcmp(schema,"MUSIC")){
   if(!strcmp(value,"NO AREXX")){h.label="Missing ARexx";h.help="Install/restart rexxsyslib.library and RexxMast, then restart this plugin.";}

@@ -10,6 +10,14 @@ long nd_i2c_milli(long fixed);
 void nd_i2c_format(const struct NDI2CReading *r,char *out);
 static int nd_i2c_key(const char *key)
 {unsigned int i;if(!key || strlen(key)!=12 || strncmp(key,"I2C_",4))return 0;for(i=4;i<12;++i)if(!((key[i]>='0'&&key[i]<='9')||(key[i]>='A'&&key[i]<='F')))return 0;return strcmp(key,"I2C_00000000")!=0;}
+/* Optional per-channel display title uses the same stable sensor identity. */
+#if defined(__GNUC__) || defined(__clang__)
+#define ND_I2C_MAYBE_UNUSED __attribute__((unused))
+#else
+#define ND_I2C_MAYBE_UNUSED
+#endif
+static ND_I2C_MAYBE_UNUSED int nd_i2c_title_key(const char *key)
+{char base[13];if(!key || strlen(key)!=18 || strcmp(key+12,"_TITLE"))return 0;memcpy(base,key,12);base[12]=0;return nd_i2c_key(base);}
 void nd_i2c_option(unsigned long id,char *key);
 int nd_i2c_add(struct NDI2CCache *c,unsigned long id,long fixed,const char *name,const char *unit,unsigned long now);
 int nd_i2c_read(FILE *f,struct NDI2CCache *c);

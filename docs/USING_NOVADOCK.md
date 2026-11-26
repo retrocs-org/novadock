@@ -37,8 +37,8 @@ The standard locations are:
 
 The installer adds startup entries and the required assignments. Help,
 translations and settings keep their standard locations even when you choose
-custom application or shared-data drawers. German and Swedish translations
-follow the language selected in Locale preferences.
+custom application or shared-data drawers. Danish, German, Italian and
+Swedish translations follow the language selected in Locale preferences.
 
 ## Start and stop
 
@@ -52,13 +52,35 @@ also replaced. The installer handles this when updating the application.
 
 ## First use
 
-A fresh configuration uses the Nord theme and seven tiles: System, Shell,
-Music, Trash, CPU, RAM and Clock. Existing installations retain their layout.
+A fresh configuration uses the Nord theme and eight tiles: System, Shell,
+Music, Trash, CPU, RAM, Clock and Preferences. Existing installations retain their layout.
 
 Click a launcher to open its application or drawer. Plugin clicks perform
 their own actions: the clock opens a calendar, Notes opens its collection,
 SHOT takes a screenshot and MODES opens the resolution picker. CPU and RAM
 clicks switch between their meter and graph views.
+
+Labels apply to application, drawer and plugin captions. **Always** keeps every name at the bottom. **Hover** shows only the focused tile's name: at the bottom with magnification disabled, or in a caption bubble above the tile when magnification is enabled. **Hidden** suppresses names. Status values, controls, meters and badges remain visible.
+
+Long captions use an ellipsis rather than cutting off letters. Preferences and MusicPlayer use the shorter names Prefs and Music when space is tight. Full names remain available in floating Hover captions and enabled tooltips.
+
+Normal artwork shares a 48-pixel area while retaining its proportions. Plugin artwork ignores unused transparent padding; all animation states share one envelope so their size stays steady. Notification badges and running dots follow the same artwork anchors.
+
+Plugin health markers appear at the top-left of the artwork: an hourglass means loading, an outlined minus means offline, a question mark means unavailable or setup is required, and an exclamation mark means an error. Tooltips explain the state, and Plugins shows corresponding health information. These markers are separate from notification counts and running-app dots. Healthy idle, empty and zero readings do not produce an error marker. A recovered plugin clears its marker on the next update.
+
+The magnification background refreshes when nearby windows move or close, including while you hover over a tile or its tooltip. Refresh remains deferred during dragging, popup menus and dock keyboard control.
+
+CPU and RAM meter views use processor and memory-module artwork with live readings. Digital Clock uses a clock display; analogue Clock and graph views retain their own displays. Running-app dots sit below the artwork and follow it during magnification.
+
+**Colourful icons** gives bundled artwork recognizable colours: a purple MusicPlayer, blue Preferences, green Trash and circuit boards, an amber digital Clock, and a blue Network interface. Third-party artwork keeps its original RGB colours. Turn it off to follow the theme. Launcher artwork keeps its own colours in either mode. The preview and live dock share the same icon palettes. Appearance groups its controls under Layout, Icons and labels, Background and effects, and Behaviour on larger screens; smaller screens keep a compact form. Network shows separate incoming and outgoing packet rates inside its interface icon, and retains its existing graph view.
+
+**Always on top**, **Auto hide** and **Hide delay** are in Appearance. Hide delay is 1–60 seconds and is enabled when Auto hide is on. With Always on top off, application windows stay above the dock. With it on, the topmost layer follows the visible shelf and magnified artwork instead of reserving an invisible rectangle above it.
+
+The **Tooltips** switch in Appearance controls hover popups for both plugins and normal launchers independently of these captions. Popups sit close to the current artwork, including magnified widgets.
+
+**Transparency %** accepts 0–100: zero keeps an opaque background and 100 shows only the desktop behind the tiles. RTG screens use cached colour blending; palette screens use an ordered transparency mask. The desktop snapshot refreshes after startup, when the dock window is rebuilt and when nearby windows move or close. Capture waits until a window drag ends. Icons and labels stay opaque.
+
+**macOS Modern** provides a translucent rounded shelf; **Mac OS X Glass** adds a sloping reflective shelf. Their transparency defaults can be adjusted in Appearance. Preferences is now a theme-aware plugin; the original default launcher upgrades in place. Idle MusicPlayer artwork follows the theme too. All plugin widgets, including Eyes, support hover magnification.
 
 Hover over a tile for its tooltip. Right-click a tile for its actions,
 settings and removal. Plugin help pages explain extra controls and software
@@ -102,7 +124,7 @@ configuration or use the built-in defaults.
 
 ## Update notifications (0.4)
 
-Open **Preferences -> Update**, between Diagnostics and About. Both checkboxes
+Open **Preferences -> Update**, between Support and About. Both checkboxes
 are off on new installations and when older configurations have no update opt-in:
 
 - **Check for updates on startup** checks once when the network is available.
@@ -213,7 +235,7 @@ package, then reopen Preferences.
 
 Open Preferences -> Plugins, select a dock instance and click Refresh to check
 its runtime status. The details distinguish a missing heartbeat from setup,
-connection and dependency problems, and suggest a next step. Check Diagnostics
+connection and dependency problems, and suggest a next step. Check Support
 for unresponsive processes and AmiHASSPrefs for HASS connection errors. Empty
 collections, idle tools and lights reporting off are normal states.
 
@@ -223,3 +245,34 @@ BENCH, QR, MOON and COLOUR are available under Add Item → Plugin. See the
 [benchmark](BENCH_PLUGIN.md), [QR](QR_PLUGIN.md), [moon](MOON_PLUGIN.md) and
 [colour](COLOUR_PLUGIN.md) chapters for use, settings and limits. HASS Type room
 adds read-only room summaries through AmiHASS; see [HASS](HASS_PLUGIN.md).
+
+
+## Sending a support report
+
+Open Preferences > Support > Create report. Recording starts automatically for
+60 seconds; use NovaDock to demonstrate the problem. Logs, plugin CPU estimates
+and tracked RAM are gathered for you, and prior logging settings are restored.
+Choose Continue now to keep a partial recording, or Use existing logs after a
+crash you cannot repeat. Then choose the kind of problem and describe it.
+
+Use your own words on the What happened page. The questions are optional and
+an example follows the kind of problem you chose. The final page lists detected
+system details. Choose Save report to pick where the report should go; cancelling
+the chooser returns to review and keeps your answers.
+
+If C:LhA or a LhA program beside SupportReport is available, the report is saved
+as one .lha archive. Otherwise choose a drawer and NovaDock saves a new report
+folder there. If compression fails, the uncompressed folder is retained. Send
+the saved archive or all the files in the report folder to support. Nothing is
+uploaded automatically.
+
+Fresh installations use Nord, a rounded artwork background, colourful icons,
+Always labels and 100% magnification with Animate on. Always on top and Auto hide
+start off. Updating an existing installation retains its saved preferences.
+
+Create report enables detailed disk tracing automatically. For an intermittent
+crash before a report is started, use Advanced > Logging to enable Detailed trace
+and Save logs to disk ahead of time. Disk logs survive a dock restart and a reboot; RAM logs do not
+survive reboot. The final buffered events may be lost in a crash. Reports include
+both available RAM logs and disk logs (named with -disk), plus their previous
+rotation, so a fresh log after restart cannot hide the earlier disk record.

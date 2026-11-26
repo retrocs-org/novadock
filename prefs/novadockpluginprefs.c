@@ -1,3 +1,4 @@
+#include "nd_trace.h"
 #include "../plugin_src/moon/nd_moon.h"
 #include "../plugin_src/hass/nd_hass_native.h"
 /* Plugin settings page for NovaDock Preferences 0.1. Native GadTools.
@@ -280,13 +281,14 @@ static int open_ui(struct PluginPrefs *p)
     width=p->layout.window_width;height=p->layout.window_height;
     left=nd_prefs_layout_left(&p->layout);
     top=nd_prefs_layout_top(&p->layout);
+    {ND_TRACE_PHASE_BEGIN(t,"prefs.gadgets");
     p->visual=GetVisualInfo(p->screen,TAG_DONE);
     if (!p->visual || !CreateContext(&p->gadgets)) return 0;
     p->last=p->gadgets;
     if (!p->focused && (!button(p,10,21,G_NAV_GENERAL,"General") ||
         !button(p,10,45,G_NAV_APPEARANCE,"Appearance") ||
         !button(p,10,69,G_NAV_ITEMS,"> Organize") ||
-        !button(p,10,93,G_NAV_DIAGNOSTICS,"Diagnostics"))) return 0;
+        !button(p,10,93,G_NAV_DIAGNOSTICS,"Support"))) return 0;
     if (p->focused && !p->count) {
         field(p,&ng,28,22,444,16,0,NULL);
         ng.ng_Flags=PLACETEXT_IN;
@@ -356,6 +358,8 @@ static int open_ui(struct PluginPrefs *p)
         sprintf(p->title,"NovaDock Preferences - %s (page %d)%s",p->id,p->page+1,
                 ND_PREFS_IS_DIRTY() ? " *" : "");
     }
+    ND_TRACE_PHASE_END(t,"prefs.gadgets");}
+    {ND_TRACE_PHASE_BEGIN(t,"prefs.open_window");
     p->win=OpenWindowTags(NULL,WA_PubScreen,(ULONG)p->screen,
            WA_Left,left,WA_Top,top,WA_Width,width,WA_Height,height,
            WA_Title,(ULONG)p->title,WA_Gadgets,(ULONG)p->gadgets,
@@ -363,8 +367,10 @@ static int open_ui(struct PluginPrefs *p)
            WA_DepthGadget,TRUE,WA_IDCMP,ARROWIDCMP|SCROLLERIDCMP|
            IDCMP_CLOSEWINDOW|IDCMP_REFRESHWINDOW|IDCMP_RAWKEY,
            WA_Flags,WFLG_SMART_REFRESH|WFLG_ACTIVATE,TAG_DONE);
+    ND_TRACE_PHASE_END(t,"prefs.open_window");}
     if (!p->win) return 0;
-    GT_RefreshWindow(p->win,NULL);
+    {ND_TRACE_PHASE_BEGIN(t,"prefs.refresh_window");
+     GT_RefreshWindow(p->win,NULL);ND_TRACE_PHASE_END(t,"prefs.refresh_window");}
     if(whdload_settings(p)){collection_preview_load(p);collection_preview_paint(p);}
     return 1;
 }
@@ -515,13 +521,16 @@ static int start(struct PluginPrefs *p,const char *id)
            while(fgets(line,sizeof(line),f))if(sscanf(line,"%31s",key)==1 && (index=nd_sensor_index(key))>=0){known|=1UL<<index;if(strstr(line,"Stale") || sampled>now || now-sampled>30)stale|=1UL<<index;}
           }fclose(f);
          }}}
-        for(i=0;i<p->count;++i){index=nd_sensor_index(p->definitions[i].key);
+        for(i=0;i<p->count;++i){char key[32];char *suffix;
+            strcpy(key,p->definitions[i].key);suffix=strstr(key,"_TITLE");if(suffix && !suffix[6])*suffix=0;
+            index=nd_sensor_index(key);
             if(index<0 || (known&(1UL<<index))){
                 if(index>=0 && !(p->sensor_available&(1UL<<index))){char name[32];strcpy(name,p->definitions[i].label);sprintf(p->definitions[i].label,"%s %.21s",stale&(1UL<<index) ? "Stale":"Absent",name);}
                 p->definitions[kept++]=p->definitions[i];}}
         p->count=kept;
         {struct NDI2CCache cache;if(nd_i2c_load(&cache)){
           unsigned int j;for(j=0;j<cache.count && p->count<PP_MAX;++j){struct NDOptionDef *d=&p->definitions[p->count++];memset(d,0,sizeof(*d));strcpy(d->id,id);nd_i2c_option(cache.readings[j].id,d->key);sprintf(d->label,"%s %.21s",!cache.provider ? "Missing":!nd_i2c_fresh(&cache,now,60) || (cache.readings[j].stamp && (now<cache.readings[j].stamp || now-cache.readings[j].stamp>60)) ? "Stale":!cache.readings[j].available ? "Absent":"I2C",cache.readings[j].name);strcpy(d->type,"BOOL");strcpy(d->default_value,"YES");}
+          for(j=0;j<cache.count && p->count<PP_MAX;++j){struct NDOptionDef *d=&p->definitions[p->count++];memset(d,0,sizeof(*d));strcpy(d->id,id);nd_i2c_option(cache.readings[j].id,d->key);strcat(d->key,"_TITLE");sprintf(d->label,"%.24s title",cache.readings[j].name);strcpy(d->type,"TEXT");}
           if(cache.count)p->sensor_available|=0x80000000UL;
         }}
     }
@@ -536,8 +545,8 @@ static int start(struct PluginPrefs *p,const char *id)
     p->count=p->basic_count;
     if(hass_settings(p)){
         hass_layout(p);
-        int icon=network_option_index(p,"ICON"),file=network_option_index(p,"ICONFILE");
-        if(icon>=0)strcpy(p->edits[icon],"Auto");if(file>=0)p->edits[file][0]=0;
+        {int icon=network_option_index(p,"ICON"),file=network_option_index(p,"ICONFILE");
+        if(icon>=0)strcpy(p->edits[icon],"Auto");if(file>=0)p->edits[file][0]=0;}
     }
     if(!strcmp(p->id,"NET") && !sampling_override(p)){
         int device=network_option_index(p,"DEVICE"),unit=network_option_index(p,"UNIT");
@@ -563,27 +572,38 @@ int nd_plugin_prefs_run(int argc,char **argv)
     IntuitionBase=(struct IntuitionBase *)OpenLibrary("intuition.library",39);
     GadToolsBase=OpenLibrary("gadtools.library",39);
     AslBase=OpenLibrary("asl.library",37);
-    if (!IntuitionBase || !GadToolsBase || !start(p,argv[1])) goto done;
-    p->screen=LockPubScreen("Workbench");
+    if (!IntuitionBase || !GadToolsBase) goto done;
+    ND_TRACE_PAGE(4,nd_option_schema_id(p->config,argv[1]));
+    {int started;ND_TRACE_PHASE_BEGIN(t,"prefs.plugin_options");
+     started=start(p,argv[1]);ND_TRACE_PHASE_END(t,"prefs.plugin_options");
+     if(!started)goto done;}
+    {ND_TRACE_PHASE_BEGIN(t,"prefs.lock_workbench");
+     p->screen=LockPubScreen("Workbench");ND_TRACE_PHASE_END(t,"prefs.lock_workbench");}
     if (!p->screen) goto done;
     p->rows=((p->screen->Height-p->screen->BarHeight-8)*8/
         (p->screen->RastPort.Font->tf_YSize<8 ? 8 : p->screen->RastPort.Font->tf_YSize)-57)/24;
     if(p->rows<1)p->rows=1;
     if(p->rows>PP_ROWS)p->rows=PP_ROWS;
-    if (!open_ui(p)) goto done;
+    {int opened;ND_TRACE_PHASE_BEGIN(t,"prefs.plugin_window");
+     opened=open_ui(p);ND_TRACE_PHASE_END(t,"prefs.plugin_window");
+     if(!opened)goto done;}
     while (!p->done) {
         if(hass_capabilities_step(p)){
             int at=network_option_index(p,"ACTION"),row=at-visible_start(p);
             if(row>=0&&row<page_rows(p)&&at<p->count&&p->fields[row]){open_choices(p,row,hass_action_choices(p));p->active[row]=choice_index(p,row,p->edits[at]);if(p->hass_known)strcpy(p->edits[at],p->choice_labels[row][p->active[row]]);GT_SetGadgetAttrs(p->fields[row],p->win,NULL,GTCY_Labels,(ULONG)p->choice_labels[row],GTCY_Active,p->active[row],TAG_DONE);}
         }
         if(p->hass_client.pending||p->hass_wait)Delay(5);
-        else Wait(1UL<<p->win->UserPort->mp_SigBit);
-        while (p->win && (im=GT_GetIMsg(p->win->UserPort))!=NULL) {
+        else ND_TRACE_WAIT(1UL<<p->win->UserPort->mp_SigBit);
+        while (p->win) {
+            ND_TRACE_START(event_start);
+            ND_TRACE_PORT(p->win->UserPort);
+            im=GT_GetIMsg(p->win->UserPort);if(!im)break;
             kind=im->Class;
             id=kind==IDCMP_GADGETUP && im->IAddress ? ((struct Gadget *)im->IAddress)->GadgetID : 0;
             code=im->Code;
+            ND_TRACE_QUEUE(im,id);
             GT_ReplyIMsg(im);
-            if (kind==IDCMP_CLOSEWINDOW) {p->done=1;result=0;}
+            if (kind==IDCMP_CLOSEWINDOW || (kind==IDCMP_RAWKEY && code==0x45)) {p->done=1;result=0;}
             else if (kind==IDCMP_RAWKEY && code==ND_HELP_KEY) nd_prefs_help(p->screen);
             else if (kind==IDCMP_REFRESHWINDOW) {
                 GT_BeginRefresh(p->win);GT_EndRefresh(p->win,TRUE);
@@ -671,9 +691,14 @@ int nd_plugin_prefs_run(int argc,char **argv)
                     } else {p->done=1;result=0;notify_reload=1;}
                 }
             }
+            ND_TRACE_END(NDT_PREF_EVENT,event_start);
+            ND_TRACE_NOTE("plugin editor event",kind,id,p->focused,p->count);
         }
+        ND_TRACE_SCENE(p->screen,IntuitionBase);
+        ND_TRACE_PULSE();
     }
 done:
+    ND_TRACE_FLUSH();
     /* Do not keep the preferences window open while waiting for NovaDock to
      * recreate its window and plugins. Saved settings are authoritative even
      * when no dock is currently running. */

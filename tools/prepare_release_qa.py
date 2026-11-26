@@ -50,7 +50,7 @@ def installed_path(relative,layout=None):
     if relative=='SaveConfig':return shared+'/Tools/SaveConfig'
     if relative=='novadock.cfg':return shared+'/novadock.cfg.default'
     if relative.startswith('Catalogs/'):return 'LOCALE:'+relative
-    if relative.startswith(('Plugins/','Rexx/','Music/')) or relative.startswith('Icons/') and relative.endswith('.iff') or relative.startswith('Themes/') and relative.endswith('/theme.cfg'):
+    if relative.startswith(('Plugins/','Rexx/','Music/')) or relative.startswith('Icons/') and relative.endswith('.iff') or relative.startswith('Themes/') and (relative.endswith('/theme.cfg') or relative.rsplit('/', 1)[-1] in ('Backdrop.iff', 'BackdropLeft.iff', 'BackdropRight.iff')):
         return shared+'/'+relative
     return None
 

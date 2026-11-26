@@ -16,6 +16,9 @@
 #include "../warp/nd_warp_ui.h"
 #include "nd_option_runtime.h"
 #include "nd_metrics.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 
 /* Version string for the AmigaDOS Version command (kept global so the
  * linker never discards it). */

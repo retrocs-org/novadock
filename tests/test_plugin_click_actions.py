@@ -5,6 +5,13 @@ import os,subprocess,tempfile
 ROOT=Path(__file__).resolve().parents[1]
 s=(ROOT/'src/dock_events.c').read_text();a=s.index('static void click_tile(struct NDDock *dock,int index,int mx,int my,\n');b=s.index('\n/* ---- Keyboard control',a)
 h=r'''#include <assert.h>
+#define dock_left(d) ((d)->window->LeftEdge)
+#define dock_top(d) ((d)->window->TopEdge)
+#define dock_width(d) ((d)->window->Width)
+#define dock_height(d) ((d)->window->Height)
+#define dock_view_x(d) 0
+#define dock_view_y(d) 0
+
 #include <stdio.h>
 #include <string.h>
 #include "nd_config.h"
@@ -12,7 +19,8 @@ typedef unsigned short UWORD;
 #define IEQUALIFIER_LSHIFT 1
 #define IEQUALIFIER_RSHIFT 2
 struct NDDock {struct NDConfig conf;void *screen;};
-static int toggles,draws;
+static int toggles,draws,companions;
+static int launch_companion(struct NDDock *d,const char *name,const char *args){(void)d;assert(!strcmp(name,"NovaDockPrefs")&&!args[0]);++companions;return 1;}
 static int nd_independent_plugin_path(const char *s){return !strcmp(s,"Plugins/Games")||!strcmp(s,"Plugins/MusicLibrary")||!strcmp(s,"Plugins/Sensors")||!strcmp(s,"Plugins/Actions");}
 static int queue_music_control(struct NDDock *d,int i,int x,int y){(void)d;(void)i;(void)x;(void)y;return 0;}
 static int launch_default_music_application(struct NDDock *d){(void)d;return 1;}
@@ -33,6 +41,7 @@ for(i=0;i<15;++i)for(shift=0;shift<4;++shift){strcpy(dock.conf.items[0].id,ids[i
 dock.conf.items[0].clicks=3;click_tile(&dock,0,0,0,0);assert(dock.conf.items[0].clicks==3);
 dock.conf.items[0].command[0]=0;strcpy(dock.conf.items[0].id,"CPU");click_tile(&dock,0,0,0,0);assert(toggles==1);
 strcpy(dock.conf.items[0].id,"OTHER");dock.conf.items[0].graph=0;dock.conf.items[0].clicks=0;click_tile(&dock,0,0,0,1);assert(dock.conf.items[0].graph&&!dock.conf.items[0].clicks);
+strcpy(dock.conf.items[0].id,"PREFERENCES");dock.conf.items[0].clicks=0;click_tile(&dock,0,0,0,0);assert(companions==1&&!dock.conf.items[0].clicks);
 puts("Screenshot, Mode and Screen Switcher clicks queue actions with any Shift state; monitor toggles remain separate.");return 0;}
 '''
 with tempfile.TemporaryDirectory() as tmp:

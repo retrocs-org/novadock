@@ -7,10 +7,11 @@ root = Path(__file__).resolve().parents[1]
 payloads = []
 for name, width, height, length in (
         ('NovaDock.info', 54, 22, 450),
-        ('NovaDockPrefs.info', 54, 22, 450),
+        ('NovaDockPrefs.info', 40, 40, 578),
+        ('SupportReport.info', 40, 40, 578),
         ('Plugins/MusicPlayer.info', 48, 38, 554),
         ('Plugins/RunningApps.info', 48, 38, 554),
-        ('Plugins/AmIRC.info', 48, 32, 482)):
+        ('plugin_src/amirc/legacy/AmIRC.info', 48, 32, 482)):
     data = (root / name).read_bytes()
     assert len(data) == length, (name, len(data))
     assert struct.unpack_from('>HH', data, 0) == (0xE310, 1)
@@ -20,7 +21,8 @@ for name, width, height, length in (
     assert struct.unpack_from('>hhhhh', data, 78) == (0, 0, width, height, 2)
     assert b'FORM' not in data  # no newer colour-icon extension required
     payloads.append(data)
-assert len(set(payloads)) == 5
+assert len(set(payloads)) == 6
+assert struct.unpack_from('>I', (root/'SupportReport.info').read_bytes(), 74)[0]>=32768
 # Release drawer icon: DiskObject, OldDrawerData, one image, then the OS 2.x
 # drawer extension, and nothing else.
 import subprocess, sys, tempfile
@@ -64,3 +66,5 @@ guide = (root / 'NovaDock.guide.info').read_bytes()
 assert struct.unpack_from('>HH', guide, 0) == (0xE310, 1) and guide[48] == 4
 assert b'SYS:Utilities/MultiView\0' in guide
 print('NovaDock, Preferences, MusicPlayer, Running Apps, AmIRC, manual and release drawer icons passed.')
+
+assert (root/"SupportReport.info").read_bytes()[78:] != (root/"NovaDockPrefs.info").read_bytes()[78:], "Support needs its own artwork"

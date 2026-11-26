@@ -17,7 +17,8 @@ static int reference_validate(const unsigned char *d,unsigned long size)
  if(d[5]==2){for(i=0;i<16;++i)if(d[56+i]>5 || (!i && d[56+i]))return 0;}
  frames=nd_artwork_u16(d+6);if(!frames || frames>ND_ARTWORK_MAX_FRAMES)return 0;table=(unsigned long)header+(unsigned long)frames*ND_ARTWORK_RECORD;if(table>size)return 0;
  for(i=0;i<frames;++i){r=d+header+(unsigned long)i*ND_ARTWORK_RECORD;
-  if(!memchr(r,0,ND_ARTWORK_NAME) || !nd_artwork_name((const char *)r) || (d[5]==1 ? r[25]!=0:(r[25]&~7U)!=0))return 0;
+  if(!memchr(r,0,ND_ARTWORK_NAME) || !nd_artwork_name((const char *)r) || (d[5]==1 ? r[25]!=0:(r[25]&~15U)!=0))return 0;
+  if((r[25]&ND_ARTWORK_HEADING) && !(r[25]&ND_ARTWORK_VALUE))return 0;
   keys[i]=nd_artwork_key((const char *)r);
   for(j=0;j<i;++j){p=d+header+(unsigned long)j*ND_ARTWORK_RECORD;if(keys[i]==keys[j] && strcmp((const char *)r,(const char *)p))return 0;if(r[24]==p[24]&&!strcmp((const char *)r,(const char *)p))return 0;}
   count=nd_artwork_u16(r+26);offset=nd_artwork_u32(r+28);if(!count || count>1024 || offset<table || offset>size || (unsigned long)count*5UL>size-offset)return 0;

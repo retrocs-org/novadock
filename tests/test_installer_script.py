@@ -44,7 +44,7 @@ QUESTIONS = {'askbool', 'askchoice', 'askoptions'}
 # Built at packaging time and guarded by (exists ...) in the script.
 OPTIONAL = {'Catalogs', 'novadock.cfg.default'}
 SOURCE_ONLY = '--source-only' in sys.argv
-BUILT_FILES = {'NovaDock', 'NovaDockPrefs', 'SaveConfig', 'MakeIcon', 'StartInstaller', 'SetupStartup'}
+BUILT_FILES = {'NovaDock', 'NovaDockPrefs', 'SaveConfig', 'MakeIcon', 'StartInstaller', 'SetupStartup', 'SupportLog', 'SupportReport'}
 
 
 def tokenize(text):
@@ -604,7 +604,7 @@ def main():
     assert not re.search(r'\(run[^)]*makeicon', text, re.I | re.S), \
         'installer still runs MakeIcon on the Amiga'
     plugin_icons = (
-        'Activity', 'AmIRC', 'ArchiveExtractor', 'BitSkim', 'Clipboard',
+        'Activity', 'ArchiveExtractor', 'BitSkim', 'Clipboard',
         'Clock', 'Command', 'DOpus4', 'Eyes', 'Memory', 'MusicPlayer',
         'Network', 'RunningApps',
     )

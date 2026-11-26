@@ -1,6 +1,8 @@
 <?php
 // Palette values are copied from the bundled theme.cfg files.
 return [
+    ['id' => 'MacModern', 'name' => 'macOS Modern', 'description' => 'A translucent rounded shelf inspired by the modern macOS dock.', 'shape' => 'rounded', 'palette' => ['#526376','#dae4ef','#182434','#92bcde','#42a093']],
+    ['id' => 'MacGlass', 'name' => 'Mac OS X Glass', 'description' => 'A reflective sloping glass shelf inspired by Mac OS X Leopard.', 'shape' => 'rounded', 'palette' => ['#414956','#bcc5d1','#182434','#dee9f6','#42a093']],
     ['id' => 'Christmas', 'name' => 'Christmas', 'description' => 'Evergreen tiles with warm cream text, festive red and gold accents.', 'shape' => 'chamfer', 'palette' => ['#0a1b18','#16382b','#fff0d0','#dc564d','#e8be5f']],
     ['id' => 'BeOS', 'name' => 'BeOS', 'description' => 'Warm grey with a bright yellow accent and chamfered tiles.', 'shape' => 'chamfer', 'palette' => ['#9c9c94', '#d6d4c8', '#161614', '#facd28', '#488a97']],
     ['id' => 'Copper', 'name' => 'Copper', 'description' => 'Dark copper tones with orange highlights.', 'shape' => 'chamfer', 'palette' => ['#2b160f', '#4c2619', '#ffe6c7', '#e17038', '#36b0a5']],

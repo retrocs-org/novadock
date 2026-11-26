@@ -7,6 +7,9 @@
 #include <errno.h>
 #include "nd_prism.h"
 #include "../warp/nd_warp_control.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 #define PROFILE_LIMIT 65536U
 #ifndef ND_PRISM_RENAME
 #define ND_PRISM_RENAME rename

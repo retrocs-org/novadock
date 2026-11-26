@@ -388,6 +388,9 @@ static void load_config(struct NCConfig *cfg)
     }
 }
 #include "nd_netdetails.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 
 int main(int argc,char **argv)
 {

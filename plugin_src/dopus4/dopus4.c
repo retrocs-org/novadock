@@ -1,3 +1,4 @@
+#include "nd_trace.h"
 /* Directory Opus 4 bridge for NovaDock.
  * The plugin never links against or redistributes DOpus.  It detects the
  * configured ARexx port, restores and fronts DOpus on click, or starts the
@@ -22,6 +23,9 @@
 #include "nd_plugin_versions.h"
 #include "nd_client.h"
 #include "nd_option_runtime.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 
 /* Version string for the AmigaDOS Version command (kept global so the
  * linker never discards it). */
@@ -231,7 +235,14 @@ static LONG send_arexx(const char *port,const char *command)
     DeleteRexxMsg(message);DeleteMsgPort(reply);
     return result;
 }
+#if defined(ND_TRACE) || defined(ND_RUNTIME_TRACE)
+static LONG restore_and_front_impl(const struct DOpusConfig *cfg,const char *port);
 static LONG restore_and_front(const struct DOpusConfig *cfg,const char *port)
+{LONG result;ND_TRACE_START(t);ND_TRACE_NOTE("dopus action begin",0,0,0,0);ND_TRACE_FLUSH();result=restore_and_front_impl(cfg,port);ND_TRACE_END(NDT_DOPUS_ACTION,t);ND_TRACE_NOTE("dopus action end",result,0,0,0);ND_TRACE_FLUSH();return result;}
+static LONG restore_and_front_impl(const struct DOpusConfig *cfg,const char *port)
+#else
+static LONG restore_and_front(const struct DOpusConfig *cfg,const char *port)
+#endif
 {
     LONG restore_result=20,front_result=20;
     const char *current;
@@ -314,6 +325,7 @@ int main(int argc,char **argv)
     int quit=0,reload=1,online,resident,visible,pending_front=0;
     int start_failed=0,front_failed=0;
     if (argc<2 || !nd_client_init(&client,argv[1])) return 20;
+    ND_TRACE_INIT("dopus4");
     RexxSysBase=(struct RxsLib *)OpenLibrary("rexxsyslib.library",0);
     WorkbenchBase=OpenLibrary("workbench.library",44);
     IntuitionBase=(struct IntuitionBase *)OpenLibrary("intuition.library",37);
@@ -327,9 +339,12 @@ int main(int argc,char **argv)
             start_failed=0;front_failed=0;
             reload=0;
         }
+        {ND_TRACE_START(probe_start);
         port=active_port(&cfg);online=port!=NULL && RexxSysBase!=NULL;
         resident=dopus_resident();
         visible=online && dopus_visible(port);
+        ND_TRACE_END(NDT_DOPUS_PROBE,probe_start);}
+        ND_TRACE_NOTE("dopus online,resident,visible,pending",online,resident,visible,pending_front);
         if (online && pending_front) {
             if (restore_and_front(&cfg,port)!=0) front_failed=8;
             pending_front=0;
@@ -350,11 +365,14 @@ int main(int argc,char **argv)
         else if (online || resident) status=visible ? "READY" : "ICONIFIED";
         else if (pending_front) status="STARTING";
         else status="OFFLINE";
+        {ND_TRACE_START(update_start);
         heartbeat_ticks=500U;
         event=nd_client_update_quiet(&client,"DOpus4",status,ND_NO_METER,
                                      elapsed_ticks,heartbeat_ticks);
         if (!(event&ND_EVENT_QUIT))
             event|=nd_client_set_badge(&client,(online || resident) ? "*" : "");
+        ND_TRACE_END(NDT_DOPUS_UPDATE,update_start);}
+        ND_TRACE_PULSE();
         if (start_failed) --start_failed;
         if (front_failed) --front_failed;
         if (event&ND_EVENT_QUIT) quit=1;

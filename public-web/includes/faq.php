@@ -43,6 +43,9 @@
 <details><summary>Where do I configure Home Assistant?</summary>
 <p>Install AmiHASS separately and save the connection in AmiHASSPrefs. HASS settings choose a room/type, device, action, refresh and display for each tile. Read only disables controls. The token stays in AmiHASS.</p>
 </details>
+<details><summary>How do notifications work?</summary>
+<p>Install <a href="https://aminotis.retrocs.org">AmiNotis</a> separately, then add the AMINOTIS tile for an unread badge and inbox panel. To send the dock's own notices to the same inbox, turn on Send alerts to AmiNotis in General Preferences.</p>
+</details>
 <details><summary>Can NovaDock check for updates?</summary>
 <p>The Update preferences page has separate startup and running checks, both off by default. Running checks use a 2, 4 or 6 hour interval. Check now shows checking, the last check and whether a newer release is available.</p>
 </details>

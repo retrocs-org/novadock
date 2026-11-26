@@ -18,6 +18,9 @@
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 #include "nd_amirc.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 const char nd_version[]=ND_PLUGIN_VER_STRING(AMIRC,"AmIRC");
 long __stack=16384;
 struct RxsLib *RexxSysBase=NULL;
@@ -247,7 +250,7 @@ int main(int argc,char **argv)
         if (!RexxSysBase || !pending.reply) strcpy(value,"REXX UNAVAILABLE");
         else if (starting) strcpy(value,"STARTING");
         else if (notice) nd_amirc_clean(value,sizeof(value),notice);
-        event=nd_client_update_quiet(&client,caption,value,ND_NO_METER,elapsed,500);
+        event=nd_client_update_art_quiet(&client,caption,value,"amirc",!present || unresponsive ? 2U:connected>0 ? 0U:1U,elapsed,500);
         /* Unacknowledged event counts take precedence over the connection
          * dot. Keep them through a disconnect until read or acknowledged. */
         if (!(event&ND_EVENT_QUIT)) {

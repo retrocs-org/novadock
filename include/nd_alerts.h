@@ -6,7 +6,7 @@
 #define ND_ALERT_WARNING 1
 #define ND_ALERT_ERROR 2
 struct NDAlertEntry {unsigned long sequence,seconds;unsigned short severity,read;char source[20],title[32],text[96];};
-struct NDAlerts {struct NDAlertEntry entries[ND_ALERT_MAX];unsigned long sequence;unsigned int count,unread;};
+struct NDAlerts {struct NDAlertEntry entries[ND_ALERT_MAX];unsigned long sequence;unsigned int count,unread;unsigned long identity[ND_ALERT_MAX];};
 void nd_alerts_add(struct NDAlerts *a,const char *source,const char *title,const char *text,unsigned int severity,unsigned long seconds);
 void nd_alerts_ack(struct NDAlerts *a,unsigned long through);
 void nd_alerts_clear(struct NDAlerts *a);

@@ -13,6 +13,9 @@
 #include "nd_client.h"
 #include "nd_option_runtime.h"
 #include "nd_command.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 
 const char nd_version[]=ND_PLUGIN_VER_STRING(COMMAND,"Command");
 /* Honoured by the vbcc and libnix startup code; harmless elsewhere. */
@@ -142,7 +145,7 @@ int main(int argc,char **argv)
             badge="!";
         }
         caption=cfg.caption[0] ? cfg.caption : "";
-        event=nd_client_update_quiet(&client,caption,value,meter,elapsed,500U);
+        event=nd_client_update_art_meter_quiet(&client,caption,value,"command",badge[0] ? 2U:state!=CMD_IDLE ? 1U:0U,meter,elapsed,500U);
         if (!(event&ND_EVENT_QUIT)) event|=nd_client_set_badge(&client,badge);
         if (event&ND_EVENT_QUIT) break;
         if (event&ND_EVENT_SETTINGS) {

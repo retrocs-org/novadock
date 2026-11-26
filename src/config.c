@@ -1,3 +1,4 @@
+#include "nd_retired_plugins.h"
 #include "nd_plugin_labels.h"
 #include "nd_config.h"
 #include "nd_i2c_cache.h"
@@ -24,6 +25,84 @@ static void copy_string(char *dest, const char *src, unsigned int limit)
     dest[limit - 1U] = '\0';
 }
 
+/* ---- Pooled option values -------------------------------------------- */
+const char *nd_option_value(const struct NDConfig *cfg,const struct NDOption *o)
+{
+    if (!cfg || !o || !o->value || o->value>=ND_OPTION_POOL_SIZE) return "";
+    return cfg->option_pool+o->value;
+}
+static unsigned short option_old[ND_MAX_OPTIONS],option_new[ND_MAX_OPTIONS];
+static unsigned long option_compactions;
+void nd_option_pool_compact(struct NDConfig *cfg)
+{
+    int i,j,n=0;
+    unsigned int used=1,len;
+    unsigned short key;
+    if (!cfg) return;
+    ++option_compactions;
+    /* Distinct live offsets (duplicated plugin instances may share one). */
+    for (i=0;i<cfg->option_count;++i) {
+        unsigned short off=cfg->options[i].value;
+        if (!off || off>=ND_OPTION_POOL_SIZE) continue;
+        for (j=0;j<n;++j) if (option_old[j]==off) break;
+        if (j==n) option_old[n++]=off;
+    }
+    for (i=1;i<n;++i) {
+        key=option_old[i];
+        for (j=i-1;j>=0 && option_old[j]>key;--j) option_old[j+1]=option_old[j];
+        option_old[j+1]=key;
+    }
+    cfg->option_pool[0]='\0';
+    for (i=0;i<n;++i) {
+        len=(unsigned int)strlen(cfg->option_pool+option_old[i])+1U;
+        if (option_old[i]!=used)
+            memmove(cfg->option_pool+used,cfg->option_pool+option_old[i],len);
+        option_new[i]=(unsigned short)used;
+        used+=len;
+    }
+    for (i=0;i<cfg->option_count;++i) {
+        unsigned short off=cfg->options[i].value;
+        cfg->options[i].value=0;
+        if (!off) continue;
+        for (j=0;j<n;++j) if (option_old[j]==off) {cfg->options[i].value=option_new[j];break;}
+    }
+    if (used<ND_OPTION_POOL_SIZE)
+        memset(cfg->option_pool+used,0,ND_OPTION_POOL_SIZE-used);
+    cfg->option_used=used;
+}
+/* Append values until compaction is needed. Reclaim the replaced value
+ * during compaction: the final live table, including a replacement, always
+ * fits the legacy capacity. Shared offsets remain live through their twins. */
+static int option_store(struct NDConfig *cfg,int index,const char *value)
+{
+    char stable[ND_OPT_VALUE_LEN],previous[ND_OPT_VALUE_LEN];
+    unsigned int len=(unsigned int)strlen(value),used;
+    if (len>ND_OPT_VALUE_LEN-1U) len=ND_OPT_VALUE_LEN-1U;
+    if (!len) {cfg->options[index].value=0;return 1;}
+    /* VALUE can point into the pool we are about to move. */
+    memcpy(stable,value,len);stable[len]='\0';
+    used=cfg->option_used ? cfg->option_used : 1U;
+    if (used+len+1U>ND_OPTION_POOL_SIZE) {
+        copy_string(previous,nd_option_value(cfg,&cfg->options[index]),sizeof(previous));
+        cfg->options[index].value=0;
+        nd_option_pool_compact(cfg);
+        used=cfg->option_used;
+        if (used+len+1U>ND_OPTION_POOL_SIZE) {
+            /* Defensive rollback for an invalid/inconsistent input config. */
+            unsigned int old_len=(unsigned int)strlen(previous);
+            if (old_len && used+old_len+1U<=ND_OPTION_POOL_SIZE) {
+                memcpy(cfg->option_pool+used,previous,old_len+1U);
+                cfg->options[index].value=(unsigned short)used;
+                cfg->option_used=used+old_len+1U;
+            }
+            return 0;
+        }
+    }
+    memcpy(cfg->option_pool+used,stable,len+1U);
+    cfg->options[index].value=(unsigned short)used;
+    cfg->option_used=used+len+1U;
+    return 1;
+}
 /* ---- Pooled item texts ------------------------------------------------ */
 static const unsigned int text_limits[ND_TEXT_COUNT]={
     ND_COMMAND_LEN,ND_COMMAND_LEN,ND_COMMAND_LEN,ND_HOTKEY_LEN,
@@ -164,6 +243,10 @@ static int ci_cmp(const char *a,const char *b)
 static const char *config_theme_id(int theme)
 {
     switch (theme) {
+    /* IDs are Themes/ folder names (see theme.c dirs[]); display names
+     * with spaces are not valid IDs and could never round-trip. */
+    case ND_THEME_MACMODERN: return "MacModern";
+    case ND_THEME_MACGLASS: return "MacGlass";
     case ND_THEME_LIGHT: return "Light";
     case ND_THEME_WORKBENCH: return "Workbench";
     case ND_THEME_GRAPHITE: return "Graphite";
@@ -200,6 +283,15 @@ static int config_theme_id_valid(const char *id)
         if (++n>=ND_THEME_ID_LEN) return 0;
     }
     return 1;
+}
+/* Nonzero unless TEXT starts with PREFIX (any case). */
+static int ci_cmp_prefix(const char *text,const char *prefix)
+{
+    while (*prefix) {
+        if (toupper((unsigned char)*text)!=toupper((unsigned char)*prefix)) return 1;
+        ++text;++prefix;
+    }
+    return 0;
 }
 static char *trim(char *s)
 {
@@ -275,7 +367,7 @@ static int add_item(struct NDConfig *cfg, int kind, const char *name,
     if (strlen(name) >= ND_LABEL_LEN || strlen(command) >= ND_COMMAND_LEN) return 0;
     if (icon && strlen(icon) >= ND_COMMAND_LEN) return 0;
     if (kind == ND_ITEM_PLUGIN) {
-        if (!id || !valid_id(id)) return 0;
+        if (!id || !valid_id(id) || nd_plugin_retired(id)) return 0;
         for (i = 0; i < cfg->count; ++i)
             if (cfg->items[i].kind == ND_ITEM_PLUGIN &&
                 !strcmp(cfg->items[i].id, id) &&
@@ -287,7 +379,8 @@ static int add_item(struct NDConfig *cfg, int kind, const char *name,
     if (icon && !nd_item_set_text(cfg, p, ND_TEXT_ICON, icon)) return 0;
     p->kind = kind;
     copy_string(p->label, name, sizeof(p->label));
-    copy_string(p->caption, name, sizeof(p->caption));
+    if(kind==ND_ITEM_PLUGIN)nd_plugin_name_upper(p->label);
+    copy_string(p->caption, p->label, sizeof(p->caption));
     copy_string(p->command, command, sizeof(p->command));
     if (id) copy_string(p->id, id, sizeof(p->id));
     copy_string(p->value, kind == ND_ITEM_PLUGIN ? "OFFLINE" :
@@ -652,7 +745,7 @@ int nd_remove_visible_item(struct NDConfig *cfg, int visible)
         }else{
             const char *label=nd_collection_plugin_path(cfg->items[row].command)==1 ? "WHDLoad":nd_sensor_plugin_path(cfg->items[row].command) ? "SENSOR":nd_collection_plugin_path(cfg->items[row].command)==2 ? "MUSIC":nd_independent_plugin_id(cfg->items[row].command);
             cfg->items[row].enabled=0;
-            strcpy(cfg->items[row].label,label);strcpy(cfg->items[row].caption,label);
+            strcpy(cfg->items[row].label,label);nd_plugin_name_upper(cfg->items[row].label);strcpy(cfg->items[row].caption,cfg->items[row].label);
         }
     }else cfg->items[row].enabled = 0;
     if (layout_row>=0 && cfg->row_counts[layout_row]>0)
@@ -900,7 +993,7 @@ const char *nd_option_get(const struct NDConfig *cfg, const char *id, const char
     if (!cfg || !id || !key) return NULL;
     for (i=0; i<cfg->option_count; ++i)
         if (!strcmp(cfg->options[i].id,id) && !strcmp(cfg->options[i].key,key))
-            return cfg->options[i].value;
+            return nd_option_value(cfg,&cfg->options[i]);
     /* Legacy Network tiles store their view on the PLUGIN line. Reflect
      * that choice until an explicit VIEW preference is saved. */
     if(!strcmp(id,"NET") && !strcmp(key,"VIEW"))
@@ -915,6 +1008,7 @@ const char *nd_option_get(const struct NDConfig *cfg, const char *id, const char
         if (!strcmp(cfg->defs[i].id,id) && !strcmp(cfg->defs[i].key,key))
             return cfg->defs[i].default_value;
     if(!strcmp(schema,"SENSORS") && nd_i2c_key(key))return "YES";
+    if(!strcmp(schema,"SENSORS") && nd_i2c_title_key(key))return "";
     return NULL;
 }
 static void apply_network_view(struct NDConfig *cfg,const char *value)
@@ -927,13 +1021,14 @@ static void apply_saved_network_view(struct NDConfig *cfg)
 {
     int i;
     for(i=0;i<cfg->option_count;++i)if(!strcmp(cfg->options[i].id,"NET") &&
-        !strcmp(cfg->options[i].key,"VIEW"))apply_network_view(cfg,cfg->options[i].value);
+        !strcmp(cfg->options[i].key,"VIEW"))apply_network_view(cfg,nd_option_value(cfg,&cfg->options[i]));
 }
 int nd_option_set(struct NDConfig *cfg, const char *id, const char *key,
                   const char *value)
 {
     const struct NDOptionDef *built, *spec=NULL;
     const char *schema;
+    char stable_value[ND_OPT_VALUE_LEN];
     int i,n;
     if (!cfg || !id || !key || !value ||
         !opt_token(id,20) || !opt_token(key,ND_OPT_KEY_LEN)) return 0;
@@ -947,15 +1042,25 @@ int nd_option_set(struct NDConfig *cfg, const char *id, const char *key,
     if(!spec && !strcmp(schema,"SENSORS") && nd_i2c_key(key)){
         static const struct NDOptionDef sensor_id={"SENSORS","","I2C sensor","BOOL","","YES"};spec=&sensor_id;
     }
+    if(!spec && !strcmp(schema,"SENSORS") && nd_i2c_title_key(key)){
+        static const struct NDOptionDef sensor_title={"SENSORS","","I2C title","TEXT","",""};spec=&sensor_title;
+    }
+    if(!spec && nd_plugin_retired(id)){
+        static const struct NDOptionDef retired={"","","","TEXT","",""};
+        spec=&retired; /* opaque saved source settings for AmiNotis migration */
+    }
     if (!spec || !nd_option_validate(spec,value)) return 0;
+    copy_string(stable_value,value,sizeof(stable_value));value=stable_value;
+    if(!strcmp(schema,"SENSORS") && strlen(key)>6 && !strcmp(key+strlen(key)-6,"_TITLE") && strlen(value)>31)return 0;
     if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"ACTIONS") || !strcmp(schema,"SHELF")) && !strcmp(key,"ICON") &&
        nd_collection_icon_index(value)<0 && strcmp(value,"Custom") && strcmp(value,"Text"))return 0;
     if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS") || !strcmp(schema,"HASS") || !strcmp(schema,"WATCH") || !strcmp(schema,"LOGS") || !strcmp(schema,"SHELF")) && !strcmp(key,"LABEL")){
         if(!*value || strlen(value)>=ND_LABEL_LEN)return 0;
+        nd_plugin_name_upper(stable_value);
     }
     for (i=0; i<cfg->option_count; ++i) {
         if (!strcmp(cfg->options[i].id,id) && !strcmp(cfg->options[i].key,key)) {
-            copy_string(cfg->options[i].value,value,ND_OPT_VALUE_LEN);
+            if (!option_store(cfg,i,value)) return 0;
             if(!strcmp(id,"NET") && !strcmp(key,"VIEW"))apply_network_view(cfg,value);
             if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS") || !strcmp(schema,"HASS") || !strcmp(schema,"WATCH") || !strcmp(schema,"LOGS") || !strcmp(schema,"SHELF")) && !strcmp(key,"LABEL")){
                 int j;for(j=0;j<cfg->count;++j)if(cfg->items[j].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[j].id,id))
@@ -968,7 +1073,10 @@ int nd_option_set(struct NDConfig *cfg, const char *id, const char *key,
     i=cfg->option_count++;
     copy_string(cfg->options[i].id,id,sizeof(cfg->options[i].id));
     copy_string(cfg->options[i].key,key,sizeof(cfg->options[i].key));
-    copy_string(cfg->options[i].value,value,sizeof(cfg->options[i].value));
+    cfg->options[i].value=0;
+    if (!option_store(cfg,i,value)) {
+        memset(&cfg->options[i],0,sizeof(cfg->options[i]));--cfg->option_count;return 0;
+    }
     if(!strcmp(id,"NET") && !strcmp(key,"VIEW"))apply_network_view(cfg,value);
     if((!strcmp(schema,"WHDLOAD") || !strcmp(schema,"MUSICLIB") || !strcmp(schema,"SENSORS") || !strcmp(schema,"ACTIONS") || !strcmp(schema,"HASS") || !strcmp(schema,"WATCH") || !strcmp(schema,"LOGS") || !strcmp(schema,"SHELF")) && !strcmp(key,"LABEL")){
                 int j;for(j=0;j<cfg->count;++j)if(cfg->items[j].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[j].id,id))
@@ -976,28 +1084,61 @@ int nd_option_set(struct NDConfig *cfg, const char *id, const char *key,
             }
             return 1;
 }
+/* Apply atomically without another full NDConfig. Undo values are stable
+ * copies: setters can compact even a completely full legacy-sized table.
+ * Without compaction, rewind offsets/append bytes exactly as before. */
+struct NDOptionUndo { int index; unsigned short offset; char value[ND_OPT_VALUE_LEN]; };
 int nd_option_apply(struct NDConfig *cfg,const char *id,const struct NDOptionDef *defs,
                     const char values[][ND_OPT_VALUE_LEN],int count)
 {
- struct NDConfig *next;const char *current;int i,j,result=1,changes=0;
- if(!cfg || !id || !defs || !values || count<0)return 0;
+ struct NDOptionUndo *undo=NULL;
+ char (*labels)[ND_LABEL_LEN]=NULL;unsigned char *graphs=NULL;
+ const char *current;int i,j,result=1,changes=0,added=0,undone=0,old_count;
+ unsigned int mark,from;unsigned long epoch;
+ if(!cfg || !id || !defs || !values || count<0 || count>ND_MAX_OPTIONS)return 0;
  for(i=0;i<count;++i){
   if(!nd_option_validate(&defs[i],values[i]))return 0;
   current=nd_option_get(cfg,id,defs[i].key);if(!current || strcmp(current,values[i]))++changes;
  }
  if(!changes)return 1;
- next=(struct NDConfig *)malloc(sizeof(*next));if(!next)return -2;*next=*cfg;
  for(i=0;i<count;++i){
-  current=nd_option_get(next,id,defs[i].key);if(current && !strcmp(current,values[i]))continue;
-  if(next->option_count>=ND_MAX_OPTIONS){
-   for(j=0;j<next->option_count;++j)if(!strcmp(next->options[j].id,id)&&!strcmp(next->options[j].key,defs[i].key))break;
-   if(j==next->option_count){result=-1;break;}
+  current=nd_option_get(cfg,id,defs[i].key);if(current && !strcmp(current,values[i]))continue;
+  for(j=0;j<cfg->option_count;++j)if(!strcmp(cfg->options[j].id,id)&&!strcmp(cfg->options[j].key,defs[i].key))break;
+  if(j==cfg->option_count){
+   int k;for(k=0;k<i;++k)if(!strcmp(defs[k].key,defs[i].key))break;
+   if(k==i)++added;
   }
-  if(!nd_option_set(next,id,defs[i].key,values[i])){result=0;break;}
  }
- if(result==1)*cfg=*next;free(next);return result;
+ if(cfg->option_count+added>ND_MAX_OPTIONS)return -1;
+ undo=(struct NDOptionUndo *)malloc(sizeof(*undo)*(size_t)count);
+ labels=(char (*)[ND_LABEL_LEN])malloc(sizeof(*labels)*(size_t)(cfg->count ? cfg->count:1));
+ graphs=(unsigned char *)malloc((size_t)(cfg->count ? cfg->count:1));
+ if(!undo || !labels || !graphs){free(undo);free(labels);free(graphs);return -2;}
+ old_count=cfg->option_count;mark=cfg->option_used;epoch=option_compactions;
+ for(j=0;j<cfg->count;++j){memcpy(labels[j],cfg->items[j].label,ND_LABEL_LEN);graphs[j]=(unsigned char)cfg->items[j].graph;}
+ for(i=0;i<count;++i){
+  current=nd_option_get(cfg,id,defs[i].key);if(current && !strcmp(current,values[i]))continue;
+  for(j=0;j<old_count;++j)if(!strcmp(cfg->options[j].id,id)&&!strcmp(cfg->options[j].key,defs[i].key))break;
+  if(j<old_count){int k;for(k=0;k<undone;++k)if(undo[k].index==j)break;
+   if(k==undone){undo[undone].index=j;undo[undone].offset=cfg->options[j].value;
+    copy_string(undo[undone].value,nd_option_value(cfg,&cfg->options[j]),ND_OPT_VALUE_LEN);++undone;}}
+  if(!nd_option_set(cfg,id,defs[i].key,values[i])){result=0;break;}
+ }
+ if(result!=1){
+  for(j=old_count;j<cfg->option_count;++j)memset(&cfg->options[j],0,sizeof(cfg->options[j]));
+  cfg->option_count=old_count;
+  if(epoch==option_compactions){
+   for(i=undone-1;i>=0;--i)cfg->options[undo[i].index].value=undo[i].offset;
+   from=mark ? mark:1U;
+   if(cfg->option_used>from)memset(cfg->option_pool+from,0,cfg->option_used-from);
+   cfg->option_used=mark;
+  }else{
+   for(i=undone-1;i>=0;--i)(void)option_store(cfg,undo[i].index,undo[i].value);
+  }
+  for(j=0;j<cfg->count;++j){memcpy(cfg->items[j].label,labels[j],ND_LABEL_LEN);cfg->items[j].graph=graphs[j];}
+ }
+ free(undo);free(labels);free(graphs);return result;
 }
-
 int nd_options_changed(const struct NDConfig *old,const struct NDConfig *next,
                        const char *id)
 {
@@ -1060,12 +1201,14 @@ void nd_default_config(struct NDConfig *cfg)
     memset(cfg, 0, sizeof(*cfg));
     cfg->side = ND_SIDE_BOTTOM;
     cfg->position = ND_POSITION_CENTER;
+    cfg->position_offset=0;
     cfg->font_mode = ND_FONT_WORKBENCH;
     cfg->label_mode = ND_LABEL_ALWAYS;
     cfg->item_size = ND_ITEM_SIZE_NORMAL;
     cfg->running_apps = 1;
     cfg->removable_media = 1;
     cfg->check_updates = 0;
+    cfg->send_alerts_aminotis = 0;
     cfg->check_updates_running = 0;
     cfg->update_interval_hours = 4;
     cfg->refresh_mode = ND_REFRESH_LOW_MEMORY;
@@ -1097,7 +1240,15 @@ void nd_default_config(struct NDConfig *cfg)
              "RUNNINGAPPS", NULL, 0, 0, 0);
     add_item(cfg,ND_ITEM_PLUGIN,"Timer","Plugins/Timer","TIMER",NULL,0,0,0);
     add_item(cfg,ND_ITEM_PLUGIN,"Notes","Plugins/Notes","NOTES",NULL,0,0,0);
+    add_item(cfg, ND_ITEM_PLUGIN, "Preferences", "Plugins/Preferences", "PREFERENCES", NULL, 0, 1, 0);
 }
+void nd_factory_config(struct NDConfig *cfg)
+{
+    nd_default_config(cfg);
+    cfg->colourful_icons=1;cfg->theme_artwork=1;
+    cfg->hover_magnification=100;cfg->hover_animation=1;cfg->drag_bar=1;
+}
+
 const char *nd_theme_name(int theme)
 {
     switch (theme) {
@@ -1113,6 +1264,8 @@ const char *nd_theme_name(int theme)
     case ND_THEME_NORD: return "NORD";
     case ND_THEME_VAPOR: return "VAPOR";
     case ND_THEME_CHRISTMAS: return "CHRISTMAS";
+    case ND_THEME_MACMODERN: return "MACMODERN";
+    case ND_THEME_MACGLASS: return "MACGLASS";
     default: return "MOCHA";
     }
 }
@@ -1150,6 +1303,7 @@ const char *nd_shape_name(int shape)
 }
 const char *nd_position_name(int position)
 {
+    if (position==ND_POSITION_CUSTOM) return "CUSTOM";
     if (position==ND_POSITION_START) return "START";
     if (position==ND_POSITION_END) return "END";
     return "CENTER";
@@ -1159,6 +1313,12 @@ const char *nd_font_name(int mode)
     if (mode==ND_FONT_TOPAZ) return "TOPAZ";
     if (mode==ND_FONT_BOLD) return "BOLD";
     return "WORKBENCH";
+}
+int nd_label_visible(int mode,int tiny,int hovered)
+{
+    if(tiny || mode==ND_LABEL_HIDDEN)return 0;
+    if(mode==ND_LABEL_HOVER)return hovered;
+    return 1;
 }
 const char *nd_label_mode_name(int mode)
 {
@@ -1209,6 +1369,35 @@ int nd_parse_line(struct NDConfig *cfg, const char *line)
     *value++ = '\0';
     key = trim(key);
     value = trim(value);
+    /* Keep old tile definitions as inert migration metadata. Options below
+     * retain their original IDs, so AmiNotis can import the application paths
+     * and source preferences later. No missing executable is launched. */
+    if (!ci_cmp(key,"PLUGIN")) {
+        const char *first=strchr(value,'|'),*second,*end;
+        char retired_id[sizeof(cfg->items[0].id)],saved_key[48],part[97];size_t len;unsigned int chunk;const char *next;
+        second=first ? strchr(first+1,'|'):NULL;
+        end=second ? strchr(second+1,'|'):NULL;
+        if(end){
+            len=(size_t)(end-second-1);
+            if(len && len<sizeof(retired_id)){
+                memcpy(retired_id,second+1,len);retired_id[len]='\0';
+                if(nd_plugin_retired(trim(retired_id))){
+                    if(strlen(value)+strlen(trim(retired_id))+18<ND_UNKNOWN_LEN){
+                        sprintf(saved_key,"RETIRED_PLUGIN.%s",trim(retired_id));
+                        return nd_preserve_unknown(cfg,saved_key,value);
+                    }
+                    for(next=value,chunk=0;*next;++chunk){
+                        len=strlen(next);if(len>96)len=96;
+                        memcpy(part,next,len);part[len]='\0';
+                        sprintf(saved_key,"RETIRED_PLUGIN.%s.%u",trim(retired_id),chunk);
+                        if(!nd_preserve_unknown(cfg,saved_key,part))return 0;
+                        next+=len;
+                    }
+                    return 1;
+                }
+            }
+        }
+    }
     if (!strncmp(key,"OPTION.",7)) {
         char *dot=strchr(key+7,'.');
         if (!dot) return 0;
@@ -1234,6 +1423,12 @@ int nd_parse_line(struct NDConfig *cfg, const char *line)
         return nd_option_define(cfg,trim(parts[0]),trim(parts[1]),trim(parts[2]),
                                 trim(parts[3]),trim(parts[4]),trim(parts[5]));
     }
+    if (!ci_cmp(key,"SEND_ALERTS_TO_AMINOTIS")) {
+        if(!ci_cmp(value,"YES"))cfg->send_alerts_aminotis=1;
+        else if(!ci_cmp(value,"NO"))cfg->send_alerts_aminotis=0;
+        else return 0;
+        return 1;
+    }
     if (!ci_cmp(key, "SIDE")) {
         if (!ci_cmp(value, "BOTTOM")) cfg->side = ND_SIDE_BOTTOM;
         else if (!ci_cmp(value, "TOP")) cfg->side = ND_SIDE_TOP;
@@ -1246,8 +1441,14 @@ int nd_parse_line(struct NDConfig *cfg, const char *line)
         if (!ci_cmp(value,"START")) cfg->position=ND_POSITION_START;
         else if (!ci_cmp(value,"CENTER")) cfg->position=ND_POSITION_CENTER;
         else if (!ci_cmp(value,"END")) cfg->position=ND_POSITION_END;
+        else if (!ci_cmp(value,"CUSTOM")) cfg->position=ND_POSITION_CUSTOM;
         else return 0;
         return 1;
+    }
+    if (!ci_cmp(key,"POSITION_OFFSET")) {
+        n=numeric(value,0,ND_POSITION_OFFSET_MAX);
+        if (n<0) return 0;
+        cfg->position_offset=n;return 1;
     }
     if (!ci_cmp(key,"FONT")) {
         if (!ci_cmp(value,"WORKBENCH")) cfg->font_mode=ND_FONT_WORKBENCH;
@@ -1260,6 +1461,7 @@ int nd_parse_line(struct NDConfig *cfg, const char *line)
         if (!ci_cmp(value,"ALWAYS")) cfg->label_mode=ND_LABEL_ALWAYS;
         else if (!ci_cmp(value,"HOVER")) cfg->label_mode=ND_LABEL_HOVER;
         else if (!ci_cmp(value,"HIDDEN")) cfg->label_mode=ND_LABEL_HIDDEN;
+        else if (!ci_cmp(value,"MAGNIFIED")) cfg->label_mode=ND_LABEL_HOVER;
         else return 0;
         return 1;
     }
@@ -1336,6 +1538,12 @@ int nd_parse_line(struct NDConfig *cfg, const char *line)
         else return 0;
         return 1;
     }
+    if (!ci_cmp(key,"ICON_COLOURS") || !ci_cmp(key,"ICON_COLORS")) {
+        if(!ci_cmp(value,"THEME"))cfg->colourful_icons=0;
+        else if(!ci_cmp(value,"COLOURFUL") || !ci_cmp(value,"COLORFUL"))cfg->colourful_icons=1;
+        else return 0;
+        return 1;
+    }
     if (!ci_cmp(key, "ALWAYS_ON_TOP")) {
         if (!ci_cmp(value, "YES")) cfg->always_on_top = 1;
         else if (!ci_cmp(value, "NO")) cfg->always_on_top = 0;
@@ -1385,6 +1593,28 @@ int nd_parse_line(struct NDConfig *cfg, const char *line)
         ++cfg->hook_count;
         return 1;
     }
+    if (!ci_cmp(key,"HOVER_CACHE_KB")) {
+        char *end;long kb=strtol(value,&end,10);
+        if(!*value || *end || kb<0 || (kb>0 && kb<128) || kb>8192)return 0;
+        cfg->hover_cache_kb=(int)kb;return 1;
+    }
+    if (!ci_cmp(key,"DRAG_BAR")) {
+        if (!ci_cmp(value,"YES")) cfg->drag_bar=1;
+        else if (!ci_cmp(value,"NO")) cfg->drag_bar=0;
+        else return 0;
+        return 1;
+    }
+    if (!ci_cmp(key, "HOVER_ANIMATION")) {
+        if (!ci_cmp(value,"YES")) cfg->hover_animation=1;
+        else if (!ci_cmp(value,"NO")) cfg->hover_animation=0;
+        else return 0;
+        return 1;
+    }
+    if (!ci_cmp(key, "PROFILE")) {
+        if (*value && !nd_profile_name_valid(value)) return 0;
+        strcpy(cfg->profile,value);
+        return 1;
+    }
     if (!ci_cmp(key, "DOCK_HOTKEY")) {
         if (strlen(value)>=sizeof(cfg->dock_hotkey)) return 0;
         strcpy(cfg->dock_hotkey,value);
@@ -1420,6 +1650,25 @@ int nd_parse_line(struct NDConfig *cfg, const char *line)
     if (!ci_cmp(key, "RUNNING_APPS")) {
         if (!ci_cmp(value,"YES")) cfg->running_apps=1;
         else if (!ci_cmp(value,"NO")) cfg->running_apps=0;
+        else return 0;
+        return 1;
+    }
+    if (!ci_cmp(key, "HOVER_MAGNIFICATION")) {
+        int amount;
+        if (!ci_cmp(value,"YES")) amount=100;
+        else if (!ci_cmp(value,"NO")) amount=0;
+        else {amount=numeric(value,0,100);if(amount<0)return 0;}
+        cfg->hover_magnification=amount;
+        return 1;
+    }
+    if (!ci_cmp(key,"BACKGROUND_TRANSPARENCY")) {
+        int amount=numeric(value,0,100);if(amount<0)return 0;
+        cfg->background_transparency=amount;return 1;
+    }
+    if (!ci_cmp(key, "DOCK_BACKGROUND")) {
+        if (!ci_cmp(value,"ARTWORK")) {cfg->theme_artwork=1;cfg->wallpaper_match=0;}
+        else if (!ci_cmp(value,"SOLID")) {cfg->theme_artwork=0;cfg->wallpaper_match=0;}
+        else if (!ci_cmp(value,"WALLPAPER")) {cfg->theme_artwork=0;cfg->wallpaper_match=1;}
         else return 0;
         return 1;
     }
@@ -1642,7 +1891,7 @@ int nd_load_config(struct NDConfig *cfg, const char *filename)
                 (!strcmp(cfg->options[r].id,"CHIPRAM") ||
                  !strcmp(cfg->options[r].id,"FASTRAM")) &&
                 !strcmp(cfg->options[r].key,"POLL_TICKS"))
-                copy_string(poll_value,cfg->options[r].value,sizeof(poll_value));
+                copy_string(poll_value,nd_option_value(cfg,&cfg->options[r]),sizeof(poll_value));
         }
         for (r=0;r<cfg->count;++r) {
             struct NDItem *it=&cfg->items[r];
@@ -1672,6 +1921,14 @@ int nd_load_config(struct NDConfig *cfg, const char *filename)
                 (void)nd_option_set(cfg,"RAM","POLL_TICKS",poll_value);
         }
     }
+    /* Upgrade the shipped Preferences shortcut in place. Preserve its
+     * label, enabled flag, row and position; custom launcher commands remain. */
+    {int i,exists=0;for(i=0;i<cfg->count;++i)if(cfg->items[i].kind==ND_ITEM_PLUGIN && !strcmp(cfg->items[i].id,"PREFERENCES"))exists=1;
+     if(!exists)for(i=0;i<cfg->count;++i){struct NDItem *it=&cfg->items[i];
+      if(it->kind==ND_ITEM_LAUNCH && !strcmp(it->command,"NovaDockPrefs") &&
+         !*nd_item_text(cfg,it,ND_TEXT_ARGS) && !*nd_item_text(cfg,it,ND_TEXT_WORKDIR) &&
+         (!*nd_item_text(cfg,it,ND_TEXT_ICON) || !strcmp(nd_item_text(cfg,it,ND_TEXT_ICON),"NovaDockPrefs"))){
+       it->kind=ND_ITEM_PLUGIN;copy_string(it->id,"PREFERENCES",sizeof(it->id));copy_string(it->command,"Plugins/Preferences",sizeof(it->command));break;}}}
     /* Keep the bundled plugin catalogue complete after an upgrade without
      * changing an existing user's visible dock.  Older configurations may
      * predate any of these executables; missing entries are retained as
@@ -1693,7 +1950,8 @@ int nd_load_config(struct NDConfig *cfg, const char *filename)
             {"ARCHIVE","Plugins/ArchiveExtractor","ARCHIVE",0,0},
             {"APPS","Plugins/RunningApps","RUNNINGAPPS",0,0},
             {"Timer","Plugins/Timer","TIMER",0,0},
-            {"Notes","Plugins/Notes","NOTES",0,0}
+            {"Notes","Plugins/Notes","NOTES",0,0},
+            {"Preferences","Plugins/Preferences","PREFERENCES",0,0}
         };
         int i,j,found;
         for (j=0;j<(int)(sizeof(bundled)/sizeof(bundled[0]));++j) {
@@ -1716,6 +1974,7 @@ int nd_load_config(struct NDConfig *cfg, const char *filename)
     {int i;for(i=0;i<cfg->count;++i)if(cfg->items[i].kind==ND_ITEM_PLUGIN){
         const char *name=nd_plugin_label_upgrade(cfg->items[i].id,cfg->items[i].label);
         if(name)copy_string(cfg->items[i].label,name,sizeof(cfg->items[i].label));
+        nd_plugin_name_upper(cfg->items[i].label);
     }}
     {int i,j;for(i=0;i<cfg->count;++i)if(cfg->items[i].kind==ND_ITEM_PLUGIN && nd_independent_plugin_path(cfg->items[i].command)){
         const char *icon=nd_option_get(cfg,cfg->items[i].id,"ICON");
@@ -1775,7 +2034,10 @@ int nd_item_runtime_equal(const char *pool_a,const struct NDItem *a,
 int nd_config_can_update_live(const struct NDConfig *a,const struct NDConfig *b)
 {
     return a && b && a->font_mode==b->font_mode &&
-        a->refresh_mode==b->refresh_mode && a->item_size==b->item_size &&
+        a->refresh_mode==b->refresh_mode && a->always_on_top==b->always_on_top &&
+        a->colourful_icons==b->colourful_icons && a->item_size==b->item_size &&
+        a->theme_artwork==b->theme_artwork && a->wallpaper_match==b->wallpaper_match &&
+        a->hover_magnification==b->hover_magnification && a->background_transparency==b->background_transparency &&
         !strcmp(nd_config_theme_id(a),nd_config_theme_id(b));
 }
 int nd_config_runtime_equal(const struct NDConfig *a,const struct NDConfig *b)
@@ -1783,18 +2045,20 @@ int nd_config_runtime_equal(const struct NDConfig *a,const struct NDConfig *b)
     int i;
     if (!a || !b || a->option_count!=b->option_count ||
         a->def_count!=b->def_count || a->count!=b->count ||
-        a->side!=b->side || a->position!=b->position ||
-        a->font_mode!=b->font_mode || a->label_mode!=b->label_mode ||
+        a->side!=b->side || a->position!=b->position || a->position_offset!=b->position_offset || a->drag_bar!=b->drag_bar || a->hover_cache_kb!=b->hover_cache_kb ||
+        a->font_mode!=b->font_mode || a->label_mode!=b->label_mode || a->colourful_icons!=b->colourful_icons ||
         a->item_size!=b->item_size ||
         strcmp(nd_config_theme_id(a),nd_config_theme_id(b)) ||
-        a->shape!=b->shape ||
+        a->shape!=b->shape || a->theme_artwork!=b->theme_artwork || a->wallpaper_match!=b->wallpaper_match ||
+        a->hover_animation!=b->hover_animation ||
+        a->hover_magnification!=b->hover_magnification || a->background_transparency!=b->background_transparency ||
         a->tile_width!=b->tile_width || a->tile_height!=b->tile_height ||
         a->gap!=b->gap || a->rows!=b->rows ||
         a->row_layout!=b->row_layout ||
         a->left_click!=b->left_click || a->tooltips!=b->tooltips ||
         a->always_on_top!=b->always_on_top ||
         a->running_apps!=b->running_apps ||
-        a->removable_media!=b->removable_media || a->check_updates!=b->check_updates ||
+        a->send_alerts_aminotis!=b->send_alerts_aminotis || a->removable_media!=b->removable_media || a->check_updates!=b->check_updates ||
         a->check_updates_running!=b->check_updates_running || a->update_interval_hours!=b->update_interval_hours ||
         strcmp(a->dock_hotkey,b->dock_hotkey) ||
         a->running_section!=b->running_section ||
@@ -1813,7 +2077,7 @@ int nd_config_runtime_equal(const struct NDConfig *a,const struct NDConfig *b)
     for (i=0;i<a->option_count;++i)
         if (strcmp(a->options[i].id,b->options[i].id) ||
             strcmp(a->options[i].key,b->options[i].key) ||
-            strcmp(a->options[i].value,b->options[i].value)) return 0;
+            strcmp(nd_option_value(a,&a->options[i]),nd_option_value(b,&b->options[i]))) return 0;
     for (i=0;i<a->def_count;++i)
         if (strcmp(a->defs[i].id,b->defs[i].id) ||
             strcmp(a->defs[i].key,b->defs[i].key) ||
@@ -1864,8 +2128,8 @@ static void upgrade_network_tiles(struct NDConfig *cfg)
         if(road>=0 && net<0){
             strcpy(cfg->items[road].id,"NET");
             strcpy(cfg->items[road].command,"Plugins/Network");
-            if(!strcmp(cfg->items[road].label,"Roadshow"))
-                strcpy(cfg->items[road].label,"Network");
+            if(nd_plugin_name_equal(cfg->items[road].label,"Roadshow"))
+                strcpy(cfg->items[road].label,"NETWORK");
             net=road;
         }else if(net>=0 && road>=0 && cfg->items[road].enabled){
             if(cfg->items[net].enabled)(void)nd_set_item_enabled(cfg,road,0);
@@ -1938,7 +2202,7 @@ int nd_load_effective(struct NDConfig *cfg)
         if (status==0) {nd_upgrade_network_config(cfg);effective_config_source=paths[i];return 0;}
         if (status>0) saw_invalid=1;
     }
-    nd_default_config(cfg);
+    nd_factory_config(cfg);
     effective_config_source="Built-in defaults";
     return saw_invalid ? 1 : -1;
 }
@@ -2038,6 +2302,152 @@ static void publish_known_good(const char *filename)
         }
     }
 }
+/* Global (non-item) settings, in the order the configuration file lists
+ * them.  nd_config_get() formats each exactly as it is written. */
+const char *const nd_config_keys[]={
+    "SIDE","POSITION","POSITION_OFFSET","DRAG_BAR","HOVER_CACHE_KB","FONT","LABELS","ITEM_SIZE","THEME","SHAPE",
+    "TILE_WIDTH","TILE_HEIGHT","GAP","ROWS","LEFT_CLICK","TOOLTIPS",
+    "ALWAYS_ON_TOP","RUNNING_APPS","REFRESH_MODE","AUTO_HIDE","HIDE_DELAY",
+    "ICON_COLOURS","DOCK_BACKGROUND","HOVER_MAGNIFICATION","HOVER_ANIMATION",
+    "BACKGROUND_TRANSPARENCY","ROW_COUNTS","SEND_ALERTS_TO_AMINOTIS","CHECK_UPDATES_STARTUP",
+    "CHECK_UPDATES_RUNNING","UPDATE_INTERVAL_HOURS","REMOVABLE_MEDIA",
+    "RUNNING_SECTION","FOLDER_VIEW","FOLDER_SORT","DOCK_HOTKEY","PROFILE",NULL
+};
+static const char *yes_no(int value){return value ? "YES":"NO";}
+int nd_config_get(const struct NDConfig *cfg,const char *key,char *out,unsigned int size)
+{
+    char text[ND_CONFIG_VALUE_LEN];
+    const char *v=text;
+    if (!cfg || !key || !out || size<2) return 0;
+    text[0]='\0';
+    if (!strncmp(key,"OPTION.",7)) {
+        /* OPTION.<plugin id>.<key> */
+        char id[32];
+        const char *dot=strchr(key+7,'.');
+        size_t n=dot ? (size_t)(dot-(key+7)) : 0;
+        if (!dot || !n || n>=sizeof(id) || !dot[1]) return 0;
+        memcpy(id,key+7,n);id[n]='\0';
+        v=nd_option_get(cfg,id,dot+1);
+        if (!v) return 0;
+    }
+    else if (!strcmp(key,"SIDE")) v=cfg->side==ND_SIDE_TOP ? "TOP" : cfg->side==ND_SIDE_LEFT ? "LEFT" :
+                                    cfg->side==ND_SIDE_RIGHT ? "RIGHT" : "BOTTOM";
+    else if (!strcmp(key,"POSITION")) v=nd_position_name(cfg->position);
+    else if (!strcmp(key,"POSITION_OFFSET")) sprintf(text,"%d",cfg->position_offset);
+    else if (!strcmp(key,"FONT")) v=nd_font_name(cfg->font_mode);
+    else if (!strcmp(key,"LABELS")) v=nd_label_mode_name(cfg->label_mode);
+    else if (!strcmp(key,"ITEM_SIZE")) v=nd_item_size_name(cfg->item_size);
+    else if (!strcmp(key,"THEME")) v=nd_config_theme_id(cfg);
+    else if (!strcmp(key,"SHAPE")) v=nd_shape_name(cfg->shape);
+    else if (!strcmp(key,"TILE_WIDTH")) sprintf(text,"%d",cfg->tile_width);
+    else if (!strcmp(key,"TILE_HEIGHT")) sprintf(text,"%d",cfg->tile_height);
+    else if (!strcmp(key,"GAP")) sprintf(text,"%d",cfg->gap);
+    else if (!strcmp(key,"ROWS")) sprintf(text,"%d",cfg->rows);
+    else if (!strcmp(key,"LEFT_CLICK")) v=cfg->left_click==ND_CLICK_MENU ? "MENU" : "LAUNCH";
+    else if (!strcmp(key,"TOOLTIPS")) v=yes_no(cfg->tooltips);
+    else if (!strcmp(key,"ALWAYS_ON_TOP")) v=yes_no(cfg->always_on_top);
+    else if (!strcmp(key,"RUNNING_APPS")) v=yes_no(cfg->running_apps);
+    else if (!strcmp(key,"REFRESH_MODE")) v=nd_refresh_mode_name(cfg->refresh_mode);
+    else if (!strcmp(key,"AUTO_HIDE")) v=yes_no(cfg->auto_hide);
+    else if (!strcmp(key,"HIDE_DELAY")) sprintf(text,"%d",cfg->hide_delay);
+    else if (!strcmp(key,"ICON_COLOURS")) v=cfg->colourful_icons ? "COLOURFUL" : "THEME";
+    else if (!strcmp(key,"DOCK_BACKGROUND")) v=cfg->theme_artwork ? "ARTWORK" : cfg->wallpaper_match ? "WALLPAPER" : "SOLID";
+    else if (!strcmp(key,"HOVER_MAGNIFICATION")) sprintf(text,"%d",cfg->hover_magnification);
+    else if (!strcmp(key,"BACKGROUND_TRANSPARENCY")) sprintf(text,"%d",cfg->background_transparency);
+    else if (!strcmp(key,"ROW_COUNTS")) {
+        if (cfg->row_layout) sprintf(text,"%d,%d,%d",cfg->row_counts[0],cfg->row_counts[1],cfg->row_counts[2]);
+        else v="AUTO";
+    }
+    else if (!strcmp(key,"SEND_ALERTS_TO_AMINOTIS")) v=yes_no(cfg->send_alerts_aminotis);
+    else if (!strcmp(key,"CHECK_UPDATES_STARTUP")) v=yes_no(cfg->check_updates);
+    else if (!strcmp(key,"CHECK_UPDATES_RUNNING")) v=yes_no(cfg->check_updates_running);
+    else if (!strcmp(key,"UPDATE_INTERVAL_HOURS")) sprintf(text,"%d",cfg->update_interval_hours);
+    else if (!strcmp(key,"REMOVABLE_MEDIA")) v=yes_no(cfg->removable_media);
+    else if (!strcmp(key,"RUNNING_SECTION")) v="NO";
+    else if (!strcmp(key,"FOLDER_VIEW")) v=cfg->folder_view ? "LIST" : "ICONS";
+    else if (!strcmp(key,"FOLDER_SORT")) v=cfg->folder_sort==2 ? "SIZE" : cfg->folder_sort==1 ? "DATE" : "NAME";
+    else if (!strcmp(key,"DOCK_HOTKEY")) v=cfg->dock_hotkey;
+    else if (!strcmp(key,"PROFILE")) v=cfg->profile;
+    else if (!strcmp(key,"HOVER_CACHE_KB")) sprintf(text,"%d",cfg->hover_cache_kb);
+    else if (!strcmp(key,"DRAG_BAR")) v=yes_no(cfg->drag_bar);
+    else if (!strcmp(key,"HOVER_ANIMATION")) v=yes_no(cfg->hover_animation);
+    else return 0;
+    if (strlen(v)>=size) return 0;
+    strcpy(out,v);
+    return 1;
+}
+#define ND_CANONICAL_DEFS 112   /* as many as Plugin settings shows */
+/* Spell KEY the way the configuration stores it: global keys upper-case,
+ * and OPTION.<id>.<key> with the plugin id and option key matched without
+ * regard to case against the plugin tiles, stored options and option
+ * definitions.  Returns 0 when nothing matches. */
+int nd_config_canonical_key(const struct NDConfig *cfg,const char *key,char *out,unsigned int size)
+{
+    char id[20],name[ND_OPT_KEY_LEN];
+    const char *dot,*found_id=NULL,*found_key=NULL;
+    struct NDOptionDef *defs;
+    size_t n;
+    int i,count;
+    if (!cfg || !key || !out || size<2) return 0;
+    if (ci_cmp_prefix(key,"OPTION.")) {
+        for (n=0;key[n];++n) {
+            if (n+1>=size) return 0;
+            out[n]=(char)toupper((unsigned char)key[n]);
+        }
+        out[n]='\0';
+        return 1;
+    }
+    dot=strchr(key+7,'.');
+    n=dot ? (size_t)(dot-(key+7)) : 0;
+    if (!dot || !n || n>=sizeof(id) || !dot[1] || strlen(dot+1)>=sizeof(name)) return 0;
+    memcpy(id,key+7,n);id[n]='\0';strcpy(name,dot+1);
+    for (i=0;i<cfg->count && !found_id;++i)
+        if (cfg->items[i].kind==ND_ITEM_PLUGIN && !ci_cmp(cfg->items[i].id,id)) found_id=cfg->items[i].id;
+    for (i=0;i<cfg->option_count && !found_id;++i)
+        if (!ci_cmp(cfg->options[i].id,id)) found_id=cfg->options[i].id;
+    if (!found_id) return 0;
+    for (i=0;i<cfg->option_count && !found_key;++i)
+        if (!strcmp(cfg->options[i].id,found_id) && !ci_cmp(cfg->options[i].key,name)) found_key=cfg->options[i].key;
+    if (found_key) {strcpy(name,found_key);found_key=name;}
+    else {
+        /* Not stored yet: the plugin's definitions (built-in or OPTIONDEF)
+         * give the spelling.  Only this lookup needs the larger buffer. */
+        defs=(struct NDOptionDef *)malloc(sizeof(*defs)*ND_CANONICAL_DEFS);
+        if (!defs) return 0;
+        count=nd_option_collect(cfg,found_id,defs,ND_CANONICAL_DEFS);
+        for (i=0;i<count;++i) if (!ci_cmp(defs[i].key,name)) {strcpy(name,defs[i].key);found_key=name;break;}
+        free(defs);
+    }
+    if (!found_key || strlen(found_id)+strlen(found_key)+9>size) return 0;
+    sprintf(out,"OPTION.%s.%s",found_id,found_key);
+    return 1;
+}
+int nd_profile_name_valid(const char *name)
+{
+    size_t n;
+    if (!name || !*name || *name==' ') return 0;
+    for (n=0;name[n];++n) {
+        unsigned char c=(unsigned char)name[n];
+        if (!isalnum(c) && c!=' ' && c!='-' && c!='_') return 0;
+    }
+    return n<ND_PROFILE_LEN && name[n-1]!=' ';
+}
+int nd_profile_path(const char *name,char *out,unsigned int size)
+{
+    if (!nd_profile_name_valid(name) || !out ||
+        strlen(ND_PROFILE_DIR)+strlen(name)+6>size) return 0;
+    sprintf(out,ND_PROFILE_DIR "/%s.cfg",name);
+    return 1;
+}
+/* A key ARexx SET may change: a global setting or a plugin OPTION. */
+int nd_config_settable(const struct NDConfig *cfg,const char *key)
+{
+    char value[ND_CONFIG_VALUE_LEN];
+    /* PROFILE names the profile last saved or used: change it with the
+     * PROFILE command, which also writes or loads the profile. */
+    return strcmp(key,"RUNNING_SECTION") && strcmp(key,"PROFILE") &&
+           nd_config_get(cfg,key,value,sizeof(value));
+}
 /* Pure C89; data stays plain text for manual editing and third-party tools.
  * The complete new file is staged beside the destination and closed before
  * any replacement. Never truncate or copy into the live configuration.
@@ -2058,35 +2468,19 @@ int nd_write_config(const struct NDConfig *cfg, const char *filename)
     remove(tmp);
     f = fopen(tmp, "w");
     if (!f) return 0;
-    if (fprintf(f, "# NovaDock " ND_VERSION " - text configuration\nSIDE=%s\nPOSITION=%s\nFONT=%s\nLABELS=%s\nITEM_SIZE=%s\nTHEME=%s\nSHAPE=%s\nTILE_WIDTH=%d\nTILE_HEIGHT=%d\nGAP=%d\nROWS=%d\nLEFT_CLICK=%s\nTOOLTIPS=%s\nALWAYS_ON_TOP=%s\nRUNNING_APPS=%s\nREFRESH_MODE=%s\nAUTO_HIDE=%s\nHIDE_DELAY=%d\n",
-                cfg->side == ND_SIDE_TOP ? "TOP" : cfg->side == ND_SIDE_LEFT ? "LEFT" : cfg->side == ND_SIDE_RIGHT ? "RIGHT" : "BOTTOM",
-                nd_position_name(cfg->position),nd_font_name(cfg->font_mode),
-                nd_label_mode_name(cfg->label_mode),
-                nd_item_size_name(cfg->item_size),
-                nd_config_theme_id(cfg),
-                nd_shape_name(cfg->shape),
-                cfg->tile_width, cfg->tile_height, cfg->gap, cfg->rows,
-                cfg->left_click == ND_CLICK_MENU ? "MENU" : "LAUNCH",
-                cfg->tooltips ? "YES" : "NO",
-                cfg->always_on_top ? "YES" : "NO",
-                cfg->running_apps ? "YES" : "NO",
-                nd_refresh_mode_name(cfg->refresh_mode),
-                cfg->auto_hide ? "YES" : "NO", cfg->hide_delay) < 0) ok = 0;
-    if (cfg->row_layout) {
-        if (fprintf(f,"ROW_COUNTS=%d,%d,%d\n",cfg->row_counts[0],
-                    cfg->row_counts[1],cfg->row_counts[2])<0) ok=0;
-    } else if (fprintf(f,"ROW_COUNTS=AUTO\n")<0) ok=0;
-    if (fprintf(f,"CHECK_UPDATES_STARTUP=%s\nCHECK_UPDATES_RUNNING=%s\nUPDATE_INTERVAL_HOURS=%d\n",cfg->check_updates ? "YES":"NO",cfg->check_updates_running ? "YES":"NO",cfg->update_interval_hours)<0)ok=0;
-    if (fprintf(f, "REMOVABLE_MEDIA=%s\nRUNNING_SECTION=%s\n"
-                "FOLDER_VIEW=%s\nFOLDER_SORT=%s\n",
-                cfg->removable_media ? "YES" : "NO",
-                "NO",
-                cfg->folder_view ? "LIST" : "ICONS",
-                cfg->folder_sort==2 ? "SIZE" : cfg->folder_sort==1 ? "DATE" :
-                "NAME") < 0) ok = 0;
-    /* Only when set, so configurations without one stay unchanged. */
-    if (cfg->dock_hotkey[0] &&
-        fprintf(f,"DOCK_HOTKEY=%s\n",cfg->dock_hotkey)<0) ok=0;
+    if (fprintf(f, "# NovaDock " ND_VERSION " - text configuration\n") < 0) ok = 0;
+    /* Global settings in their historical order, formatted by the same
+     * code that answers ARexx GET. */
+    for (i = 0; nd_config_keys[i]; ++i) {
+        char value[ND_CONFIG_VALUE_LEN];
+        if (!nd_config_get(cfg, nd_config_keys[i], value, sizeof(value))) { ok = 0; continue; }
+        /* Only when set, so configurations without one stay unchanged. */
+        if ((!strcmp(nd_config_keys[i], "DOCK_HOTKEY") || !strcmp(nd_config_keys[i], "PROFILE")) &&
+            !value[0]) continue;
+        /* Off is the default: older configurations stay unchanged. */
+        if (!strcmp(nd_config_keys[i], "HOVER_ANIMATION") && !cfg->hover_animation) continue;
+        if (fprintf(f, "%s=%s\n", nd_config_keys[i], value) < 0) ok = 0;
+    }
     for (i=0;i<cfg->hook_count && i<ND_MAX_HOOKS;++i)
         if (fprintf(f,"HOOK=%s|%s\n",cfg->hooks[i].event,cfg->hooks[i].command)<0)
             ok=0;
@@ -2139,7 +2533,7 @@ int nd_write_config(const struct NDConfig *cfg, const char *filename)
     }
     for (i=0; i<cfg->option_count; ++i) {
         const struct NDOption *o=&cfg->options[i];
-        if (fprintf(f,"OPTION.%s.%s=%s\n",o->id,o->key,o->value)<0) ok=0;
+        if (fprintf(f,"OPTION.%s.%s=%s\n",o->id,o->key,nd_option_value(cfg,o))<0) ok=0;
     }
     if (fclose(f) != 0) ok = 0;
     if (!ok) { remove(tmp); return 0; }
@@ -2187,6 +2581,8 @@ int nd_config_low_resource(struct NDConfig *cfg)
     copy=(struct NDConfig *)malloc(sizeof(*copy));if(!copy)return 0;
     memcpy(copy,cfg,sizeof(*copy));
     copy->refresh_mode=ND_REFRESH_LOW_MEMORY;copy->folder_view=1;
+    copy->theme_artwork=0;
+    copy->hover_magnification=0;copy->background_transparency=0;
     copy->running_apps=0;copy->always_on_top=0;
     for(i=0;i<copy->count;++i)if(copy->items[i].kind==ND_ITEM_PLUGIN)copy->items[i].graph=0;
     ok=nd_option_set(copy,"CPU","POLL_TICKS","100") &&

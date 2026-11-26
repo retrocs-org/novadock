@@ -1,3 +1,5 @@
+> Retired from the shipped plugin set on 26 November 2026. Retained as source reference for AmiNotis. See [NOTIFICATION_MIGRATION.md](NOTIFICATION_MIGRATION.md).
+
 # AmiRocket
 
 Add **AmiRocket** using Preferences → Organize → Add → Plugin. This optional tile starts or restores your AmiRocket client and shows its connection state and unread count across configured servers. It is included with NovaDock 0.4 and has its own plugin version, initially 0.1.

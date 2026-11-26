@@ -16,6 +16,9 @@
 #include "../clipboard/nd_clipboard.h"
 const char nd_version[]=ND_PLUGIN_VER_STRING(QR,"QR");long __stack=65536;
 #include "nd_qr_job.h"
+#if defined(ND_PLUGIN_RESOURCES)
+#include "nd_plugin_resources.h"
+#endif
 static int clipboard(char text[ND_QR_TEXT_MAX+1])
 {struct MsgPort *port=CreateMsgPort();struct IOClipReq *io=NULL;unsigned char *raw=NULL;unsigned long size=0;int ok=0,opened=0;if(port)io=(struct IOClipReq *)CreateIORequest(port,sizeof(*io));raw=AllocVec(ND_CLIP_RAW_MAX,MEMF_PUBLIC);if(!io||!raw)goto done;if(OpenDevice("clipboard.device",0,(struct IORequest *)io,0))goto done;opened=1;io->io_Command=CMD_READ;io->io_Data=raw;io->io_Length=ND_CLIP_RAW_MAX;
  if(!DoIO((struct IORequest *)io)){size=io->io_Actual;ok=nd_clip_decode(raw,size,text,ND_QR_TEXT_MAX+1)==1;}

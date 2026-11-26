@@ -22,6 +22,38 @@ int main(void)
     assert(nd_parse_rexx("SUSPEND",&c) && c.action==ND_RX_SUSPEND);
     assert(nd_parse_rexx("resume",&c) && c.action==ND_RX_RESUME);
     assert(!nd_parse_rexx("SUSPEND now",&c));
+    /* Settings, tile details, saving, undo and diagnostics. */
+    assert(nd_parse_rexx("GET side",&c) && c.action==ND_RX_GET && !strcmp(c.text2,"SIDE"));
+    assert(nd_parse_rexx("get option.CLOCK.Format",&c) && !strcmp(c.text2,"OPTION.CLOCK.Format"));
+    assert(!nd_parse_rexx("GET",&c) && !nd_parse_rexx("GET SIDE extra",&c));
+    assert(!nd_parse_rexx("GET SI;DE",&c));
+    assert(nd_parse_rexx("SET auto_hide YES",&c) && c.action==ND_RX_SET &&
+           !strcmp(c.text2,"AUTO_HIDE") && !strcmp(c.text,"YES"));
+    assert(nd_parse_rexx("SET DOCK_HOTKEY ctrl alt d",&c) && !strcmp(c.text,"ctrl alt d"));
+    assert(!nd_parse_rexx("SET SIDE",&c));
+    assert(nd_parse_rexx("THEME Mocha",&c) && c.action==ND_RX_THEME &&
+           !strcmp(c.text2,"THEME") && !strcmp(c.text,"Mocha"));
+    assert(!nd_parse_rexx("THEME",&c));
+    assert(nd_parse_rexx("INFO 3",&c) && c.action==ND_RX_INFO && c.first==3);
+    assert(!nd_parse_rexx("INFO",&c) && !nd_parse_rexx("INFO 0",&c) && !nd_parse_rexx("INFO x",&c));
+    assert(nd_parse_rexx("save",&c) && c.action==ND_RX_SAVE);
+    assert(nd_parse_rexx("UNDO",&c) && c.action==ND_RX_UNDO && !nd_parse_rexx("UNDO 2",&c));
+    assert(nd_parse_rexx("STATUS",&c) && c.action==ND_RX_STATUS && !c.first);
+    assert(nd_parse_rexx("status detail",&c) && c.action==ND_RX_STATUS && c.first==1);
+    assert(!nd_parse_rexx("STATUS NOW",&c));
+    /* Profiles: switch, save, delete and list; quoted names keep spaces. */
+    assert(nd_parse_rexx("PROFILE Work",&c) && c.action==ND_RX_PROFILE &&
+           c.first==ND_RX_PROFILE_USE && !strcmp(c.text,"Work"));
+    assert(nd_parse_rexx("profile use Games",&c) && c.first==ND_RX_PROFILE_USE && !strcmp(c.text,"Games"));
+    assert(nd_parse_rexx("PROFILE SAVE \"Late Night\"",&c) && c.first==ND_RX_PROFILE_SAVE &&
+           !strcmp(c.text,"Late Night"));
+    assert(nd_parse_rexx("PROFILE delete Old",&c) && c.first==ND_RX_PROFILE_DELETE && !strcmp(c.text,"Old"));
+    assert(nd_parse_rexx("PROFILE LIST",&c) && c.first==ND_RX_PROFILE_LIST);
+    assert(nd_parse_rexx("PROFILE \"Save\"",&c) && c.first==ND_RX_PROFILE_USE && !strcmp(c.text,"Save"));
+    assert(nd_parse_rexx("PROFILE Workstation 2",&c) && c.first==ND_RX_PROFILE_USE &&
+           !strcmp(c.text,"Workstation 2"));
+    assert(!nd_parse_rexx("PROFILE",&c) && !nd_parse_rexx("PROFILE SAVE",&c) &&
+           !nd_parse_rexx("PROFILE LIST now",&c));
     /* LIST STEM: validated, upper-cased, always ending in '.' */
     assert(nd_parse_rexx("LIST",&c) && c.text[0]=='\0');
     assert(nd_parse_rexx("LIST STEM tiles",&c) && c.action==ND_RX_LIST &&

@@ -11,7 +11,7 @@
 /* Built-in schemas are static metadata, not additional configuration files. */
 #define MUSIC_OPTION(key,label,bit,value) {"MUSICLIB",#key,label,"BOOL","",value},
 #define SAVER_SHUFFLE(key,label,mode,value) {"SAVER","SHUFFLE_" #key,"Shuffle: " label,"BOOL","",value},
-#define SENSOR_OPTION(key,label,short_label,unit,minimum,maximum) {"SENSORS",#key,label,"BOOL","","YES"},
+#define SENSOR_OPTION(key,label,short_label,unit,minimum,maximum) {"SENSORS",#key,label,"BOOL","","YES"}, {"SENSORS",#key "_TITLE",short_label " title","TEXT","",""},
 static const struct NDOptionDef builtin[] = {
  {"AGENDA","LABEL","Tile label","TEXT","","AGENDA"},
  {"AGENDA","REMINDERS","Reminder alerts","CHOICE","YES,NO","YES"},
@@ -51,6 +51,10 @@ static const struct NDOptionDef builtin[] = {
  {"AQUARIUM","FISH","Number of fish","UINT","1,8","5"},
  {"AQUARIUM","BUBBLES","Bubbles","BOOL","","YES"},
  {"AQUARIUM","SPEED","Animation speed","CHOICE","Slow,Normal,Fast","Normal"},
+ {"PET","CHARACTER","Character","CHOICE","Cat,Gerald,Dog,Rabbit,Bob","Cat"},
+ {"PET","NAME","Name","TEXT","","Whiskers"},
+ {"PET","SPEED","Animation speed","CHOICE","Slow,Normal,Fast","Normal"},
+ {"PET","SLEEP","Minutes before napping","UINT","1,30","2"},
  {"HASS","LABEL","Tile label","TEXT","","HASS"},
  {"HASS","DEVICE","Device","TEXT","",""},
  {"HASS","TYPE","Type","CHOICE","All,light,switch,scene,script,group,sensor,binary_sensor,cover,climate,fan,media_player,lock,room","light"},
@@ -97,6 +101,8 @@ static const struct NDOptionDef builtin[] = {
  {"SHELF","DRAWER","Storage drawer","FILE","","ENVARC:NovaDock/Shelves"},
  {"SENSORS","LABEL","Tile label","TEXT","","SENSOR"},
  {"SENSORS","INTERVAL","Refresh seconds","UINT","2,60","5"},
+ {"SENSORS","ROTATE","Auto-switch seconds (0=off)","UINT","0,60","5"},
+ {"SENSORS","CLICK","Click action","CHOICE","Readings,Next sensor","Readings"},
  {"SENSORS","WARPTOOL","Warp diagnostic tool","FILE","","C:WarpTool"},
  {"SENSORS","RTC_MAX_AGE","RTC max age seconds","UINT","30,86400","120"},
  ND_SENSOR_CHANNELS(SENSOR_OPTION)
@@ -106,7 +112,7 @@ static const struct NDOptionDef builtin[] = {
  {"MUSICLIB","ICONFILE","Custom icon or picture","FILE","",""},
  {"MUSICLIB","PLAYER","Player (blank = Music default)","FILE","",""},
  ND_MUSIC_FORMATS(MUSIC_OPTION)
- {"WHDLOAD","LABEL","Tile label","TEXT","","WHDLoad"},
+ {"WHDLOAD","LABEL","Tile label","TEXT","","WHDLOAD"},
  {"WHDLOAD","DRAWER","Scan folder (recursive)","FILE","",""},
  {"WHDLOAD","ICON","Tile icon","TEXT","","WHDLoad"},
  {"WHDLOAD","ICONFILE","Custom icon or picture","FILE","",""},
