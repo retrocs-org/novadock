@@ -331,7 +331,8 @@ def build(args):
 def inventory(directory, assets, release_version=None):
     if set(assets) != required_assets(release_version or version()):
         raise ValueError('Incomplete or unexpected release bundle assets.')
-    allowed = set(assets) | {'build-state.json', 'manifest.json', 'release.json', 'receipt.json', 'aminet'}
+    # plugin-qa holds the native plugin QA evidence that build writes beside the assets.
+    allowed = set(assets) | {'build-state.json', 'manifest.json', 'release.json', 'receipt.json', 'aminet', 'plugin-qa'}
     if directory.is_symlink() or any(p.is_symlink() for p in directory.rglob('*')):
         raise ValueError('Symlinked release assets are not allowed.')
     if {p.name for p in directory.iterdir()} - allowed:
