@@ -357,7 +357,9 @@ def package_contents(directory):
         drawer = icons.generic_icon('SoftwarePackage.info', kind=2, show_icons=True)
     finally:
         icons.ROOT = previous
-    source = {'NovaDock/'+p.relative_to(ROOT).as_posix(): p.read_bytes() for p in package.source_files()}
+    # Packaging adds a NovaDock/SHA256SUMS manifest to both source archives.
+    source = dict(package.with_source_checksums(
+        [('NovaDock/'+p.relative_to(ROOT).as_posix(), p.read_bytes()) for p in package.source_files()]))
     source['NovaDock.info'] = drawer
     sdk = {'NovaDock-PluginSDK/'+member: (ROOT/name).read_bytes() for member, name in package.SDK_FILES}
     web = {p.relative_to(ROOT/'public-web').as_posix(): p.read_bytes()
@@ -371,6 +373,7 @@ def package_contents(directory):
     web['downloads/SHA256SUMS.txt'] = ''.join(digest(directory/name)+'  '+name+'\n' for name in download_names).encode()
     full = dict(source)
     full.update({'NovaDock/public-web/'+name: data for name, data in web.items()})
+    full = dict(package.with_source_checksums(list(full.items())))
     return {'source.zip': source, 'plugin-sdk.zip': sdk, 'public-web-updated.zip': web,
             'continued-source-and-site.zip': full}
 
